@@ -211,7 +211,7 @@ describe('DetallesPlantillaComponent', () => {
                 Id: 32,
                 Basico: null,
                 Ley: { Id_ley: 10, Nombre: 'Ninguna preferencia' },
-                Moral: { Id_moral: 6, Nombre: 'Siempre Maligno' },
+                Moral: { Id_moral: 6, Nombre: 'Siempre Maligno', Valor: -1, Prohibe: false, Id_prioridad: 3 },
                 Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
                 Descripcion: 'Se debe respetar a raja tabla.',
             } as any,

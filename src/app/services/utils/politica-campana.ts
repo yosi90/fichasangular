@@ -40,6 +40,27 @@ export function campanaDejaSaltarRequisitosPlantilla(
 }
 
 /**
+ * Si la campaña deja mantener una dote que deja de cumplir sus prerrequisitos (la decisión `requisitos_dote` de la
+ * corrección): si admite homebrew (`permitirHomebrewGeneral`), con la regla de la API
+ * (`decisiones_homebrew.incumplimientos_politica`); sin campaña, siempre.
+ */
+export function campanaDejaMantenerDoteSinPrerrequisitos(
+    policy: Partial<Pick<CampaignCreationPolicy, 'permitirHomebrewGeneral'>> | null | undefined,
+): boolean {
+    return !policy || policy.permitirHomebrewGeneral !== false;
+}
+
+/**
+ * Si la campaña deja saltarse una regla de alineamiento (`alineamiento_clase`, `alineamiento_raza`,
+ * `alineamiento_deidad`): con `permitirIgnorarRestriccionesAlineamiento`, como la API; sin campaña, siempre.
+ */
+export function campanaDejaSaltarAlineamiento(
+    policy: Partial<Pick<CampaignCreationPolicy, 'permitirIgnorarRestriccionesAlineamiento'>> | null | undefined,
+): boolean {
+    return !policy || policy.permitirIgnorarRestriccionesAlineamiento === true;
+}
+
+/**
  * El límite de fuentes homebrew de la política: entero, 0 o más; sin dato o algo que no es un número, `null`. Lo usan
  * `modoHomebrewDeCampana`, `leerPoliticaCompra` y las comprobaciones de la campaña en la creación.
  */
@@ -63,5 +84,6 @@ export function leerPoliticaCompra(valor: any): CampaignPurchasePolicy | null {
         permitirObjetosAMedida: toBoolean(valor.permitirObjetosAMedida, true),
         precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(valor.precioMaximoPorObjeto),
         permitirCopiarConjuros: toBoolean(valor.permitirCopiarConjuros, true),
+        permitirIgnorarRestriccionesAlineamiento: toBoolean(valor.permitirIgnorarRestriccionesAlineamiento, false),
     };
 }

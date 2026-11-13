@@ -15,6 +15,10 @@
     <ng-container *ngIf="!cargando && pj && sesion">
         <p class="subida__nota">Para arreglar un error: lo corregido vale desde que se creó, y lo que deja de cumplirse se quita o
             se mantiene como homebrew. La raza, las plantillas y las clases no se corrigen.</p>
+        <div *ngIf="avisoDelMaster" class="subida__aviso" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <span>{{avisoDelMaster}}</span>
+        </div>
 
         <section class="subida__tarjeta">
             <h2 class="subida__seccion">Características</h2>
@@ -61,7 +65,12 @@
 
         <section class="subida__tarjeta">
             <h2 class="subida__seccion">Alineamiento y deidad</h2>
-            <p class="subida__nota">Una clase cuyo alineamiento deja de cumplir solo la mantiene el máster (el ex paladín).</p>
+            <p class="subida__nota">Una clase cuyo alineamiento deja de cumplir solo la mantiene el máster, como homebrew. Una ex clase
+                (el paladín que se volvió vampiro) sigue siéndolo.</p>
+            <div *ngFor="let aviso of avisos" class="subida__aviso" role="status">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                <span>{{aviso}}</span>
+            </div>
             <div class="correccion__campos">
                 <label class="correccion__campo">
                     <span>Alineamiento</span>
@@ -161,18 +170,18 @@
                 <li *ngFor="let r of rotas" class="subida__fila">
                     <div class="subida__fila-texto">
                         <span class="subida__fila-nombre">{{r.nombre}}<ng-container *ngIf="r.nivel"> (elegida en el nivel {{r.nivel}})</ng-container></span>
-                        <span class="subida__fila-motivo">{{r.razones.join(' · ')}}</span>
+                        <span class="subida__fila-motivo">{{r.razones.join(' · ')}}<ng-container *ngIf="!r.puedeMantener"> · la campaña no admite homebrew: solo se puede quitar</ng-container></span>
                     </div>
                     <span *ngIf="r.mantenida" class="subida__etiqueta">Homebrew</span>
                     <ng-container *ngIf="!r.mantenida">
-                        <button mat-stroked-button type="button" (click)="mantener(r)">Mantenerla (homebrew)</button>
+                        <button *ngIf="r.puedeMantener" mat-stroked-button type="button" (click)="mantener(r)">Mantenerla (homebrew)</button>
                         <button mat-flat-button color="primary" type="button" (click)="quitarDote(r)">Quitarla</button>
                     </ng-container>
                 </li>
                 <li *ngFor="let r of reglas" class="subida__fila">
                     <div class="subida__fila-texto">
                         <span class="subida__fila-nombre">{{r.nombre}}</span>
-                        <span class="subida__fila-motivo">{{r.razones.join(' · ')}}<ng-container *ngIf="!r.puedeMantener"> · solo el máster puede mantenerla</ng-container></span>
+                        <span class="subida__fila-motivo">{{r.razones.join(' · ')}}<ng-container *ngIf="!r.puedeMantener && r.motivoNoMantener"> · {{r.motivoNoMantener}}</ng-container></span>
                     </div>
                     <span *ngIf="r.mantenida" class="subida__etiqueta">Homebrew</span>
                     <ng-container *ngIf="!r.mantenida">

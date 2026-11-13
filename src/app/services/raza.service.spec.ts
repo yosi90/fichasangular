@@ -187,7 +187,7 @@ describe('RazaService helpers', () => {
     it('normaliza alineamiento parcial con aliases y evita undefined', () => {
         const alineamiento = normalizeAlineamientoRaza({
             b: { n: 'Legal bueno' },
-            l: { Nombre: 'Siempre legal' },
+            l: { Nombre: 'Siempre legal', Valor: 1, Prohibe: false, Id_prioridad: 3 },
             m: { nombre: 'Generalmente bueno' },
         });
 

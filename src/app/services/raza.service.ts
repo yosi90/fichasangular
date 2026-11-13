@@ -1,3 +1,4 @@
+import { datoDePreferencia } from 'src/app/services/utils/alineamiento-contrato';
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe } from '@angular/fire/database';
@@ -113,10 +114,12 @@ export function normalizeAlineamientoRaza(raw: any): Alineamiento {
         Ley: {
             Id_ley: toNumber(pick(ley, 'Id_ley', 'id_ley', 'Id', 'id', 'i')),
             Nombre: `${pick(ley, 'Nombre', 'nombre', 'n') ?? ''}`.trim(),
+            ...datoDePreferencia(ley),
         },
         Moral: {
             Id_moral: toNumber(pick(moral, 'Id_moral', 'id_moral', 'Id', 'id', 'i')),
             Nombre: `${pick(moral, 'Nombre', 'nombre', 'n') ?? ''}`.trim(),
+            ...datoDePreferencia(moral),
         },
         Prioridad: {
             Id_prioridad: toNumber(pick(prioridad, 'Id_prioridad', 'id_prioridad', 'Id', 'id', 'i')),

@@ -1,3 +1,4 @@
+import { datoDePreferencia } from 'src/app/services/utils/alineamiento-contrato';
 import { Alineamiento } from "src/app/interfaces/alineamiento";
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { DoteContextual } from "src/app/interfaces/dote-contextual";
@@ -80,10 +81,12 @@ function normalizeAlineamiento(raw: any): Alineamiento {
         Ley: {
             Id_ley: toNumber(raw?.Ley?.Id_ley ?? raw?.Ley?.Id),
             Nombre: toText(raw?.Ley?.Nombre),
+            ...datoDePreferencia(raw?.Ley),
         },
         Moral: {
             Id_moral: toNumber(raw?.Moral?.Id_moral ?? raw?.Moral?.Id),
             Nombre: toText(raw?.Moral?.Nombre),
+            ...datoDePreferencia(raw?.Moral),
         },
         Prioridad: {
             Id_prioridad: toNumber(raw?.Prioridad?.Id_prioridad ?? raw?.Prioridad?.Id),

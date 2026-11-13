@@ -280,6 +280,12 @@ export interface ClasePrerrequisitos {
     sin_lanzador_arcano?: PrerrequisitoItem[];
 }
 
+export interface ClaseEx {
+    Pierde_magia: boolean;
+    Requiere_expiacion: boolean;
+    Especiales: { Id: number; Nombre: string; }[];
+}
+
 export interface Clase {
     Id: number;
     Nombre: string;
@@ -322,6 +328,12 @@ export interface Clase {
      */
     Mutacion?: { Id: number; Nombre: string; } | null;
     Alineamiento: Alineamiento;
+    /**
+     * La ex clase (MJ págs. 26-55): lo que pierde quien deja de cumplir su alineamiento (sin la decisión homebrew de
+     * mantenerla). `Pierde_magia`, sus conjuros, dominios y moldeado; `Requiere_expiacion`, que solo lo recupera con una
+     * expiación; `Especiales`, las aptitudes que pierde. Ninguna sube mientras sea ex.
+     */
+    Ex?: ClaseEx;
     Oficial: boolean;
     Competencias: ClaseCompetencias;
     Habilidades: ClaseHabilidades;
@@ -346,7 +358,7 @@ export interface ClaseNivelMutation extends Omit<ClaseNivelDetalle, 'Nivel_max_p
     nivel_max_poder_accesible_nivel_lanzadorPsionico: number;
 }
 
-export interface ClaseMutationRequest extends Omit<Clase, 'Id' | 'Desglose_niveles' | 'Conjuros'> {
+export interface ClaseMutationRequest extends Omit<Clase, 'Id' | 'Desglose_niveles' | 'Conjuros' | 'Ex'> {
     Id?: number;
     /** `Clase_origen` `null`: sin clase de origen. */
     Conjuros: Omit<ClaseConjurosConfig, 'Clase_origen'> & { Clase_origen: { Id: number; Nombre: string; } | null; };

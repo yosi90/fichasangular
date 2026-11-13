@@ -65,49 +65,58 @@ export function getVectorDesdeNombreBasico(nombre: string): AlineamientoVector |
 }
 
 /**
- * Una preferencia que prohíbe un valor («Nunca legal», «Casi nunca neutral», «Tendencia a no ser caótico») no exige
- * ninguno: el eje que pide queda sin valor.
+ * Lo que pide una preferencia de ley o de moral, de sus datos (`preferencia_ley`, `preferencia_moral`; bugs.md de
+ * sesiones, 2026-11-13): el valor del eje que nombra (`Valor`: 1 legal o bueno, 0 neutral, −1 caótico o maligno; `null`
+ * si no pide nada), si lo prohíbe (`Prohibe`: «Nunca …», «Casi nunca …», «Tendencia a no ser …») y lo que pesa ella sola
+ * (`Id_prioridad`: 3 «Siempre» y «Nunca», 2 «Casi», 1 «Tendencia»). Nadie lee su nombre para saberlo.
  */
-function esPreferenciaProhibitiva(normalizado: string): boolean {
-    return normalizado.includes("nunca") || normalizado.includes("jamas") || normalizado.includes("prohib")
-        || normalizado.includes("tendencia a no");
+export interface DatoPreferenciaAlineamiento {
+    Valor?: number | null;
+    Prohibe?: boolean;
+    Id_prioridad?: number;
+}
+
+/** El dato de una preferencia tal como llega de la API o de la caché (sin `Valor`, no pide nada). */
+export function datoDePreferencia(raw: any): Required<DatoPreferenciaAlineamiento> {
+    const valor = raw?.Valor;
+    const numero = valor === null || valor === undefined || `${valor}`.trim() === '' ? NaN : Number(valor);
+    const prohibe = raw?.Prohibe;
+    return {
+        Valor: Number.isFinite(numero) ? Math.max(-1, Math.min(1, Math.trunc(numero))) : null,
+        Prohibe: prohibe === true || prohibe === 1 || prohibe === '1' || `${prohibe}`.toLowerCase() === 'true',
+        Id_prioridad: Number.isFinite(Number(raw?.Id_prioridad)) ? Math.trunc(Number(raw?.Id_prioridad)) : 0,
+    };
 }
 
 /** Lo que pide una preferencia de un eje: el valor del eje (1 legal o bueno, 0 neutral, −1 caótico o maligno) y si lo prohíbe. */
 export interface ReglaPreferenciaAlineamiento {
     valor: number;
     prohibe: boolean;
-    /** «Siempre …» o «Nunca …» (no «casi», ni «tendencia»): no se salta sin volver homebrew, traiga o no su prioridad. */
+    /** Lo que pesa ella sola (`Id_prioridad`). */
+    prioridad: number;
+    /** De prioridad «siempre» (3) o más: no se salta sin volver homebrew la ficha, traiga o no esa prioridad el alineamiento. */
     estricta: boolean;
 }
 
-/**
- * La regla de una preferencia de ley o de moral (`preferencia_ley`, `preferencia_moral`: «Siempre legal», «Nunca bueno»,
- * «Tendencia a no ser caótico»), o `null` si no pide nada («Ninguna preferencia», «No aplica»). El catálogo de las
- * preferencias solo trae su nombre, así que es el único sitio que lo lee (propuesta en el bugs.md de sesiones: darles su
- * valor y si prohíben como datos). Cuánto pesa lo dice la prioridad del alineamiento y, sin ella, «siempre» o «nunca».
- */
-export function reglaDePreferenciaAlineamiento(nombre: string | null | undefined, eje: 'ley' | 'moral'): ReglaPreferenciaAlineamiento | null {
-    const n = normalizarTexto(`${nombre ?? ''}`);
-    if (esAlineamientoSinPreferencia(n) || n === 'cualquiera')
+/** La prioridad desde la que una regla de alineamiento no se puede saltar sin volver homebrew la ficha («siempre»). */
+export const PRIORIDAD_ALINEAMIENTO_ESTRICTA = 3;
+
+/** La regla de una preferencia de ley o de moral, de sus datos, o `null` si no pide nada. */
+export function reglaDePreferenciaAlineamiento(preferencia: DatoPreferenciaAlineamiento | null | undefined): ReglaPreferenciaAlineamiento | null {
+    const dato = datoDePreferencia(preferencia);
+    if (dato.Valor === null)
         return null;
-    const valores: Array<[string, number]> = eje === 'ley'
-        ? [["legal", 1], ["caot", -1], ["neutral", 0]]
-        : [["malign", -1], ["buen", 1], ["neutral", 0]];
-    const encontrado = valores.find(([texto]) => n.includes(texto));
-    const estricta = (n.includes('siempre') || n.includes('nunca')) && !n.includes('casi') && !n.includes('tendencia');
-    return encontrado ? { valor: encontrado[1], prohibe: esPreferenciaProhibitiva(n), estricta } : null;
+    return {
+        valor: dato.Valor,
+        prohibe: dato.Prohibe,
+        prioridad: dato.Id_prioridad,
+        estricta: dato.Id_prioridad >= PRIORIDAD_ALINEAMIENTO_ESTRICTA,
+    };
 }
 
-/** El valor que exige una preferencia de ley (`null` si no exige ninguno: sin preferencia o una que prohíbe). */
-export function parseLeyDesdePreferencia(nombre: string): number | null {
-    const regla = reglaDePreferenciaAlineamiento(nombre, 'ley');
-    return regla && !regla.prohibe ? regla.valor : null;
-}
-
-/** El valor que exige una preferencia moral (`null` si no exige ninguno: sin preferencia o una que prohíbe). */
-export function parseMoralDesdePreferencia(nombre: string): number | null {
-    const regla = reglaDePreferenciaAlineamiento(nombre, 'moral');
+/** El valor que exige una preferencia (`null` si no exige ninguno: sin preferencia o una que prohíbe). */
+function valorExigido(preferencia: DatoPreferenciaAlineamiento | null | undefined): number | null {
+    const regla = reglaDePreferenciaAlineamiento(preferencia);
     return regla && !regla.prohibe ? regla.valor : null;
 }
 
@@ -210,10 +219,15 @@ export function nombreCombinacionAlineamiento(combinacion: {
     return texto && tieneTextoVisible(prioridad) ? `${texto} · ${prioridad}` : texto;
 }
 
+/**
+ * Lo que exige un alineamiento en cada eje: el de su preferencia si pide un valor (`Valor` sin `Prohibe`) o el de su
+ * básico; `null` en el eje que no exige ninguno (una preferencia que prohíbe no exige un valor).
+ */
 export function extraerEjesAlineamientoDesdeContrato(alineamiento: any): AlineamientoEjes {
-    const vectorBasico = getVectorDesdeNombreBasico(`${alineamiento?.Basico?.Nombre ?? ""}`);
-    const leyPreferida = parseLeyDesdePreferencia(`${alineamiento?.Ley?.Nombre ?? ""}`);
-    const moralPreferida = parseMoralDesdePreferencia(`${alineamiento?.Moral?.Nombre ?? ""}`);
+    const vectorBasico = getVectorDesdeIdBasico(Number(alineamiento?.Basico?.Id_basico))
+        ?? getVectorDesdeNombreBasico(`${alineamiento?.Basico?.Nombre ?? ""}`);
+    const leyPreferida = valorExigido(alineamiento?.Ley);
+    const moralPreferida = valorExigido(alineamiento?.Moral);
 
     return {
         ley: leyPreferida ?? vectorBasico?.ley ?? null,

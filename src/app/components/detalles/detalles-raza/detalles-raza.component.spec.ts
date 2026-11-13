@@ -30,8 +30,8 @@ function crearRazaMock(extra: Partial<Raza> = {}): Raza {
         },
         Alineamiento: {
             Basico: { Nombre: 'Neutral bueno' },
-            Ley: { Nombre: 'Tendencia legal' },
-            Moral: { Nombre: 'Tendencia buena' },
+            Ley: { Nombre: 'Tendencia legal', Valor: 1, Prohibe: false, Id_prioridad: 1 },
+            Moral: { Nombre: 'Tendencia buena', Valor: 1, Prohibe: false, Id_prioridad: 1 },
         } as any,
         Oficial: true,
         Ataques_naturales: 'No especifica',
@@ -317,8 +317,8 @@ describe('DetallesRazaComponent', () => {
     it('enseña el alineamiento parcial cuando falta el básico', () => {
         pintar({
             Alineamiento: {
-                Ley: { Nombre: 'Siempre legal' },
-                Moral: { Nombre: 'Casi siempre maligno' },
+                Ley: { Nombre: 'Siempre legal', Valor: 1, Prohibe: false, Id_prioridad: 3 },
+                Moral: { Nombre: 'Casi siempre maligno', Valor: -1, Prohibe: false, Id_prioridad: 2 },
             } as any,
         });
         expect(valor('Alineamiento')).toBe('Siempre legal, casi siempre maligno');

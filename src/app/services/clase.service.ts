@@ -1,3 +1,4 @@
+import { datoDePreferencia } from 'src/app/services/utils/alineamiento-contrato';
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
@@ -205,10 +206,12 @@ function normalizeAlineamiento(raw: any): Alineamiento {
         Ley: {
             Id_ley: toNumber(raw?.Ley?.Id_ley),
             Nombre: toText(raw?.Ley?.Nombre),
+            ...datoDePreferencia(raw?.Ley),
         },
         Moral: {
             Id_moral: toNumber(raw?.Moral?.Id_moral),
             Nombre: toText(raw?.Moral?.Nombre),
+            ...datoDePreferencia(raw?.Moral),
         },
         Prioridad: {
             Id_prioridad: toNumber(raw?.Prioridad?.Id_prioridad),
@@ -352,6 +355,11 @@ export function normalizeClase(raw: any): Clase {
         Tiene_prerrequisitos: tienePrerrequisitos,
         Multiclase_restringida: toBoolean(raw?.Multiclase_restringida),
         Alineamiento_deidad: toBoolean(raw?.Alineamiento_deidad),
+        Ex: {
+            Pierde_magia: toBoolean(raw?.Ex?.Pierde_magia),
+            Requiere_expiacion: toBoolean(raw?.Ex?.Requiere_expiacion),
+            Especiales: toArray(raw?.Ex?.Especiales).map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) })),
+        },
         Grupo_edad_inicial: toNumber(raw?.Grupo_edad_inicial),
         Clase_pnj: toBoolean(raw?.Clase_pnj),
         Progresion_obligatoria: toBoolean(raw?.Progresion_obligatoria),

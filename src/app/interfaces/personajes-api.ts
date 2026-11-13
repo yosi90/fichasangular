@@ -330,6 +330,24 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
     puntosPoder?: PersonajePuntosPoderDto | null;
     /** Con la clase de su lanzamiento racial: el nivel de la raza que se suma para los conjuros (desde el 2026-10-31). */
     nivelLanzamientoRacial?: number | null;
+    /**
+     * Si es una ex clase (desde el 2026-11-13; MJ págs. 26-55): ya no admite su alineamiento y no se mantuvo como homebrew.
+     * Conserva sus niveles, pierde lo que dice la clase y no sube. `null` si no lo es.
+     */
+    ex?: PersonajeExClaseDto | null;
+}
+
+export interface PersonajeExClaseDto {
+    /** «Ex paladín». */
+    nombre: string;
+    /** Por qué («Requiere legal bueno»). */
+    motivos: string[];
+    /** Si pierde su magia: sus conjuros al día y su nivel de lanzador llegan a `null`. */
+    pierdeMagia: boolean;
+    /** Si solo lo recupera con una expiación (MJ pág. 242). */
+    requiereExpiacion: boolean;
+    /** Siempre: una ex clase no sube de nivel. */
+    sinSubir: boolean;
 }
 
 /**
@@ -380,6 +398,8 @@ export interface PersonajeEspecialDto extends PersonajeNombreIdDto {
     idExtra: number | null;
     extra: string | null;
     extraComodin: PersonajeExtraComodinDto | null;
+    /** Las ex clases por las que la ha perdido («Ex paladín»); vacío si la conserva (desde el 2026-11-13). */
+    perdidaPor?: string[];
 }
 
 /**

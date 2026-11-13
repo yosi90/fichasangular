@@ -1,3 +1,4 @@
+import { datoDePreferencia } from 'src/app/services/utils/alineamiento-contrato';
 import {
     Plantilla,
     PlantillaCaracteristicas,
@@ -209,10 +210,12 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
             Ley: {
                 Id_ley: toNumber(raw?.Alineamiento?.Ley?.Id_ley),
                 Nombre: toText(raw?.Alineamiento?.Ley?.Nombre),
+                ...datoDePreferencia(raw?.Alineamiento?.Ley),
             },
             Moral: {
                 Id_moral: toNumber(raw?.Alineamiento?.Moral?.Id_moral),
                 Nombre: toText(raw?.Alineamiento?.Moral?.Nombre),
+                ...datoDePreferencia(raw?.Alineamiento?.Moral),
             },
             Prioridad: {
                 Id_prioridad: toNumber(raw?.Alineamiento?.Prioridad?.Id_prioridad),

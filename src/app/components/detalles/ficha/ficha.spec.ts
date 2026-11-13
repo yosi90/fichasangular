@@ -115,16 +115,16 @@ describe('Ficha de detalle: reglas', () => {
     it('datoAlineamiento enseña el básico o las preferencias que tiene, y «Sin preferencia» si ninguna la tiene', () => {
         const ninguna = { Id_ley: 10, Nombre: 'Ninguna preferencia' };
         expect(datoAlineamiento({
-            Id: 32, Basico: null, Ley: ninguna, Moral: { Id_moral: 6, Nombre: 'Siempre Maligno' },
+            Id: 32, Basico: null, Ley: ninguna, Moral: { Id_moral: 6, Nombre: 'Siempre Maligno', Valor: -1, Prohibe: false, Id_prioridad: 3 },
             Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' }, Descripcion: 'Se debe respetar a raja tabla.',
         } as any)).toEqual({ etiqueta: 'Alineamiento', valor: 'Siempre maligno', ayuda: 'Prioridad: Siempre. Se debe respetar a raja tabla.' });
         expect(datoAlineamiento({ Id: 7, Basico: { Id_basico: 1, Nombre: 'Legal bueno' }, Ley: null, Moral: null } as any).valor)
             .toBe('Legal bueno');
         expect(datoAlineamiento({
-            Id: 40, Basico: null, Ley: { Id_ley: 6, Nombre: 'Siempre Caótico' }, Moral: { Id_moral: 4, Nombre: 'Siempre Bueno' },
+            Id: 40, Basico: null, Ley: { Id_ley: 6, Nombre: 'Siempre Caótico', Valor: -1, Prohibe: false, Id_prioridad: 3 }, Moral: { Id_moral: 4, Nombre: 'Siempre Bueno', Valor: 1, Prohibe: false, Id_prioridad: 3 },
         } as any).valor).toBe('Siempre caótico, siempre bueno');
         expect(datoAlineamiento({
-            Id: 3, Basico: null, Ley: { Id_ley: 5, Nombre: 'Casi siempre Neutral' }, Moral: { Id_moral: 5, Nombre: 'Casi siempre Neutral' },
+            Id: 3, Basico: null, Ley: { Id_ley: 5, Nombre: 'Casi siempre Neutral', Valor: 0, Prohibe: false, Id_prioridad: 2 }, Moral: { Id_moral: 5, Nombre: 'Casi siempre Neutral', Valor: 0, Prohibe: false, Id_prioridad: 2 },
         } as any).valor).toBe('Casi siempre neutral');
         expect(datoAlineamiento({ Id: 2, Basico: null, Ley: ninguna, Moral: { Id_moral: 10, Nombre: 'Ninguna preferencia' } } as any).valor)
             .toBe('Sin preferencia');

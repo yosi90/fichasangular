@@ -141,8 +141,10 @@ export interface EntradaCambiosPlantilla {
     tiradas: number[];
     experiencia: ExperienciaPersonaje | null;
     nepDespues: number;
-    /** Las clases que dejan de admitir su alineamiento (ex paladín). */
-    exClases: Array<{ nombre: string; razones: string[]; }>;
+    /** Las clases que dejan de admitir su alineamiento y quedan ex (ex paladín), con lo que pierden (`Clase.Ex`). */
+    exClases: Array<{ nombre: string; razones: string[]; pierde?: string[]; expiacion?: boolean; }>;
+    /** Lo que exige su raza si la plantilla le fija un alineamiento que la raza no suele tener (un aviso, no homebrew). */
+    razaContraAlineamiento?: string | null;
 }
 
 function nombresDeDotes(pj: Personaje): string[] {
@@ -209,9 +211,19 @@ export function cambiosDeLaPlantilla(e: EntradaCambiosPlantilla): CambioPlantill
     const nuevas = nombresDeDotes(e.despues).filter((n) => !antes.has(normalizarTexto(n)));
     if (nuevas.length)
         filas.push({ que: 'Dotes', antes: '—', ahora: nuevas.join(', '), porque: porPlantilla });
-    e.exClases.forEach((c) => filas.push({
-        que: c.nombre, antes: 'Admite su alineamiento', ahora: c.razones.join(' · ') || 'Ya no lo admite', aviso: true,
-        porque: 'Conserva sus niveles, pero pierde sus rasgos y no puede subir en ella (MJ, pág. 55)',
-    }));
+    if (e.razaContraAlineamiento)
+        filas.push({
+            que: 'Su raza', antes: 'Admite su alineamiento', ahora: `Exige ${e.razaContraAlineamiento.toLowerCase()}`, aviso: true,
+            porque: `${nombre} fija su alineamiento: manda la plantilla y no es homebrew (Manual de monstruos, pág. 291)`,
+        });
+    e.exClases.forEach((c) => {
+        const pierde = c.pierde ?? [];
+        const lista = pierde.length > 1 ? `${pierde.slice(0, -1).join(', ')} y ${pierde[pierde.length - 1]}` : pierde[0] ?? '';
+        filas.push({
+            que: `Ex ${c.nombre.toLowerCase()}`, antes: 'Admite su alineamiento', ahora: c.razones.join(' · ') || 'Ya no lo admite', aviso: true,
+            porque: `Conserva sus niveles, pero no puede subir en ella${lista ? ` y pierde ${lista}` : ''}`
+                + `${c.expiacion ? '; lo recupera con una expiación' : ''} (MJ, págs. 26-55)`,
+        });
+    });
     return filas;
 }

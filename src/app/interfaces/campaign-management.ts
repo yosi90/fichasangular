@@ -91,10 +91,11 @@ export interface CampaignCreationPolicy {
 /**
  * La parte de la política que decide qué se puede comprar u obtener en la tienda (`politicaCompra` de
  * `GET /personajes/{id}`, desde el 2026-11-12): la que comprueba la API en la compra de la creación y en la de una sesión.
+ * Con `permitirIgnorarRestriccionesAlineamiento` (2026-11-13): si deja saltarse una regla de alineamiento al corregir.
  */
 export type CampaignPurchasePolicy = Required<Pick<CampaignCreationPolicy,
     'permitirHomebrewGeneral' | 'maxFuentesHomebrewGeneralesPorPersonaje' | 'permitirObjetosMagicos' | 'permitirObjetosAMedida'
-    | 'precioMaximoPorObjeto' | 'permitirCopiarConjuros'>>;
+    | 'precioMaximoPorObjeto' | 'permitirCopiarConjuros'>> & Partial<Pick<CampaignCreationPolicy, 'permitirIgnorarRestriccionesAlineamiento'>>;
 
 export interface CreateCampaignInput {
     nombre: string;

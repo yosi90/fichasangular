@@ -186,6 +186,8 @@ export interface Personaje extends PersonajeSimple {
         Puntos_poder?: PersonajePuntosPoderDto | null;
         /** Solo en la ficha: el nivel de su raza que se suma a esta clase para los conjuros (lanzamiento racial). */
         Nivel_lanzamiento_racial?: number | null;
+        /** Solo en la ficha: si es una ex clase (el paladín que se volvió vampiro), con lo que pierde. */
+        Ex?: PersonajeExClase | null;
     }[],
     Ataque_base: string;
     /** Solo en la ficha que llega de la API; el borrador de la creación los calcula (`totalesPersonaje`). */
@@ -372,6 +374,8 @@ export interface Personaje extends PersonajeSimple {
         Id?: number;
         Nombre: string;
     }[]
+    /** Solo en la ficha de la API: las ex clases por las que ha perdido sus dominios («Ex clérigo»). */
+    Dominios_perdidos_por?: string[];
     competencia_arma: PersonajeCompetenciaDirecta[];
     competencia_armadura: PersonajeCompetenciaArmaduraDirecta[];
     competencia_grupo_arma: PersonajeCompetenciaDirecta[];
@@ -431,6 +435,8 @@ export interface Personaje extends PersonajeSimple {
         Extra: string;
         /** Solo en la ficha de la API: qué comodín es el extra («Elegir», «Cualquiera») o `null`. */
         Extra_comodin?: PersonajeExtraComodinDto | null;
+        /** Solo en la ficha de la API: las ex clases por las que la ha perdido («Ex paladín»). */
+        Perdida_por?: string[];
     }[]
     Raciales: RacialDetalle[];
     Habilidades: {
@@ -508,4 +514,13 @@ export interface Personaje extends PersonajeSimple {
         Id?: number;
         Nombre: string;
     }>;
+}
+
+/** Una ex clase del personaje (`ex` de cada clase de la ficha de la API; MJ págs. 26-55). */
+export interface PersonajeExClase {
+    /** «Ex paladín». */
+    Nombre: string;
+    Motivos: string[];
+    Pierde_magia: boolean;
+    Requiere_expiacion: boolean;
 }

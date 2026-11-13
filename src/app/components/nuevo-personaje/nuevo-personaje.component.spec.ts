@@ -39,8 +39,8 @@ function crearRazaMock(oficial = true): Raza {
         Alineamiento: {
             Id: 1,
             Basico: { Id_basico: 1, Nombre: 'Neutral bueno' },
-            Ley: { Id_ley: 2, Nombre: 'Tendencia caotica' },
-            Moral: { Id_moral: 1, Nombre: 'Tendencia buena' },
+            Ley: { Id_ley: 2, Nombre: 'Tendencia caotica', Valor: -1, Prohibe: false, Id_prioridad: 1 },
+            Moral: { Id_moral: 1, Nombre: 'Tendencia buena', Valor: 1, Prohibe: false, Id_prioridad: 1 },
             Prioridad: { Id_prioridad: 1, Nombre: 'Moral' },
             Descripcion: 'Mock',
         },
@@ -3357,7 +3357,7 @@ describe('NuevoPersonajeComponent', () => {
             Alineamiento: {
                 Id: 100,
                 Basico: { Id_basico: 0, Nombre: 'No aplica' },
-                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal', Valor: 1, Prohibe: true, Id_prioridad: 3 },
                 Moral: { Id_moral: 0, Nombre: 'No aplica' },
                 Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
                 Descripcion: '',
@@ -3478,7 +3478,7 @@ describe('NuevoPersonajeComponent', () => {
             Alineamiento: {
                 Id: 100,
                 Basico: { Id_basico: 0, Nombre: 'No aplica' },
-                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal', Valor: 1, Prohibe: true, Id_prioridad: 3 },
                 Moral: { Id_moral: 0, Nombre: 'No aplica' },
                 Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
                 Descripcion: '',
@@ -3504,7 +3504,7 @@ describe('NuevoPersonajeComponent', () => {
             Alineamiento: {
                 Id: 101,
                 Basico: { Id_basico: 0, Nombre: 'No aplica' },
-                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal', Valor: 1, Prohibe: true, Id_prioridad: 3 },
                 Moral: { Id_moral: 0, Nombre: 'No aplica' },
                 Prioridad: { Id_prioridad: 2, Nombre: 'Casi siempre' },
                 Descripcion: '',
@@ -3543,7 +3543,7 @@ describe('NuevoPersonajeComponent', () => {
             Alineamiento: {
                 Id: 100,
                 Basico: { Id_basico: 0, Nombre: 'No aplica' },
-                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal', Valor: 1, Prohibe: true, Id_prioridad: 3 },
                 Moral: { Id_moral: 0, Nombre: 'No aplica' },
                 Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
                 Descripcion: '',
@@ -3568,7 +3568,7 @@ describe('NuevoPersonajeComponent', () => {
             Alineamiento: {
                 Id: 101,
                 Basico: { Id_basico: 0, Nombre: 'No aplica' },
-                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal', Valor: 1, Prohibe: true, Id_prioridad: 3 },
                 Moral: { Id_moral: 0, Nombre: 'No aplica' },
                 Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
                 Descripcion: '',
