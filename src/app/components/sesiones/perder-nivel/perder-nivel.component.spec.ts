@@ -21,6 +21,7 @@ import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { PerderNivelComponent } from './perder-nivel.component';
 
@@ -47,7 +48,7 @@ describe('PerderNivelComponent (perder un nivel, fase 7)', () => {
                 { provide: NavegacionRolService, useValue: new NavegacionRolService() },
                 ...[CampanaService, ClaseService, DoteService, ConjuroService, HabilidadService, IdiomaService, DominioService, RazaService,
                     PlantillaService, EscuelaConjurosService, DisciplinaConjurosService, EnemigoPredilectoService, ArmaService, ArmaduraService,
-                    GrupoArmaService, GrupoArmaduraService].map((provide) => ({ provide, useValue: {} })),
+                    GrupoArmaService, GrupoArmaduraService, SubtipoService].map((provide) => ({ provide, useValue: {} })),
             ],
         }).compileComponents();
         fixture = TestBed.createComponent(PerderNivelComponent);
