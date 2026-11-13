@@ -75,6 +75,16 @@ describe('ClaseService normalizeClase', () => {
         expect(normalizeClase({ Id: 3, Nombre: 'Mago' }).Comodin).toBeNull();
     });
 
+    it('lee la caída sin vuelta y lo que pierde al caer (el caballero protector, El combatiente completo, pág. 26)', () => {
+        const clase = normalizeClase({ Id: 269, Nombre: 'Caballero protector', Ex: {
+            Pierde_magia: false, Requiere_expiacion: false, Especiales: [], Caida_sin_vuelta: true,
+            Especiales_caida: [{ Id: 1788, Nombre: 'Luz radiante' }],
+        } });
+        expect(clase.Ex?.Caida_sin_vuelta).toBeTrue();
+        expect(clase.Ex?.Especiales_caida).toEqual([{ Id: 1788, Nombre: 'Luz radiante' }]);
+        expect(normalizeClase({ Id: 1, Nombre: 'Sin ex' }).Ex?.Caida_sin_vuelta).toBeFalse();
+    });
+
     it('normaliza puede_elegir_especialidad desde el nuevo campo', () => {
         const clase = normalizeClase({
             ...crearRawClaseConNivel(crearRawNivel()),

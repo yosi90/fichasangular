@@ -59,7 +59,7 @@ export function textoClasePersonaje(clase: { Nombre: string; Nivel: number; Dgs?
  * Lo que dice la ficha de una ex clase: «Ex paladín: no puede subir niveles de paladín (requiere legal bueno). Ha perdido
  * sus aptitudes y su magia; los recupera con una expiación.»
  */
-export function textoExClasePersonaje(clase: { Nombre: string; Ex?: { Nombre: string; Motivos: string[]; Pierde_magia: boolean; Requiere_expiacion: boolean; } | null; }): string {
+export function textoExClasePersonaje(clase: { Nombre: string; Ex?: { Nombre: string; Motivos: string[]; Pierde_magia: boolean; Requiere_expiacion: boolean; Sin_vuelta?: boolean; } | null; }): string {
     const ex = clase.Ex;
     if (!ex)
         return '';
@@ -69,7 +69,7 @@ export function textoExClasePersonaje(clase: { Nombre: string; Ex?: { Nombre: st
     const pierde = ex.Pierde_magia
         ? 'Pierde las aptitudes que dice su clase y su magia, también los niveles de lanzador que sume a otra clase'
         : 'Pierde las aptitudes que dice su clase, si alguna';
-    const vuelta = ex.Requiere_expiacion ? '; las recupera con una expiación' : '';
+    const vuelta = ex.Sin_vuelta ? '; no las recupera nunca' : ex.Requiere_expiacion ? '; las recupera con una expiación' : '';
     return `${ex.Nombre}: no puede subir niveles de ${clase.Nombre.trim().toLowerCase()}${motivos ? ` (${motivos})` : ''}. ${pierde}${vuelta}.`;
 }
 

@@ -291,6 +291,13 @@ export interface ClaseEx {
     Pierde_magia: boolean;
     Requiere_expiacion: boolean;
     Especiales: { Id: number; Nombre: string; }[];
+    /**
+     * La caída por su conducta no se expía y la clase no vuelve a subir (el caballero protector, El combatiente completo,
+     * pág. 26). Desde el 2026-11-13 (caché `clases` 23); la API lo conserva si el cuerpo no lo trae.
+     */
+    Caida_sin_vuelta?: boolean;
+    /** Lo que pierde al caer por su conducta, si no es todo lo de `Especiales` (sus aptitudes sobrenaturales). */
+    Especiales_caida?: { Id: number; Nombre: string; }[];
 }
 
 export interface Clase {

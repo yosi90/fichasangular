@@ -1408,6 +1408,7 @@ function leerExClase(raw: any): PersonajeExClase | null {
         Pierde_magia: toBoolean(raw.pierdeMagia),
         Requiere_expiacion: toBoolean(raw.requiereExpiacion),
         Necesita_expiacion: toBoolean(raw.necesitaExpiacion),
+        Sin_vuelta: toBoolean(raw.sinVuelta),
     };
 }
 

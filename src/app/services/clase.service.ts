@@ -374,6 +374,8 @@ export function normalizeClase(raw: any): Clase {
             Pierde_magia: toBoolean(raw?.Ex?.Pierde_magia),
             Requiere_expiacion: toBoolean(raw?.Ex?.Requiere_expiacion),
             Especiales: toArray(raw?.Ex?.Especiales).map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) })),
+            Caida_sin_vuelta: toBoolean(raw?.Ex?.Caida_sin_vuelta),
+            Especiales_caida: toArray(raw?.Ex?.Especiales_caida).map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) })),
         },
         Grupo_edad_inicial: toNumber(raw?.Grupo_edad_inicial),
         Clase_pnj: toBoolean(raw?.Clase_pnj),

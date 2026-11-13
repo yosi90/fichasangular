@@ -316,11 +316,14 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     }
 
     /**
-     * Las clases que pueden caer por su conducta: las suyas que solo se recuperan con una expiación (`Ex.Requiere_expiacion`
-     * de la clase, un dato) y no han caído ya.
+     * Las clases que pueden caer por su conducta (datos de la clase, como la API): las que solo se recuperan con una
+     * expiación (`Ex.Requiere_expiacion`), las que no vuelven nunca (`Ex.Caida_sin_vuelta`: el caballero protector) y las
+     * que pierden algo propio al caer (`Ex.Especiales_caida`), que no han caído ya.
      */
     get clasesQuePuedenCaer(): OpcionPanel[] {
-        return this.clasesDelPersonaje((entrada, clase) => clase?.Ex?.Requiere_expiacion === true && entrada.Ex?.Necesita_expiacion !== true);
+        return this.clasesDelPersonaje((entrada, clase) => (clase?.Ex?.Requiere_expiacion === true
+            || clase?.Ex?.Caida_sin_vuelta === true || (clase?.Ex?.Especiales_caida ?? []).length > 0)
+            && entrada.Ex?.Necesita_expiacion !== true && entrada.Ex?.Sin_vuelta !== true);
     }
 
     /** Las clases caídas que una expiación puede devolver (`ex.necesitaExpiacion` de la ficha). */

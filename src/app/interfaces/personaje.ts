@@ -525,4 +525,6 @@ export interface PersonajeExClase {
     Requiere_expiacion: boolean;
     /** Cayó en juego y no ha expiado: volver a su alineamiento no se la devuelve, solo una expiación (`necesitaExpiacion`). */
     Necesita_expiacion?: boolean;
+    /** Cayó y no vuelve nunca (`sinVuelta`: el caballero protector, El combatiente completo, pág. 26). */
+    Sin_vuelta?: boolean;
 }
