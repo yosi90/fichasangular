@@ -126,4 +126,19 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
         componente.cambiarTirada(componente.tiradas[0], 3);
         expect(componente.tiradas[0].tirada).toBeNull();
     });
+
+    it('las tiradas de un vampiro se corrigen con el d12 de su plantilla, no con el d10 de su clase (como en la subida)', async () => {
+        const componente = await crear({ rolActor: 'master' }, {
+            personaje: { nombre: 'Brunilda', puntosGolpe: 16, campana: { id: 2 } },
+            caracteristicas: { constitucion: { valor: 10, perdido: false } },
+            niveles: [{ idClase: 7, nivelClase: 1, pg: { tirada: null, maximo: true } }, { idClase: 7, nivelClase: 2, pg: { tirada: 4, maximo: false } }],
+        });
+        componente.svc.setCatalogoClases([{ Id: 7, Nombre: 'Guerrero', Tipo_dado: { Id: 4, Nombre: 'd10' }, Desglose_niveles: [] } as any]);
+        componente.svc.EstadoFlujo.plantillas.seleccionadas = [{ Id: 8, Nombre: 'Vampiro', Actualiza_dg: true, Tipo_dado: { Id_tipo_dado: 5, Nombre: 'd12' } } as any];
+        await componente.empezarDeNuevo();
+        expect(componente.tiradas.map((t) => t.caras)).toEqual([12, 12]);
+        componente.cambiarTirada(componente.tiradas[1], 11);
+        expect(componente.tiradas[1].tirada).toBe(11);
+        expect(componente.cambios).toContain('Tirada de PG de nivel 2 (guerrero 2): 4 → 11');
+    });
 });

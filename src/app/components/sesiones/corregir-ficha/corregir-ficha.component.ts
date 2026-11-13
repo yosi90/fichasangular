@@ -28,7 +28,6 @@ import { comoSaleLaEdadDelManual, motivoEdadFueraDelManual } from 'src/app/servi
 import { alturaFueraDeRango, pesoFueraDeRango, textoRangoAltura, textoRangoPeso } from 'src/app/services/utils/medidas-raza';
 import { toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { decisionesHomebrewPersonaje, DecisionHomebrew } from 'src/app/services/utils/personaje-oficialidad';
-import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { PgSubida, pgTrasCorreccion } from 'src/app/services/utils/subida-nivel';
 
 /** Una dote del personaje en la corrección; si se quita, la que se elige en su hueco. */
@@ -328,7 +327,8 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         });
         this.tiradas = (entrada.niveles ?? []).flatMap((n, indice) => {
             const clase = this.svc.claseDelCatalogo(toInt(n.idClase));
-            const caras = carasDado(clase?.Tipo_dado?.Nombre);
+            // Las de su clase, o las de una plantilla suya que actualiza los DG (el vampiro, d12), como en la subida.
+            const caras = this.svc.carasDadoGolpeDeClase(clase);
             if (!clase || caras < 1 || !daDgEnNivel(clase, toInt(n.nivelClase)))
                 return [];
             const fila = {
