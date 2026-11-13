@@ -28,6 +28,7 @@ import { CampaignPurchasePolicy } from 'src/app/interfaces/campaign-management';
 import {
     campanaDejaMantenerDoteSinPrerrequisitos,
     campanaDejaSaltarAlineamiento,
+    maximoFuentesHomebrew,
     modoHomebrewDeCampana,
 } from 'src/app/services/utils/politica-campana';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
@@ -36,7 +37,15 @@ import { CARACTERISTICAS_DEL_ALTA, CambiosCorreccion, DoteDeLaFicha, fichaDeLaCo
 import { comoSaleLaEdadDelManual, motivoEdadFueraDelManual } from 'src/app/services/utils/edad-personaje';
 import { alturaFueraDeRango, pesoFueraDeRango, textoRangoAltura, textoRangoPeso } from 'src/app/services/utils/medidas-raza';
 import { toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { decisionesHomebrewPersonaje, DecisionHomebrew } from 'src/app/services/utils/personaje-oficialidad';
+import {
+    claveFuenteHomebrewDe,
+    ConOficial,
+    decisionesHomebrewPersonaje,
+    DecisionHomebrew,
+    elementosHomebrewPersonaje,
+    FamiliaHomebrew,
+    fuentesHomebrewDeCampana,
+} from 'src/app/services/utils/personaje-oficialidad';
 import { PgSubida, pgTrasCorreccion } from 'src/app/services/utils/subida-nivel';
 
 /** Una dote del personaje en la corrección; si se quita, la que se elige en su hueco. */
@@ -147,6 +156,12 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
 
     alineamientos: AlineamientoBasicoCatalogItem[] = [];
     deidades: DeidadDetalle[] = [];
+    /**
+     * Las fuentes homebrew que ya usa la ficha (`claveFuenteHomebrewDe`, como las cuenta la API: el manual o el elemento),
+     * al cargarla: con «hasta N fuentes» en la campaña, la deidad o la dote que la corrección añade no pueden pasar de N
+     * (la API, `limite_fuentes_homebrew`).
+     */
+    private fuentesDeAntes = new Set<string>();
     idAlineamiento = 0;
     idDeidad = 0;
     edad = 0;
@@ -321,6 +336,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         this.reglasMantenidas = new Set();
         this.idAlineamiento = toInt(entrada.personaje?.idAlineamiento);
         this.idDeidad = toInt(entrada.personaje?.deidad);
+        this.fuentesDeAntes = this.fuentesHomebrewDeLaFicha();
         this.edad = toInt(entrada.personaje?.edad);
         this.altura = toNumber(entrada.personaje?.altura);
         this.peso = toNumber(entrada.personaje?.peso);
@@ -410,15 +426,23 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const cambiaAlineamiento = this.idAlineamiento !== toInt(p.idAlineamiento) || this.idDeidad !== toInt(p.deidad);
         const dejaSaltarAlineamiento = campanaDejaSaltarAlineamiento(this.politica);
         const sinCampana = 'la campaña no deja saltarse las restricciones de alineamiento';
+        // Las que cayeron en juego y no han expiado (`ex.necesitaExpiacion` de la ficha): ni cumpliendo vuelven.
+        const caidas = new Set((this.pj?.desgloseClases ?? []).filter((c) => c?.Ex?.Necesita_expiacion === true)
+            .map((c) => toInt(c.Id)));
+        if (cambiaAlineamiento)
+            (this.pj?.desgloseClases ?? []).filter((c) => c?.Ex?.Necesita_expiacion === true).forEach((c) =>
+                this.avisos.push(`${c.Ex!.Nombre}: cayó y solo la recupera una expiación; corregir su alineamiento o su deidad no se la devuelve.`));
         (cambiaAlineamiento ? this.entrada?.colecciones?.clases ?? [] : []).forEach((c) => {
             const clase = this.svc.claseDelCatalogo(toInt(c.idClase));
             const evaluacion = evaluarAlineamientoClase(clase, { alineamiento, deidad });
             if (!clase || !evaluacion.estricta)
                 return;
             const clave = `clase:${toInt(clase.Id)}`;
-            // Una ex clase (ya incumplía y no se mantuvo como homebrew: el paladín que se volvió vampiro) sigue ex: una
-            // corrección no le devuelve lo que perdió (dictamen del máster de Rol; la API lo rechaza con `clase_ex`).
-            if (!this.reglasDeAntes.has(clave) && evaluarAlineamientoClase(clase, { alineamiento: alineamientoAntes, deidad: deidadAntes }).estricta) {
+            // Una ex clase (ya incumplía y no se mantuvo como homebrew: el paladín que se volvió vampiro, o una que cayó en
+            // juego y no ha expiado, `Ex.Necesita_expiacion`) sigue ex: una corrección no le devuelve lo que perdió (dictamen
+            // del máster de Rol; la API lo rechaza con `clase_ex`).
+            if (!this.reglasDeAntes.has(clave) && (caidas.has(toInt(clase.Id))
+                || evaluarAlineamientoClase(clase, { alineamiento: alineamientoAntes, deidad: deidadAntes }).estricta)) {
                 this.avisos.push(`${nombreExClase(clase.Nombre)}: sigue sin poder subir de nivel en esta clase, y una corrección no le devuelve lo que perdió.`);
                 return;
             }
@@ -497,7 +521,51 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const conHomebrew = this.pj?.Oficial === false && modoHomebrewDeCampana(this.politica) !== 'forbidden';
         const actual = toInt(this.entrada?.personaje?.deidad);
         return this.deidades.filter((d) => toInt(d.Id) === actual
-            || ((conHomebrew || d.Oficial !== false) && !this.rompeDeidadTutelar(d)));
+            || ((d.Oficial !== false || (conHomebrew && !this.superaLasFuentes('deidad', d, 'deidad'))) && !this.rompeDeidadTutelar(d)));
+    }
+
+    /**
+     * Las fuentes homebrew de la ficha al cargarla (su raza, su raza base, su deidad, sus clases, sus subtipos y sus dotes;
+     * `elementosHomebrewPersonaje`, la lista de la creación).
+     */
+    private fuentesHomebrewDeLaFicha(): Set<string> {
+        const entrada = this.entrada;
+        const clases = (entrada?.colecciones?.clases ?? []).map((c) => this.svc.claseDelCatalogo(toInt(c.idClase)))
+            .filter((clase): clase is NonNullable<typeof clase> => !!clase);
+        const deidad = this.deidades.find((d) => toInt(d.Id) === toInt(entrada?.personaje?.deidad)) ?? null;
+        const elementos = elementosHomebrewPersonaje(this.svc.PersonajeCreacion, {
+            raza: this.svc.RazaSeleccionada, razaBase: this.svc.RazaBaseSeleccionadaCompleta, deidad, clases,
+            subtipos: this.svc.subtiposDelPersonajeEnElCatalogo(),
+        });
+        return new Set(fuentesHomebrewDeCampana(elementos).map((fuente) => fuente.key));
+    }
+
+    /**
+     * Si con «hasta N fuentes» en la campaña (`modoHomebrewDeCampana`, `limited`) un elemento homebrew sería una fuente de
+     * más: no es de las que ya usa la ficha ni de las que añade lo corregido (`sinContar`: la elección que se está
+     * cambiando, la deidad o una dote sustituta), y ya hay N. La misma cuenta que la API (`limite_fuentes_homebrew`).
+     */
+    private superaLasFuentes(familia: FamiliaHomebrew, elemento: ConOficial | null | undefined, sinContar: 'deidad' | number): boolean {
+        if (modoHomebrewDeCampana(this.politica) !== 'limited')
+            return false;
+        const clave = claveFuenteHomebrewDe(familia, elemento);
+        if (!clave || this.fuentesDeAntes.has(clave))
+            return false;
+        const nuevas = new Set<string>();
+        const deidad = this.idDeidad !== toInt(this.entrada?.personaje?.deidad) && sinContar !== 'deidad'
+            ? this.deidades.find((d) => toInt(d.Id) === this.idDeidad) : null;
+        const deLaDeidad = claveFuenteHomebrewDe('deidad', deidad);
+        if (deLaDeidad && !this.fuentesDeAntes.has(deLaDeidad))
+            nuevas.add(deLaDeidad);
+        this.dotes.filter((d) => d.sustituta && d.idDote !== sinContar).forEach((d) => {
+            const dote = this.svc.doteDelCatalogo(d.sustituta!.idDote);
+            const deLaDote = claveFuenteHomebrewDe('dote', dote);
+            if (deLaDote && !this.fuentesDeAntes.has(deLaDote))
+                nuevas.add(deLaDote);
+        });
+        if (nuevas.has(clave))
+            return false;
+        return this.fuentesDeAntes.size + nuevas.size >= (maximoFuentesHomebrew(this.politica?.maxFuentesHomebrewGeneralesPorPersonaje) ?? 0);
     }
 
     /** «Sin deidad», si ninguna de sus clases pide una deidad tutelar (o si ya no la tenía). */
@@ -545,8 +613,10 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             return;
         const pendiente = this.svc.registrarDoteEnLugarDe(fila, fila.indiceNivel);
         // Sin homebrew en la campaña (salvo el máster o un PNJ), solo las oficiales: una homebrew la rechazaría la API.
+        // Con «hasta N fuentes», tampoco las de una fuente de más (la API: `limite_fuentes_homebrew`).
         const sinHomebrew = modoHomebrewDeCampana(this.politica) === 'forbidden';
-        const candidatos = this.svc.obtenerCandidatosDotePendiente(pendiente.id).filter((c) => !sinHomebrew || c.dote?.Oficial !== false);
+        const candidatos = this.svc.obtenerCandidatosDotePendiente(pendiente.id)
+            .filter((c) => c.dote?.Oficial !== false || (!sinHomebrew && !this.superaLasFuentes('dote', c.dote, fila.idDote)));
         // «Omitir» deja el hueco vacío: la dote se quita sin otra en su lugar.
         const seleccion = await this.selectores.abrir<DoteSeleccionConfirmada>(SelectorDotesModalComponent, {
             titulo: `Otra dote en lugar de ${fila.nombre}`, pendiente, candidatos, pendientesRestantes: 1,
@@ -645,7 +715,10 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const mantenida = (clave: string) => this.reglas.some((r) => r.clave === clave && r.mantenida);
         const estado: Parameters<typeof decisionesHomebrewPersonaje>[0] = { idRaza: toInt(p.idRaza) } as any;
         if (this.idAlineamiento !== toInt(p.idAlineamiento) || this.idDeidad !== toInt(p.deidad)) {
-            tipos.push('alineamiento_clase');
+            // `alineamiento_deidad` (el personaje frente a su deidad) ya no lo da la creación: la deidad solo limita a las
+            // clases con esa regla (`Alineamiento_deidad`, el clérigo y el cruzado divino), que van en `alineamiento_clase`.
+            // Una decisión vieja de ese tipo deja de valer al corregir el alineamiento o la deidad.
+            tipos.push('alineamiento_clase', 'alineamiento_deidad');
             // Las mantenidas (también las que ya lo estaban y siguen sin cumplirse); las ex no: siguen ex.
             estado.clasesConAlineamientoSaltado = this.reglas.filter((r) => r.tipo === 'clase' && r.mantenida).map((r) => toInt(r.idClase));
         }

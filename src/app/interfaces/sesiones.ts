@@ -39,6 +39,10 @@ export type TipoEventoSesion =
     | 'plantilla_adquirida'
     /** Un nivel perdido con el personaje ya creado (fase 7, segunda tanda, `POST /personajes/{id}/niveles/perdida`). */
     | 'nivel_perdido'
+    /** El alineamiento o la deidad cambian en juego, una clase cae por su conducta o la recupera con una expiación (solo el máster). */
+    | 'cambio_alineamiento'
+    | 'caida'
+    | 'expiacion'
     | 'nota';
 
 export type ActorRolSesion = 'jugador' | 'master' | 'sistema';
@@ -235,6 +239,10 @@ export type EventoSesionDto =
     | { tipo: 'objeto_perdido'; idPersonajeEquipo: number; cantidad?: number; concepto?: string; }
     | { tipo: 'venta'; idPersonajeEquipo: number; cantidad?: number; }
     | { tipo: 'conjuro_copiado'; idConjuro: number; idClase: number; }
+    /** Al menos uno de los dos; `idAlineamiento` es el básico y `deidad` el id (0, sin deidad). */
+    | { tipo: 'cambio_alineamiento'; idAlineamiento?: number; deidad?: number; concepto?: string; }
+    | { tipo: 'caida'; clases: number[]; motivo: string; }
+    | { tipo: 'expiacion'; clases: number[]; idAlineamiento?: number; voluntaria?: boolean; lanzador?: string; concepto?: string; }
     | { tipo: 'nota'; texto: string; };
 
 /** El cuerpo de `POST …/{numero}/compras` (sin la `version`): añade y cobra del saldo, sin `dineroInicial`. */

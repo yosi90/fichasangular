@@ -263,9 +263,12 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     exEspeciales = new Set<number>();
     /**
      * Con «Multiclase restringida»: las clases que puede tomar sin cerrarla (`Clases_multiclase_compatibles`: el paladín que
-     * se hace hospitalario, El divino completo, pág. 48). Sin la restricción no se manda ninguna.
+     * se hace hospitalario, El divino completo, pág. 48), con su condición si la tiene (se conserva tal como llegó: el
+     * formulario aún no la edita). Sin la restricción no se manda ninguna.
      */
-    compatiblesMulticlase: { Id: number; Nombre: string; }[] = [];
+    compatiblesMulticlase: { Id: number; Nombre: string; Condicion?: { Id: number; Nombre: string; } | null; }[] = [];
+    /** Las familias de lanzadores que no la cierran (`Clases_multiclase_lanzadoras`), tal como llegaron (no se editan aquí). */
+    lanzadorasMulticlase: NonNullable<Clase['Clases_multiclase_lanzadoras']> = [];
     conjurosPorEspecialRows: ClaseConjuroPorEspecialRow[] = [];
     nivelesRequisitoRows: ClaseNivelRequisitoRow[] = [];
     habilidadesAlineamientoRows: ClaseHabilidadAlineamientoRow[] = [];
@@ -1143,6 +1146,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             Alineamiento_deidad: raw.alineamiento_deidad === true,
             Alineamiento_deidad_igual: raw.alineamiento_deidad === true && raw.alineamiento_deidad_igual === true,
             Clases_multiclase_compatibles: raw.multiclase_restringida === true ? this.compatiblesMulticlase.map((item) => ({ ...item })) : [],
+            Clases_multiclase_lanzadoras: raw.multiclase_restringida === true ? this.lanzadorasMulticlase.map((item) => ({ ...item })) : [],
             Grupo_edad_inicial: Number(raw.grupo_edad_inicial) || 0,
             Clase_pnj: raw.clase_pnj === true,
             Progresion_obligatoria: raw.progresion_obligatoria === true,
@@ -1734,8 +1738,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.relacionesRows = this.hidratarRelaciones(clase);
         this.exEspeciales = new Set((clase.Ex?.Especiales ?? []).map((item) => this.entero(item.Id)).filter((id) => id > 0));
         this.compatiblesMulticlase = (clase.Clases_multiclase_compatibles ?? [])
-            .map((item) => ({ Id: this.entero(item.Id), Nombre: this.texto(item.Nombre) }))
+            .map((item) => ({ Id: this.entero(item.Id), Nombre: this.texto(item.Nombre), Condicion: item.Condicion ?? null }))
             .filter((item) => item.Id > 0);
+        this.lanzadorasMulticlase = (clase.Clases_multiclase_lanzadoras ?? []).map((item) => ({ ...item }));
         this.conjurosPorEspecialRows = this.hidratarConjurosPorEspecial(clase);
         this.nivelesRequisitoRows = this.hidratarNivelesRequisito(clase);
         const prerrequisitos = prerrequisitosDeClase(clase, this.tiposPrerrequisitoClase, () => this.uid());
@@ -1850,6 +1855,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.relacionesRows = [];
         this.exEspeciales = new Set();
         this.compatiblesMulticlase = [];
+        this.lanzadorasMulticlase = [];
         this.conjurosPorEspecialRows = [];
         this.nivelesRequisitoRows = [];
         this.habilidadesAlineamientoRows = [];

@@ -108,14 +108,43 @@ const FLAGS_SOPORTADAS: (keyof Clase["Prerrequisitos_flags"])[] = [
     ...(CLAVES_PRERREQUISITOS_INCARNUM as (keyof Clase["Prerrequisitos_flags"])[]),
 ];
 
+/** Lo que hace falta saber del personaje para las compatibles con condición: las clases que tiene al subir la restringida. */
+export interface ContextoCompatibles {
+    /** Los ids de las clases de las que tiene niveles. */
+    tiene: Iterable<number>;
+    /** La clase del catálogo de un id (para saber si la otra lanza conjuros arcanos o divinos). */
+    clase?: (id: number) => Pick<Clase, 'Conjuros' | 'Aumenta_clase_lanzadora'> | null | undefined;
+}
+
 /**
- * Si un nivel de la clase `idOtra` no cierra la clase restringida `restringida` (`Multiclase_restringida`, el paladín):
- * está en sus `Clases_multiclase_compatibles` (el hospitalario, El divino completo, pág. 48), por su id. La API comprueba
- * lo mismo en el alta y la subida (`400 multiclase_restringida`).
+ * Si un nivel de la clase `idOtra` no cierra la clase restringida `restringida` (`Multiclase_restringida`, el paladín),
+ * por su id:
+ * - está en sus `Clases_multiclase_compatibles` (el hospitalario, El divino completo, pág. 48) y, si lleva `Condicion`, el
+ *   personaje tiene niveles de esa clase (el pícaro del paladín con niveles de inquisidor azote de sombras, El aventurero
+ *   completo, págs. 46-47);
+ * - o lanza conjuros de una familia de sus `Clases_multiclase_lanzadoras`, con su condición (el monje con niveles de puño
+ *   iluminado y las clases arcanas, El arcano completo, págs. 66-67). «Lanza» es tener esa magia sin solo aumentar la de
+ *   otra (`Aumenta_clase_lanzadora`).
+ * La condición se mira con las clases que tiene al subir la restringida (`contexto.tiene`). La API comprueba lo mismo en el
+ * alta y la subida (`400 multiclase_restringida`).
  */
-export function esClaseCompatibleConRestringida(restringida: Pick<Clase, 'Clases_multiclase_compatibles'> | null | undefined, idOtra: number): boolean {
+export function esClaseCompatibleConRestringida(
+    restringida: Pick<Clase, 'Clases_multiclase_compatibles' | 'Clases_multiclase_lanzadoras'> | null | undefined,
+    idOtra: number,
+    contexto: ContextoCompatibles = { tiene: [] },
+): boolean {
     const id = toInt(idOtra);
-    return id > 0 && (restringida?.Clases_multiclase_compatibles ?? []).some((compatible) => toInt(compatible?.Id) === id);
+    if (id < 1)
+        return false;
+    const tiene = new Set(Array.from(contexto.tiene ?? [], (c) => toInt(c)));
+    const cumple = (condicion: { Id: number } | null | undefined) => !condicion || tiene.has(toInt(condicion.Id));
+    if ((restringida?.Clases_multiclase_compatibles ?? []).some((c) => toInt(c?.Id) === id && cumple(c?.Condicion)))
+        return true;
+    const otra = contexto.clase?.(id);
+    if (!otra || otra.Aumenta_clase_lanzadora === true)
+        return false;
+    return (restringida?.Clases_multiclase_lanzadoras ?? []).some((familia) => cumple(familia?.Condicion)
+        && ((familia?.Arcanos === true && otra.Conjuros?.Arcanos === true) || (familia?.Divinos === true && otra.Conjuros?.Divinos === true)));
 }
 
 function pick(entry: Record<string, any>, keys: string[]): any {

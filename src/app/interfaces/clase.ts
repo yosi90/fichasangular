@@ -327,10 +327,17 @@ export interface Clase {
     Alineamiento_deidad_igual?: boolean;
     /**
      * Con `Multiclase_restringida`: las clases que puede tomar sin cerrarla (el paladín que se hace hospitalario, El divino
-     * completo, pág. 48). Un nivel de cualquier otra la cierra. Al escribir basta `{ Id }`; sin la lista, la edición
+     * completo, pág. 48). Un nivel de cualquier otra la cierra. Con `Condicion`, solo si tiene niveles de esa clase (el
+     * pícaro del paladín con niveles de inquisidor azote de sombras, El aventurero completo, pág. 47). Al escribir basta
+     * `{ Id, Condicion? }`; sin la lista, la edición conserva la guardada.
+     */
+    Clases_multiclase_compatibles?: { Id: number; Nombre: string; Condicion?: { Id: number; Nombre: string; } | null; }[];
+    /**
+     * Con `Multiclase_restringida`: las familias de lanzadores que no la cierran, con su condición (las clases que lanzan
+     * conjuros arcanos, para el monje con niveles de puño iluminado; El arcano completo, pág. 67). Sin la lista, la edición
      * conserva la guardada.
      */
-    Clases_multiclase_compatibles?: { Id: number; Nombre: string; }[];
+    Clases_multiclase_lanzadoras?: { Arcanos: boolean; Divinos: boolean; Condicion?: { Id: number; Nombre: string; } | null; }[];
     /** MJ tabla 6-4: la columna de la edad inicial de la clase (1, como el bárbaro; 2, el guerrero; 3, el mago); 0, sin dato. */
     Grupo_edad_inicial?: number;
     /** Guía del DM, cap. 4: una clase de PNJ (adepto, combatiente…); cuenta distinto en el VD de un PNJ. */

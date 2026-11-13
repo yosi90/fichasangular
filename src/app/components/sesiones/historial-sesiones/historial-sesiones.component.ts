@@ -22,6 +22,7 @@ type EntradasPanel = {
     sesion: SesionPersonaje;
     puedeApuntar: boolean;
     veNotas: boolean;
+    controlaAlineamiento: boolean;
     experiencia: ExperienciaPersonaje | null;
     alCambiar: (respuesta: RespuestaSesion) => void;
     alSalir: () => void;
@@ -281,6 +282,8 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
             sesion,
             puedeApuntar: this.puedeApuntar,
             veNotas: !!this.datos?.veNotas,
+            // Los cambios de alineamiento, las caídas y las expiaciones los apunta el máster; sin campaña, el dueño.
+            controlaAlineamiento: this.puedeApuntar && (this.datos?.rolActor === 'master' || toNumber(this.pj?.IdCampana) <= 0),
             experiencia: this.datos?.experiencia ?? this.pj?.ExperienciaSesiones ?? null,
             alCambiar: this.alCambiarPanel,
             alSalir: this.alSalirPanel,

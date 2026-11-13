@@ -1407,6 +1407,7 @@ function leerExClase(raw: any): PersonajeExClase | null {
         Motivos: toArray<string>(raw.motivos).map((m) => toText(m).trim()).filter((m) => m.length > 0),
         Pierde_magia: toBoolean(raw.pierdeMagia),
         Requiere_expiacion: toBoolean(raw.requiereExpiacion),
+        Necesita_expiacion: toBoolean(raw.necesitaExpiacion),
     };
 }
 

@@ -7,9 +7,11 @@ import { TiendaSesionComponent } from 'src/app/components/sesiones/tienda-sesion
 import { Personaje } from 'src/app/interfaces/personaje';
 import { RespuestaSesion } from 'src/app/interfaces/sesiones';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
+import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { DeidadService } from 'src/app/services/deidad.service';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { SesionesService, leerHistorial, leerRespuestaSesion } from 'src/app/services/sesiones.service';
@@ -72,6 +74,13 @@ describe('SesionPanelComponent', () => {
                 { provide: ArmaduraService, useValue: { getArmaduras: () => of([]) } },
                 { provide: EquipoService, useValue: { getMuniciones: () => of([]) } },
                 { provide: ConjuroService, useValue: { getConjuros: () => of([]) } },
+                {
+                    provide: AlineamientoService, useValue: {
+                        getAlineamientosBasicosCatalogo: () => of([{ Id: 0, Nombre: 'No aplica' }, { Id: 1, Nombre: 'Legal bueno' },
+                            { Id: 7, Nombre: 'Caótico bueno' }]),
+                    },
+                },
+                { provide: DeidadService, useValue: { getDeidades: () => of([{ Id: 9, Nombre: 'Heironeous' }, { Id: 0, Nombre: 'No tener deidad' }]) } },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -86,6 +95,46 @@ describe('SesionPanelComponent', () => {
         expect(filas.map((fila) => !!fila.querySelector('.sesion__deshacer'))).toEqual([false, false, false, false, true]);
         expect(limpio(elemento().querySelector('.sesion__cifras-valor'))).toBe('+1.000 PX · +47 po');
         expect(limpio(elemento().querySelector('.sesion__cifras-saldo'))).toBe('Saldo: 132 po');
+    });
+
+    it('«Alineamiento y expiación», solo para el máster (o el dueño sin campaña): el cambio, la caída y la expiación', async () => {
+        crear();
+        expect(boton('Alineamiento y expiación')).toBeUndefined();
+
+        crear({ controlaAlineamiento: true });
+        const respuesta = leerRespuestaSesion(respuestaSesiones('dinero'));
+        sesiones.apuntar.and.resolveTo(respuesta);
+        const puerta = TestBed.inject(SubidaNivelPuertaService);
+        spyOn(puerta, 'subidaHecha');
+        boton('Alineamiento y expiación')!.click();
+        await estable();
+        expect(component.basicos.map((b) => b.Nombre)).toEqual(['Legal bueno', 'Caótico bueno']);
+        expect(component.deidades.map((d) => d.Nombre)).toEqual(['No tener deidad', 'Heironeous']);
+        expect(component.motivoNoApuntar).toBe('Elige el alineamiento nuevo, la deidad nueva o los dos.');
+        component.idBasico = 7;
+        component.alineamientoConcepto = ' liberó al prisionero ';
+        await component.apuntar();
+        expect(sesiones.apuntar).toHaveBeenCalledWith(129, jasmine.anything(),
+            { tipo: 'cambio_alineamiento', idAlineamiento: 7, concepto: 'liberó al prisionero' });
+        // Cambia la ficha (el alineamiento y sus ex clases): se vuelve a leer.
+        expect(puerta.subidaHecha).toHaveBeenCalledWith(129);
+
+        component.elegirTipo('alineamiento');
+        component.elegirModoAlineamiento('expiacion');
+        expect(component.motivoNoApuntar).toBe('Elige la clase que recupera.');
+        component.alternarClaseAlineamiento(11);
+        component.idBasico = 1;
+        component.voluntaria = true;
+        await component.apuntar();
+        expect(sesiones.apuntar.calls.mostRecent().args[2]).toEqual({ tipo: 'expiacion', clases: [11], voluntaria: true, idAlineamiento: 1 });
+
+        component.elegirTipo('alineamiento');
+        component.elegirModoAlineamiento('caida');
+        component.alternarClaseAlineamiento(11);
+        expect(component.motivoNoApuntar).toBe('Di por qué cae: un acto maligno, su código, su juramento…');
+        component.motivoCaida = 'un acto maligno';
+        await component.apuntar();
+        expect(sesiones.apuntar.calls.mostRecent().args[2]).toEqual({ tipo: 'caida', clases: [11], motivo: 'un acto maligno' });
     });
 
     it('apunta los PX con la versión de ahora y deja la sesión al día', async () => {

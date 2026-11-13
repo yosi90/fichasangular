@@ -168,6 +168,84 @@
                                 }
                                 <p class="sesion__nota">El precio es el del pergamino más escribirlo (la API pone el de verdad y comprueba que pueda lanzarlo y que no esté ya en el libro).</p>
                             }
+                            @case ('alineamiento') {
+                                <div class="sesion__conmutador" role="group" aria-label="Qué se apunta">
+                                    <button type="button" [attr.aria-pressed]="alineamientoModo === 'cambio'" (click)="elegirModoAlineamiento('cambio')">Cambio</button>
+                                    <button type="button" [attr.aria-pressed]="alineamientoModo === 'caida'" (click)="elegirModoAlineamiento('caida')">Caída</button>
+                                    <button type="button" [attr.aria-pressed]="alineamientoModo === 'expiacion'" (click)="elegirModoAlineamiento('expiacion')">Expiación</button>
+                                </div>
+                                @if (cargandoAlineamiento) {
+                                    <p class="sesion__nota" role="status">Cargando los alineamientos y las deidades…</p>
+                                } @else {
+                                    @if (alineamientoModo !== 'caida') {
+                                        <div class="sesion__fila">
+                                            <label class="sesion__campo sesion__campo--ancho">
+                                                <span>{{alineamientoModo === 'cambio' ? 'Alineamiento nuevo' : 'Alineamiento tras la redención (opcional)'}}</span>
+                                                <select name="idBasico" [(ngModel)]="idBasico">
+                                                    <option [ngValue]="null">{{alineamientoModo === 'cambio' ? 'No cambia (' + pj.Alineamiento + ')' : 'No cambia'}}</option>
+                                                    @for (basico of basicos; track basico.Id) {
+                                                        <option [ngValue]="basico.Id">{{basico.Nombre}}</option>
+                                                    }
+                                                </select>
+                                            </label>
+                                            @if (alineamientoModo === 'cambio') {
+                                                <label class="sesion__campo sesion__campo--ancho">
+                                                    <span>Deidad nueva</span>
+                                                    <select name="idDeidad" [(ngModel)]="idDeidad">
+                                                        <option [ngValue]="null">No cambia ({{pj.Deidad || 'ninguna'}})</option>
+                                                        @for (deidad of deidades; track deidad.Id) {
+                                                            <option [ngValue]="deidad.Id">{{deidad.Nombre}}</option>
+                                                        }
+                                                    </select>
+                                                </label>
+                                            }
+                                        </div>
+                                    }
+                                    @if (alineamientoModo !== 'cambio') {
+                                        <div class="sesion__fila" role="group" [attr.aria-label]="alineamientoModo === 'caida' ? 'Clases que caen' : 'Clases que recupera'">
+                                            @for (clase of clasesDelModo; track clase.Id) {
+                                                <button type="button" class="sesion__conjuro" [attr.aria-pressed]="clasesAlineamiento.has(clase.Id)"
+                                                    (click)="alternarClaseAlineamiento(clase.Id)">{{clase.Nombre}}</button>
+                                            } @empty {
+                                                <p class="sesion__nota">{{alineamientoModo === 'caida'
+                                                    ? 'Ninguna de sus clases cae por su conducta (solo las que se recuperan con una expiación).'
+                                                    : 'No tiene ninguna clase caída que expiar.'}}</p>
+                                            }
+                                        </div>
+                                    }
+                                    @if (alineamientoModo === 'caida') {
+                                        <label class="sesion__campo sesion__campo--ancho">
+                                            <span>Por qué cae</span>
+                                            <input type="text" name="motivoCaida" [(ngModel)]="motivoCaida" [maxlength]="maximoConcepto">
+                                        </label>
+                                    }
+                                    @if (alineamientoModo === 'expiacion') {
+                                        <div class="sesion__fila">
+                                            <label class="sesion__campo sesion__campo--ancho">
+                                                <span>Quién la lanza (opcional)</span>
+                                                <input type="text" name="lanzador" [(ngModel)]="lanzador" [maxlength]="maximoConcepto">
+                                            </label>
+                                            <label class="sesion__campo">
+                                                <span>Falta voluntaria</span>
+                                                <input type="checkbox" name="voluntaria" [(ngModel)]="voluntaria">
+                                            </label>
+                                        </div>
+                                    }
+                                    @if (alineamientoModo !== 'caida') {
+                                        <label class="sesion__campo sesion__campo--ancho">
+                                            <span>Motivo (opcional)</span>
+                                            <input type="text" name="alineamientoConcepto" [(ngModel)]="alineamientoConcepto" [maxlength]="maximoConcepto">
+                                        </label>
+                                    }
+                                    <p class="sesion__nota">
+                                        @switch (alineamientoModo) {
+                                            @case ('cambio') { Lo decide el máster (Guía del DM, pág. 134): normalmente de un paso en un paso. Las clases que dejan de admitirlo quedan ex; las que solo se recuperan con una expiación (el paladín, el clérigo…) no vuelven aunque recupere su alineamiento. }
+                                            @case ('caida') { Para un acto contra su código o su juramento sin cambiar de alineamiento (Manual del jugador, págs. 33, 37 y 55). Solo vuelve con una expiación. }
+                                            @case ('expiacion') { El conjuro <i>expiación</i> (Manual del jugador, pág. 242) solo devuelve la clase si ya cumple su alineamiento; con la redención, el alineamiento cambia antes. Si la falta fue voluntaria, el lanzador gasta 500 PX. }
+                                        }
+                                    </p>
+                                }
+                            }
                             @case ('nota') {
                                 <label class="sesion__campo sesion__campo--ancho">
                                     <span>Nota (solo la veis tú y el máster)</span>

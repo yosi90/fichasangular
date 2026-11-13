@@ -48,7 +48,7 @@ import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial
 import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
 import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
-import { ClaseEvaluacionResultado, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
+import { ClaseEvaluacionResultado, ContextoCompatibles, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
 import { ClaseConNivel, HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
@@ -5004,7 +5004,7 @@ export class NuevoPersonajeService {
     }
 
     /** La dote del catálogo con ese id, si está cargada. */
-    private doteDelCatalogo(idDote: number): Dote | undefined {
+    doteDelCatalogo(idDote: number): Dote | undefined {
         return (this.catalogoDotes ?? []).find((item) => toNumber(item?.Id) === idDote);
     }
 
@@ -7627,15 +7627,25 @@ export class NuevoPersonajeService {
     private cerrarClasesPorMulticlase(clase: Clase): void {
         const nombreNuevo = normalizarTexto(clase?.Nombre ?? '');
         const libres = new Set((this.razaSeleccionada?.Clases_multiclase_libre ?? []).map((libre) => toInt(libre?.Id)));
+        // Las compatibles con condición miran las clases que tiene, con la nueva (el pícaro del paladín inquisidor).
+        const contexto = this.contextoCompatibles([
+            ...(this.personajeCreacion.desgloseClases ?? []).map((entrada) => toInt(this.obtenerClaseCatalogoPorNombre(entrada.Nombre)?.Id)),
+            toInt(clase?.Id),
+        ]);
         (this.personajeCreacion.desgloseClases ?? []).forEach((entrada) => {
             const nombre = normalizarTexto(entrada?.Nombre ?? '');
             if (nombre.length < 1 || nombre === nombreNuevo || toNumber(entrada?.Nivel) < 1)
                 return;
             const catalogo = this.obtenerClaseCatalogoPorNombre(entrada.Nombre);
             if (catalogo?.Multiclase_restringida === true && !libres.has(toInt(catalogo.Id))
-                && !esClaseCompatibleConRestringida(catalogo, toInt(clase?.Id)))
+                && !esClaseCompatibleConRestringida(catalogo, toInt(clase?.Id), contexto))
                 this.clasesCerradasPorMulticlase.add(nombre);
         });
+    }
+
+    /** Las clases que tiene el personaje y cómo buscar una en el catálogo, para `esClaseCompatibleConRestringida`. */
+    private contextoCompatibles(tiene: number[]): ContextoCompatibles {
+        return { tiene: tiene.filter((id) => id > 0), clase: (id) => this.catalogoClases.find((c) => toInt(c?.Id) === id) };
     }
 
     private actualizarDesgloseClase(clase: Clase, nivel: number): void {
@@ -11452,7 +11462,8 @@ export class NuevoPersonajeService {
             const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel?.idClase));
             if (!clase?.Multiclase_restringida || libres.has(toInt(clase.Id)) || niveles.findIndex((n) => toInt(n.idClase) === toInt(clase.Id)) !== i)
                 return;
-            const laCierra = (idClase: number) => idClase !== toInt(clase.Id) && !esClaseCompatibleConRestringida(clase, idClase);
+            const contexto = this.contextoCompatibles(niveles.map((n) => toInt(n.idClase)));
+            const laCierra = (idClase: number) => idClase !== toInt(clase.Id) && !esClaseCompatibleConRestringida(clase, idClase, contexto);
             if (niveles.slice(i + 1).some((n) => laCierra(toInt(n.idClase)) && (n as any).ordenConocido !== false)
                 || (datos.nivelesPerdidos ?? []).some((p) => laCierra(toInt(p.idClase)) && p.ordenConocido !== false
                     && (p.clasesAnteriores ?? []).map((c) => toInt(c)).includes(toInt(clase.Id))))

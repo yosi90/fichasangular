@@ -638,7 +638,8 @@ describe('NuevaClaseComponent (las clases que no cierran una restringida y el mi
             Clases_multiclase_compatibles: [{ Id: 189, Nombre: 'Hospitalario' }, { Id: 226, Nombre: 'Kensai' }],
         });
         const cuerpo = (editor as any).construirPayload();
-        expect(cuerpo.Clases_multiclase_compatibles).toEqual([{ Id: 189, Nombre: 'Hospitalario' }, { Id: 226, Nombre: 'Kensai' }]);
+        // La condición, tal como llegó (sin ella, `null`): el formulario aún no la edita.
+        expect(cuerpo.Clases_multiclase_compatibles).toEqual([{ Id: 189, Nombre: 'Hospitalario', Condicion: null }, { Id: 226, Nombre: 'Kensai', Condicion: null }]);
         expect(cuerpo.Alineamiento_deidad_igual).toBeTrue();
         expect(editor.isDirty).toBeFalse();
     });

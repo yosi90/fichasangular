@@ -193,6 +193,12 @@ function normalizeConjuroDelListado(item: any): ClaseConjuroRef {
 }
 
 /** Un `{ Id, Nombre }` que puede no estar (`null`): sin id, `null`. */
+/** La clase de la condición de una compatible con una restringida (`{ Id, Nombre }`), o `null`. */
+function condicionDeCompatible(raw: any): { Id: number; Nombre: string; } | null {
+    const id = toNumber(raw?.Id);
+    return id > 0 ? { Id: id, Nombre: toText(raw?.Nombre) } : null;
+}
+
 function normalizeEscuelaEspecialista(raw: any): ClaseEscuelaEspecialista | null {
     const id = toNumber(raw?.Id);
     return id > 0 ? { Id: id, Nombre: toText(raw?.Nombre), Nombre_esp: toText(raw?.Nombre_esp) } : null;
@@ -359,8 +365,11 @@ export function normalizeClase(raw: any): Clase {
         Alineamiento_deidad: toBoolean(raw?.Alineamiento_deidad),
         Alineamiento_deidad_igual: toBoolean(raw?.Alineamiento_deidad_igual),
         Clases_multiclase_compatibles: toArray(raw?.Clases_multiclase_compatibles)
-            .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) }))
+            .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre), Condicion: condicionDeCompatible(item?.Condicion) }))
             .filter((item) => item.Id > 0),
+        Clases_multiclase_lanzadoras: toArray(raw?.Clases_multiclase_lanzadoras)
+            .map((item: any) => ({ Arcanos: toBoolean(item?.Arcanos), Divinos: toBoolean(item?.Divinos), Condicion: condicionDeCompatible(item?.Condicion) }))
+            .filter((item) => item.Arcanos || item.Divinos),
         Ex: {
             Pierde_magia: toBoolean(raw?.Ex?.Pierde_magia),
             Requiere_expiacion: toBoolean(raw?.Ex?.Requiere_expiacion),

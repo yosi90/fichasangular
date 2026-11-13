@@ -43,7 +43,8 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
-    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'nota',
+    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'nivel_perdido',
+    'cambio_alineamiento', 'caida', 'expiacion', 'nota',
 ]);
 
 /** Si el error es el `409 sesion_desactualizada` (otra persona apuntó algo entre medias). */

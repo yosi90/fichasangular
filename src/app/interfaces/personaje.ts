@@ -523,4 +523,6 @@ export interface PersonajeExClase {
     Motivos: string[];
     Pierde_magia: boolean;
     Requiere_expiacion: boolean;
+    /** Cayó en juego y no ha expiado: volver a su alineamiento no se la devuelve, solo una expiación (`necesitaExpiacion`). */
+    Necesita_expiacion?: boolean;
 }

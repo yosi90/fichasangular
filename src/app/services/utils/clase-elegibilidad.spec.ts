@@ -647,4 +647,27 @@ describe('clase-elegibilidad', () => {
         expect(esClaseCompatibleConRestringida(paladin, 7)).toBeFalse();
         expect(esClaseCompatibleConRestringida(crearClaseBase(), 189)).toBeFalse();
     });
+
+    it('las compatibles con condición: el pícaro del paladín inquisidor y las arcanas del monje puño iluminado', () => {
+        const paladin = crearClaseBase({
+            Multiclase_restringida: true,
+            Clases_multiclase_compatibles: [{ Id: 12, Nombre: 'Pícaro', Condicion: { Id: 364, Nombre: 'Inquisidor azote de sombras' } }],
+        });
+        expect(esClaseCompatibleConRestringida(paladin, 12, { tiene: [11, 364] })).toBeTrue();
+        expect(esClaseCompatibleConRestringida(paladin, 12, { tiene: [11] })).toBeFalse();
+        expect(esClaseCompatibleConRestringida(paladin, 12)).toBeFalse();
+
+        const monje = crearClaseBase({
+            Multiclase_restringida: true,
+            Clases_multiclase_lanzadoras: [{ Arcanos: true, Divinos: false, Condicion: { Id: 239, Nombre: 'Puño iluminado' } }],
+        });
+        const mago = crearClaseBase({ Id: 9, Conjuros: { ...crearClaseBase().Conjuros, Arcanos: true } });
+        const archimago = crearClaseBase({ Id: 500, Aumenta_clase_lanzadora: true, Conjuros: { ...crearClaseBase().Conjuros, Arcanos: true } });
+        const clerigo = crearClaseBase({ Id: 4, Conjuros: { ...crearClaseBase().Conjuros, Divinos: true } });
+        const catalogo = (id: number) => [mago, archimago, clerigo].find((c) => c.Id === id);
+        expect(esClaseCompatibleConRestringida(monje, 9, { tiene: [10, 239, 9], clase: catalogo })).toBeTrue();
+        expect(esClaseCompatibleConRestringida(monje, 9, { tiene: [10, 9], clase: catalogo })).toBeFalse();
+        expect(esClaseCompatibleConRestringida(monje, 500, { tiene: [10, 239], clase: catalogo })).toBeFalse();
+        expect(esClaseCompatibleConRestringida(monje, 4, { tiene: [10, 239], clase: catalogo })).toBeFalse();
+    });
 });

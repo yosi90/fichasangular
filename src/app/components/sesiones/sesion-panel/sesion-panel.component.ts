@@ -21,9 +21,11 @@ import {
     SesionEvento,
     SesionPersonaje,
 } from 'src/app/interfaces/sesiones';
+import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { DeidadService } from 'src/app/services/deidad.service';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { SesionesService, esSesionDesactualizada } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
@@ -43,7 +45,16 @@ import {
 } from 'src/app/services/utils/tienda-equipo';
 
 /** Los tipos de lo que se apunta (lienzo de sesiones, pantalla 2), cada uno con su formulario corto; «Comprar» abre la tienda. */
-export type TipoApunte = 'experiencia' | 'dinero' | 'objeto' | 'comprar' | 'vender' | 'libro' | 'nota';
+export type TipoApunte = 'experiencia' | 'dinero' | 'objeto' | 'comprar' | 'vender' | 'libro' | 'alineamiento' | 'nota';
+
+/** Lo que apunta el máster en «Alineamiento y expiación»: el cambio en juego, la caída por conducta o la expiación. */
+export type ModoAlineamiento = 'cambio' | 'caida' | 'expiacion';
+
+/** Una opción de un catálogo pequeño (los alineamientos básicos, las deidades, las clases del personaje). */
+interface OpcionPanel {
+    Id: number;
+    Nombre: string;
+}
 
 interface BotonApunte {
     id: TipoApunte;
@@ -64,6 +75,8 @@ interface ConjuroLibroPanel {
 }
 
 const MAXIMO_CONJUROS_LISTA = 30;
+/** Los eventos del panel que cambian la ficha (su alineamiento, su deidad o sus ex clases): al apuntarlos o deshacerlos se vuelve a leer. */
+const CAMBIAN_LA_FICHA: ReadonlySet<string> = new Set(['cambio_alineamiento', 'caida', 'expiacion']);
 const AVISO_DESACTUALIZADA = 'Otra persona ha apuntado algo en esta sesión mientras la tenías abierta. Ya está al día: '
     + 'revisa lo que ha cambiado y, si hace falta, vuelve a apuntarlo.';
 
@@ -88,6 +101,11 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     @Input() puedeApuntar = false;
     @Input() veNotas = false;
     @Input() experiencia: ExperienciaPersonaje | null = null;
+    /**
+     * Si apunta los cambios de alineamiento, las caídas y las expiaciones: el máster de su campaña o, sin campaña, el dueño
+     * (Guía del DM, pág. 134; la API responde `403 solo_el_master` a los demás).
+     */
+    @Input() controlaAlineamiento = false;
     /** Tras cada escritura (o al volver a cargar): la sesión al día y los PX. */
     @Input() alCambiar: (respuesta: RespuestaSesion) => void = () => undefined;
     /** «Volver al historial» y al cerrar la sesión. */
@@ -130,6 +148,19 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     busquedaConjuro = '';
     conjuroElegido: ConjuroLibroPanel | null = null;
     notaTexto = '';
+    alineamientoModo: ModoAlineamiento = 'cambio';
+    /** El básico nuevo (o el de la redención de la expiación); `null`, no cambia. */
+    idBasico: number | null = null;
+    /** La deidad nueva (0, sin deidad); `null`, no cambia. */
+    idDeidad: number | null = null;
+    alineamientoConcepto = '';
+    motivoCaida = '';
+    clasesAlineamiento = new Set<number>();
+    voluntaria = false;
+    lanzador = '';
+    basicos: OpcionPanel[] = [];
+    deidades: OpcionPanel[] = [];
+    cargandoAlineamiento = false;
 
     cargandoTienda = false;
     cargandoConjuros = false;
@@ -146,6 +177,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         private armaduraSvc: ArmaduraService,
         private equipoSvc: EquipoService,
         private conjuroSvc: ConjuroService,
+        private alineamientoSvc: AlineamientoService,
+        private deidadSvc: DeidadService,
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -194,6 +227,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             { id: 'comprar', nombre: 'Comprar' },
             { id: 'vender', nombre: 'Vender' },
             ...(this.libros.length > 0 && this.politica.copiarConjuros ? [{ id: 'libro' as const, nombre: 'Conjuro al libro' }] : []),
+            ...(this.controlaAlineamiento ? [{ id: 'alineamiento' as const, nombre: 'Alineamiento y expiación' }] : []),
             { id: 'nota', nombre: 'Nota' },
         ];
     }
@@ -281,6 +315,24 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             }));
     }
 
+    /**
+     * Las clases que pueden caer por su conducta: las suyas que solo se recuperan con una expiación (`Ex.Requiere_expiacion`
+     * de la clase, un dato) y no han caído ya.
+     */
+    get clasesQuePuedenCaer(): OpcionPanel[] {
+        return this.clasesDelPersonaje((entrada, clase) => clase?.Ex?.Requiere_expiacion === true && entrada.Ex?.Necesita_expiacion !== true);
+    }
+
+    /** Las clases caídas que una expiación puede devolver (`ex.necesitaExpiacion` de la ficha). */
+    get clasesCaidas(): OpcionPanel[] {
+        return this.clasesDelPersonaje((entrada) => entrada.Ex?.Necesita_expiacion === true);
+    }
+
+    /** Las clases de la caída o de la expiación, según el modo. */
+    get clasesDelModo(): OpcionPanel[] {
+        return this.alineamientoModo === 'caida' ? this.clasesQuePuedenCaer : this.alineamientoModo === 'expiacion' ? this.clasesCaidas : [];
+    }
+
     /** Por qué no se puede apuntar aún lo del formulario abierto, o `null` si se puede. */
     get motivoNoApuntar(): string | null {
         switch (this.tipo) {
@@ -311,6 +363,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             }
             case 'libro':
                 return this.libroElegido && this.conjuroElegido ? null : 'Elige el libro y el conjuro.';
+            case 'alineamiento':
+                return this.motivoNoApuntarAlineamiento();
             case 'nota': {
                 const texto = this.notaTexto.trim();
                 if (texto.length < 1)
@@ -343,11 +397,30 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             this.idLibro ??= this.libros[0]?.clase.Id ?? null;
             void this.cargarConjuros();
         }
+        if (this.tipo === 'alineamiento')
+            void this.cargarAlineamientos();
     }
 
     cancelarFormulario(): void {
         this.tipo = null;
         this.error = '';
+    }
+
+    elegirModoAlineamiento(modo: ModoAlineamiento): void {
+        this.alineamientoModo = modo;
+        this.clasesAlineamiento = new Set();
+        this.idBasico = null;
+        this.idDeidad = null;
+        this.error = '';
+    }
+
+    alternarClaseAlineamiento(id: number): void {
+        const clases = new Set(this.clasesAlineamiento);
+        if (clases.has(id))
+            clases.delete(id);
+        else
+            clases.add(id);
+        this.clasesAlineamiento = clases;
     }
 
     elegirConjuro(item: ConjuroLibroPanel): void {
@@ -368,6 +441,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         const hecho = await this.escribir(() => this.sesionesSvc.apuntar(this.idPersonaje, this.actual, evento));
         if (hecho)
             this.limpiarFormulario();
+        if (hecho && CAMBIAN_LA_FICHA.has(evento.tipo))
+            this.puertaSubida.subidaHecha(this.idPersonaje);
     }
 
     /** La cabecera: título, fecha y notas, al salir de cada campo si han cambiado. */
@@ -416,8 +491,9 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             heightAuto: false,
             scrollbarPadding: false,
         });
-        if (confirmacion.isConfirmed)
-            await this.escribir(() => this.sesionesSvc.deshacer(this.idPersonaje, this.actual));
+        if (confirmacion.isConfirmed && await this.escribir(() => this.sesionesSvc.deshacer(this.idPersonaje, this.actual))
+            && CAMBIAN_LA_FICHA.has(evento.tipo))
+            this.puertaSubida.subidaHecha(this.idPersonaje);
     }
 
     /** «Cerrar la sesión»: congela su versión de la ficha y vuelve al historial. */
@@ -559,10 +635,78 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
                 return this.libroElegido && this.conjuroElegido
                     ? { tipo: 'conjuro_copiado', idConjuro: this.conjuroElegido.conjuro.Id, idClase: this.libroElegido.clase.Id }
                     : null;
+            case 'alineamiento':
+                return this.eventoDeAlineamiento();
             case 'nota':
                 return { tipo: 'nota', texto: this.notaTexto.trim() };
             default:
                 return null;
+        }
+    }
+
+    private motivoNoApuntarAlineamiento(): string | null {
+        if (this.cargandoAlineamiento)
+            return 'Cargando los alineamientos y las deidades…';
+        const largo = (texto: string, que: string) => texto.trim().length > MAXIMO_CONCEPTO_EVENTO
+            ? `${que} puede tener como mucho ${MAXIMO_CONCEPTO_EVENTO} caracteres.` : null;
+        if (this.alineamientoModo === 'cambio') {
+            if (this.idBasico === null && this.idDeidad === null)
+                return 'Elige el alineamiento nuevo, la deidad nueva o los dos.';
+            return largo(this.alineamientoConcepto, 'El motivo');
+        }
+        if (this.clasesAlineamiento.size < 1)
+            return this.alineamientoModo === 'caida' ? 'Elige la clase que cae.' : 'Elige la clase que recupera.';
+        if (this.alineamientoModo === 'caida')
+            return this.motivoCaida.trim().length < 1 ? 'Di por qué cae: un acto maligno, su código, su juramento…' : largo(this.motivoCaida, 'El motivo');
+        return largo(this.lanzador, 'Quién la lanza') ?? largo(this.alineamientoConcepto, 'El motivo');
+    }
+
+    private eventoDeAlineamiento(): EventoSesionDto | null {
+        const texto = (valor: string) => valor.trim() || undefined;
+        const clases = [...this.clasesAlineamiento];
+        if (this.alineamientoModo === 'caida')
+            return { tipo: 'caida', clases, motivo: this.motivoCaida.trim() };
+        if (this.alineamientoModo === 'expiacion')
+            return {
+                tipo: 'expiacion', clases, voluntaria: this.voluntaria,
+                ...(this.idBasico !== null ? { idAlineamiento: this.idBasico } : {}),
+                ...(texto(this.lanzador) ? { lanzador: texto(this.lanzador) } : {}),
+                ...(texto(this.alineamientoConcepto) ? { concepto: texto(this.alineamientoConcepto) } : {}),
+            };
+        return {
+            tipo: 'cambio_alineamiento',
+            ...(this.idBasico !== null ? { idAlineamiento: this.idBasico } : {}),
+            ...(this.idDeidad !== null ? { deidad: this.idDeidad } : {}),
+            ...(texto(this.alineamientoConcepto) ? { concepto: texto(this.alineamientoConcepto) } : {}),
+        };
+    }
+
+    /** Las clases del personaje (con su id del catálogo) que cumplen `filtro`, sin repetir. */
+    private clasesDelPersonaje(filtro: (entrada: Personaje['desgloseClases'][number], clase: Clase | null) => boolean): OpcionPanel[] {
+        return (this.pj?.desgloseClases ?? [])
+            .map((entrada) => ({ entrada, clase: this.claseDelCatalogo(entrada) }))
+            .filter(({ entrada, clase }) => !!clase && filtro(entrada, clase))
+            .map(({ clase }) => ({ Id: clase!.Id, Nombre: clase!.Nombre }))
+            .filter((opcion, indice, todas) => todas.findIndex((otra) => otra.Id === opcion.Id) === indice);
+    }
+
+    /** Los alineamientos básicos y las deidades del catálogo, al abrir el formulario (una vez). */
+    private async cargarAlineamientos(): Promise<void> {
+        if (this.basicos.length > 0 || this.cargandoAlineamiento)
+            return;
+        this.cargandoAlineamiento = true;
+        try {
+            const [basicos, deidades] = await Promise.all([
+                firstValueFrom(this.alineamientoSvc.getAlineamientosBasicosCatalogo().pipe(take(1))),
+                firstValueFrom(this.deidadSvc.getDeidades().pipe(take(1))),
+            ]);
+            this.basicos = (basicos ?? []).filter((b) => toInt(b?.Id) > 0).map((b) => ({ Id: toInt(b.Id), Nombre: b.Nombre }));
+            this.deidades = (deidades ?? []).map((d) => ({ Id: toInt(d?.Id), Nombre: d.Nombre }))
+                .sort((a, b) => a.Id === 0 ? -1 : b.Id === 0 ? 1 : a.Nombre.localeCompare(b.Nombre, 'es'));
+        } catch (error: any) {
+            this.error = this.mensaje(error);
+        } finally {
+            this.cargandoAlineamiento = false;
         }
     }
 
@@ -578,6 +722,13 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         this.busquedaConjuro = '';
         this.conjuroElegido = null;
         this.notaTexto = '';
+        this.idBasico = null;
+        this.idDeidad = null;
+        this.alineamientoConcepto = '';
+        this.motivoCaida = '';
+        this.clasesAlineamiento = new Set();
+        this.voluntaria = false;
+        this.lanzador = '';
     }
 
     /** La compra paga del saldo (sin tope: la regla «libre» con el saldo de sugerido); el botín no se paga. */

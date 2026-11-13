@@ -203,6 +203,47 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
         });
     });
 
+    describe('el homebrew «hasta N fuentes» y la deidad (bugs.md de sesiones: la misma regla que la API, `limite_fuentes_homebrew`)', () => {
+        const limitado = { permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 1, permitirIgnorarRestriccionesAlineamiento: true };
+        const deidades = [
+            { Id: 9, Nombre: 'Heironeous', Oficial: true },
+            { Id: 50, Nombre: 'La de la casa', Oficial: false, Manual: { Id: 70, Nombre: 'Manual de la casa' } },
+            { Id: 51, Nombre: 'La del vecino', Oficial: false, Manual: { Id: 71, Nombre: 'Manual del vecino' } },
+        ];
+
+        it('una ficha homebrew con su única fuente ya usada: solo se ofrecen las deidades de esa fuente', async () => {
+            const componente = await crear({}, { personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 }, idAlineamiento: 1, deidad: 50 } },
+                { PoliticaCompra: limitado, Oficial: false });
+            componente.deidades = deidades as any;
+            (componente as any).fuentesDeAntes = (componente as any).fuentesHomebrewDeLaFicha();
+            expect(componente.deidadesElegibles.map((d) => d.Nombre)).toEqual(['Heironeous', 'La de la casa']);
+            // Sin límite, también la del otro manual.
+            fixture.componentInstance.pj = { ...componente.pj!, PoliticaCompra: { ...limitado, maxFuentesHomebrewGeneralesPorPersonaje: null } } as any;
+            expect(componente.deidadesElegibles.map((d) => d.Nombre)).toEqual(['Heironeous', 'La de la casa', 'La del vecino']);
+        });
+
+        it('corregir el alineamiento o la deidad quita una decisión vieja de `alineamiento_deidad` (la regla es de la clase)', async () => {
+            const componente = await crear({}, { personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 }, idAlineamiento: 1, deidad: 9 } });
+            componente.idAlineamiento = 4;
+            componente.cambiarAlineamiento();
+            expect((componente as any).decisionesRecalculadas().tipos).toEqual(jasmine.arrayContaining(['alineamiento_clase', 'alineamiento_deidad']));
+        });
+
+        it('una clase que cayó en juego (`Necesita_expiacion`) no se ofrece mantener: corregir no se la devuelve', async () => {
+            const componente = await crear({ rolActor: 'master' }, {
+                personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 }, idAlineamiento: 1 },
+                colecciones: { clases: [{ idClase: 11, nivel: 2 }] },
+            }, { desgloseClases: [{ Id: 11, Nombre: 'Paladín', Nivel: 2, Ex: { Nombre: 'Ex paladín', Motivos: [], Pierde_magia: true,
+                Requiere_expiacion: true, Necesita_expiacion: true } }] });
+            componente.svc.setCatalogoClases([{ Id: 11, Nombre: 'Paladín', Tipo_dado: { Id: 4, Nombre: 'd10' }, Desglose_niveles: [],
+                Alineamiento: { Basico: { Id_basico: 1, Nombre: 'Legal bueno' }, Ley: {}, Moral: {}, Prioridad: { Id_prioridad: 3 } } } as any]);
+            componente.idAlineamiento = 8;
+            componente.cambiarAlineamiento();
+            expect(componente.reglas).toEqual([]);
+            expect(componente.avisos).toContain('Ex paladín: cayó y solo la recupera una expiación; corregir su alineamiento o su deidad no se la devuelve.');
+        });
+    });
+
     it('la deidad tutelar de sus clases: no ofrece otra deidad ni «Sin deidad», y lo dice', async () => {
         const componente = await crear({}, {
             personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 }, idAlineamiento: 1, deidad: 9 },
