@@ -12,6 +12,7 @@ import { claveDeHabilidad, claveHabilidad } from './utils/habilidad-clave';
 import { toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
+import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
 
 // La subida de nivel con el motor de la creación (roadmap de sesiones, fase 4; estudio de reglas, apartado 1): personajes
 // de referencia de los manuales creados nivel a nivel, guardados como el cuerpo del alta (con sus `niveles` y las
@@ -663,5 +664,68 @@ describe('Las dotes, los subtipos y los requisitos de las plantillas (2026-11-13
         otro.setCatalogoHabilidadesCustom([CONTROL] as any);
         expect(otro.agregarPlantillaSeleccion(nacido)).toBeTrue();
         expect(otro.PersonajeCreacion.Habilidades.find((h) => h.Custom && h.Id === 90)?.Clasea ?? false).toBeFalse();
+    });
+});
+
+describe('Los rasgos y los ataques especiales de las plantillas, en la ficha (2026-11-13)', () => {
+    const HUMANO = crearRaza('Humano');
+    const racial = (id: number, nombre: string) => ({
+        Id: id, Nombre: nombre, Descripcion: '', Oficial: true, Opcional: 0, Dotes: [], Caracteristicas: [], Salvaciones: [],
+        Sortilegas: [], Ataques: [], Prerrequisitos_flags: {}, Prerrequisitos: {}, Habilidades: { Base: [], Custom: [] },
+    });
+    const OSCURIDAD = racial(8, 'Visión en la oscuridad 60\'');
+    // El celestial (MM1, pág. 30): visión en la oscuridad y castigar al mal desde el principio; uno de ejemplo, a 8 DG.
+    const CELESTIAL = plantillaApiDeEjemplo({
+        Id: 1, Nombre: 'Celestial', Dotes: [], Habilidades: [], Sortilegas: [], Subtipos: [], Modificacion_tamano: null,
+        Licantronia_dg: null, Nacimiento: false, Ajuste_nivel: 2,
+        Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+        Prerrequisitos: { ...plantillaApiDeEjemplo().Prerrequisitos, caracteristica: [], criaturas_compatibles: [], tamano_minimo: [], subtipo_prohibido: [] },
+        Raciales: [{ Racial: OSCURIDAD, Dg: 0 }, { Racial: racial(130, 'De 8 DG'), Dg: 8 }],
+        Ataques_especiales: [{ Racial: racial(128, 'Castigar al mal (celestial)'), Dg: 0 }],
+    }) as unknown as Plantilla;
+    const raciales = (svc: NuevoPersonajeService) => (svc.PersonajeCreacion.Raciales ?? []).map((r) => [toInt(r.Id), r.Origen]);
+
+    it('la creación los añade con la plantilla como origen, por sus DG, y los quita con ella', () => {
+        const svc = crear(HUMANO, { Fuerza: 15 });
+        aplicarNivel(svc, GUERRERO, 'Fuerza');
+        expect(svc.agregarPlantillaSeleccion(CELESTIAL)).toBeTrue();
+        expect(raciales(svc)).toEqual(jasmine.arrayContaining([[8, 'Celestial'], [128, 'Celestial']]));
+        expect(raciales(svc).some(([id]) => id === 130)).toBeFalse();
+        // El cuerpo del alta los lleva (`personaje_raciales`, que la ficha enseña).
+        expect(guardar(svc).entrada.colecciones?.raciales).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ idRacial: 8, origen: 'Celestial' }), jasmine.objectContaining({ idRacial: 128, origen: 'Celestial' })]));
+        svc.quitarPlantillaSeleccion(1);
+        expect(raciales(svc)).toEqual([]);
+    });
+
+    it('no repite el que ya tiene por su raza', () => {
+        const svc = crear({ ...HUMANO, Nombre: 'Enano', Raciales: [OSCURIDAD] } as unknown as Raza, { Fuerza: 15 });
+        expect(svc.agregarPlantillaSeleccion(CELESTIAL)).toBeTrue();
+        expect(raciales(svc).filter(([id]) => id === 8)).toEqual([[8, 'Enano']]);
+    });
+
+    it('al adquirirla con el personaje creado, y la ficha guardada sin ellos los recibe al cargarla, sin repetirlos', () => {
+        const svc = crear(HUMANO, { Fuerza: 15 });
+        aplicarNivel(svc, GUERRERO, 'Fuerza');
+        const guardado = guardar(svc);
+        const motor = subir(guardado, HUMANO);
+        const cuerpo = () => new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+            { ...motor.PersonajeCreacion, Nombre: 'Tordek', Campana: 'Sin campaña' } as Personaje, { idAlineamiento: 1, idGenero: 1, idDeidad: 0 } as any);
+        const antes = cuerpo();
+        expect(motor.agregarPlantillaSeleccion(CELESTIAL)).toBeTrue();
+        expect(raciales(motor)).toEqual(jasmine.arrayContaining([[8, 'Celestial'], [128, 'Celestial']]));
+        // La ficha que manda la adquisición los lleva (`POST /personajes/{id}/plantillas`).
+        const ficha = fichaDeLaPlantilla({ entrada: guardado.entrada, antes, despues: cuerpo(), idPlantilla: 1, puntosGolpe: 10, idAlineamiento: null });
+        expect(ficha.colecciones?.raciales).toEqual([{ idRacial: 8, origen: 'Celestial' }, { idRacial: 128, origen: 'Celestial' }]);
+
+        // Una ficha con la plantilla guardada antes, sin sus rasgos: el motor (la subida, la corrección) se los da.
+        const sinEllos = catalogos(new NuevoPersonajeService());
+        sinEllos.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza: HUMANO, plantillas: [CELESTIAL] });
+        expect(raciales(sinEllos)).toEqual([[8, 'Celestial'], [128, 'Celestial']]);
+
+        // Y la que ya los tiene no los repite.
+        const conEllos = catalogos(new NuevoPersonajeService());
+        conEllos.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(motor.PersonajeCreacion)), entrada: guardado.entrada, raza: HUMANO, plantillas: [CELESTIAL] });
+        expect(raciales(conEllos)).toEqual([[8, 'Celestial'], [128, 'Celestial']]);
     });
 });
