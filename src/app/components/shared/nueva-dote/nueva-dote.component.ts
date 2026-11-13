@@ -148,6 +148,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     private readonly prerrequisitosSoloClase = new Set<PrerequisiteType>([
         'conjuro_conocido',
         'conocer_poder_psionico',
+        // La deidad tutelar: solo de las clases (la dote de una deidad, como las de Sandstorm, no está en su contrato).
+        'deidad',
         'genero',
         'lanzar_poder_psionico_nivel',
         'no_raza',
