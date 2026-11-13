@@ -8,6 +8,7 @@ import {
     Personaje,
     PersonajeCompetenciaArmaduraDirecta,
     PersonajeCompetenciaDirecta,
+    PersonajeExClase,
     PersonajeTotales
 } from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
@@ -1096,6 +1097,8 @@ export class PersonajeService {
                 Puntos_poder: clase?.puntosPoder ?? null,
                 // Solo en la clase de su lanzamiento racial.
                 ...(toNumberOrNull(clase?.nivelLanzamientoRacial) !== null ? { Nivel_lanzamiento_racial: toNumberOrNull(clase?.nivelLanzamientoRacial) } : {}),
+                // Una ex clase (desde el 2026-11-13): la API ya le quita la magia si la pierde.
+                ...(leerExClase(clase?.ex) ? { Ex: leerExClase(clase?.ex) } : {}),
             }))
             .filter((clase) => clase.Nombre.length > 0);
         const plantillas = toArray<any>(element?.pla);
@@ -1206,6 +1209,7 @@ export class PersonajeService {
             ProgresionLanzador: normalizarProgresionLanzadorPersonaje(element?.progresionLanzador),
             Niveles_lanzador: [],
             Dominios: nombresConId(element?.dominios),
+            ...dominiosPerdidos(element?.dominios),
             Subtipos: normalizeSubtipoRefArray(element?.subtipos),
             competencia_arma: normalizeCompetenciasPersonaje(element?.competencia_arma, {
                 idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
@@ -1239,6 +1243,7 @@ export class PersonajeService {
                     Nombre: toText(especial?.nombre).trim(),
                     Extra: toText(especial?.extra).trim(),
                     Extra_comodin: especial?.extraComodin ?? null,
+                    ...perdidaPor(especial?.perdidaPor),
                 }))
                 .filter((especial) => especial.Nombre.length > 0),
             Raciales: normalizeRaciales(element?.rac),
@@ -1378,6 +1383,30 @@ function normalizarLanzamientoRacial(raw: any): LanzamientoRacialPersonaje | nul
         modificadorLanzamiento: toNumberOrNull(raw?.modificadorLanzamiento),
         conjurosDiarios: toArray(raw?.conjurosDiarios),
         listas: normalizarListasLanzamiento(raw?.listas),
+    };
+}
+
+/** `{ Perdida_por }` de una aptitud que ha perdido por una ex clase; sin nada, nada. */
+function perdidaPor(raw: unknown): { Perdida_por?: string[]; } {
+    const nombres = toArray<string>(raw).map((nombre) => toText(nombre).trim()).filter((nombre) => nombre.length > 0);
+    return nombres.length > 0 ? { Perdida_por: nombres } : {};
+}
+
+/** `{ Dominios_perdidos_por }` si ha perdido sus dominios (un ex clérigo); sin nada, nada. */
+function dominiosPerdidos(raw: unknown): { Dominios_perdidos_por?: string[]; } {
+    const nombres = [...new Set(toArray<any>(raw).flatMap((d) => perdidaPor(d?.perdidaPor).Perdida_por ?? []))];
+    return nombres.length > 0 ? { Dominios_perdidos_por: nombres } : {};
+}
+
+/** `ex` de una clase de la ficha (`PersonajeExClaseDto`), o `null` si no es una ex clase. */
+function leerExClase(raw: any): PersonajeExClase | null {
+    if (!raw || typeof raw !== 'object' || !toText(raw?.nombre).trim())
+        return null;
+    return {
+        Nombre: toText(raw.nombre).trim(),
+        Motivos: toArray<string>(raw.motivos).map((m) => toText(m).trim()).filter((m) => m.length > 0),
+        Pierde_magia: toBoolean(raw.pierdeMagia),
+        Requiere_expiacion: toBoolean(raw.requiereExpiacion),
     };
 }
 

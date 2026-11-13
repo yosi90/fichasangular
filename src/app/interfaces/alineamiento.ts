@@ -1,17 +1,20 @@
+import { DatoPreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+
 export interface Alineamiento {
     Id: number;
     Basico: {
         "Id_basico": number;
         "Nombre": string;
     };
+    /** Con lo que pide (`Valor`, `Prohibe`, `Id_prioridad`: las preferencias como dato, `DatoPreferenciaAlineamiento`). */
     Ley: {
         "Id_ley": number;
         "Nombre": string;
-    };
+    } & DatoPreferenciaAlineamiento;
     Moral: {
         "Id_moral": number;
         "Nombre": string;
-    };
+    } & DatoPreferenciaAlineamiento;
     Prioridad: {
         "Id_prioridad": number;
         "Nombre": string;
@@ -32,13 +35,13 @@ export interface PrioridadAlineamientoCatalogItem {
     Descripcion: string;
 }
 
-export interface PreferenciaLeyCatalogItem {
+export interface PreferenciaLeyCatalogItem extends DatoPreferenciaAlineamiento {
     Id: number;
     Nombre: string;
     Descripcion: string;
 }
 
-export interface PreferenciaMoralCatalogItem {
+export interface PreferenciaMoralCatalogItem extends DatoPreferenciaAlineamiento {
     Id: number;
     Nombre: string;
     Descripcion: string;
@@ -53,11 +56,11 @@ export interface AlineamientoCombinacionCatalogItem {
     Ley: {
         Id: number;
         Nombre: string;
-    };
+    } & DatoPreferenciaAlineamiento;
     Moral: {
         Id: number;
         Nombre: string;
-    };
+    } & DatoPreferenciaAlineamiento;
     Prioridad: {
         Id: number;
         Nombre: string;

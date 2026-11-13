@@ -19,8 +19,9 @@ import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service'
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { cambiosDeLaPlantilla, CambioPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, PgPlantilla, puntosGolpeTrasPlantilla } from 'src/app/services/utils/adquirir-plantilla';
+import { cambiosDeLaPlantilla, CambioPlantilla, EntradaCambiosPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, PgPlantilla, puntosGolpeTrasPlantilla } from 'src/app/services/utils/adquirir-plantilla';
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
+import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { caracteristicasPerdidasDe, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
 import { ajusteDePlantillas, dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
@@ -388,15 +389,17 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             experiencia: this.experiencia,
             nepDespues: this.nepDespues,
             exClases: this.clasesQueDejanSuAlineamiento(),
+            razaContraAlineamiento: this.razaContraElAlineamientoNuevo(),
         });
     }
 
     /**
      * Las clases que dejan de admitir su alineamiento si la plantilla se lo cambia (el paladín que se vuelve vampiro): se
-     * quedan sus niveles, pierde sus rasgos y no puede subir en ella (MJ pág. 55; Manual de monstruos, pág. 179). No es
-     * homebrew: es la regla (dictamen del máster de Rol, fase 7). Con el evaluador común (`evaluarAlineamientoClase`).
+     * quedan sus niveles, pierde lo que dice su clase (`Ex`) y no puede subir en ella (MJ pág. 55; Manual de monstruos,
+     * pág. 179): queda ex. No es homebrew: es la regla (dictamen del máster de Rol, fase 7). Con el evaluador común
+     * (`evaluarAlineamientoClase`); la API lo deriva igual (`utils/ex_clases.py`).
      */
-    private clasesQueDejanSuAlineamiento(): Array<{ nombre: string; razones: string[]; }> {
+    private clasesQueDejanSuAlineamiento(): EntradaCambiosPlantilla['exClases'] {
         if (this.idAlineamientoDespues() === null)
             return [];
         const alineamiento = this.svc.PersonajeCreacion.Alineamiento;
@@ -404,8 +407,24 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             const clase = this.svc.claseDelCatalogo(c?.idClase);
             const antes = evaluarAlineamientoClase(clase, { alineamiento: this.pjAntes?.Alineamiento ?? '' });
             const despues = evaluarAlineamientoClase(clase, { alineamiento });
-            return clase && despues.estricta && !antes.estricta ? [{ nombre: `${clase.Nombre}`, razones: despues.incumple }] : [];
+            if (!clase || !despues.estricta || antes.estricta)
+                return [];
+            const pierde = [...(clase.Ex?.Especiales ?? []).map((e) => e.Nombre), ...(clase.Ex?.Pierde_magia ? ['su magia'] : [])];
+            return [{ nombre: `${clase.Nombre}`, razones: despues.incumple, pierde, expiacion: !!clase.Ex?.Requiere_expiacion }];
         });
+    }
+
+    /**
+     * Lo que exige su raza si la plantilla fija un alineamiento que la raza no suele tener (un elfo vampiro): con la regla
+     * común de la raza (`alineamiento-raza.ts`), solo un aviso. No es homebrew: manda el alineamiento de la plantilla
+     * (Manual de monstruos, pág. 291).
+     */
+    private razaContraElAlineamientoNuevo(): string | null {
+        if (this.idAlineamientoDespues() === null)
+            return null;
+        const raza = this.svc.RazaSeleccionada?.Alineamiento;
+        const ahora = evaluarAlineamientoRaza(raza, this.svc.PersonajeCreacion.Alineamiento);
+        return ahora && !evaluarAlineamientoRaza(raza, this.pjAntes?.Alineamiento ?? '') ? ahora.requerido : null;
     }
 
     private fichaParaGuardar(): PersonajeCreateRequestDto {

@@ -47,10 +47,26 @@ export function casillasCaracteristicasPersonaje(pj: Personaje | null | undefine
  * Una clase con su nivel: «Guerrero 5»; con los DG de su tabla si no son su nivel (`Dgs` de la ficha de la API: las clases
  * de monstruo de *Libris Mortis*), «Engendro vampírico 5 (3 DG)».
  */
-export function textoClasePersonaje(clase: { Nombre: string; Nivel: number; Dgs?: number | null; }): string {
+export function textoClasePersonaje(clase: { Nombre: string; Nivel: number; Dgs?: number | null; Ex?: { Nombre: string; } | null; }): string {
     const nivel = toNumber(clase.Nivel);
     const dgs = clase.Dgs === undefined || clase.Dgs === null ? nivel : toNumber(clase.Dgs);
-    return `${clase.Nombre.trim()} ${nivel}${dgs !== nivel ? ` (${dgs} DG)` : ''}`;
+    // Una ex clase, con su nombre en minúscula: «Paladín 6 (ex paladín)» (MJ, «Ex paladines»).
+    const ex = `${clase.Ex?.Nombre ?? ''}`.trim();
+    return `${clase.Nombre.trim()} ${nivel}${dgs !== nivel ? ` (${dgs} DG)` : ''}${ex ? ` (${ex.toLowerCase()})` : ''}`;
+}
+
+/**
+ * Lo que dice la ficha de una ex clase: «Ex paladín: no puede subir niveles de paladín (requiere legal bueno). Ha perdido
+ * sus aptitudes y su magia; los recupera con una expiación.»
+ */
+export function textoExClasePersonaje(clase: { Nombre: string; Ex?: { Nombre: string; Motivos: string[]; Pierde_magia: boolean; Requiere_expiacion: boolean; } | null; }): string {
+    const ex = clase.Ex;
+    if (!ex)
+        return '';
+    const motivos = ex.Motivos.map((m) => m.charAt(0).toLowerCase() + m.slice(1)).join('; ');
+    const pierde = ex.Pierde_magia ? 'Pierde las aptitudes que dice su clase y su magia' : 'Pierde las aptitudes que dice su clase, si alguna';
+    const vuelta = ex.Requiere_expiacion ? '; las recupera con una expiación' : '';
+    return `${ex.Nombre}: no puede subir niveles de ${clase.Nombre.trim().toLowerCase()}${motivos ? ` (${motivos})` : ''}. ${pierde}${vuelta}.`;
 }
 
 /** Las dotes que se ven, con su extra: «Soltura con un arma (espada larga)». */

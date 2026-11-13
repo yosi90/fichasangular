@@ -7,13 +7,17 @@ import { evaluarAlineamientoClase } from './alineamiento-clase';
  * preferencias con su prioridad, sus prerrequisitos de alineamiento y la regla de la deidad), nunca de su nombre.
  */
 describe('evaluarAlineamientoClase (el alineamiento de una clase, de sus datos)', () => {
-    function clase(datos: { basico?: number; ley?: string; moral?: string; prioridad?: number; deidad?: boolean; prer?: Record<string, unknown[]>; }): Clase {
+    /** Una preferencia con su dato: `[valor, prohíbe, prioridad]` (el nombre no decide nada). */
+    type Pref = [number, boolean, number];
+    const pref = (p?: Pref) => p ? { Valor: p[0], Prohibe: p[1], Id_prioridad: p[2] } : { Valor: null, Prohibe: false, Id_prioridad: 0 };
+
+    function clase(datos: { basico?: number; ley?: Pref; moral?: Pref; prioridad?: number; deidad?: boolean; prer?: Record<string, unknown[]>; }): Clase {
         const prer = datos.prer ?? {};
         return {
             Id: 1, Nombre: 'Una clase cualquiera',
             Alineamiento: {
-                Id: 1, Basico: { Id_basico: datos.basico ?? 0, Nombre: '' }, Ley: { Id_ley: 0, Nombre: datos.ley ?? 'Ninguna preferencia' },
-                Moral: { Id_moral: 0, Nombre: datos.moral ?? 'Ninguna preferencia' }, Prioridad: { Id_prioridad: datos.prioridad ?? 0, Nombre: '' },
+                Id: 1, Basico: { Id_basico: datos.basico ?? 0, Nombre: '' }, Ley: { Id_ley: 0, Nombre: '', ...pref(datos.ley) },
+                Moral: { Id_moral: 0, Nombre: '', ...pref(datos.moral) }, Prioridad: { Id_prioridad: datos.prioridad ?? 0, Nombre: '' },
                 Descripcion: '',
             },
             Alineamiento_deidad: datos.deidad ?? false,
@@ -23,7 +27,7 @@ describe('evaluarAlineamientoClase (el alineamiento de una clase, de sus datos)'
     }
 
     it('un básico exigido (el paladín, legal bueno «siempre»): otro alineamiento lo incumple y vuelve homebrew', () => {
-        const paladin = clase({ basico: 1, ley: 'No aplica', moral: 'No aplica', prioridad: 3 });
+        const paladin = clase({ basico: 1, prioridad: 3 });
         expect(evaluarAlineamientoClase(paladin, { alineamiento: 'Legal bueno' }).incumple).toEqual([]);
         const ex = evaluarAlineamientoClase(paladin, { alineamiento: 'Neutral bueno' });
         expect(ex.incumple).toEqual(['Requiere legal bueno']);
@@ -31,15 +35,15 @@ describe('evaluarAlineamientoClase (el alineamiento de una clase, de sus datos)'
     });
 
     it('una preferencia que prohíbe («Nunca legal», el bárbaro) y una que exige («Siempre maligno»)', () => {
-        const barbaro = clase({ ley: 'Nunca Legal', prioridad: 3 });
+        const barbaro = clase({ ley: [1, true, 3], prioridad: 3 }); // «Nunca legal»
         expect(evaluarAlineamientoClase(barbaro, { alineamiento: 'Caótico bueno' }).incumple).toEqual([]);
         expect(evaluarAlineamientoClase(barbaro, { alineamiento: 'Legal neutral' }).incumple).toEqual(['Prohíbe legal']);
-        expect(evaluarAlineamientoClase(clase({ moral: 'Siempre Maligno', prioridad: 3 }), { alineamiento: 'Neutral auténtico' }).incumple)
+        expect(evaluarAlineamientoClase(clase({ moral: [-1, false, 3], prioridad: 3 }), { alineamiento: 'Neutral auténtico' }).incumple)
             .toEqual(['Requiere maligno']);
     });
 
     it('la prioridad la dice el dato: «casi siempre» (2) se avisa sin volver homebrew', () => {
-        const r = evaluarAlineamientoClase(clase({ ley: 'Casi siempre Caótico', prioridad: 2 }), { alineamiento: 'Legal bueno' });
+        const r = evaluarAlineamientoClase(clase({ ley: [-1, false, 2], prioridad: 2 }), { alineamiento: 'Legal bueno' });
         expect(r.incumple).toEqual(['Requiere caótico']);
         expect(r.estricta).toBeFalse();
     });
@@ -66,6 +70,6 @@ describe('evaluarAlineamientoClase (el alineamiento de una clase, de sus datos)'
 
     it('sin restricción, nada; sin alineamiento interpretable, nada que se pueda comprobar', () => {
         expect(evaluarAlineamientoClase(clase({}), { alineamiento: 'Legal maligno' })).toEqual(jasmine.objectContaining({ incumple: [], restringe: false }));
-        expect(evaluarAlineamientoClase(clase({ ley: 'Nunca Legal', prioridad: 3 }), { alineamiento: '' }).sinComprobar.length).toBe(1);
+        expect(evaluarAlineamientoClase(clase({ ley: [1, true, 3], prioridad: 3 }), { alineamiento: '' }).sinComprobar.length).toBe(1);
     });
 });

@@ -1,19 +1,33 @@
 import {
     nombreCombinacionAlineamiento,
     cumpleActitud,
+    datoDePreferencia,
+    extraerEjesAlineamientoDesdeContrato,
     idBasicoDePrerrequisitoAlineamiento,
-    parseLeyDesdePreferencia,
-    parseMoralDesdePreferencia,
+    reglaDePreferenciaAlineamiento,
 } from './alineamiento-contrato';
 
 describe('alineamiento-contrato', () => {
-    it('una preferencia que prohíbe («Nunca legal», «Casi nunca neutral») no exige ningún valor del eje', () => {
-        expect(parseLeyDesdePreferencia('Nunca Legal')).toBeNull();
-        expect(parseLeyDesdePreferencia('Casi nunca Neutral')).toBeNull();
-        expect(parseLeyDesdePreferencia('Tendencia a no ser caótico')).toBeNull();
-        expect(parseMoralDesdePreferencia('Nunca Bueno')).toBeNull();
-        expect(parseLeyDesdePreferencia('Siempre Legal')).toBe(1);
-        expect(parseMoralDesdePreferencia('Casi siempre Maligno')).toBe(-1);
+    it('lo que pide una preferencia sale de su dato, no de su nombre (bugs.md de sesiones, 2026-11-13)', () => {
+        // Un nombre que diría otra cosa no cuenta: manda el dato.
+        expect(reglaDePreferenciaAlineamiento({ Nombre: 'Siempre Legal', Valor: -1, Prohibe: false, Id_prioridad: 3 } as any))
+            .toEqual({ valor: -1, prohibe: false, prioridad: 3, estricta: true });
+        expect(reglaDePreferenciaAlineamiento({ Valor: 1, Prohibe: true, Id_prioridad: 2 }))
+            .toEqual({ valor: 1, prohibe: true, prioridad: 2, estricta: false });
+        // Sin `Valor` («No aplica», «Ninguna preferencia», o una caché de antes), no pide nada.
+        expect(reglaDePreferenciaAlineamiento({ Nombre: 'Nunca Legal' } as any)).toBeNull();
+        expect(reglaDePreferenciaAlineamiento({ Valor: null, Prohibe: false, Id_prioridad: 0 })).toBeNull();
+        expect(reglaDePreferenciaAlineamiento(null)).toBeNull();
+        expect(datoDePreferencia({ Valor: '1', Prohibe: 1, Id_prioridad: '3' })).toEqual({ Valor: 1, Prohibe: true, Id_prioridad: 3 });
+    });
+
+    it('lo que exige un alineamiento en cada eje: una preferencia que prohíbe no exige ningún valor', () => {
+        expect(extraerEjesAlineamientoDesdeContrato({
+            Basico: { Id_basico: 0, Nombre: 'No aplica' },
+            Ley: { Valor: 1, Prohibe: true, Id_prioridad: 3 }, Moral: { Valor: -1, Prohibe: false, Id_prioridad: 3 },
+        })).toEqual({ ley: null, moral: -1 });
+        expect(extraerEjesAlineamientoDesdeContrato({ Basico: { Id_basico: 7, Nombre: 'Caótico bueno' }, Ley: {}, Moral: {} }))
+            .toEqual({ ley: -1, moral: 1 });
     });
 
     it('las actitudes sobre el alineamiento básico: neutral es serlo en algún eje', () => {

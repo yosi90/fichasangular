@@ -21,8 +21,8 @@ function crearRazaMock(pierdeConstitucion = false): Raza {
         Alineamiento: {
             Id: 1,
             Basico: { Id_basico: 1, Nombre: 'Neutral bueno' },
-            Ley: { Id_ley: 2, Nombre: 'Tendencia caotica' },
-            Moral: { Id_moral: 1, Nombre: 'Tendencia buena' },
+            Ley: { Id_ley: 2, Nombre: 'Tendencia caotica', Valor: -1, Prohibe: false, Id_prioridad: 1 },
+            Moral: { Id_moral: 1, Nombre: 'Tendencia buena', Valor: 1, Prohibe: false, Id_prioridad: 1 },
             Prioridad: { Id_prioridad: 1, Nombre: 'Moral' },
             Descripcion: 'Mock',
         },

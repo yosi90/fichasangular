@@ -146,7 +146,7 @@ describe('NuevaRazaComponent', () => {
                         { Id: 0, Basico: { Id: 0, Nombre: 'No aplica' }, Ley: { Id: 0, Nombre: 'No aplica' }, Moral: { Id: 0, Nombre: 'No aplica' }, Prioridad: { Id: 0, Nombre: 'Sin prioridad', Descripcion: 'No condiciona el alineamiento.' } },
                         { Id: 7, Basico: { Id: 2, Nombre: 'Legal bueno' }, Ley: { Id: 10, Nombre: 'Ninguna preferencia' }, Moral: { Id: 10, Nombre: 'Ninguna preferencia' }, Prioridad: { Id: 1, Nombre: 'Debe tenerse en cuenta', Descripcion: '' } },
                         { Id: 10, Basico: { Id: 2, Nombre: 'Legal bueno' }, Ley: { Id: 10, Nombre: 'Ninguna preferencia' }, Moral: { Id: 10, Nombre: 'Ninguna preferencia' }, Prioridad: { Id: 2, Nombre: 'Importante', Descripcion: '' } },
-                        { Id: 9, Basico: { Id: 0, Nombre: 'No aplica' }, Ley: { Id: 2, Nombre: 'Casi siempre legal' }, Moral: { Id: 4, Nombre: 'Casi siempre bueno' }, Prioridad: { Id: 2, Nombre: 'Importante', Descripcion: 'Tendencia importante.' } },
+                        { Id: 9, Basico: { Id: 0, Nombre: 'No aplica' }, Ley: { Id: 2, Nombre: 'Casi siempre legal', Valor: 1, Prohibe: false, Id_prioridad: 2 }, Moral: { Id: 4, Nombre: 'Casi siempre bueno', Valor: 1, Prohibe: false, Id_prioridad: 2 }, Prioridad: { Id: 2, Nombre: 'Importante', Descripcion: 'Tendencia importante.' } },
                     ]),
                     // Como la API desde el 2026-10-24: sin las filas 0 de relleno («No aplica», «Sin prioridad»).
                     getAlineamientosBasicosCatalogo: () => of([

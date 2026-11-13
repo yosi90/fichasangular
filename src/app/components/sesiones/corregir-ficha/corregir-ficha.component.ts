@@ -21,6 +21,13 @@ import { DoteSeleccionConfirmada, NuevoPersonajeService, PasoRepartoRangos } fro
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
+import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
+import { CampaignPurchasePolicy } from 'src/app/interfaces/campaign-management';
+import {
+    campanaDejaMantenerDoteSinPrerrequisitos,
+    campanaDejaSaltarAlineamiento,
+    modoHomebrewDeCampana,
+} from 'src/app/services/utils/politica-campana';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, CambiosCorreccion, DoteDeLaFicha, fichaDeLaCorreccion } from 'src/app/services/utils/correccion-ficha';
@@ -46,16 +53,23 @@ interface DoteRota extends DoteDeLaFicha {
     razones: string[];
     nivel: number | null;
     mantenida: boolean;
+    /** Si se puede mantener como homebrew (la campaña tiene que admitir homebrew; el máster y un PNJ, siempre). */
+    puedeMantener: boolean;
 }
 
-/** Una regla que lo corregido deja de cumplir (el alineamiento de una clase, la edad, la altura o el peso). */
+/** Una regla que lo corregido deja de cumplir (el alineamiento de una clase o de la raza, la edad, la altura o el peso). */
 interface ReglaSaltada {
     clave: string;
-    tipo: 'clase' | 'edad' | 'altura' | 'peso';
+    tipo: 'clase' | 'raza' | 'edad' | 'altura' | 'peso';
     nombre: string;
     razones: string[];
-    /** Si se puede mantener como homebrew (la clase contra su alineamiento, solo el máster o el dueño sin campaña). */
+    /**
+     * Si se puede mantener como homebrew: la clase contra su alineamiento, solo el máster o el dueño sin campaña; las de
+     * alineamiento, si la campaña deja saltárselas (`campanaDejaSaltarAlineamiento`; el máster y un PNJ, siempre).
+     */
     puedeMantener: boolean;
+    /** Por qué no se puede mantener («solo el máster puede mantenerla», «la campaña no deja saltarse el alineamiento»). */
+    motivoNoMantener?: string;
     mantenida: boolean;
     idClase?: number;
 }
@@ -115,6 +129,10 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
     sesion: SesionPersonaje | null = null;
     /** Si corrige lo del máster: las puntuaciones, la edad, las tiradas de PG y mantener una clase contra su alineamiento. */
     puedeLoDelMaster = false;
+    /** Quién corrige en la campaña (`rolActor` del historial): el máster se salta su política, con aviso. */
+    rolActor: 'jugador' | 'master' | null = null;
+    /** Avisos que no bloquean: el alineamiento de la raza que «casi siempre» es otro, una ex clase que sigue siéndolo. */
+    avisos: string[] = [];
     base: Record<Caracteristica, number> = {} as Record<Caracteristica, number>;
     dotes: FilaDote[] = [];
     rotas: DoteRota[] = [];
@@ -267,6 +285,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             this.sesion = sesion;
             this.entrada = entrada;
             this.pj = pj;
+            this.rolActor = historial.rolActor ?? null;
             this.puedeLoDelMaster = historial.rolActor === 'master' || toInt(entrada.personaje?.campana?.id) <= 0;
             const [alineamientos, deidades] = await Promise.all([
                 this.motor.primero(this.alineamientoSvc.getAlineamientosBasicosCatalogo()),
@@ -296,7 +315,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const decisiones = entrada.decisionesHomebrew ?? [];
         this.mantenidas = new Set(decisiones.filter((d) => d.tipo === 'requisitos_dote').map((d) => toInt(d.idElemento)));
         this.reglasDeAntes = new Set(decisiones.map((d) => d.tipo === 'alineamiento_clase' ? `clase:${toInt(d.idElemento)}`
-            : d.tipo.startsWith('edad_') ? 'edad' : d.tipo === 'altura_fuera_de_rango' ? 'altura' : d.tipo === 'peso_fuera_de_rango' ? 'peso' : ''));
+            : d.tipo === 'alineamiento_raza' ? 'raza' : d.tipo.startsWith('edad_') ? 'edad' : d.tipo === 'altura_fuera_de_rango' ? 'altura' : d.tipo === 'peso_fuera_de_rango' ? 'peso' : ''));
         this.reglasMantenidas = new Set();
         this.idAlineamiento = toInt(entrada.personaje?.idAlineamiento);
         this.idDeidad = toInt(entrada.personaje?.deidad);
@@ -352,8 +371,30 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const tiradas: Record<number, number> = {};
         this.tiradas.filter((t) => t.tirada !== null && t.tirada !== t.antes).forEach((t) => tiradas[t.indice] = t.tirada!);
         this.pg = pgTrasCorreccion(this.entrada!, toInt(this.pj?.Nivel_personaje), toInt(this.svc.PersonajeCreacion.ModConstitucion), tiradas);
-        this.rotas = this.svc.dotesSinSusPrerrequisitos().map((r) => ({ ...r, mantenida: this.mantenidas.has(r.idDote) }));
+        // Mantener una dote sin sus prerrequisitos vuelve homebrew la ficha: solo si la campaña admite homebrew (la regla de la
+        // API, `requisitos_dote_no_permitido_campana`); si no, solo se puede quitar. Las que ya mantenía siguen.
+        const dejaMantenerDotes = campanaDejaMantenerDoteSinPrerrequisitos(this.politica);
+        this.rotas = this.svc.dotesSinSusPrerrequisitos().map((r) => {
+            const mantenida = this.mantenidas.has(r.idDote);
+            return { ...r, mantenida, puedeMantener: mantenida || dejaMantenerDotes };
+        });
+        this.avisos = [];
         this.reglas = this.reglasSaltadas();
+    }
+
+    /**
+     * La política de la campaña sobre lo que se corrige (`politicaCompra` de la ficha), como la comprueba la API: `null`
+     * sin campaña, en un PNJ (la API no se la da) o si corrige el máster, que se la salta con aviso (`reglasIgnoradas`).
+     */
+    get politica(): CampaignPurchasePolicy | null {
+        return this.rolActor === 'master' || this.entrada?.personaje?.tipo === 'pnj' ? null : this.pj?.PoliticaCompra ?? null;
+    }
+
+    /** El aviso del máster que corrige un personaje de su campaña: se salta su política, y se le dirá qué ignora. */
+    get avisoDelMaster(): string {
+        return this.rolActor === 'master' && this.pj?.PoliticaCompra
+            ? 'Como máster, tu corrección no tiene que seguir la política de homebrew y alineamiento de tu campaña: al guardar te diremos qué reglas se salta.'
+            : '';
     }
 
     /** Solo lo que se ha corregido: lo que ya tenía la ficha al cargarla no se vuelve a juzgar aquí. */
@@ -361,19 +402,46 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const reglas: ReglaSaltada[] = [];
         const p = this.entrada!.personaje;
         const alineamiento = this.nombreAlineamiento(this.idAlineamiento);
+        const alineamientoAntes = this.nombreAlineamiento(toInt(p.idAlineamiento));
         const deidad = this.deidades.find((d) => toInt(d.Id) === this.idDeidad) ?? null;
+        const deidadAntes = this.deidades.find((d) => toInt(d.Id) === toInt(p.deidad)) ?? null;
         const cambiaAlineamiento = this.idAlineamiento !== toInt(p.idAlineamiento) || this.idDeidad !== toInt(p.deidad);
+        const dejaSaltarAlineamiento = campanaDejaSaltarAlineamiento(this.politica);
+        const sinCampana = 'la campaña no deja saltarse las restricciones de alineamiento';
         (cambiaAlineamiento ? this.entrada?.colecciones?.clases ?? [] : []).forEach((c) => {
             const clase = this.svc.claseDelCatalogo(toInt(c.idClase));
             const evaluacion = evaluarAlineamientoClase(clase, { alineamiento, deidad });
             if (!clase || !evaluacion.estricta)
                 return;
+            const clave = `clase:${toInt(clase.Id)}`;
+            // Una ex clase (ya incumplía y no se mantuvo como homebrew: el paladín que se volvió vampiro) sigue ex: una
+            // corrección no le devuelve lo que perdió (dictamen del máster de Rol; la API lo rechaza con `clase_ex`).
+            if (!this.reglasDeAntes.has(clave) && evaluarAlineamientoClase(clase, { alineamiento: alineamientoAntes, deidad: deidadAntes }).estricta) {
+                this.avisos.push(`Ex ${clase.Nombre.toLowerCase()}: sigue sin poder subir de nivel en esta clase, y una corrección no le devuelve lo que perdió.`);
+                return;
+            }
+            const puede = this.puedeLoDelMaster && dejaSaltarAlineamiento;
             reglas.push({
-                clave: `clase:${toInt(clase.Id)}`, tipo: 'clase', idClase: toInt(clase.Id), nombre: `${clase.Nombre} con su alineamiento`,
-                razones: evaluacion.incumple, puedeMantener: this.puedeLoDelMaster, mantenida: false,
+                clave, tipo: 'clase', idClase: toInt(clase.Id), nombre: `${clase.Nombre} con su alineamiento`,
+                razones: evaluacion.incumple, puedeMantener: puede, mantenida: false,
+                motivoNoMantener: puede ? undefined : this.puedeLoDelMaster ? sinCampana : 'solo el máster puede mantenerla',
             });
         });
         const raza = this.svc.RazaSeleccionada;
+        // El alineamiento de su raza, con la regla de la creación (`alineamiento-raza.ts`): una regla dura se quita o se
+        // mantiene como homebrew (`alineamiento_raza`); un aviso solo se enseña. Solo si lo corregido lo provoca.
+        if (this.idAlineamiento !== toInt(p.idAlineamiento)) {
+            const conflicto = evaluarAlineamientoRaza(raza?.Alineamiento, alineamiento);
+            const antes = evaluarAlineamientoRaza(raza?.Alineamiento, alineamientoAntes);
+            if (conflicto?.severidad === 'hard' && antes?.severidad !== 'hard')
+                reglas.push({
+                    clave: 'raza', tipo: 'raza', nombre: `${raza?.Nombre ?? 'Su raza'} con su alineamiento`,
+                    razones: [`Su raza exige ${conflicto.requerido.toLowerCase()}`], puedeMantener: dejaSaltarAlineamiento,
+                    mantenida: false, motivoNoMantener: dejaSaltarAlineamiento ? undefined : sinCampana,
+                });
+            else if (conflicto?.severidad === 'soft')
+                this.avisos.push(`${raza?.Nombre ?? 'Su raza'} suele ser ${conflicto.requerido.toLowerCase()}: un caso muy inusual, pero no homebrew.`);
+        }
         const grupo = this.svc.clasePrimerNivel()?.Grupo_edad_inicial;
         if (this.edad !== toInt(p.edad) && comoSaleLaEdadDelManual(this.edad, raza, grupo))
             reglas.push({ clave: 'edad', tipo: 'edad', nombre: `La edad ${this.edad}`, puedeMantener: true, mantenida: false,
@@ -419,9 +487,12 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         this.recalcular();
     }
 
-    /** Las deidades que se pueden elegir: las oficiales, y las homebrew si la ficha ya lo es (o la que tiene). */
+    /**
+     * Las deidades que se pueden elegir: las oficiales, y las homebrew si la ficha ya lo es y la campaña admite homebrew
+     * (o la que tiene).
+     */
     get deidadesElegibles(): DeidadDetalle[] {
-        const conHomebrew = this.pj?.Oficial === false;
+        const conHomebrew = this.pj?.Oficial === false && modoHomebrewDeCampana(this.politica) !== 'forbidden';
         return this.deidades.filter((d) => conHomebrew || d.Oficial !== false || toInt(d.Id) === toInt(this.entrada?.personaje?.deidad));
     }
 
@@ -446,7 +517,9 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         if (!fila.quitada || fila.sustituta)
             return;
         const pendiente = this.svc.registrarDoteEnLugarDe(fila, fila.indiceNivel);
-        const candidatos = this.svc.obtenerCandidatosDotePendiente(pendiente.id);
+        // Sin homebrew en la campaña (salvo el máster o un PNJ), solo las oficiales: una homebrew la rechazaría la API.
+        const sinHomebrew = modoHomebrewDeCampana(this.politica) === 'forbidden';
+        const candidatos = this.svc.obtenerCandidatosDotePendiente(pendiente.id).filter((c) => !sinHomebrew || c.dote?.Oficial !== false);
         // «Omitir» deja el hueco vacío: la dote se quita sin otra en su lugar.
         const seleccion = await this.selectores.abrir<DoteSeleccionConfirmada>(SelectorDotesModalComponent, {
             titulo: `Otra dote en lugar de ${fila.nombre}`, pendiente, candidatos, pendientesRestantes: 1,
@@ -465,19 +538,19 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
     }
 
     mantener(rota: DoteRota | ReglaSaltada): void {
+        if (!rota.puedeMantener)
+            return;
         if ('idDote' in rota)
             this.mantenidas.add(rota.idDote);
-        else if (rota.puedeMantener)
-            this.reglasMantenidas.add(rota.clave);
         else
-            return;
+            this.reglasMantenidas.add(rota.clave);
         rota.mantenida = true;
     }
 
     /** Vuelve al valor de antes lo que salta una regla (el alineamiento y la deidad, la edad, la altura o el peso). */
     deshacerRegla(regla: ReglaSaltada): void {
         const p = this.entrada!.personaje;
-        if (regla.tipo === 'clase') {
+        if (regla.tipo === 'clase' || regla.tipo === 'raza') {
             this.idAlineamiento = toInt(p.idAlineamiento);
             this.idDeidad = toInt(p.deidad);
             this.cambiarAlineamiento();
@@ -546,7 +619,14 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const estado: Parameters<typeof decisionesHomebrewPersonaje>[0] = { idRaza: toInt(p.idRaza) } as any;
         if (this.idAlineamiento !== toInt(p.idAlineamiento) || this.idDeidad !== toInt(p.deidad)) {
             tipos.push('alineamiento_clase');
+            // Las mantenidas (también las que ya lo estaban y siguen sin cumplirse); las ex no: siguen ex.
             estado.clasesConAlineamientoSaltado = this.reglas.filter((r) => r.tipo === 'clase' && r.mantenida).map((r) => toInt(r.idClase));
+        }
+        if (this.idAlineamiento !== toInt(p.idAlineamiento)) {
+            tipos.push('alineamiento_raza');
+            estado.alineamientoRaza = mantenida('raza')
+                || (this.reglasDeAntes.has('raza') && evaluarAlineamientoRaza(this.svc.RazaSeleccionada?.Alineamiento,
+                    this.nombreAlineamiento(this.idAlineamiento))?.severidad === 'hard');
         }
         if (this.edad !== toInt(p.edad)) {
             tipos.push('edad_menor_que_la_mayoria', 'edad_menor_que_la_inicial', 'edad_mayor_que_la_maxima');

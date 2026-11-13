@@ -430,7 +430,7 @@ describe('DetallesClaseComponent', () => {
             Alineamiento: {
                 Id: 9,
                 Basico: null as any,
-                Ley: { Id_ley: 3, Nombre: 'Nunca Legal' },
+                Ley: { Id_ley: 3, Nombre: 'Nunca Legal', Valor: 1, Prohibe: true, Id_prioridad: 3 },
                 Moral: { Id_moral: 10, Nombre: 'Ninguna preferencia' },
                 Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
                 Descripcion: 'Se debe respetar a raja tabla.',

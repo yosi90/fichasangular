@@ -15,7 +15,7 @@ import {
     modeloIncarnumFicha,
     ModeloIncarnumFicha,
     sortilegasVisibles,
-    textoClasePersonaje,
+    textoClasePersonaje, textoExClasePersonaje,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
@@ -1356,7 +1356,9 @@ ${envejecimiento}` : edades;
             dotes: dotesVisiblesPersonaje(pj).map((d) => ({ texto: d.texto, nota: this.texto(d.ref.Origen), ref: d.ref })),
             aptitudes: (pj.Claseas ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => {
                 const extra = this.getExtraVisibleEspecial(c);
-                return { texto: c.Nombre.trim() + (extra ? ` (${extra})` : ''), ref: c.Nombre.trim() };
+                // La que ha perdido por una ex clase: «Castigar al mal · perdida (ex paladín)».
+                const perdida = (c.Perdida_por ?? []).map((n) => n.toLowerCase()).join(', ');
+                return { texto: c.Nombre.trim() + (extra ? ` (${extra})` : ''), ref: c.Nombre.trim(), ...(perdida ? { nota: `perdida (${perdida})` } : {}) };
             }),
             armasNaturales: (pj.Armas_naturales ?? []).filter((a) => this.esVisible(a?.Texto)),
             raciales: this.getRacialesVisibles().map((r) => ({ texto: r.nombre, nota: this.texto(r.origen), clave: `${r.id ?? ''}`, ref: r })),
@@ -1377,7 +1379,13 @@ ${envejecimiento}` : edades;
             lanzamientoRacial: lanzamientoRacialPersonaje(pj),
             aptitudesEdad: aptitudesDeEdadPersonaje(pj),
             lanzadores: clases
-                .map((c) => ({ clase: c.Nombre.trim(), texto: textoClasePersonaje(c), detalle: this.getSubchipsLanzadorClase(c).join(' · ') }))
+                .map((c) => ({
+                    clase: c.Nombre.trim(), texto: textoClasePersonaje(c),
+                    // Una ex clase que pierde su magia no lanza: «Conjuros de paladín: perdidos (ex paladín)».
+                    detalle: c.Ex?.Pierde_magia
+                        ? `Conjuros de ${c.Nombre.trim().toLowerCase()}: perdidos (${c.Ex.Nombre.toLowerCase()})`
+                        : this.getSubchipsLanzadorClase(c).join(' · '),
+                }))
                 .filter((l) => l.detalle.length > 0),
             conjuros: (pj.Conjuros ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => ({ texto: c.Nombre.trim(), clave: `${c.Id ?? ''}`, ref: c })),
             sortilegas: this.calcularSortilegas(),
@@ -1459,6 +1467,8 @@ ${envejecimiento}` : edades;
                 valor: clases.map((c) => textoClasePersonaje(c)).join(', ') || null,
                 enlaces: clases.map((c) => ({ texto: textoClasePersonaje(c), alPulsar: () => this.verDetallesClase(c.Nombre) })),
             },
+            // Sus ex clases (el paladín que se volvió vampiro): por qué, que no sube y lo que pierde (MJ págs. 26-55).
+            ...clases.filter((c) => !!c.Ex).map((c) => ({ etiqueta: c.Ex!.Nombre, valor: textoExClasePersonaje(c), ancho: 2 })),
             { etiqueta: 'Nivel', valor: this.positivo(this.nivelPersonaje) ? this.nivelPersonaje : null, ayuda: this.nivelDisclaimer },
             {
                 etiqueta: 'Valor de desafío (VD)',
@@ -1662,7 +1672,13 @@ ${envejecimiento}` : edades;
                     : null,
             },
             { etiqueta: 'Disciplina prohibida', valor: this.texto(pj.Disciplina_prohibida) || null },
-            { etiqueta: 'Dominios', valor: this.getDominiosVisibles().join(', ') || null },
+            {
+                etiqueta: 'Dominios',
+                valor: this.getDominiosVisibles().join(', ') || null,
+                // Los de un ex clérigo: «Dominios: perdidos (ex clérigo)».
+                ...((pj.Dominios_perdidos_por ?? []).length > 0
+                    ? { detalle: `· perdidos (${(pj.Dominios_perdidos_por ?? []).map((n) => n.toLowerCase()).join(', ')})` } : {}),
+            },
         ];
     }
 

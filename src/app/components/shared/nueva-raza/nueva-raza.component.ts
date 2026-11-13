@@ -1,3 +1,4 @@
+import { datoDePreferencia } from 'src/app/services/utils/alineamiento-contrato';
 import {
     Component, EventEmitter, HostListener, Injector, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, forwardRef,
     inject,
@@ -3366,7 +3367,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .filter((item) => this.numero(item?.Basico?.Id) === id)
             .filter((item) => !filtraPrioridad || this.getIdPrioridadAlineamiento(item) === prioridad)
             .sort((a, b) => this.numero(a.Id) - this.numero(b.Id));
-        const preferido = candidatos.find((item) => this.esSinPreferencia(item?.Ley?.Nombre) && this.esSinPreferencia(item?.Moral?.Nombre));
+        // La combinación sin preferencias de ley ni de moral (las que no piden nada: `Valor` nulo, su dato).
+        const preferido = candidatos.find((item) => datoDePreferencia(item?.Ley).Valor === null && datoDePreferencia(item?.Moral).Valor === null);
         const candidato = preferido ?? candidatos[0];
         return candidato ? this.numero(candidato.Id) : -1;
     }
@@ -3381,7 +3383,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .filter((item) => this.numero(item?.Ley?.Id) === ley && this.numero(item?.Moral?.Id) === moral)
             .filter((item) => this.getIdPrioridadAlineamiento(item) === prioridad)
             .sort((a, b) => this.numero(a.Id) - this.numero(b.Id));
-        const preferido = candidatos.find((item) => this.esSinPreferencia(item?.Basico?.Nombre));
+        // La combinación sin alineamiento básico («No aplica», el 0).
+        const preferido = candidatos.find((item) => this.numero(item?.Basico?.Id) <= 0);
         const candidato = preferido ?? candidatos[0];
         return candidato ? this.numero(candidato.Id) : -1;
     }
@@ -3390,13 +3393,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.numero(item?.Prioridad?.Id ?? (item?.Prioridad as any)?.Id_prioridad);
     }
 
-    private esSinPreferencia(value: any): boolean {
-        const texto = normalizarTexto(value, true);
-        return texto.length < 1
-            || texto.includes('no aplica')
-            || texto.includes('ninguna preferencia')
-            || texto === 'sin preferencia';
-    }
 
     private dedupeByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
         const map = new Map<string, T>();

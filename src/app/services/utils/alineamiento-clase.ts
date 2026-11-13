@@ -1,6 +1,6 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
-import { getVectorDesdeIdBasico, getVectorDesdeNombreBasico, reglaDePreferenciaAlineamiento } from './alineamiento-contrato';
+import { PRIORIDAD_ALINEAMIENTO_ESTRICTA, getVectorDesdeIdBasico, getVectorDesdeNombreBasico, reglaDePreferenciaAlineamiento } from './alineamiento-contrato';
 import { incumpleAlineamientoDeidad } from './alineamiento-deidad';
 import { evaluarPrerrequisitosDeAlineamientoClase } from './clase-elegibilidad';
 import { toInt } from './normalizacion';
@@ -10,16 +10,17 @@ import { toInt } from './normalizacion';
  * que ya tiene cuando cambia su alineamiento o su deidad; la creación, al elegirla). Sale de los datos de la clase, nunca
  * de su nombre:
  * - su alineamiento (`Alineamiento`): el básico que exige (`Basico.Id_basico`, el paladín legal bueno) y lo que piden
- *   sus preferencias de ley y de moral («Nunca legal», «Siempre maligno»), con su prioridad (`Prioridad.Id_prioridad`);
+ *   sus preferencias de ley y de moral (su `Valor`, si lo prohíbe y su `Id_prioridad`, como dato: «Nunca legal»,
+ *   «Siempre maligno»), con la prioridad del alineamiento (`Prioridad.Id_prioridad`);
  * - sus prerrequisitos de alineamiento y de actitud (`alineamiento_requerido`, `actitud_prohibido`…, el druida);
  * - la regla de la deidad (`Alineamiento_deidad`, el clérigo: MJ cap. 3).
  * Solo una regla de prioridad «siempre» (3) o más vuelve homebrew la ficha (MJ págs. 26, 30, 52 y 55: el ex paladín, el
  * ex monje…); las demás («casi siempre», «tendencia a») se avisan. Los prerrequisitos, la deidad y una preferencia
- * «Siempre …» o «Nunca …» cuentan como «siempre» aunque la clase no traiga esa prioridad.
+ * de prioridad 3 («Siempre …» o «Nunca …») cuentan como «siempre» aunque la clase no traiga esa prioridad. La API
+ * aplica la misma regla (`utils/alineamiento_clase.py`) para saber qué clases quedan ex.
  */
 
-/** La prioridad desde la que una regla de alineamiento no se puede saltar sin volver homebrew la ficha («siempre»). */
-export const PRIORIDAD_ALINEAMIENTO_ESTRICTA = 3;
+export { PRIORIDAD_ALINEAMIENTO_ESTRICTA };
 
 export interface EvaluacionAlineamientoClase {
     /** Lo que no cumple, en frases («Requiere legal», «Prohíbe bueno», «Debe estar a un paso del alineamiento de…»). */
@@ -76,7 +77,7 @@ export function evaluarAlineamientoClase(clase: Clase | null | undefined, entrad
             incumple.push(`Requiere ${basico.ley === 0 && basico.moral === 0 ? 'neutral auténtico' : `${textoEje('ley', basico.ley)} ${textoEje('moral', basico.moral)}`}`);
     }
     EJES.forEach(([campo, eje]) => {
-        const regla = reglaDePreferenciaAlineamiento(`${(alineamiento as any)?.[campo]?.Nombre ?? ''}`, eje);
+        const regla = reglaDePreferenciaAlineamiento(alineamiento?.[campo]);
         if (!regla)
             return;
         restringe = true;

@@ -137,12 +137,8 @@ import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibili
 import { esRazaMutada } from 'src/app/services/utils/raza-mutacion';
 import { avisoRazaConClase } from 'src/app/services/utils/clases-de-monstruo';
 import { BasesRazaMutada, EstadoBaseRazaMutada, RequisitoDelPersonajeMutacion } from 'src/app/interfaces/razas-api';
-import {
-    distanciaEntreAlineamientos,
-    extraerEjesAlineamientoDesdeContrato,
-    getVectorDesdeNombreBasico,
-    nombreBasicoDesdeVector,
-} from 'src/app/services/utils/alineamiento-contrato';
+import { distanciaEntreAlineamientos, getVectorDesdeNombreBasico } from 'src/app/services/utils/alineamiento-contrato';
+import { EvaluacionAlineamientoRaza, evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { CatalogoNombreIdDto, PersonajeContextoCreacionCampanaDto, PersonajeContextoIdsDto } from 'src/app/interfaces/personajes-api';
 import { CampaignCreationPolicy } from 'src/app/interfaces/campaign-management';
 import Swal from 'sweetalert2';
@@ -210,12 +206,6 @@ interface ConflictoDuroAlineamiento {
     elegido: string;
     requerido: string;
     prioridad?: number;
-}
-
-interface EvaluacionConflictoRaza {
-    severidad: 'soft' | 'hard';
-    requerido: string;
-    prioridad: number;
 }
 
 interface EvaluacionInconsistenciasBasicos {
@@ -2238,93 +2228,6 @@ export class NuevoPersonajeComponent {
         return getVectorDesdeNombreBasico(nombre);
     }
 
-    private getSeveridadPreferenciaTexto(valor: string): 'none' | 'soft' | 'hard' {
-        const normalizado = normalizarTexto(valor ?? '');
-        if (normalizado.includes('casi siempre'))
-            return 'soft';
-        if (normalizado.includes('siempre'))
-            return 'hard';
-        return 'none';
-    }
-
-    private getSeveridadGlobalRaza(): 'none' | 'soft' | 'hard' {
-        const prioridadNombre = `${this.razaSeleccionada?.Alineamiento?.Prioridad?.Nombre ?? ''}`;
-        const desdeNombre = this.getSeveridadPreferenciaTexto(prioridadNombre);
-        if (desdeNombre !== 'none')
-            return desdeNombre;
-
-        const prioridadId = Number(this.razaSeleccionada?.Alineamiento?.Prioridad?.Id_prioridad ?? 0);
-        if (prioridadId === 3)
-            return 'hard';
-        if (prioridadId === 2)
-            return 'soft';
-        return 'none';
-    }
-
-    private getSeveridadEjeRaza(alineamiento: any, eje: 'ley' | 'moral'): 'none' | 'soft' | 'hard' {
-        const textoEje = eje === 'ley'
-            ? `${alineamiento?.Ley?.Nombre ?? ''}`
-            : `${alineamiento?.Moral?.Nombre ?? ''}`;
-        const desdeEje = this.getSeveridadPreferenciaTexto(textoEje);
-        if (desdeEje !== 'none')
-            return desdeEje;
-
-        const textoBasico = `${alineamiento?.Basico?.Nombre ?? ''}`;
-        const desdeBasico = this.getSeveridadPreferenciaTexto(textoBasico);
-        if (desdeBasico !== 'none')
-            return desdeBasico;
-
-        return 'none';
-    }
-
-    private getEtiquetaExigenciaContrato(alineamiento: any): string {
-        const ejes = extraerEjesAlineamientoDesdeContrato(alineamiento);
-        if (ejes.ley !== null && ejes.moral !== null) {
-            return nombreBasicoDesdeVector(ejes.ley, ejes.moral);
-        }
-        if (ejes.ley !== null) {
-            const leyNombre = `${alineamiento?.Ley?.Nombre ?? ''}`.trim();
-            if (leyNombre.length > 0)
-                return leyNombre;
-            return ejes.ley > 0 ? 'Legal' : ejes.ley < 0 ? 'Caotico' : 'Neutral';
-        }
-        if (ejes.moral !== null) {
-            const moralNombre = `${alineamiento?.Moral?.Nombre ?? ''}`.trim();
-            if (moralNombre.length > 0)
-                return moralNombre;
-            return ejes.moral > 0 ? 'Bueno' : ejes.moral < 0 ? 'Maligno' : 'Neutral';
-        }
-
-        const basico = `${alineamiento?.Basico?.Nombre ?? ''}`.trim();
-        if (basico.length > 0) {
-            return basico;
-        }
-        return 'No aplica';
-    }
-
-    private distanciaAlineamientoPorEjes(a: string, ejes: { ley: number | null; moral: number | null; }): number | null {
-        const elegido = this.getVectorAlineamiento(a);
-        if (!elegido) {
-            return null;
-        }
-
-        let distancia = 0;
-        let ejesDefinidos = 0;
-        if (ejes.ley !== null) {
-            distancia += Math.abs(elegido.ley - ejes.ley);
-            ejesDefinidos += 1;
-        }
-        if (ejes.moral !== null) {
-            distancia += Math.abs(elegido.moral - ejes.moral);
-            ejesDefinidos += 1;
-        }
-
-        if (ejesDefinidos < 1) {
-            return null;
-        }
-        return distancia;
-    }
-
     private distanciaAlineamiento(a: string, b: string): number | null {
         const a1 = this.getVectorAlineamiento(a);
         const b1 = this.getVectorAlineamiento(b);
@@ -2334,53 +2237,9 @@ export class NuevoPersonajeComponent {
         return distanciaEntreAlineamientos(a1, b1);
     }
 
-    private getEvaluacionConflictoRaza(): EvaluacionConflictoRaza | null {
-        const alineamientoRaza = this.razaSeleccionada?.Alineamiento;
-        const elegido = this.getVectorAlineamiento(this.Personaje.Alineamiento);
-        if (!alineamientoRaza || !elegido) {
-            return null;
-        }
-
-        const ejes = extraerEjesAlineamientoDesdeContrato(alineamientoRaza);
-        let hayDiferencia = false;
-        let hayConflictoDuro = false;
-        let hayAdvertencia = false;
-
-        if (ejes.ley !== null && elegido.ley !== ejes.ley) {
-            hayDiferencia = true;
-            const severidadLey = this.getSeveridadEjeRaza(alineamientoRaza, 'ley');
-            hayConflictoDuro = hayConflictoDuro || severidadLey === 'hard';
-            hayAdvertencia = hayAdvertencia || severidadLey === 'soft';
-        }
-
-        if (ejes.moral !== null && elegido.moral !== ejes.moral) {
-            hayDiferencia = true;
-            const severidadMoral = this.getSeveridadEjeRaza(alineamientoRaza, 'moral');
-            hayConflictoDuro = hayConflictoDuro || severidadMoral === 'hard';
-            hayAdvertencia = hayAdvertencia || severidadMoral === 'soft';
-        }
-
-        if (!hayDiferencia) {
-            return null;
-        }
-
-        let severidad: 'none' | 'soft' | 'hard' = 'none';
-        if (hayConflictoDuro) {
-            severidad = 'hard';
-        } else if (hayAdvertencia) {
-            severidad = 'soft';
-        } else {
-            severidad = this.getSeveridadGlobalRaza();
-        }
-
-        if (severidad === 'none')
-            return null;
-
-        return {
-            severidad,
-            requerido: this.getEtiquetaExigenciaContrato(alineamientoRaza),
-            prioridad: Number(this.razaSeleccionada?.Alineamiento?.Prioridad?.Id_prioridad ?? 0),
-        };
+    /** El alineamiento de la raza contra el elegido, con la regla común (`services/utils/alineamiento-raza.ts`). */
+    private getEvaluacionConflictoRaza(): EvaluacionAlineamientoRaza | null {
+        return evaluarAlineamientoRaza(this.razaSeleccionada?.Alineamiento, this.Personaje.Alineamiento);
     }
 
     private getConflictoDuroRaza(): ConflictoDuroAlineamiento | null {
