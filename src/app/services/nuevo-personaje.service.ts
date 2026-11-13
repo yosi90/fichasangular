@@ -50,7 +50,7 @@ import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
-import { HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
+import { ClaseConNivel, HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
 import { ClaveHabilidad, claveDeHabilidad, claveHabilidad, clavesDeReferenciaGuardada } from './utils/habilidad-clave';
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
@@ -1402,7 +1402,7 @@ export class NuevoPersonajeService {
 
     getContextoRequisitosPlantillas(): {
         nivelesClase: number;
-        clasesConNivel: Array<{ id: number | null; nombre: string; nivel: number; }>;
+        clasesConNivel: ClaseConNivel[];
         nivelPoderPsionicoMaximo: number;
         nivelLanzador: number;
         dotes: ClaveEntidadPrerrequisito[];
@@ -4052,7 +4052,7 @@ export class NuevoPersonajeService {
      * que tenía al tomar ese nivel (`contextoAlNivel`: la corrección de la ficha, MJ pág. 87).
      */
     /** Sus clases con su nivel (el id, del catálogo por su nombre): para `nivel_de_clase` de las dotes y las plantillas. */
-    private nivelesDeClaseParaPrerrequisitos(): Array<{ id: number | null; nombre: string; nivel: number; }> {
+    private nivelesDeClaseParaPrerrequisitos(): ClaseConNivel[] {
         return (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
             const nombre = `${clase?.Nombre ?? ''}`.trim();
             const idClase = this.catalogoClases.find((item) =>

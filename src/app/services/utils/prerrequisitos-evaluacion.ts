@@ -246,6 +246,39 @@ export function compararSubtipo(
     return { evaluable: true, cumple: prohibido ? !tiene : tiene, razonUnknown };
 }
 
+/** Una clase del personaje con su nivel, para `nivel_de_clase` (el id, del catálogo por su nombre; `null` si no está). */
+export interface ClaseConNivel {
+    id: number | null;
+    nombre: string;
+    nivel: number;
+}
+
+/**
+ * `nivel_de_clase` (`{ Id_clase, Clase, Nivel }`; dotes y plantillas: el liche seco, caminante del yermo 10): si tiene esa
+ * clase (por su id o su nombre) a ese nivel o más. Sin el `razonUnknown`: cada evaluador pone el suyo.
+ */
+export function compararNivelDeClase(
+    pedido: Record<string, any>,
+    nivelesClase: ReadonlyArray<ClaseConNivel>,
+): Omit<ComparacionPrerrequisito, 'razonUnknown'> {
+    const idClase = ['Id_clase', 'id_clase', 'IdClase', 'idClase']
+        .map((clave) => toNumber(pedido?.[clave]))
+        .find((valor) => valor > 0) ?? 0;
+    const nombreNorm = normalizarTexto(['Clase', 'clase', 'Nombre', 'nombre']
+        .map((clave) => `${pedido?.[clave] ?? ''}`.trim())
+        .find((texto) => texto.length > 0) ?? '');
+    // La primera clave que trae, aunque venga vacía (como el `pick` de `dote-elegibilidad`).
+    const claveNivel = ['Nivel', 'nivel', 'Cantidad', 'cantidad'].find((clave) => Object.prototype.hasOwnProperty.call(pedido ?? {}, clave));
+    const nivel = toNumber(claveNivel ? pedido[claveNivel] : undefined);
+    const evaluable = (idClase > 0 || nombreNorm.length > 0) && nivel > 0;
+    const cumple = evaluable && (nivelesClase ?? []).some((clase) => {
+        const coincideClase = (idClase > 0 && toNumber(clase.id) === idClase)
+            || (nombreNorm.length > 0 && normalizarTexto(clase.nombre) === nombreNorm);
+        return coincideClase && toNumber(clase.nivel) >= nivel;
+    });
+    return { evaluable, cumple };
+}
+
 /**
  * Una habilidad del personaje para `rangos_habilidad` (clases) y `habilidad` (dotes): su hueco (`id`: Saber 3), sus rangos,
  * la especialidad elegida (`idExtra`: los planos) y las que admite su hueco (`idsExtras`: `especialidadesDelHueco`), de

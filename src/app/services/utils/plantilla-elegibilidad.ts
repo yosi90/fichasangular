@@ -12,8 +12,7 @@ import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion'
 import { leerComodin } from './comodin';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { MotivosPrerrequisitos, compararActitud, compararSubtipo, compararTamano } from './prerrequisitos-evaluacion';
-import { compararNivelDeClase } from './dote-elegibilidad';
+import { ClaseConNivel, MotivosPrerrequisitos, compararActitud, compararNivelDeClase, compararSubtipo, compararTamano } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -51,7 +50,7 @@ export interface PlantillaEvaluacionContexto {
     /** Los subtipos de la raza (y su raza base) y de las plantillas ya elegidas, para `subtipo` y `subtipo_prohibido`. */
     subtipos?: ClaveEntidadPrerrequisito[];
     /** Sus clases con su nivel, para `nivel_de_clase` (el liche seco: caminante del yermo 10). */
-    clasesConNivel?: Array<{ id: number | null; nombre: string; nivel: number; }>;
+    clasesConNivel?: ClaseConNivel[];
     /** El nivel de poder psiónico más alto que manifiesta, para `lanzar_poder_psionico_nivel` (el erudito espectral: 6). */
     nivelPoderPsionicoMaximo?: number;
 }

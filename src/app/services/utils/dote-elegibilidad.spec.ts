@@ -90,6 +90,19 @@ describe('dote-elegibilidad', () => {
         expect(resultado.estado).toBe('eligible');
     });
 
+    it('nivel_de_clase: la clase por su id o su nombre, a ese nivel o más (`compararNivelDeClase`, común con las plantillas)', () => {
+        const evaluar = (pedido: Record<string, any>, nivelesClase: DoteEvaluacionContexto['nivelesClase']) =>
+            evaluarElegibilidadDote({
+                dote: crearDoteBase({ Prerrequisitos: { nivel_de_clase: [{ ...pedido, Opcional: 0 }] } }),
+                contexto: crearContextoBase({ nivelesClase }),
+            }).estado;
+
+        expect(evaluar({ Id_clase: 7, Clase: 'Guerrero', Nivel: 4 }, [{ id: 7, nombre: 'Guerrero', nivel: 4 }])).toBe('eligible');
+        expect(evaluar({ Id_clase: 0, Clase: 'Guerrero', Nivel: 4 }, [{ id: null, nombre: 'guerrero', nivel: 5 }])).toBe('eligible');
+        expect(evaluar({ Id_clase: 7, Clase: 'Guerrero', Nivel: 4 }, [{ id: 7, nombre: 'Guerrero', nivel: 3 }])).toBe('blocked_failed');
+        expect(evaluar({ Id_clase: 7, Clase: 'Guerrero', Nivel: 0 }, [{ id: 7, nombre: 'Guerrero', nivel: 3 }])).toBe('blocked_unknown');
+    });
+
     it('habilidad con especialidad: cuenta la especialidad en cualquier hueco de su familia, no el hueco', () => {
         const saber = [51, 59, 60];
         const dote = crearDoteBase({

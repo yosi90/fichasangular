@@ -9,7 +9,7 @@ import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento }
 import { normalizarTexto, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { ClaseConNivel, EvaluacionPrerrequisito, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararNivelDeClase, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -25,7 +25,7 @@ export interface DoteEvaluacionContexto {
         Carisma: number;
     };
     ataqueBase: number;
-    nivelesClase: Array<{ id: number | null; nombre: string; nivel: number; }>;
+    nivelesClase: ClaseConNivel[];
     dotes: Array<{ id: number | null; nombre: string; idExtra: number; extra: string; }>;
     claseas?: Array<{ id: number | null; nombre: string; idExtra: number | null; extra: string; }>;
     /** Los raciales del personaje (los de su raza), para `aptitud_especial`. */
@@ -222,26 +222,6 @@ function buildEvaluacionIdioma(entry: Record<string, any>, ctx: DoteEvaluacionCo
 
 function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacionContexto, pedidos: Record<string, any>[]): EvaluacionItem {
     return { grupoOpcional: parseOpcional(entry), ...compararRangosHabilidad(entry, ctx.habilidades, pedidos) };
-}
-
-/**
- * `nivel_de_clase` (`{ Id_clase, Clase, Nivel }`): si tiene esa clase (por su id o su nombre) a ese nivel o más. Lo usan
- * las dotes y las plantillas (el liche seco: caminante del yermo 10; el erudito espectral: psiónico).
- */
-export function compararNivelDeClase(
-    entry: Record<string, any>,
-    nivelesClase: ReadonlyArray<{ id: number | null; nombre: string; nivel: number; }>,
-): { evaluable: boolean; cumple: boolean; } {
-    const idClase = parseId(entry, ['Id_clase', 'id_clase', 'IdClase', 'idClase']);
-    const nombreNorm = normalizarTexto(parseText(entry, ['Clase', 'clase', 'Nombre', 'nombre']));
-    const nivel = toNumber(pick(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad']));
-    const evaluable = (idClase > 0 || nombreNorm.length > 0) && nivel > 0;
-    const cumple = evaluable && (nivelesClase ?? []).some((clase) => {
-        const coincideClase = (idClase > 0 && toNumber(clase.id) === idClase)
-            || (nombreNorm.length > 0 && normalizarTexto(clase.nombre) === nombreNorm);
-        return coincideClase && toNumber(clase.nivel) >= nivel;
-    });
-    return { evaluable, cumple };
 }
 
 function buildEvaluacionNivelClase(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
