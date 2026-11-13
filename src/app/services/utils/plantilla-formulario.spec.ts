@@ -45,7 +45,8 @@ describe('plantilla-formulario', () => {
         const listas = {
             ...listasPlantillaVacias(),
             raciales: [{ uid: 'a', id: 70, nombre: 'Olfato', dg: 0 }],
-            dotes: [{ uid: 'b', id: 30, nombre: 'Soltura', dg: 3, id_extra: -1 }, { uid: 'c', id: 31, nombre: 'Otra', dg: 1, id_extra: 5 }],
+            dotes: [{ uid: 'b', id: 30, nombre: 'Soltura', dg: 3, id_extra: -1, solo_si_cumple: true, adicional: false },
+                { uid: 'c', id: 31, nombre: 'Otra', dg: 1, id_extra: 5, solo_si_cumple: false, adicional: true }],
             habilidades: [{ uid: 'd', id: 12, nombre: 'Avistar', rangos: 4, id_extra: -1, varios: '' }],
             sortilegas: [{ uid: 'e', id: 40, nombre: 'Luz', dg: 1, nivel_lanzador: 5, usos_diarios: ' 3/día ' }],
             subtipos: [{ uid: 'f', id: 9, nombre: 'B' }, { uid: 'g', id: 3, nombre: 'A' }, { uid: 'h', id: 9, nombre: 'B' }],
@@ -76,7 +77,9 @@ describe('plantilla-formulario', () => {
 
         expect(cuerpo.raciales).toEqual([{ id_racial: 70, dg: 1 }]);
         expect(cuerpo.ataquesEspeciales).toEqual([]);
-        expect(cuerpo.dotes).toEqual([{ id_dote: 30, dg: 3 }, { id_dote: 31, id_extra: 5, dg: 1 }]);
+        // Con sus dos marcas: la condicional (MM1, pág. 258) y la adicional (MM1, pág. 178).
+        expect(cuerpo.dotes).toEqual([{ id_dote: 30, dg: 3, solo_si_cumple: true, adicional: false },
+            { id_dote: 31, id_extra: 5, dg: 1, solo_si_cumple: false, adicional: true }]);
         expect(cuerpo.habilidades).toEqual([{ id_habilidad: 12, rangos: 4 }]);
         expect(cuerpo.sortilegas).toEqual([{ id_conjuro: 40, nivel_lanzador: 5, usos_diarios: '3/día', dg: 1 }]);
         expect(cuerpo.subtipos).toEqual([3, 9]);
@@ -119,6 +122,8 @@ describe('plantilla-formulario', () => {
             fila('subtipo_prohibido', { id: 14 }),
             fila('nivel_lanzador', { valor: 11 }),
             fila('dote', { id: 99 }),
+            fila('nivel_de_clase', { id: 22, valor: 1, opcional: 1 }),
+            fila('lanzar_poder_psionico_nivel', { valor: 6 }),
             fila('caracteristica', { id: 4, valor: 3 }),
             fila('alineamiento_requerido', { id: 2 }),
             fila('actitud_prohibido', { id: 6 }),
@@ -133,6 +138,9 @@ describe('plantilla-formulario', () => {
         expect(prerrequisitos.subtipo_prohibido).toEqual([{ id_subtipo: 14, opcional: 0 }]);
         expect(prerrequisitos.nivel_lanzador).toEqual([{ nivel: 11, opcional: 0 }]);
         expect(prerrequisitos.dote).toEqual([{ id_dote: 99, opcional: 0 }]);
+        // El erudito espectral: un psiónico que manifieste poderes de 6.º nivel (El psiónico completo, pág. 138).
+        expect(prerrequisitos.nivel_de_clase).toEqual([{ id_clase: 22, nivel: 1, opcional: 1 }]);
+        expect(prerrequisitos.lanzar_poder_psionico_nivel).toEqual([{ nivel: 6, opcional: 0 }]);
         expect(prerrequisitos.caracteristica).toEqual([{ id_caracteristica: 4, cantidad: 3, opcional: 0 }]);
         expect(prerrequisitos.alineamiento_requerido).toEqual([{ id_alineamiento: 2, opcional: 0 }]);
         expect(prerrequisitos.actitud_prohibido).toEqual([{ id_actitud: 6, opcional: 0 }]);
@@ -152,7 +160,7 @@ describe('plantilla-formulario', () => {
         }));
         expect(listas.raciales.map((f) => [f.id, f.dg])).toEqual([[70, 1]]);
         expect(listas.ataquesEspeciales.map((f) => [f.id, f.dg])).toEqual([[71, 2]]);
-        expect(listas.dotes.map((f) => [f.id, f.dg, f.id_extra])).toEqual([[30, 3, 5]]);
+        expect(listas.dotes.map((f) => [f.id, f.dg, f.id_extra, f.solo_si_cumple, f.adicional])).toEqual([[30, 3, 5, false, false]]);
         expect(listas.habilidades.map((f) => [f.id, f.rangos, f.id_extra, f.varios])).toEqual([[12, 4, -1, 'Con el olfato']]);
         expect(listas.sortilegas.map((f) => [f.id, f.nivel_lanzador, f.usos_diarios])).toEqual([[40, 5, '1/día']]);
         expect(listas.subtipos.map((f) => f.id)).toEqual([9]);

@@ -5,7 +5,8 @@
  * `PATCH`, en los manuales) devolvió el mismo GET (la comprobación del backend, en transacciones deshechas). Las pruebas de
  * cada formulario comprueban que, cargado con el GET, manda ese mismo cuerpo.
  *
- * Generado desde la comprobación del backend; no se edita a mano.
+ * Generado desde la comprobación del backend; no se edita a mano. El 2026-11-13, a los subtipos se les puso desde `rol_dev`
+ * su marca `Al_cambiar_tipo`/`al_cambiar_tipo` (el agrandado), lo único que cambió en ellos.
  */
 import type { IdaYVuelta } from './cuerpo-de-catalogo';
 
@@ -11194,7 +11195,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -11268,7 +11270,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 1,
    "nombre": "Incorporal"
@@ -11334,7 +11337,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -11479,7 +11483,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 2,
    "nombre": "Arconte"
@@ -11533,7 +11538,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -11615,7 +11621,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 3,
    "nombre": "Sangre de dragón"
@@ -11667,7 +11674,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -11741,7 +11749,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 8,
    "nombre": "Incarnum"
@@ -11795,7 +11804,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -11876,7 +11886,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 40,
    "nombre": "Acuático"
@@ -11928,7 +11939,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": true
     }
    },
    "get": {
@@ -12002,7 +12014,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": true
    },
    "id": 41,
    "nombre": "Agrandado"
@@ -12056,7 +12069,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -12137,7 +12151,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 42,
    "nombre": "Agua"
@@ -12189,7 +12204,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -12263,7 +12279,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 43,
    "nombre": "Aire"
@@ -12322,7 +12339,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -12433,7 +12451,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 44,
    "nombre": "Ángel"
@@ -12491,7 +12510,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -12596,7 +12616,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 45,
    "nombre": "Baatezu"
@@ -12650,7 +12671,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -12731,7 +12753,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 46,
    "nombre": "Bueno"
@@ -12785,7 +12808,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -12866,7 +12890,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 47,
    "nombre": "Cambiaformas"
@@ -12920,7 +12945,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -13001,7 +13027,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 48,
    "nombre": "Caótico"
@@ -13058,7 +13085,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -13157,7 +13185,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 49,
    "nombre": "Eladrín"
@@ -13209,7 +13238,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -13283,7 +13313,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 50,
    "nombre": "Extraplanario"
@@ -13338,7 +13369,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -13425,7 +13457,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 51,
    "nombre": "Frío"
@@ -13480,7 +13513,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -13567,7 +13601,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 52,
    "nombre": "Fuego"
@@ -13626,7 +13661,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -13737,7 +13773,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 53,
    "nombre": "Guardinal"
@@ -13791,7 +13828,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -13872,7 +13910,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 54,
    "nombre": "Legal"
@@ -13926,7 +13965,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14007,7 +14047,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 55,
    "nombre": "Maligno"
@@ -14059,7 +14100,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14133,7 +14175,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 56,
    "nombre": "Nativo"
@@ -14187,7 +14230,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14268,7 +14312,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 57,
    "nombre": "Plaga"
@@ -14320,7 +14365,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14394,7 +14440,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 58,
    "nombre": "Reptiliano"
@@ -14451,7 +14498,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14550,7 +14598,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 59,
    "nombre": "Tanar'ri"
@@ -14602,7 +14651,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14676,7 +14726,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 60,
    "nombre": "Tierra"
@@ -14730,7 +14781,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14812,7 +14864,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 61,
    "nombre": "Trasgoide"
@@ -14864,7 +14917,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -14938,7 +14992,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 62,
    "nombre": "Enano"
@@ -14990,7 +15045,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15064,7 +15120,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 63,
    "nombre": "Elfo"
@@ -15116,7 +15173,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15190,7 +15248,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 64,
    "nombre": "Gnoll"
@@ -15242,7 +15301,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15316,7 +15376,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 65,
    "nombre": "Gnomo"
@@ -15368,7 +15429,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15442,7 +15504,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 66,
    "nombre": "Mediano"
@@ -15494,7 +15557,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15568,7 +15632,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 67,
    "nombre": "Humano"
@@ -15620,7 +15685,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15694,7 +15760,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 68,
    "nombre": "Orco"
@@ -15746,7 +15813,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15820,7 +15888,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 69,
    "nombre": "Psiónico"
@@ -15874,7 +15943,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -15955,7 +16025,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 70,
    "nombre": "Constructo viviente"
@@ -16007,7 +16078,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -16081,7 +16153,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 72,
    "nombre": "Félido"
@@ -16133,7 +16206,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -16207,7 +16281,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 85,
    "nombre": "Jacquar"
@@ -16259,7 +16334,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -16333,7 +16409,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 86,
    "nombre": "Vrykolaka"
@@ -16385,7 +16462,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
      "tesoro": null,
      "trepar": 0,
      "volar": 0,
-     "voluntad": 0
+     "voluntad": 0,
+     "al_cambiar_tipo": false
     }
    },
    "get": {
@@ -16459,7 +16537,8 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
     "Reflejos": 0,
     "Sortilegas": [],
     "Tesoro": null,
-    "Voluntad": 0
+    "Voluntad": 0,
+    "Al_cambiar_tipo": false
    },
    "id": 87,
    "nombre": "Etheri"

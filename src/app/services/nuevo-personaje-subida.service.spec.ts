@@ -8,7 +8,7 @@ import { Plantilla } from '../interfaces/plantilla';
 import { PersonajeCreateRequestDto } from '../interfaces/personajes-api';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
-import { claveHabilidad } from './utils/habilidad-clave';
+import { claveDeHabilidad, claveHabilidad } from './utils/habilidad-clave';
 import { toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
@@ -501,5 +501,167 @@ describe('Adquirir una plantilla con el motor de la creación (sesiones, fase 7)
         // Sin DG nuevos: ni incremento ni dote.
         expect(motor.registrarAumentosPendientesPorProgresion('Plantilla').length).toBe(0);
         expect(motor.registrarDotesPendientesPorProgresion('Plantilla').length).toBe(0);
+    });
+});
+
+describe('Las dotes, los subtipos y los requisitos de las plantillas (2026-11-13, dictamen del máster de Rol)', () => {
+    const HUMANO = crearRaza('Humano');
+    const doteDePlantilla = (id: number, nombre: string, contexto: Record<string, unknown> = {}) =>
+        ({ Dote: { ...dote(id, nombre) }, Contexto: { Entidad: 'plantilla', Id_plantilla: 0, Id_extra: 0, Extra: '', Dg: 0, ...contexto } });
+    // Esquiva pide Des 13 (MJ, pág. 93); las demás del vampiro, nada.
+    const ESQUIVA = { ...dote(60, 'Esquiva'), Prerrequisitos: { caracteristica: [{ Id_caracteristica: 2, Caracteristica: 'Destreza', Cantidad: 13, Opcional: 0 }] } };
+    const ALERTA = dote(61, 'Alerta');
+    const RASTREAR = dote(62, 'Rastrear');
+    const SOLTURA = dote(63, 'Soltura con un arma');
+    const VOLUNTAD = dote(64, 'Voluntad de hierro');
+    const CON_DOTES = [...DOTES, ESQUIVA, ALERTA, RASTREAR, SOLTURA, VOLUNTAD];
+    const conDotes = (svc: NuevoPersonajeService) => { svc.setCatalogoDotes(CON_DOTES); return svc; };
+
+    const BASE = plantillaApiDeEjemplo({
+        Dotes: [], Habilidades: [], Sortilegas: [], Raciales: [], Ataques_especiales: [], Subtipos: [], Modificacion_tamano: null,
+        Licantronia_dg: null, Nacimiento: false, Ajuste_nivel: 0,
+        Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+        Prerrequisitos: { ...plantillaApiDeEjemplo().Prerrequisitos, caracteristica: [], criaturas_compatibles: [], tamano_minimo: [], subtipo_prohibido: [] },
+    }) as Plantilla;
+    // El vampiro: Des +4 y sus dotes, «siempre y cuando cumpla los prerrequisitos y no las posea de antemano» (MM1, pág. 258).
+    const VAMPIRO = { ...BASE, Id: 8, Nombre: 'Vampiro',
+        Modificadores_caracteristicas: { ...BASE.Modificadores_caracteristicas, Destreza: 4 },
+        Dotes: [doteDePlantilla(60, 'Esquiva', { Solo_si_cumple: true, Adicional: true }), doteDePlantilla(61, 'Alerta', { Solo_si_cumple: true, Adicional: true }),
+            doteDePlantilla(50, 'Dote 50', { Solo_si_cumple: true, Adicional: true })] } as unknown as Plantilla;
+    // El licántropo lobo infectado: 2 DG de animal; Soltura con un arma (mordisco) llena su hueco; Rastrear (B) y la
+    // Voluntad de hierro, adicionales (MM1, págs. 178 y 275).
+    const LOBO = { ...BASE, Id: 9, Nombre: 'Licántropo (lobo) [Infectado]', Ajuste_nivel: 2,
+        Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 0, Tipo_criatura: { Id: 2, Nombre: 'Animal', Puntos_habilidad: 2 } },
+        Dotes: [doteDePlantilla(63, 'Soltura con un arma', { Adicional: false }), doteDePlantilla(62, 'Rastrear', { Adicional: true }),
+            doteDePlantilla(64, 'Voluntad de hierro', { Adicional: true })] } as unknown as Plantilla;
+    const dotes = (svc: NuevoPersonajeService) => (svc.PersonajeCreacion.DotesContextuales ?? []).map((d) => d.Dote.Nombre);
+
+    it('el vampiro da Esquiva solo si con su +4 llega a Des 13, y no repite una dote que ya tiene', () => {
+        const torpe = conDotes(crear(HUMANO, { Fuerza: 15, Destreza: 8 }));
+        aplicarNivel(torpe, GUERRERO, 'Fuerza');
+        expect(dotes(torpe)).toContain('Dote 50');
+        expect(torpe.agregarPlantillaSeleccion(VAMPIRO)).toBeTrue();
+        expect(torpe.PersonajeCreacion.Destreza).toBe(12);
+        expect(dotes(torpe)).not.toContain('Esquiva');
+        expect(dotes(torpe)).toContain('Alerta');
+        expect(dotes(torpe).filter((n) => n === 'Dote 50').length).toBe(1);
+
+        const agil = conDotes(crear(HUMANO, { Fuerza: 15, Destreza: 9 }));
+        aplicarNivel(agil, GUERRERO, 'Fuerza');
+        expect(agil.agregarPlantillaSeleccion(VAMPIRO)).toBeTrue();
+        expect(agil.PersonajeCreacion.Destreza).toBe(13);
+        expect(dotes(agil)).toContain('Esquiva');
+    });
+
+    it('al adquirir el vampiro se evalúan con el personaje de ahora; las de un vampiro ya guardado no se vuelven a evaluar', () => {
+        const svc = conDotes(crear(HUMANO, { Fuerza: 15, Destreza: 9 }));
+        aplicarNivel(svc, GUERRERO, 'Fuerza');
+        const motor = conDotes(subir(guardar(svc), HUMANO));
+        expect(motor.agregarPlantillaSeleccion(VAMPIRO)).toBeTrue();
+        expect(dotes(motor)).toContain('Esquiva');
+
+        // Un vampiro guardado con Des 12 (sin Esquiva) que llega después a 13: la subida no se la da (decisión del máster).
+        const torpe = conDotes(crear(HUMANO, { Fuerza: 15, Destreza: 8 }));
+        expect(torpe.agregarPlantillaSeleccion(VAMPIRO)).toBeTrue();
+        aplicarNivel(torpe, GUERRERO, 'Fuerza');
+        const guardado = guardar(torpe);
+        expect(guardado.personaje.DotesContextuales.map((d) => d.Dote.Nombre)).not.toContain('Esquiva');
+        guardado.personaje.Destreza = 13;
+        const subida = conDotes(new NuevoPersonajeService());
+        catalogos(subida).setCatalogoDotes(CON_DOTES);
+        subida.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza: HUMANO, plantillas: [VAMPIRO] });
+        expect(dotes(subida)).not.toContain('Esquiva');
+    });
+
+    it('el humano guerrero 4 que se vuelve licántropo lobo no elige dote: Soltura con un arma llena el hueco del 6.º DG (MM1, pág. 178)', () => {
+        const svc = conDotes(crear(HUMANO, { Fuerza: 15 }));
+        [1, 2, 3, 4].forEach(() => aplicarNivel(svc, GUERRERO, 'Fuerza'));
+        const motor = conDotes(subir(guardar(svc), HUMANO));
+        expect(motor.agregarPlantillaSeleccion(LOBO)).toBeTrue();
+        expect(motor.registrarDotesPendientesPorProgresion('Plantilla').length).toBe(0);
+        expect(dotes(motor)).toEqual(jasmine.arrayContaining(['Soltura con un arma', 'Rastrear', 'Voluntad de hierro']));
+
+        // Si todas las del animal fueran adicionales, el hueco del 6.º DG se elige.
+        const todasAdicionales = { ...LOBO, Id: 10, Dotes: LOBO.Dotes.map((d) => ({ ...d, Contexto: { ...d.Contexto, Adicional: true } })) } as Plantilla;
+        const otro = conDotes(subir(guardar(svc), HUMANO));
+        expect(otro.agregarPlantillaSeleccion(todasAdicionales)).toBeTrue();
+        expect(otro.registrarDotesPendientesPorProgresion('Plantilla').length).toBe(1);
+    });
+
+    it('en la creación, el licántropo lobo guerrero 1 (3 DG) elige una dote y la del animal llena la otra', () => {
+        const svc = conDotes(crear(HUMANO, { Fuerza: 15 }));
+        expect(svc.agregarPlantillaSeleccion(LOBO)).toBeTrue();
+        const r = svc.aplicarSiguienteNivelClase(GUERRERO);
+        expect(r.aplicado).toBeTrue();
+        expect(svc.registrarDotesPendientesPorProgresion('Guerrero nivel 1').length).toBe(1);
+    });
+
+    it('el agrandado: lo gana la criatura a la que la plantilla cambia de verdad el tipo, por el dato del subtipo (MM1, pág. 291)', () => {
+        const ANIMAL: TipoCriatura = { ...TIPO, Id: 3, Nombre: 'Animal' } as TipoCriatura;
+        const BESTIA: TipoCriatura = { ...TIPO, Id: 4, Nombre: 'Bestia mágica' } as TipoCriatura;
+        const pareja = (comp: number, nuevo: number, comodin: string | null = null) =>
+            ({ Id_tipo_compatible: comp, Tipo_compatible: '', Id_tipo_nuevo: nuevo, Tipo_nuevo: '', Tipo_nuevo_comodin: comodin, Opcional: 1, Frase: '' });
+        // Como la criatura de las sombras: el animal pasa a bestia mágica; el humanoide conserva su tipo.
+        const SOMBRAS = { ...BASE, Id: 148, Nombre: 'Criatura de las sombras',
+            Prerrequisitos: { ...BASE.Prerrequisitos, criaturas_compatibles: [pareja(3, 4), pareja(1, 0, 'cualquiera')] },
+            Compatibilidad_tipos: [
+                { Id_tipo_comp: 3, Id_tipo_nuevo: 4, Tipo_comp: 'Animal', Tipo_nuevo: 'Bestia mágica', Tipo_nuevo_comodin: null, Opcional: 1 },
+                { Id_tipo_comp: 1, Id_tipo_nuevo: 0, Tipo_comp: 'Humanoide', Tipo_nuevo: 'Cualquiera', Tipo_nuevo_comodin: 'cualquiera', Opcional: 1 },
+            ] } as unknown as Plantilla;
+        const SUBTIPOS = [{ Id: 41, Nombre: 'Agrandado', Al_cambiar_tipo: true }, { Id: 50, Nombre: 'Extraplanario', Al_cambiar_tipo: false }] as any;
+        const subtipos = (svc: NuevoPersonajeService) => (svc.PersonajeCreacion.Subtipos ?? []).map((s) => s.Nombre);
+
+        const humano = crear(HUMANO, {});
+        humano.setCatalogoSubtipos(SUBTIPOS);
+        expect(humano.agregarPlantillaSeleccion(SOMBRAS)).toBeTrue();
+        expect(subtipos(humano)).not.toContain('Agrandado');
+
+        const lobo = { ...crearRaza('Lobo'), Tipo_criatura: ANIMAL } as Raza;
+        const animal = catalogos(new NuevoPersonajeService());
+        animal.setCatalogoTiposCriatura([TIPO, ANIMAL, BESTIA]);
+        animal.setCatalogoSubtipos(SUBTIPOS);
+        animal.seleccionarRaza(lobo);
+        expect(animal.agregarPlantillaSeleccion(SOMBRAS)).toBeTrue();
+        expect(animal.PersonajeCreacion.Tipo_criatura.Nombre).toBe('Bestia mágica');
+        expect(subtipos(animal)).toEqual(['Agrandado']);
+    });
+
+    it('los requisitos nuevos: un psiónico que manifieste poderes de 6.º nivel (el erudito espectral, El psiónico completo, pág. 138)', () => {
+        const svc = crear(HUMANO, { Fuerza: 15 });
+        aplicarNivel(svc, GUERRERO, 'Fuerza');
+        const ctx = svc.getContextoEvaluacionPlantillas(HUMANO, true);
+        expect(ctx.clasesConNivel).toEqual([{ id: 7, nombre: 'Guerrero', nivel: 1 }]);
+        expect(ctx.nivelPoderPsionicoMaximo).toBe(0);
+    });
+
+    it('Control de forma, de clase para el licántropo infectado en su nivel de clase y en los DG del animal, sin bonificador (MM1, pág. 303)', () => {
+        const CONTROL = { Id_habilidad: 90, Nombre: 'Control de forma', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] };
+        const contraida = {
+            Id: 900, Nombre: 'Licantropía contraída', Descripcion: '', Oficial: true, Opcional: 0, Dotes: [], Caracteristicas: [], Salvaciones: [],
+            Sortilegas: [], Ataques: [], Prerrequisitos_flags: {}, Prerrequisitos: {},
+            Habilidades: { Base: [], Custom: [{ Id_habilidad: 90, Habilidad: 'Control de forma', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Id_extra: -1, Extra: '', Rangos: 0, Se_considera_clasea: true }] },
+        };
+        const infectado = { ...LOBO, Raciales: [{ Racial: contraida, Dg: 0 }] } as unknown as Plantilla;
+        const nacido = { ...LOBO, Id: 11, Nombre: 'Licántropo (lobo) [Nacido]', Nacimiento: true } as unknown as Plantilla;
+        const clave = claveDeHabilidad(90, true);
+
+        const svc = conDotes(crear(HUMANO, { Fuerza: 15, Sabiduria: 12 }));
+        svc.setCatalogoHabilidadesCustom([CONTROL] as any);
+        expect(svc.agregarPlantillaSeleccion(infectado)).toBeTrue();
+        const control = svc.PersonajeCreacion.Habilidades.find((h) => h.Custom && h.Id === 90);
+        expect(control?.Clasea).toBeTrue();
+        expect(toInt(control?.Rangos_varios)).toBe(0);
+        expect(svc.iniciarDistribucionHabilidadesPorPlantillasDG([infectado])).toBeTrue();
+        expect(svc.esHabilidadClaseaEfectiva(clave)).toBeTrue();
+        expect(svc.obtenerCosteRangoHabilidad(clave)).toBe(1);
+        svc.cerrarDistribucionHabilidades();
+        svc.iniciarDistribucionHabilidadesPorClase(GUERRERO);
+        expect(svc.esHabilidadClaseaEfectiva(clave)).toBeTrue();
+
+        // El nacido no la tiene de clase («no necesita esta habilidad»).
+        const otro = conDotes(crear(HUMANO, { Fuerza: 15 }));
+        otro.setCatalogoHabilidadesCustom([CONTROL] as any);
+        expect(otro.agregarPlantillaSeleccion(nacido)).toBeTrue();
+        expect(otro.PersonajeCreacion.Habilidades.find((h) => h.Custom && h.Id === 90)?.Clasea ?? false).toBeFalse();
     });
 });

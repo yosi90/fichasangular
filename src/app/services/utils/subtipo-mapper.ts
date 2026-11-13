@@ -94,6 +94,7 @@ export function normalizeSubtipoResumen(raw: any): SubtipoResumen {
         Heredada: toBoolean(raw?.Heredada),
         Oficial: toBoolean(raw?.Oficial),
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
+        Al_cambiar_tipo: toBoolean(raw?.Al_cambiar_tipo),
     };
 }
 
@@ -124,6 +125,7 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
             Carisma: toNumber(raw?.Minimos_caracteristicas?.Carisma),
         },
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
+        Al_cambiar_tipo: toBoolean(raw?.Al_cambiar_tipo),
         Presa: toNumber(raw?.Presa),
         Fortaleza: toNumber(raw?.Fortaleza),
         Reflejos: toNumber(raw?.Reflejos),

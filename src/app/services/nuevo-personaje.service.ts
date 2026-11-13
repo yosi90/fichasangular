@@ -1243,6 +1243,18 @@ export class NuevoPersonajeService {
      */
     private habilidadesDeClasePorOrigen: Record<string, ClaveHabilidad[]> = {};
     private firmasDotesPlantillaAplicadas = new Set<string>();
+    /**
+     * Las dotes condicionales de las plantillas (`Contexto.Solo_si_cumple`) que esperan a evaluarse: se dan después de
+     * aplicar las características de todas las plantillas (MM1, pág. 293), si cumple sus prerrequisitos y no las tiene ya
+     * (el vampiro, MM1, pág. 258). Las llena `aplicarDotesPlantilla` en cada recálculo.
+     */
+    private dotesCondicionalesDePlantillas: Array<{ dote: Dote; origen: string; idExtra: number; extra: string; }> = [];
+    /**
+     * Las plantillas de una ficha ya guardada (la subida, la corrección): sus dotes condicionales se decidieron al
+     * aplicarlas y la ficha tiene las que recibió; no se vuelven a evaluar (decisión del máster de Rol del 2026-11-13: un
+     * vampiro que llega después a Des 13 no recibe Esquiva). La que se adquiere ahora sí se evalúa.
+     */
+    private plantillasConDotesDecididas = new Set<number>();
     private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
     private aumentosProgresionConcedidos = 0;
     private secuenciaAumentoPendiente = 1;
@@ -1390,6 +1402,8 @@ export class NuevoPersonajeService {
 
     getContextoRequisitosPlantillas(): {
         nivelesClase: number;
+        clasesConNivel: Array<{ id: number | null; nombre: string; nivel: number; }>;
+        nivelPoderPsionicoMaximo: number;
         nivelLanzador: number;
         dotes: ClaveEntidadPrerrequisito[];
         tamanoId: number | null;
@@ -1401,6 +1415,10 @@ export class NuevoPersonajeService {
             dgTotal: this.resolverDgTotalActual(),
             subtipos: this.identidadPrerrequisitosActual().subtipos,
             nivelesClase: Math.max(0, this.getNivelClasesActual()),
+            // `nivel_de_clase` (el liche seco: caminante del yermo 10) y `lanzar_poder_psionico_nivel` (el erudito
+            // espectral: poderes de 6.º nivel), como en las dotes.
+            clasesConNivel: this.nivelesDeClaseParaPrerrequisitos(),
+            nivelPoderPsionicoMaximo: this.resolverNivelPoderPsionicoMaximo(),
             nivelLanzador: Math.max(this.resolverNivelLanzadorMaximoPorTipo('arcano'), this.resolverNivelLanzadorMaximoPorTipo('divino')),
             dotes: clavesDeEntidades([
                 ...(this.personajeCreacion?.DotesContextuales ?? []).map((item) => item?.Dote),
@@ -1778,6 +1796,7 @@ export class NuevoPersonajeService {
         this.dgsCompaneroRepartidos = 0;
         this.habilidadesDeClasePorOrigen = {};
         this.firmasDotesPlantillaAplicadas.clear();
+        this.plantillasConDotesDecididas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
         this.nivelLanzamientoRacialAplicado = 0;
@@ -1933,6 +1952,9 @@ export class NuevoPersonajeService {
 
     setCatalogoSubtipos(subtipos: SubtipoResumen[]): void {
         this.catalogoSubtipos = [...(subtipos ?? [])];
+        // El subtipo que da cambiar de tipo (`Al_cambiar_tipo`) sale de este catálogo.
+        if ((this.estadoFlujo.plantillas.seleccionadas ?? []).length > 0)
+            this.recalcularTipoYSubtiposDerivados();
         this.recalcularNepExperienciaOro();
     }
 
@@ -3134,7 +3156,8 @@ export class NuevoPersonajeService {
 
     registrarDotesPendientesPorProgresion(origen: string): DotePendienteState[] {
         const hitosDisponibles = this.getHitosDotesProgresion();
-        const hitosNuevos = hitosDisponibles.slice(this.dotesProgresionConcedidas);
+        // Los que llenan las dotes de los DG de sus plantillas (el animal de un licántropo) no se eligen.
+        const hitosNuevos = hitosDisponibles.slice(this.dotesProgresionConcedidas + this.getHuecosDeDoteLlenosPorPlantillas());
         if (hitosNuevos.length < 1)
             return [];
 
@@ -4028,10 +4051,9 @@ export class NuevoPersonajeService {
      * Los prerrequisitos de una dote con lo que tiene el personaje; con `alNivel` (un índice de `Orden_niveles`), con lo
      * que tenía al tomar ese nivel (`contextoAlNivel`: la corrección de la ficha, MJ pág. 87).
      */
-    private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string, alNivel: number | null = null): DoteEvaluacionResultado {
-        const identidad = this.identidadPrerrequisitosActual();
-
-        const nivelesClase = (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
+    /** Sus clases con su nivel (el id, del catálogo por su nombre): para `nivel_de_clase` de las dotes y las plantillas. */
+    private nivelesDeClaseParaPrerrequisitos(): Array<{ id: number | null; nombre: string; nivel: number; }> {
+        return (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
             const nombre = `${clase?.Nombre ?? ''}`.trim();
             const idClase = this.catalogoClases.find((item) =>
                 normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)
@@ -4042,6 +4064,12 @@ export class NuevoPersonajeService {
                 nivel: Math.max(0, toNumber(clase?.Nivel)),
             };
         }).filter((item) => item.nombre.length > 0);
+    }
+
+    private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string, alNivel: number | null = null): DoteEvaluacionResultado {
+        const identidad = this.identidadPrerrequisitosActual();
+
+        const nivelesClase = this.nivelesDeClaseParaPrerrequisitos();
 
         const dotes = (this.personajeCreacion.DotesContextuales ?? [])
             .map((item) => ({
@@ -6236,7 +6264,8 @@ export class NuevoPersonajeService {
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
         this.aplicarVelocidadesDeProgresionRacial(progresion);
-        this.aplicarHabilidadesSiempreDeClase(nuevosRaciales);
+        // También las de los rasgos de sus plantillas (Control de forma del licántropo infectado, MM1, pág. 303).
+        this.aplicarHabilidadesSiempreDeClase([...nuevosRaciales, ...this.racialesDeSusPlantillas()]);
         this.aplicarHabilidadesDeRasgos(nuevosRaciales, bonosHabilidades);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
         this.aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios);
@@ -6274,6 +6303,9 @@ export class NuevoPersonajeService {
 
         this.personajeCreacion.CaracteristicasVarios = caracteristicasVarios;
         this.aplicarCaracteristicasFinalesDesdeBase();
+        // Las dotes condicionales de las plantillas, con las características ya finales (MM1, pág. 293: las dotes, al final).
+        if (this.aplicarDotesCondicionalesDePlantillas({ caracteristicasVarios, bonosHabilidades }))
+            this.aplicarCaracteristicasFinalesDesdeBase();
         // Los bonificadores raciales a una habilidad (de la raza y de sus rasgos) no se apilan: cuenta lo mayor.
         this.estadoFlujo.ventajas.bonosHabilidades = sinApilarRaciales(bonosHabilidades);
         this.aplicarBonosHabilidadEnPersonaje();
@@ -6642,6 +6674,7 @@ export class NuevoPersonajeService {
         const seleccionadas = this.estadoFlujo.plantillas.seleccionadas;
         const raza = this.razaSeleccionada;
         this.limpiarDotesAplicadasPorPlantillas();
+        this.dotesCondicionalesDePlantillas = [];
 
         this.personajeCreacion.Correr = toNumber(raza?.Correr);
         this.personajeCreacion.Nadar = toNumber(raza?.Nadar);
@@ -6877,7 +6910,12 @@ export class NuevoPersonajeService {
         });
     }
 
-    /** Las dotes de la plantilla pasan al personaje; sus modificadores los aplica después el recálculo, con las demás. */
+    /**
+     * Las dotes de la plantilla pasan al personaje; sus modificadores los aplica después el recálculo, con las demás. Las
+     * condicionales (`Contexto.Solo_si_cumple`) esperan a `aplicarDotesCondicionalesDePlantillas`, con las características
+     * de todas las plantillas ya aplicadas; las de una plantilla de la ficha (`plantillasConDotesDecididas`) ya las tiene
+     * la ficha si las recibió.
+     */
     private aplicarDotesPlantilla(plantilla: Plantilla, origen: string): void {
         (plantilla?.Dotes ?? []).forEach((entrada) => {
             const dote = entrada?.Dote;
@@ -6885,11 +6923,53 @@ export class NuevoPersonajeService {
             if (nombre.length < 1)
                 return;
 
-            const idExtra = toNumber((entrada?.Contexto as any)?.Id_extra);
-            const extra = `${(entrada?.Contexto as any)?.Extra ?? ''}`.trim() || 'No aplica';
+            const contexto = entrada?.Contexto as { Id_extra?: number; Extra?: string; Solo_si_cumple?: boolean; } | undefined;
+            const idExtra = toNumber(contexto?.Id_extra);
+            const extra = `${contexto?.Extra ?? ''}`.trim() || 'No aplica';
+            if (contexto?.Solo_si_cumple === true) {
+                if (!this.plantillasConDotesDecididas.has(toInt(plantilla?.Id)))
+                    this.dotesCondicionalesDePlantillas.push({ dote, origen, idExtra, extra });
+                return;
+            }
             this.agregarDoteAlPersonaje(dote, origen, idExtra, extra);
             this.registrarFirmaDotePlantilla(dote, origen, idExtra, extra);
         });
+    }
+
+    /**
+     * Las dotes condicionales de las plantillas («si cumple los prerrequisitos y no las tiene ya»: el vampiro, MM1, pág.
+     * 258; el alumno encapuchado, *Libris Mortis*, pág. 84; la criatura sin mente, MM3, pág. 45): con las características
+     * finales, cada una se da si no la tiene ya (la misma dote; sin extra, `-1` y `0` son lo mismo) y sus prerrequisitos no
+     * fallan (uno que la web no sabe comprobar no la quita). Sin dote de reemplazo y sin homebrew. Sus modificadores van a
+     * `destino`, como los de las demás; si alguna cambia una característica, se vuelven a calcular. `true` si da alguna.
+     */
+    private aplicarDotesCondicionalesDePlantillas(destino: DestinoModificadoresDote): boolean {
+        const pendientes = this.dotesCondicionalesDePlantillas;
+        this.dotesCondicionalesDePlantillas = [];
+        let alguna = false;
+        pendientes.forEach(({ dote: deLaPlantilla, origen, idExtra, extra }) => {
+            const dote = this.doteDelCatalogo(toNumber(deLaPlantilla?.Id)) ?? deLaPlantilla;
+            if (this.yaTieneLaDote(dote, idExtra))
+                return;
+            if (this.evaluarPrerrequisitosDote(dote, Math.max(0, idExtra), extra === 'No aplica' ? '' : extra).estado === 'blocked_failed')
+                return;
+            if (!this.agregarDoteAlPersonaje(dote, origen, idExtra, extra))
+                return;
+            this.registrarFirmaDotePlantilla(dote, origen, idExtra, extra);
+            this.aplicarModificadoresDote(dote, origen, idExtra, extra, destino);
+            alguna = true;
+        });
+        return alguna;
+    }
+
+    /** Si ya tiene la dote, con el mismo extra (sin extra, `-1` y `0` son lo mismo): por su id o, sin id, por su nombre. */
+    private yaTieneLaDote(dote: Dote, idExtra: number): boolean {
+        const id = toNumber(dote?.Id);
+        const nombre = normalizarTexto(`${dote?.Nombre ?? ''}`);
+        const extra = Math.max(0, toInt(idExtra));
+        return (this.personajeCreacion.DotesContextuales ?? []).some((entrada) =>
+            (id > 0 ? toNumber(entrada?.Dote?.Id) === id : normalizarTexto(`${entrada?.Dote?.Nombre ?? ''}`) === nombre)
+            && Math.max(0, toInt(entrada?.Contexto?.Id_extra)) === extra);
     }
 
     private limpiarDotesAplicadasPorPlantillas(): void {
@@ -7380,6 +7460,17 @@ export class NuevoPersonajeService {
      * (naturaleza), *Escarcha ardiente*, pág. 41): de clase en todos los repartos (niveles de clase y DG raciales), como
      * las `Habilidades_claseas` de un dominio. Con su especialidad, si la nombra (`Id_extra`), en su hueco.
      */
+    /**
+     * Los rasgos de sus plantillas que ya tiene por sus DG (`Raciales[].Dg`: desde cuántos DG; 0, desde el principio): la
+     * «licantropía contraída» del licántropo infectado, que hace de clase Control de forma (MM1, pág. 303).
+     */
+    private racialesDeSusPlantillas(): RacialDetalle[] {
+        const dgs = this.resolverDgTotalActual();
+        return (this.estadoFlujo.plantillas.seleccionadas ?? []).flatMap((plantilla) => (plantilla?.Raciales ?? [])
+            .filter((item) => !!item?.Racial && toNumber(item?.Dg) <= dgs)
+            .map((item) => item.Racial));
+    }
+
     private aplicarHabilidadesSiempreDeClase(raciales: RacialDetalle[]): void {
         const aseguradas = (raciales ?? []).flatMap((racial) => {
             const habilidades = racial?.Habilidades;
@@ -9907,7 +9998,7 @@ export class NuevoPersonajeService {
             simulacion.tipoCriaturaActualNombre
         );
         const subtiposBase = this.copiarSubtipos(this.razaSeleccionada?.Subtipos ?? []);
-        const subtiposResultantes = this.resolverSubtiposResultantes(subtiposBase, seleccionadas);
+        const subtiposResultantes = this.resolverSubtiposResultantes(subtiposBase, seleccionadas, simulacion.cambianElTipo);
         // Sin los rasgos de su tipo que quitan sus plantillas (el fantasma, ajeno sin «sin alma»).
         const rasgosTipoConOrigen = rasgosTipoSinQuitados(this.asignarOrigenRasgosTipo(
             tipoResultante.Rasgos,
@@ -9964,13 +10055,24 @@ export class NuevoPersonajeService {
         return this.copiarTipoCriatura(tipoBase);
     }
 
-    private resolverSubtiposResultantes(subtiposBase: SubtipoRef[], seleccionadas: Plantilla[]): SubtipoRef[] {
+    /**
+     * Los subtipos de la raza con los de sus plantillas y, de las que le cambian de verdad el tipo (`cambianElTipo`, de
+     * `simularEstadoPlantillas`: la pareja de tipos que le toca lleva a otro tipo, no a «Cualquiera»), los que da cambiar
+     * de tipo (`Al_cambiar_tipo` del catálogo de subtipos: el agrandado, MM1, pág. 291). Sale de los datos, no del nombre.
+     */
+    private resolverSubtiposResultantes(subtiposBase: SubtipoRef[], seleccionadas: Plantilla[], cambianElTipo: number[] = []): SubtipoRef[] {
         let actuales = this.copiarSubtipos(subtiposBase);
         seleccionadas.forEach((plantilla) => {
             const subtiposPlantilla = this.copiarSubtipos(plantilla?.Subtipos ?? []);
             if (subtiposPlantilla.length > 0)
                 actuales = this.unirSubtiposDeduplicados(actuales, subtiposPlantilla);
         });
+        if (cambianElTipo.length > 0) {
+            const alCambiarTipo = this.catalogoSubtipos
+                .filter((subtipo) => subtipo?.Al_cambiar_tipo === true && toNumber(subtipo?.Id) > 0)
+                .map((subtipo) => ({ Id: toNumber(subtipo.Id), Nombre: `${subtipo.Nombre ?? ''}`.trim() }));
+            actuales = this.unirSubtiposDeduplicados(actuales, alCambiarTipo);
+        }
         return actuales;
     }
 
@@ -11285,6 +11387,7 @@ export class NuevoPersonajeService {
         const plantillas = this.clonarProfundo(datos.plantillas ?? []);
         this.estadoFlujo.plantillas.seleccionadas = plantillas;
         this.estadoFlujo.plantillas.confirmadasIds = plantillas.map((p) => toInt(p?.Id)).filter((id) => id > 0);
+        this.plantillasConDotesDecididas = new Set(this.estadoFlujo.plantillas.confirmadasIds);
         this.estadoFlujo.caracteristicasGeneradas = true;
 
         // La clase de cada conjuro conocido, de la entrada.
@@ -11914,16 +12017,35 @@ export class NuevoPersonajeService {
      * progresión, también con DG de plantilla (un humano licántropo lobo guerrero 1: 3 DG, 2 dotes). En los niveles de una
      * clase con tabla (las de monstruo), solo las de su tabla (`hitosDotesProgresion`, `clase-niveles.ts`).
      */
-    private getHitosDotesProgresion(): number[] {
+    private getHitosDotesProgresion({ sinDgsDePlantillas = false }: { sinDgsDePlantillas?: boolean; } = {}): number[] {
         const partes = this.getPartesNivelPersonaje();
         return hitosDotesProgresion({
             dgsRaza: partes.dgsRaza,
-            dgsPlantillas: partes.dgsPlantillas,
+            dgsPlantillas: sinDgsDePlantillas ? 0 : partes.dgsPlantillas,
             clases: (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => ({
                 clase: this.obtenerClaseDeDesglose(entrada),
                 nivel: toInt(entrada?.Nivel),
             })),
         });
+    }
+
+    /**
+     * Los huecos de dote que abren los DG de sus plantillas (el animal de un licántropo) y que ya llenan las dotes no
+     * adicionales de esas plantillas: «añade las del animal a las de la criatura base; si así tiene más de las que tocan
+     * por sus DG totales, las de más son adicionales» (MM1, pág. 178). Son las dotes que dan sus DG (las de los hitos con
+     * ellos menos las de sin ellos), como mucho las que no son adicionales (`Contexto.Adicional`: la «(B)» del animal y la
+     * Voluntad de hierro del licántropo). Sale de los datos: cualquier plantilla que añada DG.
+     */
+    private getHuecosDeDoteLlenosPorPlantillas(): number {
+        const noAdicionales = (this.estadoFlujo.plantillas.seleccionadas ?? [])
+            .filter((plantilla) => dgsDePlantilla(plantilla) > 0)
+            .reduce((total, plantilla) => total + (plantilla?.Dotes ?? [])
+                .filter((entrada) => toNumber(entrada?.Dote?.Id) > 0 && (entrada?.Contexto as { Adicional?: boolean; } | undefined)?.Adicional !== true)
+                .length, 0);
+        if (noAdicionales < 1)
+            return 0;
+        const deSusDgs = this.getHitosDotesProgresion().length - this.getHitosDotesProgresion({ sinDgsDePlantillas: true }).length;
+        return Math.max(0, Math.min(noAdicionales, deSusDgs));
     }
 
 

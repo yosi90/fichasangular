@@ -69,6 +69,8 @@ export const TIPOS_PRERREQUISITO_PLANTILLA: readonly PrerequisiteType[] = [
     'actitud_requerido',
     'actitud_prohibido',
     'nivel_lanzador',
+    'lanzar_poder_psionico_nivel',
+    'nivel_de_clase',
     'dote',
 ];
 
@@ -169,6 +171,10 @@ export interface FilaRasgoPlantilla extends FilaNombrada {
 export interface FilaDotePlantilla extends FilaRasgoPlantilla {
     /** -1 sin extra; > 0, un extra de la dote. */
     id_extra: number;
+    /** Solo si cumple sus prerrequisitos y no la tiene ya (el vampiro, MM1, pág. 258). */
+    solo_si_cumple: boolean;
+    /** Adicional: no llena un hueco de dote de los DG que añade la plantilla (MM1, pág. 178). */
+    adicional: boolean;
 }
 
 export interface FilaSortilegaPlantilla extends FilaRasgoPlantilla {
@@ -345,7 +351,7 @@ export function listasDesdePlantilla(plantilla: Plantilla, uid: () => string): L
             usos_diarios: toText(item?.Usos_diarios),
         })).filter((fila) => fila.id > 0),
         dotes: (plantilla.Dotes ?? []).map((item) => {
-            const contexto = item?.Contexto as { Id_extra?: number; Dg?: number; } | undefined;
+            const contexto = item?.Contexto as { Id_extra?: number; Dg?: number; Solo_si_cumple?: boolean; Adicional?: boolean; } | undefined;
             const idExtra = toInt(contexto?.Id_extra, -1);
             return {
                 uid: uid(),
@@ -353,6 +359,8 @@ export function listasDesdePlantilla(plantilla: Plantilla, uid: () => string): L
                 nombre: toText(item?.Dote?.Nombre),
                 dg: dgDesde(contexto?.Dg),
                 id_extra: idExtra > 0 ? idExtra : -1,
+                solo_si_cumple: contexto?.Solo_si_cumple === true,
+                adicional: contexto?.Adicional === true,
             };
         }).filter((fila) => fila.id > 0),
         habilidades: (plantilla.Habilidades ?? []).map((item) => ({
@@ -394,6 +402,8 @@ const PRERREQUISITOS_PLANTILLA: Readonly<Record<string, { escribir: (fila: Prere
     dg: { escribir: (f) => ({ cantidad: toInt(f.valor) }) },
     subtipo: { escribir: (f) => ({ id_subtipo: toInt(f.id) }) },
     subtipo_prohibido: { escribir: (f) => ({ id_subtipo: toInt(f.id) }) },
+    nivel_de_clase: { escribir: (f) => ({ id_clase: toInt(f.id), nivel: toInt(f.valor) }) },
+    lanzar_poder_psionico_nivel: { escribir: (f) => ({ nivel: toInt(f.valor) }) },
 };
 
 /** Los requisitos de una plantilla como filas del editor, con la `Frase` de la API de cada una (por `uid`). */
@@ -512,6 +522,8 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
             id_dote: toInt(fila.id),
             ...(toInt(fila.id_extra) > 0 ? { id_extra: toInt(fila.id_extra) } : {}),
             dg: dgDesde(fila.dg),
+            solo_si_cumple: fila.solo_si_cumple === true,
+            adicional: fila.adicional === true,
         })),
         habilidades: listas.habilidades.filter((fila) => fila.id > 0).map((fila) => ({
             id_habilidad: toInt(fila.id),

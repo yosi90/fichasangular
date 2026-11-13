@@ -337,6 +337,10 @@
                                 <mat-option *ngFor="let extra of extrasDote(fila.id)" [value]="extra.id">{{extra.nombre}}</mat-option>
                             </mat-select>
                         </mat-form-field>
+                        <mat-chip-listbox class="boolean-chips" aria-label="Cómo tiene la dote" *ngIf="clave === 'dotes'">
+                            <mat-chip-option [selected]="fila.adicional" (click)="fila.adicional = !fila.adicional; alCambiar()"
+                                matTooltip="La «(B)» de su bloque: no ocupa un hueco de dote de sus DG">Adicional</mat-chip-option>
+                        </mat-chip-listbox>
                         <ng-container *ngIf="clave === 'habilidades'">
                             <mat-form-field appearance="fill" class="monstruo-fila__corto" subscriptSizing="dynamic">
                                 <mat-label>Rangos</mat-label>

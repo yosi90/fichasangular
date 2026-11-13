@@ -57,6 +57,8 @@ function normalizePrerrequisitosFlags(raw: any): PlantillaPrerrequisitosFlags {
         dg: toBoolean(raw?.dg),
         subtipo: toBoolean(raw?.subtipo),
         subtipo_prohibido: toBoolean(raw?.subtipo_prohibido),
+        nivel_de_clase: toBoolean(raw?.nivel_de_clase),
+        lanzar_poder_psionico_nivel: toBoolean(raw?.lanzar_poder_psionico_nivel),
     };
 }
 
@@ -74,6 +76,8 @@ function normalizePrerrequisitosApi(raw: any): PlantillaPrerrequisitos {
         dg: toStrictArray(raw?.dg),
         subtipo: toStrictArray(raw?.subtipo),
         subtipo_prohibido: toStrictArray(raw?.subtipo_prohibido),
+        nivel_de_clase: toStrictArray(raw?.nivel_de_clase),
+        lanzar_poder_psionico_nivel: toStrictArray(raw?.lanzar_poder_psionico_nivel),
     };
 }
 
@@ -291,6 +295,8 @@ function normalizePrerrequisitos(raw: any): PlantillaPrerrequisitos {
         dg: toArray(raw?.dg),
         subtipo: toArray(raw?.subtipo),
         subtipo_prohibido: toArray(raw?.subtipo_prohibido),
+        nivel_de_clase: toArray(raw?.nivel_de_clase),
+        lanzar_poder_psionico_nivel: toArray(raw?.lanzar_poder_psionico_nivel),
     };
 }
 

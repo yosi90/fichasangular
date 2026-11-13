@@ -133,7 +133,7 @@ describe('NuevaMonstruoComponent', () => {
                 fuerza: 10, reduccion_dano: '5/plata', resistencia_conjuros: '12', ataques: '', id_maniobrabilidad: null,
                 familiar: true, companero: false, oficial: true,
             }));
-            expect(cuerpo.dotes).toEqual([{ id_dote: 4, id_extra: 72 }, { id_dote: 45, id_extra: null }]);
+            expect(cuerpo.dotes).toEqual([{ id_dote: 4, id_extra: 72, adicional: false }, { id_dote: 45, id_extra: null, adicional: false }]);
             expect(cuerpo.habilidades).toEqual([{ id_habilidad: 32, id_extra: 57, rangos: 4 }]);
             expect(cuerpo.sortilegas).toEqual([{ id_conjuro: 40, nivel_lanzador: 1, usos_diarios: '' }]);
             expect(cuerpo.raciales).toEqual([18]);

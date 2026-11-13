@@ -288,7 +288,8 @@ export interface MonstruoCreateRequest {
     monstruo: MonstruoEscalaresRequest;
     subtipos: number[];
     idiomas: number[];
-    dotes: { id_dote: number; id_extra: number | null; }[];
+    /** `adicional`: la «(B)» de su bloque (no llena un hueco de dote de sus DG; el animal de un licántropo, MM1, pág. 178). */
+    dotes: { id_dote: number; id_extra: number | null; adicional: boolean; }[];
     habilidades: { id_habilidad: number; id_extra: number | null; rangos: number; }[];
     sortilegas: { id_conjuro: number; nivel_lanzador: number; usos_diarios: string; }[];
     raciales: number[];

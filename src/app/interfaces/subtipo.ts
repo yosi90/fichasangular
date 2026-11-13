@@ -64,6 +64,11 @@ export interface SubtipoResumen {
     Oficial: boolean;
     /** El ajuste de nivel del subtipo (el NEP de la creación lo suma); 0 si la caché aún no lo trae. */
     Ajuste_nivel?: number;
+    /**
+     * El subtipo que gana una criatura cuando una plantilla le cambia el tipo (el agrandado, MM1, págs. 291 y 311): la
+     * creación lo añade. Desde el 2026-11-13 (caché `Subtipos` 4).
+     */
+    Al_cambiar_tipo?: boolean;
 }
 
 export interface SubtipoReferenciaCorta {
@@ -82,6 +87,8 @@ export interface SubtipoDetalle {
     Modificadores_caracteristicas: SubtipoCaracteristicas;
     Minimos_caracteristicas: SubtipoCaracteristicas;
     Ajuste_nivel: number;
+    /** Lo gana una criatura cuando una plantilla le cambia el tipo (el agrandado). */
+    Al_cambiar_tipo?: boolean;
     Presa: number;
     Fortaleza: number;
     Reflejos: number;
@@ -119,6 +126,8 @@ export interface SubtipoCuerpo {
         id_manual: number;
         pagina: number;
         heredada: boolean;
+        /** Opcional en el contrato: sin él, la edición conserva el que tiene. */
+        al_cambiar_tipo?: boolean;
         fuerza: number;
         destreza: number;
         constitucion: number;

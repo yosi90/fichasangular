@@ -19,6 +19,7 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
+import { SubtipoService } from 'src/app/services/subtipo.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { SubirNivelComponent } from './subir-nivel.component';
@@ -45,7 +46,7 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
                 { provide: SubidaNivelPuertaService, useValue: new SubidaNivelPuertaService() },
                 ...[CampanaService, ClaseService, DoteService, ConjuroService, HabilidadService, IdiomaService, DominioService, RazaService,
                     PlantillaService, EscuelaConjurosService, DisciplinaConjurosService, EnemigoPredilectoService, ArmaService, ArmaduraService,
-                    GrupoArmaService, GrupoArmaduraService].map((provide) => ({ provide, useValue: {} })),
+                    GrupoArmaService, GrupoArmaduraService, SubtipoService].map((provide) => ({ provide, useValue: {} })),
             ],
         }).compileComponents();
         fixture = TestBed.createComponent(SubirNivelComponent);

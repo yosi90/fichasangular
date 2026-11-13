@@ -135,6 +135,8 @@ export type MonstruoFormularioValor = { [K in keyof MonstruoEscalaresRequest]: M
 export interface FilaDoteMonstruo extends FilaNombrada {
     /** -1 sin extra; > 0, un extra de la dote. */
     id_extra: number;
+    /** La «(B)» de su bloque: no llena un hueco de dote de sus DG (MM1, pág. 178). */
+    adicional: boolean;
 }
 
 export interface FilaHabilidadMonstruo extends FilaNombrada {
@@ -303,6 +305,7 @@ export function listasDesdeMonstruo(monstruo: MonstruoDetalle, uid: () => string
         dotes: (monstruo.Dotes ?? []).map((item) => ({
             ...nombrada(item?.Dote),
             id_extra: toPositiveInt(item?.Contexto?.Id_extra) ?? -1,
+            adicional: item?.Contexto?.Adicional === true,
         })).filter(conId),
         habilidades: (monstruo.Habilidades ?? []).map((item) => ({
             uid: uid(),
@@ -356,7 +359,7 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
         subtipos: ids(listas.subtipos),
         idiomas: ids(listas.idiomas),
         dotes: listas.dotes.filter((fila) => fila.id > 0)
-            .map((fila) => ({ id_dote: toInt(fila.id), id_extra: toPositiveInt(fila.id_extra) })),
+            .map((fila) => ({ id_dote: toInt(fila.id), id_extra: toPositiveInt(fila.id_extra), adicional: fila.adicional === true })),
         habilidades: listas.habilidades.filter((fila) => fila.id > 0)
             .map((fila) => ({ id_habilidad: toInt(fila.id), id_extra: toPositiveInt(fila.id_extra), rangos: toInt(fila.rangos) })),
         sortilegas: listas.sortilegas.filter((fila) => fila.id > 0).map((fila) => ({

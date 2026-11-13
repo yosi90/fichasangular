@@ -40,6 +40,7 @@ describe('NuevaPlantillaComponent', () => {
             { getDotes: () => of([{ Id: 30, Nombre: 'Soltura con un arma', Extras_disponibles: { Armas: [{ Id: 5, Nombre: 'Mordisco' }], Armaduras: [], Escuelas: [], Habilidades: [] } }]) } as any,
             { getHabilidades: () => of([{ Id_habilidad: 12, Nombre: 'Avistar', Extras: [] }]) } as any,
             { getSubtipos: () => of([{ Id: 9, Nombre: 'Cambiaformas' }, { Id: 14, Nombre: 'Incorporal' }]) } as any,
+            { getClases: () => of([{ Id: 22, Nombre: 'Psiónico' }]) } as any,
             { getRasgos: () => of([{ Id: 9, Nombre: "Visión en la oscuridad 60'" }, { Id: 13, Nombre: 'Sin alma (ajenos)' }]) } as any,
             { cargar: () => Promise.resolve() } as any,
         );
@@ -120,7 +121,7 @@ describe('NuevaPlantillaComponent', () => {
                 nombre_original: 'Celestial', traducido: true, entorno: 'Planos buenos', vd: '+1', tesoro: null, ca: TEXTO_SIN_CAMBIO,
             }));
             expect(cuerpo.ataquesEspeciales).toEqual([{ id_racial: 72, dg: 1 }]);
-            expect(cuerpo.dotes).toEqual([{ id_dote: 30, id_extra: 5, dg: 1 }]);
+            expect(cuerpo.dotes).toEqual([{ id_dote: 30, id_extra: 5, dg: 1, solo_si_cumple: false, adicional: false }]);
             expect(cuerpo.subtipos).toEqual([9]);
             expect(cuerpo.rasgos_tipo_quitados).toEqual([13]);
             expect(cuerpo.prerrequisitos.criaturas_compatibles).toEqual([{ id_tipo_comp: 2, id_tipo_nuevo: 0, opcional: 0 }]);
@@ -259,7 +260,7 @@ describe('NuevaPlantillaComponent', () => {
             expect(cuerpo.plantilla.iniciativa).toBe(2);
             // Lo que no se tocó va también: el PUT reemplaza la plantilla entera.
             expect(cuerpo.raciales).toEqual([{ id_racial: 70, dg: 1 }]);
-            expect(cuerpo.dotes).toEqual([{ id_dote: 30, id_extra: 5, dg: 3 }]);
+            expect(cuerpo.dotes).toEqual([{ id_dote: 30, id_extra: 5, dg: 3, solo_si_cumple: false, adicional: false }]);
             expect(cuerpo.prerrequisitos.tamano_minimo).toEqual([{ id_tamano: 3, opcional: 0 }]);
             expect(cuerpo.plantilla.mult_dg_lic).toBe(2);
             expect(actualizadas.length).toBe(1);

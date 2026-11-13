@@ -31,6 +31,8 @@
                             <mat-chip-listbox class="boolean-chips" aria-label="Estado del subtipo" [multiple]="true">
                                 <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')">Oficial</mat-chip-option>
                                 <mat-chip-option [selected]="form.controls.heredada.value === true" (click)="alternar('heredada')">Heredado</mat-chip-option>
+                                <mat-chip-option [selected]="form.controls.al_cambiar_tipo.value === true" (click)="alternar('al_cambiar_tipo')"
+                                    matTooltip="Lo gana una criatura cuando una plantilla le cambia el tipo (el agrandado)">Al cambiar de tipo</mat-chip-option>
                             </mat-chip-listbox>
                         </div>
                         <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"

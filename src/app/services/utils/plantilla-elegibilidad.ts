@@ -13,6 +13,7 @@ import { leerComodin } from './comodin';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { MotivosPrerrequisitos, compararActitud, compararSubtipo, compararTamano } from './prerrequisitos-evaluacion';
+import { compararNivelDeClase } from './dote-elegibilidad';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -49,6 +50,10 @@ export interface PlantillaEvaluacionContexto {
     dgTotal?: number;
     /** Los subtipos de la raza (y su raza base) y de las plantillas ya elegidas, para `subtipo` y `subtipo_prohibido`. */
     subtipos?: ClaveEntidadPrerrequisito[];
+    /** Sus clases con su nivel, para `nivel_de_clase` (el liche seco: caminante del yermo 10). */
+    clasesConNivel?: Array<{ id: number | null; nombre: string; nivel: number; }>;
+    /** El nivel de poder psiónico más alto que manifiesta, para `lanzar_poder_psionico_nivel` (el erudito espectral: 6). */
+    nivelPoderPsionicoMaximo?: number;
 }
 
 export interface PlantillaEvaluacionResultado {
@@ -68,6 +73,11 @@ export interface SimulacionPlantillasResultado {
     tipoCriaturaActualNombre: string;
     licantropiaActiva: boolean;
     heredadaActiva: boolean;
+    /**
+     * Las plantillas que le cambian de verdad el tipo, por su id: la pareja de tipos que le toca lleva a otro tipo (no a
+     * «Cualquiera» ni al que ya tenía). Con ellas gana el subtipo que da cambiar de tipo (el agrandado, MM1, pág. 291).
+     */
+    cambianElTipo: number[];
 }
 
 export interface ResolucionAlineamientoPlantillas {
@@ -332,6 +342,7 @@ export function simularEstadoPlantillas(
     let tipoCriaturaActualNombre = `${tipoBase?.Nombre ?? "-"}`;
     let licantropiaActiva = false;
     let heredadaActiva = false;
+    const cambianElTipo: number[] = [];
 
     seleccionadas.forEach(plantilla => {
         licantropiaActiva = licantropiaActiva || esPlantillaLicantropa(plantilla);
@@ -346,6 +357,8 @@ export function simularEstadoPlantillas(
             return;
 
         if (compat.Id_tipo_nuevo > 0) {
+            if (compat.Id_tipo_nuevo !== tipoCriaturaActualId)
+                cambianElTipo.push(toNumber(plantilla?.Id));
             tipoCriaturaActualId = compat.Id_tipo_nuevo;
             if ((compat.Tipo_nuevo ?? "").trim().length > 0)
                 tipoCriaturaActualNombre = `${compat.Tipo_nuevo}`;
@@ -359,6 +372,7 @@ export function simularEstadoPlantillas(
         tipoCriaturaActualNombre,
         licantropiaActiva,
         heredadaActiva,
+        cambianElTipo,
     };
 }
 
@@ -518,6 +532,23 @@ export function evaluarElegibilidadPlantilla(
             registrarPrerrequisito(motivos, clave, entry, comparacion.evaluable, comparacion.cumple, comparacion.razonUnknown);
         });
     });
+
+    // Una clase y su nivel, y manifestar poderes de un nivel (2026-11-13), con la regla de las dotes.
+    if (flags.nivel_de_clase) {
+        (prer.nivel_de_clase ?? []).forEach((entry) => {
+            const { evaluable, cumple } = compararNivelDeClase(entry, ctx.clasesConNivel ?? []);
+            registrarPrerrequisito(motivos, "nivel_de_clase", entry, evaluable, cumple, "Nivel de clase con formato no reconocido");
+        });
+    }
+
+    if (flags.lanzar_poder_psionico_nivel) {
+        (prer.lanzar_poder_psionico_nivel ?? []).forEach((entry) => {
+            const nivel = toNumber(entry?.["Nivel"] ?? entry?.["nivel"]);
+            const evaluable = nivel > 0;
+            const cumple = evaluable && toNumber(ctx.nivelPoderPsionicoMaximo) >= nivel;
+            registrarPrerrequisito(motivos, "lanzar_poder_psionico_nivel", entry, evaluable, cumple, "Nivel de poder psiónico con formato no reconocido");
+        });
+    }
 
     motivos.cerrarGrupos();
     const otrasReglasFallidas = fail.length;

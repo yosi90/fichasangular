@@ -224,24 +224,32 @@ function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacio
     return { grupoOpcional: parseOpcional(entry), ...compararRangosHabilidad(entry, ctx.habilidades, pedidos) };
 }
 
-function buildEvaluacionNivelClase(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
+/**
+ * `nivel_de_clase` (`{ Id_clase, Clase, Nivel }`): si tiene esa clase (por su id o su nombre) a ese nivel o más. Lo usan
+ * las dotes y las plantillas (el liche seco: caminante del yermo 10; el erudito espectral: psiónico).
+ */
+export function compararNivelDeClase(
+    entry: Record<string, any>,
+    nivelesClase: ReadonlyArray<{ id: number | null; nombre: string; nivel: number; }>,
+): { evaluable: boolean; cumple: boolean; } {
     const idClase = parseId(entry, ['Id_clase', 'id_clase', 'IdClase', 'idClase']);
-    const nombreClase = parseText(entry, ['Clase', 'clase', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTexto(nombreClase);
+    const nombreNorm = normalizarTexto(parseText(entry, ['Clase', 'clase', 'Nombre', 'nombre']));
     const nivel = toNumber(pick(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad']));
     const evaluable = (idClase > 0 || nombreNorm.length > 0) && nivel > 0;
-    const cumple = ctx.nivelesClase.some((clase) => {
+    const cumple = evaluable && (nivelesClase ?? []).some((clase) => {
         const coincideClase = (idClase > 0 && toNumber(clase.id) === idClase)
             || (nombreNorm.length > 0 && normalizarTexto(clase.nombre) === nombreNorm);
-        if (!coincideClase)
-            return false;
-        return toNumber(clase.nivel) >= nivel;
+        return coincideClase && toNumber(clase.nivel) >= nivel;
     });
+    return { evaluable, cumple };
+}
+
+function buildEvaluacionNivelClase(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
+    const { evaluable, cumple } = compararNivelDeClase(entry, ctx.nivelesClase);
     return {
-        grupoOpcional,
+        grupoOpcional: parseOpcional(entry),
         evaluable,
-        cumple: evaluable ? cumple : false,
+        cumple,
         razonUnknown: 'Prerrequisito nivel_de_clase con formato no reconocido',
     };
 }

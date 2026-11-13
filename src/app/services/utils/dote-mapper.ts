@@ -278,6 +278,8 @@ export function normalizeContexto(raw: any): DoteContexto {
             Id_extra: toNumber(raw?.Id_extra, 0),
             Id_plantilla: toNumber(raw?.Id_plantilla, 0),
             Dg: toNumber(raw?.Dg, 0),
+            Solo_si_cumple: raw?.Solo_si_cumple === true,
+            Adicional: raw?.Adicional === true,
         };
     }
 
@@ -287,6 +289,8 @@ export function normalizeContexto(raw: any): DoteContexto {
         Id_extra: toNumber(raw?.Id_extra, 0),
         Id_personaje: toNumber(raw?.Id_personaje, 0),
         Origen: raw?.Origen ?? "Desconocido",
+        // La de un monstruo (`Entidad` «Monstruo»), la «(B)» de su bloque.
+        ...(typeof raw?.Adicional === "boolean" ? { Adicional: raw.Adicional } : {}),
     };
 }
 

@@ -14,6 +14,7 @@ import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipo
 import { RacialService } from 'src/app/services/racial.service';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
+import { ClaseService } from 'src/app/services/clase.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
@@ -131,6 +132,8 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     raciales: OpcionCatalogo[] = [];
     conjuros: OpcionCatalogo[] = [];
     subtipos: OpcionCatalogo[] = [];
+    /** Las clases, para el requisito de nivel en una clase (el liche seco: caminante del yermo 10). */
+    clases: OpcionCatalogo[] = [];
     /** Los rasgos de los tipos de criatura (los que puede quitar la plantilla del tipo de la criatura). */
     rasgosTipo: OpcionCatalogo[] = [];
     dotes: Dote[] = [];
@@ -194,6 +197,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         private doteSvc: DoteService,
         private habilidadSvc: HabilidadService,
         private subtipoSvc: SubtipoService,
+        private claseSvc: ClaseService,
         private rasgoSvc: RasgoService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
     ) {
@@ -364,7 +368,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         else if (lista === 'sortilegas')
             this.listas.sortilegas = [...this.listas.sortilegas, { ...base, dg: 1, nivel_lanzador: 1, usos_diarios: '' }];
         else if (lista === 'dotes')
-            this.listas.dotes = [...this.listas.dotes, { ...base, dg: 1, id_extra: -1 }];
+            this.listas.dotes = [...this.listas.dotes, { ...base, dg: 1, id_extra: -1, solo_si_cumple: false, adicional: false }];
         else
             this.listas[lista] = [...this.listas[lista], { ...base, dg: 1 }];
         this.alCambiar();
@@ -573,6 +577,8 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
                 return this.subtipos;
             case 'dote':
                 return this.dotesOpciones;
+            case 'nivel_de_clase':
+                return this.clases;
             default:
                 return [];
         }
@@ -646,6 +652,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         suscribir(this.racialSvc.getRaciales(), (items) => this.raciales = opcionesDeCatalogo(items));
         suscribir(this.conjuroSvc.getConjuros(), (items) => this.conjuros = opcionesDeCatalogo(items));
         suscribir(this.subtipoSvc.getSubtipos(), (items) => this.subtipos = opcionesDeCatalogo(items).filter((item) => item.id > 0));
+        suscribir(this.claseSvc.getClases(), (items) => this.clases = opcionesDeCatalogo(items).filter((item) => item.id > 0));
         suscribir(this.rasgoSvc.getRasgos(), (items) => this.rasgosTipo = opcionesDeCatalogo(items).filter((item) => item.id > 0));
         suscribir(this.doteSvc.getDotes(), (items) => {
             this.dotes = items ?? [];

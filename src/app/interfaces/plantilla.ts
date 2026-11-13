@@ -112,6 +112,9 @@ export interface PlantillaPrerrequisitosFlags {
     /** Un subtipo que tiene que tener y uno que no puede tener. */
     subtipo?: boolean;
     subtipo_prohibido?: boolean;
+    /** Una clase y su nivel (el liche seco), y manifestar poderes de un nivel (el erudito espectral). Desde el 2026-11-13. */
+    nivel_de_clase?: boolean;
+    lanzar_poder_psionico_nivel?: boolean;
 }
 
 export type PlantillaPrerrequisitoItem = PrerrequisitoItem;
@@ -132,6 +135,10 @@ export interface PlantillaPrerrequisitos {
     /** `{ Id_subtipo, Subtipo, Opcional, Frase }`: los subtipos de la raza y de las plantillas ya elegidas. */
     subtipo?: PlantillaPrerrequisitoItem[];
     subtipo_prohibido?: PlantillaPrerrequisitoItem[];
+    /** `{ Id_clase, Clase, Nivel, Opcional, Frase }`: los niveles que tiene en esa clase (como el de las dotes). */
+    nivel_de_clase?: PlantillaPrerrequisitoItem[];
+    /** `{ Nivel, Opcional, Frase }`: el nivel de poder psiónico más alto que manifiesta (como el de las dotes). */
+    lanzar_poder_psionico_nivel?: PlantillaPrerrequisitoItem[];
 }
 
 export interface PlantillaCompatibilidadTipo {
@@ -300,6 +307,8 @@ export interface PlantillaPrerrequisitosRequest {
     dg: { cantidad: number; opcional: number; }[];
     subtipo: { id_subtipo: number; opcional: number; }[];
     subtipo_prohibido: { id_subtipo: number; opcional: number; }[];
+    nivel_de_clase: { id_clase: number; nivel: number; opcional: number; }[];
+    lanzar_poder_psionico_nivel: { nivel: number; opcional: number; }[];
 }
 
 /** El cuerpo de `POST /plantillas/add`. */
@@ -309,7 +318,7 @@ export interface PlantillaCreateRequest {
     subtipos: number[];
     /** Los ids de los rasgos de tipo que quita; si no viene, la edición conserva los que hay. */
     rasgos_tipo_quitados?: number[];
-    dotes: { id_dote: number; id_extra?: number; dg: number; }[];
+    dotes: { id_dote: number; id_extra?: number; dg: number; solo_si_cumple?: boolean; adicional?: boolean; }[];
     habilidades: { id_habilidad: number; rangos: number; id_extra?: number; varios?: string; }[];
     sortilegas: { id_conjuro: number; nivel_lanzador: number; usos_diarios: string; dg: number; }[];
     raciales: { id_racial: number; dg: number; }[];

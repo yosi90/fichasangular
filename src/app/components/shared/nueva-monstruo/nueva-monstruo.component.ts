@@ -354,7 +354,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
         else if (lista === 'sortilegas')
             this.listas.sortilegas = [...this.listas.sortilegas, { ...base, nivel_lanzador: 1, usos_diarios: '' }];
         else if (lista === 'dotes')
-            this.listas.dotes = [...this.listas.dotes, { ...base, id_extra: -1 }];
+            this.listas.dotes = [...this.listas.dotes, { ...base, id_extra: -1, adicional: false }];
         else
             this.listas[lista] = [...this.listas[lista], base];
         this.alCambiar();
