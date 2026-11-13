@@ -142,28 +142,31 @@ function crearRazaConAlineamientoBasico(nombre: string): Raza {
     return raza;
 }
 
-function crearRazaConPreferenciasSinBasico(ley: string, moral: string): Raza {
+/** Una preferencia con su dato (lo que pide sale de él, no del nombre): `[nombre, valor, prohíbe, prioridad]`. */
+type PreferenciaMock = [string, number, boolean, number];
+
+function crearRazaConPreferenciasSinBasico(ley: PreferenciaMock, moral: PreferenciaMock): Raza {
     const raza = crearRazaMock();
-    raza.Alineamiento.Basico.Nombre = 'No aplica';
-    raza.Alineamiento.Ley.Nombre = ley;
-    raza.Alineamiento.Moral.Nombre = moral;
+    raza.Alineamiento.Basico = { Id_basico: 0, Nombre: 'No aplica' };
+    raza.Alineamiento.Ley = { ...raza.Alineamiento.Ley, Nombre: ley[0], Valor: ley[1], Prohibe: ley[2], Id_prioridad: ley[3] };
+    raza.Alineamiento.Moral = { ...raza.Alineamiento.Moral, Nombre: moral[0], Valor: moral[1], Prohibe: moral[2], Id_prioridad: moral[3] };
     raza.Alineamiento.Prioridad = { Id_prioridad: 3, Nombre: 'Siempre' };
     return raza;
 }
 
 function crearRazaConConflictoDuroAlineamiento(): Raza {
     const raza = crearRazaMock();
-    raza.Alineamiento.Basico.Nombre = 'Legal maligno';
-    raza.Alineamiento.Ley.Nombre = 'Siempre legal';
-    raza.Alineamiento.Moral.Nombre = 'Siempre maligno';
+    raza.Alineamiento.Basico = { Id_basico: 3, Nombre: 'Legal maligno' };
+    raza.Alineamiento.Ley = { ...raza.Alineamiento.Ley, Nombre: 'Siempre legal', Valor: 1, Prohibe: false, Id_prioridad: 3 };
+    raza.Alineamiento.Moral = { ...raza.Alineamiento.Moral, Nombre: 'Siempre maligno', Valor: -1, Prohibe: false, Id_prioridad: 3 };
     raza.Alineamiento.Prioridad = { Id_prioridad: 3, Nombre: 'Siempre' };
     return raza;
 }
 
 function crearRazaConPrioridadNoDura(): Raza {
     const raza = crearRazaConConflictoDuroAlineamiento();
-    raza.Alineamiento.Ley.Nombre = 'Casi siempre legal';
-    raza.Alineamiento.Moral.Nombre = 'Casi siempre maligno';
+    raza.Alineamiento.Ley = { ...raza.Alineamiento.Ley, Nombre: 'Casi siempre legal', Id_prioridad: 2 };
+    raza.Alineamiento.Moral = { ...raza.Alineamiento.Moral, Nombre: 'Casi siempre maligno', Id_prioridad: 2 };
     raza.Alineamiento.Prioridad = { Id_prioridad: 2, Nombre: 'Casi siempre' };
     return raza;
 }
@@ -1940,7 +1943,7 @@ describe('NuevoPersonajeComponent', () => {
     });
 
     it('getInconsistenciasManual detecta referencia racial desde Ley/Moral cuando Basico es No aplica', () => {
-        component.seleccionarRaza(crearRazaConPreferenciasSinBasico('Casi siempre legal', 'Casi siempre maligno'));
+        component.seleccionarRaza(crearRazaConPreferenciasSinBasico(['Casi siempre legal', 1, false, 2], ['Casi siempre maligno', -1, false, 2]));
         component.Personaje.Alineamiento = 'Legal bueno';
         component.Personaje.Deidad = 'No tener deidad';
 
@@ -2036,12 +2039,12 @@ describe('NuevoPersonajeComponent', () => {
     });
 
     it('abrirInfoAlineamientoRacial no lista valores de alineamiento que no aplican y unifica etiquetas', () => {
-        component.seleccionarRaza(crearRazaConPreferenciasSinBasico('Tendencia a ser caotico', 'Tendencia a ser bueno'));
+        component.seleccionarRaza(crearRazaConPreferenciasSinBasico(['Tendencia a ser caótico', -1, false, 1], ['Tendencia a ser bueno', 1, false, 1]));
 
         component.abrirInfoAlineamientoRacial();
 
         expect(component.informacionBasicosModalSecciones[0].items).toEqual([
-            'Ley / normas: Tendencia a ser caotico',
+            'Ley / normas: Tendencia a ser caótico',
             'Moral / trato: Tendencia a ser bueno',
         ]);
     });

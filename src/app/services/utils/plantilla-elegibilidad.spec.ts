@@ -536,19 +536,20 @@ describe("rasgosTipoSinQuitados", () => {
 });
 
 describe("evaluarPlantillaParaElegir (la creación y la adquisición de una plantilla)", () => {
-    const conMoral = (Id: number, Nombre: string, moral: string) => crearPlantillaMock({
+    // La moral que fija, con su dato (`Valor`: 1 bueno, −1 maligno; «Siempre», prioridad 3).
+    const conMoral = (Id: number, Nombre: string, moral: string, valor: number) => crearPlantillaMock({
         Id, Nombre,
         Alineamiento: {
             Id: 0,
             Basico: { Id_basico: 0, Nombre: "No aplica" },
             Ley: { Id_ley: 10, Nombre: "Ninguna preferencia" },
-            Moral: { Id_moral: 0, Nombre: moral },
+            Moral: { Id_moral: 0, Nombre: moral, Valor: valor, Prohibe: false, Id_prioridad: 3 },
             Prioridad: { Id_prioridad: 3, Nombre: "Siempre" },
             Descripcion: "",
         },
     });
-    const santa = conMoral(601, "Plantilla santa", "Siempre bueno");
-    const profana = conMoral(602, "Plantilla profana", "Siempre maligno");
+    const santa = conMoral(601, "Plantilla santa", "Siempre bueno", 1);
+    const profana = conMoral(602, "Plantilla profana", "Siempre maligno", -1);
     const fuerte = crearPlantillaMock({
         Prerrequisitos_flags: { caracteristica: true },
         Prerrequisitos: {

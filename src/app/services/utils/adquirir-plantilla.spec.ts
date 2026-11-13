@@ -89,7 +89,7 @@ describe('adquirir una plantilla (sesiones, fase 7)', () => {
             tiradas: [],
             experiencia: { px: 15000, nivel: 6 } as any,
             nepDespues: 14,
-            exClases: [{ nombre: 'Paladín', razones: ['Requiere legal bueno'] }],
+            exClases: [{ nombre: 'Paladín', razones: ['Requiere legal bueno'], pierde: ['Castigar al mal', 'su magia'], expiacion: true }],
         });
         const fila = (que: string) => filas.find((f) => f.que === que);
         expect(fila('NEP')).toEqual(jasmine.objectContaining({ antes: '6', ahora: '14', porque: 'ajuste de nivel +8' }));
@@ -98,6 +98,9 @@ describe('adquirir una plantilla (sesiones, fase 7)', () => {
             .toEqual(['Muerto viviente', 'Caótico maligno', '22', 'Sin ella']);
         expect(fila('Puntos de golpe')).toEqual(jasmine.objectContaining({ antes: '52', ahora: '47' }));
         expect(fila('Dotes')?.ahora).toBe('Alerta');
-        expect(fila('Paladín')).toEqual(jasmine.objectContaining({ aviso: true, ahora: 'Requiere legal bueno' }));
+        expect(fila('Ex paladín')).toEqual(jasmine.objectContaining({
+            aviso: true, ahora: 'Requiere legal bueno',
+            porque: 'Conserva sus niveles, pero no puede subir en ella y pierde Castigar al mal y su magia; lo recupera con una expiación (MJ, págs. 26-55)',
+        }));
     });
 });

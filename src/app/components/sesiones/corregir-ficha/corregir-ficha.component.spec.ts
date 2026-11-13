@@ -18,7 +18,7 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
 
     const sesion = (numero: number, estado = 'abierta') => ({ numero, estado, version: `v${numero}`, eventos: [] });
 
-    async function crear(historial: Record<string, unknown>, entrada: Record<string, unknown> = {}): Promise<CorregirFichaComponent> {
+    async function crear(historial: Record<string, unknown>, entrada: Record<string, unknown> = {}, pj: Record<string, unknown> = {}): Promise<CorregirFichaComponent> {
         sesiones = jasmine.createSpyObj<SesionesService>('SesionesService', ['historial', 'sesion', 'corregirFicha']);
         sesiones.historial.and.resolveTo({ idPersonaje: 5, puedeApuntar: true, veNotas: true, rolActor: 'jugador', sesiones: [sesion(0)], experiencia: null, ...historial } as any);
         sesiones.sesion.and.resolveTo({
@@ -35,7 +35,7 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
         // La sesión, de `SesionesService` como la lee el motor (`cargarSesion`).
         motor.cargarSesion.and.callFake(async (_motor, idPersonaje, numero) => {
             const { sesion, entrada } = await sesiones.sesion(idPersonaje, numero);
-            return { sesion, entrada: entrada!, pj: { Nombre: 'Brunilda', Nivel_personaje: 1 } as any };
+            return { sesion, entrada: entrada!, pj: { Nombre: 'Brunilda', Nivel_personaje: 1, ...pj } as any };
         });
         motor.hidratar.and.resolveTo();
         await TestBed.configureTestingModule({
@@ -140,5 +140,66 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
         componente.cambiarTirada(componente.tiradas[1], 11);
         expect(componente.tiradas[1].tirada).toBe(11);
         expect(componente.cambios).toContain('Tirada de PG de nivel 2 (guerrero 2): 4 → 11');
+    });
+
+    describe('la política de la campaña (bugs.md de sesiones, 2026-11-13: la misma regla que la API, antes de guardar)', () => {
+        const sinHomebrew = { permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: null, permitirIgnorarRestriccionesAlineamiento: false };
+        const rota = { idDote: 3, idExtra: 0, origen: 'Nivel 1', nombre: 'Soltura con un arma', razones: ['Requiere ataque base +1'], nivel: 1 };
+
+        it('sin homebrew en la campaña, una dote que deja de cumplirse solo se quita', async () => {
+            const componente = await crear({}, {}, { PoliticaCompra: sinHomebrew });
+            spyOn(componente.svc, 'dotesSinSusPrerrequisitos').and.returnValue([rota] as any);
+            componente.cambiarMedidas();
+            expect(componente.rotas[0].puedeMantener).toBeFalse();
+            componente.mantener(componente.rotas[0]);
+            expect(componente.rotas[0].mantenida).toBeFalse();
+            fixture.detectChanges();
+            expect(fixture.nativeElement.textContent).toContain('la campaña no admite homebrew: solo se puede quitar');
+        });
+
+        it('el máster se salta la política, con su aviso', async () => {
+            const componente = await crear({ rolActor: 'master' }, {}, { PoliticaCompra: sinHomebrew });
+            spyOn(componente.svc, 'dotesSinSusPrerrequisitos').and.returnValue([rota] as any);
+            componente.cambiarMedidas();
+            expect(componente.rotas[0].puedeMantener).toBeTrue();
+            expect(componente.avisoDelMaster).toContain('Como máster');
+        });
+
+        it('el alineamiento de su raza: con una regla «siempre», se mantiene como homebrew solo si la campaña deja saltarse el alineamiento', async () => {
+            const enano = { Nombre: 'Enano', Alineamiento: {
+                Basico: { Id_basico: 0, Nombre: 'No aplica' }, Ley: { Nombre: 'Siempre legal', Valor: 1, Prohibe: false, Id_prioridad: 3 },
+                Moral: { Nombre: 'No aplica', Valor: null }, Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' } } };
+            const entrada = { personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 }, idAlineamiento: 1, idRaza: 3 } };
+            let componente = await crear({}, entrada, { PoliticaCompra: sinHomebrew });
+            (componente.svc as any).razaSeleccionada = enano;
+            componente.idAlineamiento = 8;
+            componente.cambiarAlineamiento();
+            expect(componente.reglas.map((r) => [r.clave, r.puedeMantener, r.motivoNoMantener])).toEqual([
+                ['raza', false, 'la campaña no deja saltarse las restricciones de alineamiento']]);
+            expect(componente.puedeGuardar).toBeFalse();
+            TestBed.resetTestingModule();
+            componente = await crear({}, entrada, { PoliticaCompra: { ...sinHomebrew, permitirIgnorarRestriccionesAlineamiento: true } });
+            (componente.svc as any).razaSeleccionada = enano;
+            componente.idAlineamiento = 8;
+            componente.cambiarAlineamiento();
+            componente.mantener(componente.reglas[0]);
+            expect(componente.puedeGuardar).toBeTrue();
+            const decisiones = (componente as any).decisionesRecalculadas();
+            expect(decisiones.tipos).toContain('alineamiento_raza');
+            expect(decisiones.decisiones).toContain({ tipo: 'alineamiento_raza', idElemento: 3 });
+        });
+
+        it('una ex clase (ya no admitía su alineamiento) sigue ex: no se ofrece mantenerla, solo se avisa', async () => {
+            const componente = await crear({ rolActor: 'master' }, {
+                personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 }, idAlineamiento: 4 },
+                colecciones: { clases: [{ idClase: 11, nivel: 2 }] },
+            });
+            componente.svc.setCatalogoClases([{ Id: 11, Nombre: 'Paladín', Tipo_dado: { Id: 4, Nombre: 'd10' }, Desglose_niveles: [],
+                Alineamiento: { Basico: { Id_basico: 1, Nombre: 'Legal bueno' }, Ley: {}, Moral: {}, Prioridad: { Id_prioridad: 3 } } } as any]);
+            componente.idAlineamiento = 8;
+            componente.cambiarAlineamiento();
+            expect(componente.reglas).toEqual([]);
+            expect(componente.avisos).toEqual(['Ex paladín: sigue sin poder subir de nivel en esta clase, y una corrección no le devuelve lo que perdió.']);
+        });
     });
 });

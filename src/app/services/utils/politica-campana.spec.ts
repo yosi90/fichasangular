@@ -1,4 +1,7 @@
-import { campanaDejaSaltarRequisitosPlantilla, leerPoliticaCompra, modoHomebrewDeCampana } from './politica-campana';
+import {
+    campanaDejaMantenerDoteSinPrerrequisitos, campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, leerPoliticaCompra,
+    modoHomebrewDeCampana,
+} from './politica-campana';
 import { politicaTienda } from './tienda-equipo';
 
 describe('politica-campana', () => {
@@ -36,14 +39,16 @@ describe('politica-campana', () => {
             expect(leerPoliticaCompra('no')).toBeNull();
         });
 
-        it('lee los seis campos y la tienda la entiende como la política de la creación', () => {
+        it('lee sus siete campos y la tienda la entiende como la política de la creación', () => {
             const politica = leerPoliticaCompra({
                 permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 0, permitirObjetosMagicos: false,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: 500, permitirCopiarConjuros: false, nepMaximoPersonajeNuevo: 3,
+                permitirIgnorarRestriccionesAlineamiento: true,
             });
             expect(politica).toEqual({
                 permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 0, permitirObjetosMagicos: false,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: 500, permitirCopiarConjuros: false,
+                permitirIgnorarRestriccionesAlineamiento: true,
             });
             expect(politicaTienda(politica)).toEqual({ objetosMagicos: false, aMedida: true, precioMaximo: 500, copiarConjuros: false });
             expect(modoHomebrewDeCampana(politica)).toBe('forbidden');
@@ -53,7 +58,23 @@ describe('politica-campana', () => {
             expect(leerPoliticaCompra({})).toEqual({
                 permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: null, permitirObjetosMagicos: true,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: null, permitirCopiarConjuros: true,
+                permitirIgnorarRestriccionesAlineamiento: false,
             });
+        });
+    });
+
+    describe('lo que deja saltarse la corrección de la ficha (las reglas de la API)', () => {
+        it('una dote sin sus prerrequisitos, si la campaña admite homebrew; sin campaña, siempre', () => {
+            expect(campanaDejaMantenerDoteSinPrerrequisitos(null)).toBeTrue();
+            expect(campanaDejaMantenerDoteSinPrerrequisitos({ permitirHomebrewGeneral: true })).toBeTrue();
+            expect(campanaDejaMantenerDoteSinPrerrequisitos({ permitirHomebrewGeneral: false })).toBeFalse();
+        });
+
+        it('una regla de alineamiento, solo con permitirIgnorarRestriccionesAlineamiento; sin campaña, siempre', () => {
+            expect(campanaDejaSaltarAlineamiento(null)).toBeTrue();
+            expect(campanaDejaSaltarAlineamiento({ permitirIgnorarRestriccionesAlineamiento: true })).toBeTrue();
+            expect(campanaDejaSaltarAlineamiento({ permitirIgnorarRestriccionesAlineamiento: false })).toBeFalse();
+            expect(campanaDejaSaltarAlineamiento({})).toBeFalse();
         });
     });
 });
