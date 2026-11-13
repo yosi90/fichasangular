@@ -37,6 +37,12 @@
                                 <mat-icon aria-hidden="true">auto_fix_high</mat-icon>
                                 Adquirir una plantilla
                             </button>
+                            <!-- Fase 7, segunda tanda: volver a la vida, un nivel negativo permanente… en su pestaña -->
+                            <button type="button" mat-stroked-button class="historial__boton" (click)="perderNivel()"
+                                matTooltip="Volver a la vida, un nivel negativo permanente…: queda en la sesión abierta">
+                                <mat-icon aria-hidden="true">trending_down</mat-icon>
+                                Perder un nivel
+                            </button>
                         }
                     } @else {
                         <app-datos-libres [pj]="pj" [alTerminar]="alTerminarDatos"></app-datos-libres>

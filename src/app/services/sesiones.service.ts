@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import {
     AbrirSesionDto,
     AdquirirPlantillaDto,
+    PerderNivelDto,
     CambiarSesionDto,
     CompraSesionDto,
     CorreccionFichaDto,
@@ -12,6 +13,7 @@ import {
     ExperienciaPersonaje,
     HistorialSesiones,
     RespuestaCorreccion,
+    RespuestaPerdida,
     RespuestaPlantilla,
     RespuestaSesion,
     RespuestaSubidaNivel,
@@ -169,6 +171,12 @@ export class SesionesService {
             sesion: leerSesion(respuesta),
             ficha: respuesta?.ficha ?? null,
             entrada: respuesta?.entrada && typeof respuesta.entrada === 'object' ? respuesta.entrada : null,
+            nivelesPerdidos: (Array.isArray(respuesta?.nivelesPerdidos) ? respuesta.nivelesPerdidos : []).map((n: any) => ({
+                idClase: toInt(n?.idClase),
+                nivelClase: toInt(n?.nivelClase),
+                ordenConocido: n?.ordenConocido !== false,
+                clasesAnteriores: (Array.isArray(n?.clasesAnteriores) ? n.clasesAnteriores : []).map((c: unknown) => toInt(c)),
+            })),
         };
     }
 
@@ -217,6 +225,30 @@ export class SesionesService {
                 nombre: `${respuesta?.plantilla?.plantilla?.nombre ?? ''}`,
                 nepAntes: nep(respuesta?.plantilla?.nepAntes),
                 nepDespues: nep(respuesta?.plantilla?.nepDespues),
+            },
+        };
+    }
+
+    /** Perder un nivel (fase 7, segunda tanda): queda en la sesión de juego abierta, con los PX que le quedan. */
+    async perderNivel(idPersonaje: number, cuerpo: PerderNivelDto): Promise<RespuestaPerdida> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/niveles/perdida`, cuerpo, 'No se ha podido apuntar la pérdida del nivel.');
+        const p = respuesta?.perdida ?? {};
+        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
+        return {
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
+            perdida: {
+                idEvento: toInt(p.idEvento),
+                numeroSesion: toInt(p.numeroSesion),
+                clase: p.clase ? { id: toInt(p.clase.id), nombre: `${p.clase.nombre ?? ''}` } : null,
+                nivelClase: nep(p.nivelClase),
+                nepAntes: nep(p.nepAntes),
+                nepDespues: nep(p.nepDespues),
+                pxAntes: toInt(p.pxAntes),
+                pxDespues: toInt(p.pxDespues),
+                constitucion: p.constitucion ? { antes: toInt(p.constitucion.antes), despues: toInt(p.constitucion.despues) } : null,
             },
         };
     }

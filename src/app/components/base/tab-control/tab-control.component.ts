@@ -65,8 +65,8 @@ import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 /** Lo que hace falta de una entrada para abrir o refrescar su pestaña de «Modificar»: su id y su nombre. */
 type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
 
-/** Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección y la plantilla. */
-export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla';
+/** Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección, la plantilla y la pérdida. */
+export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'perdida';
 
 /** Lo que enseña la pestaña de cada modo y cómo se carga su componente (carga diferida: el bundle inicial va al tope). */
 export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; corta: string; icono: string; cargar: () => Promise<Type<unknown>>; }> = {
@@ -81,6 +81,10 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
     plantilla: {
         titulo: 'Adquirir una plantilla', corta: 'Plantilla', icono: 'auto_fix_high',
         cargar: async () => (await import('src/app/components/sesiones/adquirir-plantilla/adquirir-plantilla.component')).AdquirirPlantillaComponent,
+    },
+    perdida: {
+        titulo: 'Perder un nivel', corta: 'Perder', icono: 'trending_down',
+        cargar: async () => (await import('src/app/components/sesiones/perder-nivel/perder-nivel.component')).PerderNivelComponent,
     },
 };
 
@@ -238,6 +242,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.puertaSubida?.plantillas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'plantilla'));
+        this.puertaSubida?.perdidas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'perdida'));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));

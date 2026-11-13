@@ -9,7 +9,7 @@ import { PersonajeCreateRequestDto } from '../interfaces/personajes-api';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { claveHabilidad } from './utils/habilidad-clave';
-import { toNumber } from './utils/normalizacion';
+import { toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
 
@@ -327,6 +327,23 @@ describe('Subida de nivel con el motor de la creación (personajes de referencia
         expect(subir(guardado, HUMANO).evaluarClaseParaSeleccion(GUERRERO).estado).toBe('eligible');
         const deAntes = { ...guardado, entrada: { ...guardado.entrada, niveles: guardado.entrada.niveles!.map((n) => ({ ...n, ordenConocido: false } as any)) } };
         expect(subir(deAntes, HUMANO).evaluarClaseParaSeleccion(PALADIN).estado).toBe('eligible');
+    });
+
+    it('el paladín 3 que perdió su nivel de guerrero tampoco vuelve a paladín (fase 7: MJ pág. 55)', () => {
+        const svc = crear(HUMANO, { Fuerza: 14, Carisma: 14 });
+        [PALADIN, PALADIN, PALADIN].forEach((c) => aplicarNivel(svc, c));
+        const guardado = guardar(svc);
+        expect(subir(guardado, HUMANO).evaluarClaseParaSeleccion(PALADIN).estado).toBe('eligible');
+        const perdio = (idClase: number, ordenConocido = true) => {
+            const motor = catalogos(new NuevoPersonajeService());
+            motor.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza: HUMANO,
+                nivelesPerdidos: [{ idClase, ordenConocido, clasesAnteriores: [toInt(PALADIN.Id)] }] });
+            return motor.evaluarClaseParaSeleccion(PALADIN).estado;
+        };
+        expect(perdio(toInt(GUERRERO.Id))).not.toBe('eligible');
+        // Un nivel de paladín perdido, o uno de otra clase con el orden por conocer, no lo cierra.
+        expect(perdio(toInt(PALADIN.Id))).toBe('eligible');
+        expect(perdio(toInt(GUERRERO.Id), false)).toBe('eligible');
     });
 
     it('la corrección (fase 6): la base corregida recalcula la puntuación, y la dote que deja de cumplirse se ve y se quita', () => {

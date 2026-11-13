@@ -1,0 +1,87 @@
+<!-- Perder un nivel (sesiones, fase 7, segunda tanda): las piezas de la subida (subir-nivel.component.sass) -->
+<section class="subida" aria-live="polite">
+    <header class="subida__cabecera">
+        <div class="subida__titulos">
+            <span class="subida__antetitulo">Perder un nivel<ng-container *ngIf="sesion"> · Sesión {{sesion.numero}}</ng-container></span>
+            <h1 class="subida__titulo">{{pj?.Nombre || 'Personaje'}}</h1>
+        </div>
+        <span *ngIf="experiencia" class="subida__px">{{px(experiencia.px)}} PX · NEP {{experiencia.nivel}}</span>
+    </header>
+
+    <p *ngIf="cargando" class="subida__estado">Preparando la ficha…</p>
+    <div *ngIf="!cargando && error" class="subida__aviso subida__aviso--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{error}}</span>
+    </div>
+
+    <ng-container *ngIf="!cargando && pj && entrada">
+        <section class="subida__tarjeta">
+            <h2 class="subida__seccion">Por qué lo pierde</h2>
+            <div class="subida__botones">
+                <label class="subida__campo">
+                    Causa
+                    <select [value]="causa" (change)="elegirCausa($any($event.target).value)">
+                        <option *ngFor="let c of causas" [value]="c.valor">{{c.texto}}</option>
+                    </select>
+                </label>
+                <label class="subida__campo">
+                    Concepto (opcional)
+                    <input type="text" maxlength="150" [value]="concepto" (input)="concepto = $any($event.target).value"
+                        placeholder="Resurrección en el templo de Pelor">
+                </label>
+            </div>
+            <p class="subida__nota" *ngIf="!unSoloDg">Pierde el último nivel que ganó y lo que eligió en él (Guía del DM, pág. 295). Sus PX quedan en la mitad entre el mínimo de su nuevo nivel y el del siguiente (Manual del jugador, pág. 171), o en los que tiene si ya son menos. Lo vuelve a subir cuando le lleguen los PX, eligiendo otra vez lo de ese nivel.</p>
+            <p class="subida__nota" *ngIf="unSoloDg">Tiene un solo DG: al volver a la vida pierde 2 puntos de Constitución en lugar del nivel y conserva sus PX (Manual del jugador, pág. 171).</p>
+
+            <ng-container *ngIf="sinOrden && !unSoloDg">
+                <h2 class="subida__seccion">Su ficha no sabe en qué orden ganó sus niveles</h2>
+                <div class="subida__botones">
+                    <label class="subida__campo">
+                        Clase que pierde el nivel
+                        <select [value]="idClaseElegida ?? ''" (change)="elegirClase($any($event.target).value)">
+                            <option *ngFor="let c of clases" [value]="c.id">{{c.nombre}} {{c.nivel}}</option>
+                        </select>
+                    </label>
+                    <label class="subida__campo" *ngIf="pideIncremento">
+                        Incremento que pierde
+                        <select [value]="incrementoElegido ?? ''" (change)="elegirIncremento($any($event.target).value)">
+                            <option *ngFor="let c of caracteristicas" [value]="c.id">{{c.nombre}} ({{c.valor}})</option>
+                        </select>
+                    </label>
+                    <label class="subida__campo" *ngIf="pideDote">
+                        Dote que pierde por su DG
+                        <select [value]="doteElegida" (change)="elegirDote($any($event.target).value)">
+                            <option value="">Elige una</option>
+                            <option *ngFor="let d of dotes" [value]="d.clave">{{d.nombre}}</option>
+                        </select>
+                    </label>
+                </div>
+            </ng-container>
+        </section>
+
+        <div *ngIf="impedimento" class="subida__aviso subida__aviso--error" role="alert">
+            <mat-icon aria-hidden="true">block</mat-icon>
+            <span>{{impedimento}}</span>
+        </div>
+
+        <section class="subida__tarjeta" *ngIf="!impedimento && filas.length > 0">
+            <h2 class="subida__seccion">Lo que pierde</h2>
+            <table class="subida__tabla subida__tabla--resumen">
+                <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th></tr></thead>
+                <tbody>
+                    <tr *ngFor="let f of filas"><th scope="row">{{f.que}}</th><td>{{f.antes}}</td><td class="subida__ahora">{{f.ahora}}</td></tr>
+                </tbody>
+            </table>
+            <p *ngFor="let a of resultado?.avisos ?? []" class="subida__nota">{{a}}</p>
+            <p class="subida__nota">Queda en la sesión {{sesion?.numero}} y se puede deshacer mientras siga abierta.</p>
+        </section>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+            <span class="subida__hueco"></span>
+            <button mat-flat-button color="warn" type="button" [disabled]="!puedeGuardar" (click)="guardar()">
+                {{unSoloDg ? 'Perder 2 de Constitución' : 'Perder el nivel'}}
+            </button>
+        </footer>
+    </ng-container>
+</section>

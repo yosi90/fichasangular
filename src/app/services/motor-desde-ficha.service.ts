@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { firstValueFrom, Observable, take } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeContextoIdsDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { SesionPersonaje } from 'src/app/interfaces/sesiones';
+import { NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { ArmaService } from './arma.service';
 import { ArmaduraService } from './armadura.service';
 import { ClaseService } from './clase.service';
@@ -65,15 +65,15 @@ export class MotorDesdeFichaService {
      * es la misma cuenta (`sigue`), `null` sin cargar nada; sin la `entrada`, un error.
      */
     async cargarSesion(motor: NuevoPersonajeService, idPersonaje: number, numero: number, sigue: () => boolean)
-        : Promise<{ sesion: SesionPersonaje; entrada: PersonajeCreateRequestDto; pj: Personaje; } | null> {
-        const { sesion, ficha, entrada } = await this.sesionesSvc.sesion(idPersonaje, numero);
+        : Promise<{ sesion: SesionPersonaje; entrada: PersonajeCreateRequestDto; pj: Personaje; nivelesPerdidos?: NivelPerdido[]; } | null> {
+        const { sesion, ficha, entrada, nivelesPerdidos } = await this.sesionesSvc.sesion(idPersonaje, numero);
         if (!sigue())
             return null;
         if (!entrada)
             throw new Error('La API no ha dado la ficha de la sesión abierta.');
         const pj = this.personajeSvc.fichaDeApi(ficha);
         await this.cargarCatalogos(motor);
-        return { sesion, entrada, pj };
+        return { sesion, entrada, pj, nivelesPerdidos: nivelesPerdidos ?? [] };
     }
 
     /** Los catálogos que usa el motor, como en la creación. */
@@ -125,8 +125,12 @@ export class MotorDesdeFichaService {
             motor.getProgresionLanzadorPersistible(), null);
     }
 
-    /** El motor con el personaje guardado: su raza (y su base), sus plantillas y lo que ya eligió. */
-    async hidratar(motor: NuevoPersonajeService, pj: Personaje, entrada: PersonajeCreateRequestDto): Promise<void> {
+    /**
+     * El motor con el personaje guardado: su raza (y su base), sus plantillas y lo que ya eligió; `nivelesPerdidos`, los
+     * que ha perdido (la subida cierra con ellos al paladín y al monje).
+     */
+    async hidratar(motor: NuevoPersonajeService, pj: Personaje, entrada: PersonajeCreateRequestDto,
+        nivelesPerdidos: NivelPerdido[] = []): Promise<void> {
         const idRaza = toInt(entrada.personaje?.idRaza);
         const idRazaBase = toInt(entrada.personaje?.idRazaBase);
         const raza = idRaza > 0 ? await this.primero(this.razaSvc.getRaza(idRaza)) : null;
@@ -134,6 +138,6 @@ export class MotorDesdeFichaService {
         const plantillas = (await Promise.all((entrada.colecciones?.plantillas ?? [])
             .map((p) => this.primero(this.plantillaSvc.getPlantilla(toInt(p.idPlantilla))))))
             .filter((p): p is NonNullable<typeof p> => !!p);
-        motor.iniciarSubidaDesdeFicha({ personaje: pj, entrada, raza, razaBase, plantillas });
+        motor.iniciarSubidaDesdeFicha({ personaje: pj, entrada, raza, razaBase, plantillas, nivelesPerdidos });
     }
 }

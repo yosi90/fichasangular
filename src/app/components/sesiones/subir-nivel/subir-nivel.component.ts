@@ -18,7 +18,7 @@ import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { ExperienciaPersonaje, SesionPersonaje } from 'src/app/interfaces/sesiones';
+import { ExperienciaPersonaje, NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { CampanaService } from 'src/app/services/campana.service';
 import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
@@ -82,6 +82,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     pj: Personaje | null = null;
     entrada: PersonajeCreateRequestDto | null = null;
+    /** Los niveles que ha perdido (fase 7): un nivel perdido de otra clase cierra al paladín y al monje (MJ pág. 55). */
+    private nivelesPerdidos: NivelPerdido[] = [];
     sesion: SesionPersonaje | null = null;
     experiencia: ExperienciaPersonaje | null = null;
     clases: Array<{ clase: Clase; siguienteNivel: number; elegible: boolean; motivo: string; tiene: boolean; }> = [];
@@ -194,7 +196,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.cuenta.sigue());
             if (!cargada)
                 return;
-            const { sesion, entrada, pj } = cargada;
+            const { sesion, entrada, pj, nivelesPerdidos } = cargada;
+            this.nivelesPerdidos = nivelesPerdidos ?? [];
             this.sesion = sesion;
             this.entrada = entrada;
             this.pj = pj;
@@ -212,7 +215,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     private async hidratar(): Promise<void> {
-        await this.motor.hidratar(this.svc, this.pj!, this.entrada!);
+        await this.motor.hidratar(this.svc, this.pj!, this.entrada!, this.nivelesPerdidos);
         this.antes = this.cuerpoDelMotor();
         this.recalcularClases();
     }

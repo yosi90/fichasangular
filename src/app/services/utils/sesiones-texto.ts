@@ -113,5 +113,6 @@ export const ETIQUETA_EVENTO: Record<TipoEventoSesion, string> = {
     modificacion: 'Corrección',
     correccion_master: 'Corrección del máster',
     plantilla_adquirida: 'Plantilla',
+    nivel_perdido: 'Nivel perdido',
     nota: 'Nota',
 };

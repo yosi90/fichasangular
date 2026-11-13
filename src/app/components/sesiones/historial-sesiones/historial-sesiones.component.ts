@@ -140,6 +140,11 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
         this.puertaSubida.solicitarPlantilla(this.idPersonaje);
     }
 
+    /** «Perder un nivel» (fase 7, segunda tanda): quien apunta, con una sesión de juego abierta, como la plantilla. */
+    perderNivel(): void {
+        this.puertaSubida.solicitarPerdida(this.idPersonaje);
+    }
+
     /** Los datos libres (fase 6): el formulario se abre aquí mismo. */
     datosAbiertos = false;
 

@@ -1051,6 +1051,11 @@ export interface DatosSubidaDesdeFicha {
     razaBase?: Raza | null;
     /** Sus plantillas, del catálogo (cuentan para los DG y el NEP). */
     plantillas?: Plantilla[];
+    /**
+     * Los niveles que ha perdido (`nivelesPerdidos` de la sesión, fase 7): uno de otra clase, perdido después de empezar
+     * una con restricción de multiclase, la cierra igual (*Manual del jugador*, pág. 55).
+     */
+    nivelesPerdidos?: Array<{ idClase: number; ordenConocido: boolean; clasesAnteriores: number[]; }>;
 }
 
 /** El intercambio de un conjuro conocido en el nivel en curso (`getIntercambioConjurosDelNivel`). */
@@ -9472,6 +9477,11 @@ export class NuevoPersonajeService {
         return comun;
     }
 
+    /** El conjuro del catálogo con ese id (o el del personaje); `null` si no está (la pérdida de un nivel, por su nombre). */
+    conjuroDelCatalogo(idConjuro: number | null | undefined): Conjuro | null {
+        return this.obtenerConjuroCatalogoPorId(toInt(idConjuro));
+    }
+
     /** La clase del catálogo con ese id; `null` si no está (las pantallas de las sesiones la buscan por su `idClase`). */
     claseDelCatalogo(idClase: number | null | undefined): Clase | null {
         return this.catalogoClases.find((item) => toInt(item?.Id) === toInt(idClase)) ?? null;
@@ -11302,7 +11312,9 @@ export class NuevoPersonajeService {
             const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel?.idClase));
             if (!clase?.Multiclase_restringida || libres.has(toInt(clase.Id)) || niveles.findIndex((n) => toInt(n.idClase) === toInt(clase.Id)) !== i)
                 return;
-            if (niveles.slice(i + 1).some((n) => toInt(n.idClase) !== toInt(clase.Id) && (n as any).ordenConocido !== false))
+            if (niveles.slice(i + 1).some((n) => toInt(n.idClase) !== toInt(clase.Id) && (n as any).ordenConocido !== false)
+                || (datos.nivelesPerdidos ?? []).some((p) => toInt(p.idClase) !== toInt(clase.Id) && p.ordenConocido !== false
+                    && (p.clasesAnteriores ?? []).map((c) => toInt(c)).includes(toInt(clase.Id))))
                 this.clasesCerradasPorMulticlase.add(normalizarTexto(clase.Nombre));
         });
 

@@ -37,6 +37,8 @@ export type TipoEventoSesion =
     | 'correccion_master'
     /** Una plantilla adquirida con el personaje ya creado (fase 7, `POST /personajes/{id}/plantillas`). */
     | 'plantilla_adquirida'
+    /** Un nivel perdido con el personaje ya creado (fase 7, segunda tanda, `POST /personajes/{id}/niveles/perdida`). */
+    | 'nivel_perdido'
     | 'nota';
 
 export type ActorRolSesion = 'jugador' | 'master' | 'sistema';
@@ -115,6 +117,16 @@ export interface SesionConFicha {
     sesion: SesionPersonaje;
     ficha: unknown;
     entrada?: PersonajeCreateRequestDto | null;
+    /** Para quien apunta: los niveles que ha perdido y siguen perdidos (los de ahora). La subida los mira (el paladín). */
+    nivelesPerdidos?: NivelPerdido[];
+}
+
+/** Un nivel de clase perdido (`nivelesPerdidos` de `GET …/sesiones/{numero}`), con las clases que tenía al perderlo. */
+export interface NivelPerdido {
+    idClase: number;
+    nivelClase: number;
+    ordenConocido: boolean;
+    clasesAnteriores: number[];
 }
 
 /** El cuerpo de `POST /personajes/{id}/niveles`: la ficha completa con un nivel más, la clase y la tirada de PG. */
@@ -170,6 +182,32 @@ export interface AdquirirPlantillaDto {
 /** Lo que responde la adquisición: la sesión donde queda, los PX (que no cambian) y el NEP de antes y de ahora. */
 export interface RespuestaPlantilla extends RespuestaSesion {
     plantilla: { idEvento: number; numeroSesion: number; id: number; nombre: string; nepAntes: number | null; nepDespues: number | null; };
+}
+
+/** El cuerpo de `POST /personajes/{id}/niveles/perdida`: la ficha sin lo del nivel que pierde (fase 7, segunda tanda). */
+export interface PerderNivelDto {
+    causa: 'revivir' | 'nivel_negativo' | 'plantilla' | 'otro';
+    /** Texto libre al final de la frase (como mucho 150 caracteres). */
+    concepto?: string;
+    /** Solo con el orden de sus niveles por conocer: la clase que pierde el nivel. */
+    idClase?: number;
+    ficha: PersonajeCreateRequestDto;
+    version: string;
+}
+
+/** Lo que responde perder un nivel: la sesión, los PX de ahora y lo que ha perdido. */
+export interface RespuestaPerdida extends RespuestaSesion {
+    perdida: {
+        idEvento: number;
+        numeroSesion: number;
+        clase: { id: number; nombre: string; } | null;
+        nivelClase: number | null;
+        nepAntes: number | null;
+        nepDespues: number | null;
+        pxAntes: number;
+        pxDespues: number;
+        constitucion: { antes: number; despues: number; } | null;
+    };
 }
 
 /** El cuerpo de abrir una sesión (todo opcional). */
