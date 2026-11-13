@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { firstValueFrom, Observable, take } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeContextoIdsDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { ArmaService } from './arma.service';
 import { ArmaduraService } from './armadura.service';
@@ -97,6 +97,30 @@ export class MotorDesdeFichaService {
         motor.setCatalogoArmadurasDotes((armaduras ?? []).map((a) => extraDeArmadura(a)));
         motor.setCatalogoGruposArmasDotes((gruposArmas ?? []).map((g) => extraConTipoArma(g)));
         motor.setCatalogoGruposArmadurasDotes((gruposArmaduras ?? []).map((g) => extraDeDote(g)));
+    }
+
+    /**
+     * El cuerpo del alta que arma el motor ahora con los datos de la `entrada` que no lleva (nombre, alineamiento, deidad,
+     * región…): lo que comparan antes y después la subida (`fichaDeLaSubida`) y la corrección (los rangos).
+     */
+    cuerpoDelMotor(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto): PersonajeCreateRequestDto {
+        const personaje = { ...motor.PersonajeCreacion, Nombre: entrada.personaje.nombre, Campana: 'Sin campaña' } as Personaje;
+        const catalogo = (lista: Array<{ Id?: number; Nombre?: string; }>) => lista
+            .map((x) => ({ id: toInt(x?.Id), nombre: `${x?.Nombre ?? ''}` })).filter((x) => x.id > 0);
+        const s: any = motor;
+        const contexto: PersonajeContextoIdsDto = {
+            idAlineamiento: toInt(entrada.personaje.idAlineamiento) || 1,
+            idGenero: toInt(entrada.personaje.idGenero) || 1,
+            idDeidad: toInt(entrada.personaje.deidad),
+            idRegion: toInt(entrada.personaje.idRegion),
+            catalogos: {
+                clases: catalogo(s.catalogoClases ?? []),
+                dominios: catalogo(s.catalogoDominios ?? []),
+                idiomas: catalogo(motor.EstadoFlujo.ventajas.catalogoIdiomas ?? []),
+            },
+        };
+        return this.personajeSvc.construirPayloadCreacionDesdePersonaje(personaje, contexto, null,
+            motor.getProgresionLanzadorPersistible(), null);
     }
 
     /** El motor con el personaje guardado: su raza (y su base), sus plantillas y lo que ya eligió. */

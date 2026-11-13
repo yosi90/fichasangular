@@ -468,6 +468,27 @@ function evaluarFamilia(
     entries.forEach((entry) => motivos.registrar({ ...build(entry), frase: frasePrerrequisito(clave, entry), clave }));
 }
 
+/** Los prerrequisitos de alineamiento y de actitud de la clase (`PRERREQUISITOS_DE_ALINEAMIENTO`), con el básico (1-9). */
+function evaluarFamiliasDeAlineamiento(motivos: MotivosPrerrequisitos, clase: Clase, alineamientoActualId: number): void {
+    const flags = clase?.Prerrequisitos_flags ?? {};
+    const prer = clase?.Prerrequisitos ?? ({} as Clase["Prerrequisitos"]);
+    evaluarFamilia(motivos, "alineamiento_requerido", flags?.alineamiento_requerido, toArray(prer?.alineamiento_requerido), (entry) => buildEvaluacionAlineamiento(entry, alineamientoActualId, false));
+    evaluarFamilia(motivos, "alineamiento_prohibido", flags?.alineamiento_prohibido, toArray(prer?.alineamiento_prohibido), (entry) => buildEvaluacionAlineamiento(entry, alineamientoActualId, true));
+    evaluarFamilia(motivos, "actitud_requerido", flags?.actitud_requerido, toArray(prer?.actitud_requerido), (entry) => buildEvaluacionActitud(entry, alineamientoActualId, false));
+    evaluarFamilia(motivos, "actitud_prohibido", flags?.actitud_prohibido, toArray(prer?.actitud_prohibido), (entry) => buildEvaluacionActitud(entry, alineamientoActualId, true));
+}
+
+/**
+ * Solo los prerrequisitos de alineamiento y de actitud de una clase, con un alineamiento (su nombre básico): lo que
+ * `evaluarElegibilidadClase` comprueba de ellos, sin las demás razones (`alineamiento-clase.ts`, la clase ya tomada).
+ */
+export function evaluarPrerrequisitosDeAlineamientoClase(clase: Clase, alineamiento: string): { incumple: string[]; sinComprobar: string[]; } {
+    const motivos = new MotivosPrerrequisitos();
+    evaluarFamiliasDeAlineamiento(motivos, clase, getAlineamientoBasicoIdPorNombre(alineamiento));
+    motivos.cerrarGrupos();
+    return { incumple: Array.from(new Set(motivos.fail)), sinComprobar: Array.from(new Set(motivos.unknown)) };
+}
+
 export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionContexto): ClaseEvaluacionResultado {
     const motivos = new MotivosPrerrequisitos();
     const advertencias: string[] = [];
@@ -487,10 +508,7 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     evaluarFamilia(motivos, "subtipo", flags?.subtipo, toArray(prer?.subtipo), (entry) => buildEvaluacionSubtipo(entry, ctx));
     evaluarFamilia(motivos, "caracteristica", flags?.caracteristica, toArray(prer?.caracteristica), (entry) => buildEvaluacionCaracteristica(entry, ctx));
     evaluarFamilia(motivos, "ataque_base", flags?.ataque_base, toArray(prer?.ataque_base), (entry) => buildEvaluacionAtaqueBase(entry, ctx));
-    evaluarFamilia(motivos, "alineamiento_requerido", flags?.alineamiento_requerido, toArray(prer?.alineamiento_requerido), (entry) => buildEvaluacionAlineamiento(entry, alineamientoActualId, false));
-    evaluarFamilia(motivos, "alineamiento_prohibido", flags?.alineamiento_prohibido, toArray(prer?.alineamiento_prohibido), (entry) => buildEvaluacionAlineamiento(entry, alineamientoActualId, true));
-    evaluarFamilia(motivos, "actitud_requerido", flags?.actitud_requerido, toArray(prer?.actitud_requerido), (entry) => buildEvaluacionActitud(entry, alineamientoActualId, false));
-    evaluarFamilia(motivos, "actitud_prohibido", flags?.actitud_prohibido, toArray(prer?.actitud_prohibido), (entry) => buildEvaluacionActitud(entry, alineamientoActualId, true));
+    evaluarFamiliasDeAlineamiento(motivos, clase, alineamientoActualId);
     evaluarFamilia(motivos, "genero", flags?.genero, toArray(prer?.genero), (entry) => buildEvaluacionGenero(entry, ctx.genero));
     evaluarFamilia(motivos, "clase_especial", flags?.habilidad_clase, toArray(prer?.clase_especial), (entry) => buildEvaluacionClaseEspecial(entry, ctx), { permitirSinDatos: true });
     evaluarFamilia(motivos, "competencia_arma", flags?.competencia_arma, toArray(prer?.competencia_arma), (entry) => buildEvaluacionCompetencia(

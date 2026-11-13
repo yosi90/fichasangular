@@ -71,4 +71,59 @@ describe('fichaDeLaCorreccion (la corrección de la ficha, fase 6)', () => {
         const quitada = fichaDeLaCorreccion(mantenida, { ...sinCambios(), dotesQuitadas: [{ idDote: 9, idExtra: 4, origen: 'Guerrero nivel 2' }] });
         expect(quitada.decisionesHomebrew).toEqual([{ tipo: 'alineamiento_raza', idElemento: 3 }]);
     });
+
+    it('otra dote en el hueco de la quitada: con su mismo origen, en la ficha y en la elección de su nivel', () => {
+        const ficha = fichaDeLaCorreccion(entrada(), {
+            ...sinCambios(),
+            dotesQuitadas: [{ idDote: 9, idExtra: 4, origen: 'Guerrero nivel 2' }],
+            dotesNuevas: [{ idDote: 12, idExtra: 0, origen: 'Guerrero nivel 2', indiceNivel: 1 }],
+        });
+        expect((ficha.colecciones as any).dotes).toEqual([
+            { idDote: 2, idExtra: 0, origen: 'Dote de nivel 1' }, { idDote: 12, idExtra: 0, origen: 'Guerrero nivel 2' }]);
+        expect(ficha.niveles![1].elecciones).toEqual([{ tipo: 'dote', idElemento: 12, idExtra: 0, origen: 'Guerrero nivel 2' }]);
+    });
+
+    it('el alineamiento, la deidad, la edad, la altura, el peso y las tiradas de PG (no la del máximo)', () => {
+        const base = entrada();
+        base.niveles![0].pg = { tirada: null, maximo: true };
+        base.niveles![1].pg = { tirada: 4, maximo: false };
+        const ficha = fichaDeLaCorreccion(base, {
+            ...sinCambios(),
+            personaje: { idAlineamiento: 4, deidad: 7, edad: 30, altura: 1.8, peso: 80 },
+            tiradasPg: { 0: 6, 1: 9 },
+        });
+        expect(ficha.personaje).toEqual(jasmine.objectContaining({ idAlineamiento: 4, deidad: 7, edad: 30, altura: 1.8, peso: 80 }));
+        expect(ficha.niveles![0].pg).toEqual({ tirada: null, maximo: true });
+        expect(ficha.niveles![1].pg).toEqual({ tirada: 9, maximo: false });
+    });
+
+    it('los rangos repartidos otra vez: la diferencia del motor en cada habilidad y los rangos de cada nivel', () => {
+        const base = entrada();
+        (base.colecciones as any).habilidades = { base: [{ idHabilidad: 2, rangos: 5, clasea: true }, { idHabilidad: 3, rangos: 2 }], custom: [] };
+        base.niveles![0].elecciones!.push({ tipo: 'rangos', idElemento: 2, valor: 4 });
+        const cuerpo = (rangos: Array<[number, number]>) => ({ colecciones: { habilidades: {
+            base: rangos.map(([idHabilidad, r]) => ({ idHabilidad, rangos: r })), custom: [] } } } as any);
+        const ficha = fichaDeLaCorreccion(base, {
+            ...sinCambios(),
+            rangos: {
+                antes: cuerpo([[2, 5], [3, 2]]),
+                despues: cuerpo([[2, 3], [3, 4], [6, 1]]),
+                porNivel: [[{ tipo: 'rangos', idElemento: 2, valor: 2 }, { tipo: 'rangos', idElemento: 3, valor: 4 }], [{ tipo: 'rangos', idElemento: 6, valor: 1 }]],
+            },
+        });
+        expect((ficha.colecciones as any).habilidades.base).toEqual([
+            { idHabilidad: 2, rangos: 3, clasea: true }, { idHabilidad: 3, rangos: 4 }, { idHabilidad: 6, rangos: 1 }]);
+        expect(ficha.niveles![0].elecciones!.filter((e) => e.tipo === 'rangos').map((e) => [e.idElemento, e.valor])).toEqual([[2, 2], [3, 4]]);
+        expect(ficha.niveles![1].elecciones!.filter((e) => e.tipo === 'rangos').map((e) => [e.idElemento, e.valor])).toEqual([[6, 1]]);
+    });
+
+    it('las decisiones que se recalculan: las de esos tipos se sustituyen (una edad corregida a una que vale quita la suya)', () => {
+        const base = entrada();
+        base.decisionesHomebrew!.push({ tipo: 'edad_mayor_que_la_maxima', idElemento: 3 });
+        const ficha = fichaDeLaCorreccion(base, {
+            ...sinCambios(),
+            decisionesRecalculadas: { tipos: ['edad_mayor_que_la_maxima', 'alineamiento_clase'], decisiones: [{ tipo: 'alineamiento_clase', idElemento: 11 }] },
+        });
+        expect(ficha.decisionesHomebrew).toEqual([{ tipo: 'alineamiento_raza', idElemento: 3 }, { tipo: 'alineamiento_clase', idElemento: 11 }]);
+    });
 });

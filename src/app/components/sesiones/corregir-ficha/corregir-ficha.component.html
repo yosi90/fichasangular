@@ -18,14 +18,15 @@
 
         <section class="subida__tarjeta">
             <h2 class="subida__seccion">Características</h2>
-            <p *ngIf="!puedeCaracteristicas" class="subida__nota">En una campaña, las puntuaciones solo las corrige el máster.</p>
+            <p class="subida__nota">La base es la tirada con los incrementos de antes, sin el ajuste de su raza.
+                <ng-container *ngIf="!puedeLoDelMaster"> En una campaña, las puntuaciones solo las corrige el máster.</ng-container></p>
             <table class="subida__tabla correccion__caracteristicas">
                 <thead><tr><th scope="col">Característica</th><th scope="col">Base</th><th scope="col">Puntuación</th></tr></thead>
                 <tbody>
                     <tr *ngFor="let c of caracteristicas">
                         <th scope="row">{{nombres[c[1]]}}</th>
                         <td>
-                            <input *ngIf="puedeCaracteristicas; else soloBase" type="number" min="1" max="99" class="correccion__numero"
+                            <input *ngIf="puedeLoDelMaster; else soloBase" type="number" min="1" max="99" class="correccion__numero"
                                 [attr.aria-label]="'Base de ' + nombres[c[1]]" [ngModel]="base[c[1]]" (ngModelChange)="cambiarBase(c[1], $event)">
                             <ng-template #soloBase>{{base[c[1]]}}</ng-template>
                         </td>
@@ -33,22 +34,109 @@
                     </tr>
                 </tbody>
             </table>
-            <p *ngIf="pg" class="subida__nota">PG: {{pg.total}}<ng-container *ngIf="pg.retroactivo"> ({{pg.retroactivo > 0 ? '+' : ''}}{{pg.retroactivo}} por la Constitución en los DG de antes{{pg.exacto ? '' : ', aproximado: hay DG sin su tirada'}})</ng-container>.</p>
+            <p *ngIf="pg" class="subida__nota">PG: {{pg.total}}<ng-container *ngIf="pg.retroactivo"> ({{pg.retroactivo > 0 ? '+' : ''}}{{pg.retroactivo}} por la Constitución en los DG de antes{{pg.exacto ? '' : ', aproximado: hay DG sin su tirada'}})</ng-container><ng-container *ngIf="pg.delNivel"> ({{pg.delNivel > 0 ? '+' : ''}}{{pg.delNivel}} por las tiradas corregidas)</ng-container>.</p>
+        </section>
+
+        <section class="subida__tarjeta" *ngIf="tiradas.length">
+            <h2 class="subida__seccion">Tiradas de PG</h2>
+            <p class="subida__nota">Lo que salió en el dado de cada nivel; el primero del personaje se toma al máximo.
+                <ng-container *ngIf="!puedeLoDelMaster"> En una campaña, las tiradas solo las corrige el máster.</ng-container></p>
+            <table class="subida__tabla">
+                <thead><tr><th scope="col">Nivel</th><th scope="col">Dado</th><th scope="col">Tirada</th></tr></thead>
+                <tbody>
+                    <tr *ngFor="let t of tiradas">
+                        <th scope="row">{{t.etiqueta}}</th>
+                        <td>d{{t.caras}}</td>
+                        <td>
+                            <ng-container *ngIf="t.maximo">máximo</ng-container>
+                            <ng-container *ngIf="!t.maximo && t.antes === null">sin guardar</ng-container>
+                            <input *ngIf="!t.maximo && t.antes !== null && puedeLoDelMaster" type="number" min="1" [max]="t.caras" class="correccion__numero"
+                                [attr.aria-label]="'Tirada de PG de ' + t.etiqueta" [ngModel]="t.tirada" (ngModelChange)="cambiarTirada(t, $event)">
+                            <ng-container *ngIf="!t.maximo && t.antes !== null && !puedeLoDelMaster">{{t.tirada}}</ng-container>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="subida__tarjeta">
+            <h2 class="subida__seccion">Alineamiento y deidad</h2>
+            <p class="subida__nota">Una clase cuyo alineamiento deja de cumplir solo la mantiene el máster (el ex paladín).</p>
+            <div class="correccion__campos">
+                <label class="correccion__campo">
+                    <span>Alineamiento</span>
+                    <select name="alineamiento" [(ngModel)]="idAlineamiento" (ngModelChange)="cambiarAlineamiento()">
+                        <option *ngFor="let a of alineamientos" [ngValue]="a.Id">{{a.Nombre}}</option>
+                    </select>
+                </label>
+                <label class="correccion__campo">
+                    <span>Deidad</span>
+                    <select name="deidad" [(ngModel)]="idDeidad" (ngModelChange)="cambiarAlineamiento()">
+                        <option [ngValue]="0">Sin deidad</option>
+                        <option *ngFor="let d of deidadesElegibles" [ngValue]="d.Id">{{d.Nombre}}</option>
+                    </select>
+                </label>
+            </div>
+        </section>
+
+        <section class="subida__tarjeta">
+            <h2 class="subida__seccion">Edad, altura y peso</h2>
+            <p class="subida__nota">Fuera de lo que da su raza, la ficha pasa a ser homebrew.<ng-container *ngIf="!puedeLoDelMaster"> En una
+                campaña, la edad solo la corrige el máster: cambia las características.</ng-container></p>
+            <div class="correccion__campos">
+                <label class="correccion__campo">
+                    <span>Edad</span>
+                    <input *ngIf="puedeLoDelMaster; else soloEdad" type="number" min="0" name="edad" class="correccion__numero"
+                        [ngModel]="edad" (ngModelChange)="cambiarEdad($event)">
+                    <ng-template #soloEdad><span>{{edad}}</span></ng-template>
+                </label>
+                <label class="correccion__campo">
+                    <span>Altura (m)<ng-container *ngIf="rangoAltura"> · {{rangoAltura}}</ng-container></span>
+                    <input type="number" min="0" step="0.01" name="altura" class="correccion__numero" [(ngModel)]="altura" (ngModelChange)="cambiarMedidas()">
+                </label>
+                <label class="correccion__campo">
+                    <span>Peso (kg)<ng-container *ngIf="rangoPeso"> · {{rangoPeso}}</ng-container></span>
+                    <input type="number" min="0" step="0.5" name="peso" class="correccion__numero" [(ngModel)]="peso" (ngModelChange)="cambiarMedidas()">
+                </label>
+            </div>
         </section>
 
         <section class="subida__tarjeta">
             <h2 class="subida__seccion">Dotes</h2>
             <p *ngIf="dotes.length === 0" class="subida__nota">No tiene dotes que se puedan quitar.</p>
             <ul class="subida__lista">
-                <li *ngFor="let d of dotes" class="subida__fila" [class.subida__fila--bloqueada]="d.quitada">
+                <li *ngFor="let d of dotes" class="subida__fila" [class.subida__fila--bloqueada]="d.quitada && !d.sustituta">
                     <div class="subida__fila-texto">
-                        <span class="subida__fila-nombre">{{d.nombre}}<ng-container *ngIf="d.extra"> ({{d.extra}})</ng-container></span>
+                        <span class="subida__fila-nombre">{{d.nombre}}<ng-container *ngIf="d.extra"> ({{d.extra}})</ng-container>
+                            <ng-container *ngIf="d.sustituta"> → {{d.sustituta.nombre}}<ng-container *ngIf="d.sustituta.extra"> ({{d.sustituta.extra}})</ng-container></ng-container></span>
                         <span *ngIf="d.origen" class="subida__fila-motivo">{{d.origen}}</span>
                     </div>
-                    <span *ngIf="d.quitada" class="subida__etiqueta">Se quita</span>
+                    <span *ngIf="d.quitada" class="subida__etiqueta">{{d.sustituta ? 'Cambiada' : 'Se quita'}}</span>
+                    <button *ngIf="d.quitada && !d.sustituta" mat-stroked-button type="button" (click)="elegirOtraDote(d)">Elegir otra</button>
                     <button *ngIf="!d.quitada" mat-stroked-button type="button" (click)="quitarDote(d)">Quitar</button>
                 </li>
             </ul>
+        </section>
+
+        <section class="subida__tarjeta">
+            <ng-container *ngIf="!repartiendo">
+                <h2 class="subida__seccion">Habilidades</h2>
+                <div *ngIf="faltaRepartirRangos" class="subida__aviso" role="status">
+                    <mat-icon aria-hidden="true">info</mat-icon>
+                    <span>Con la Inteligencia corregida cambian los puntos de habilidad de cada nivel: reparte otra vez sus rangos.</span>
+                </div>
+                <p class="subida__nota">{{rangosRepartidos ? 'Rangos repartidos de nuevo, nivel a nivel.' : 'Se reparten otra vez los de todos sus niveles, uno a uno, como al crearlo.'}}</p>
+                <button mat-stroked-button type="button" (click)="repartirRangos()">{{rangosRepartidos ? 'Repartirlos otra vez' : 'Repartir los rangos de nuevo'}}</button>
+            </ng-container>
+            <ng-container *ngIf="repartiendo && pasoRangosActual">
+                <app-reparto-rangos [motor]="svc" [titulo]="pasoRangosActual.etiqueta"></app-reparto-rangos>
+                <div class="subida__pie">
+                    <span class="subida__hueco"></span>
+                    <button mat-flat-button color="primary" type="button" [disabled]="!puedeSeguirRangos" (click)="siguientePasoRangos()">
+                        {{pasoRangos !== null && pasoRangos < pasosRangos.length - 1 ? 'Siguiente nivel' : 'Terminar el reparto'}}
+                    </button>
+                </div>
+            </ng-container>
         </section>
 
         <section class="subida__tarjeta" *ngIf="idiomas.length || conjuros.length">
@@ -67,18 +155,29 @@
             </ul>
         </section>
 
-        <section class="subida__tarjeta correccion__rotas" *ngIf="rotas.length" aria-label="Lo que deja de cumplirse">
+        <section class="subida__tarjeta correccion__rotas" *ngIf="rotas.length || reglas.length" aria-label="Lo que deja de cumplirse">
             <h2 class="subida__seccion">Lo que deja de cumplirse</h2>
             <ul class="subida__lista">
                 <li *ngFor="let r of rotas" class="subida__fila">
                     <div class="subida__fila-texto">
-                        <span class="subida__fila-nombre">{{r.nombre}}</span>
+                        <span class="subida__fila-nombre">{{r.nombre}}<ng-container *ngIf="r.nivel"> (elegida en el nivel {{r.nivel}})</ng-container></span>
                         <span class="subida__fila-motivo">{{r.razones.join(' · ')}}</span>
                     </div>
                     <span *ngIf="r.mantenida" class="subida__etiqueta">Homebrew</span>
                     <ng-container *ngIf="!r.mantenida">
                         <button mat-stroked-button type="button" (click)="mantener(r)">Mantenerla (homebrew)</button>
                         <button mat-flat-button color="primary" type="button" (click)="quitarDote(r)">Quitarla</button>
+                    </ng-container>
+                </li>
+                <li *ngFor="let r of reglas" class="subida__fila">
+                    <div class="subida__fila-texto">
+                        <span class="subida__fila-nombre">{{r.nombre}}</span>
+                        <span class="subida__fila-motivo">{{r.razones.join(' · ')}}<ng-container *ngIf="!r.puedeMantener"> · solo el máster puede mantenerla</ng-container></span>
+                    </div>
+                    <span *ngIf="r.mantenida" class="subida__etiqueta">Homebrew</span>
+                    <ng-container *ngIf="!r.mantenida">
+                        <button *ngIf="r.puedeMantener" mat-stroked-button type="button" (click)="mantener(r)">Mantenerla (homebrew)</button>
+                        <button mat-flat-button color="primary" type="button" (click)="deshacerRegla(r)">Volver a como estaba</button>
                     </ng-container>
                 </li>
             </ul>
@@ -102,9 +201,11 @@
             <button mat-button type="button" (click)="empezarDeNuevo()" [disabled]="guardando">Empezar de nuevo</button>
             <span class="subida__hueco"></span>
             <span *ngIf="pendientes.length" class="subida__nota">Decide qué hacer con lo que deja de cumplirse.</span>
+            <span *ngIf="!pendientes.length && (faltaRepartirRangos || repartiendo)" class="subida__nota">Termina de repartir los rangos.</span>
             <button mat-flat-button color="primary" type="button" [disabled]="!puedeGuardar" (click)="guardar()">
                 {{guardando ? 'Guardando…' : 'Guardar la corrección'}}
             </button>
         </footer>
     </ng-container>
+    <ng-container #modalHost></ng-container>
 </section>

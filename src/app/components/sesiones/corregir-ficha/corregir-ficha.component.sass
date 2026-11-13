@@ -34,9 +34,32 @@
         color: inherit
         font: inherit
 
+.correccion__campos
+    display: flex
+    flex-wrap: wrap
+    gap: 12px 24px
+
+.correccion__campo
+    display: flex
+    flex-direction: column
+    gap: 6px
+    min-width: 160px
+
+    select
+        min-height: 40px
+        padding: 0 8px
+        border: 1px solid rgba(255, 255, 255, .12)
+        border-radius: 6px
+        background: rgba(255, 255, 255, .04)
+        color: inherit
+        font: inherit
+
+        option
+            background: $primary
+
 .correccion__rotas
     border-left: 3px solid #d89b3c
 
 @include movil
-    .correccion__numero
+    .correccion__numero, .correccion__campo select
         min-height: 44px

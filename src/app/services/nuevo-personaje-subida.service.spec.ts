@@ -8,6 +8,7 @@ import { PersonajeCreateRequestDto } from '../interfaces/personajes-api';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { claveHabilidad } from './utils/habilidad-clave';
+import { toNumber } from './utils/normalizacion';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
 
 // La subida de nivel con el motor de la creación (roadmap de sesiones, fase 4; estudio de reglas, apartado 1): personajes
@@ -344,9 +345,98 @@ describe('Subida de nivel con el motor de la creación (personajes de referencia
         expect(corregir.dotesSinSusPrerrequisitos().map((d) => [d.idDote, d.origen])).toEqual([[60, 'Dote de nivel 1']]);
         expect(corregir.quitarDoteDeLaFicha(60, 0, 'Dote de nivel 1')).toBeTrue();
         expect(corregir.dotesSinSusPrerrequisitos()).toEqual([]);
-        // Lo que suma lo que el motor vuelve a calcular se queda: la puntuación cambia lo mismo que la base.
-        const con = corregir.PersonajeCreacion.Constitucion;
-        corregir.corregirBaseCaracteristica('Constitucion', corregir.getBaseCaracteristicas().Constitucion + 1);
-        expect(corregir.PersonajeCreacion.Constitucion).toBe(con + 1);
+        // La base es la tirada, sin el +2 racial a la Constitución del enano (que el motor no vuelve a calcular).
+        expect(corregir.getBaseCaracteristicas().Constitucion).toBe(13);
+        expect(corregir.PersonajeCreacion.Constitucion).toBe(15);
+        corregir.corregirBaseCaracteristica('Constitucion', 14);
+        expect(corregir.PersonajeCreacion.Constitucion).toBe(16);
+        expect(corregir.getBaseCaracteristicas().Carisma).toBe(10);
+        expect(corregir.PersonajeCreacion.Carisma).toBe(8);
+    });
+
+    it('la corrección evalúa cada dote con lo que tenía en el nivel en que la eligió (su registro), no con lo de ahora', () => {
+        const svc = crear(HUMANO, { Fuerza: 12 });
+        [1, 2, 3, 4].forEach(() => aplicarNivel(svc, GUERRERO, 'Fuerza'));
+        const guardado = guardar(svc);
+        expect(guardado.personaje.Fuerza).toBe(13);
+        const poderoso = { ...dote(60, 'Ataque poderoso'), Prerrequisitos: { caracteristica: [
+            { Id_caracteristica: 1, Caracteristica: 'Fuerza', Cantidad: 13, Opcional: 0, Frase: 'Fuerza 13' }] } };
+        const conLaDoteEn = (indice: number) => {
+            const entrada = JSON.parse(JSON.stringify(guardado.entrada)) as PersonajeCreateRequestDto;
+            entrada.niveles![indice].elecciones = [...(entrada.niveles![indice].elecciones ?? []), { tipo: 'dote', idElemento: 60, idExtra: 0 }];
+            const corregir = subir({ entrada, personaje: guardado.personaje }, HUMANO);
+            corregir.setCatalogoDotes([...DOTES, poderoso]);
+            corregir.PersonajeCreacion.DotesContextuales.push({
+                Dote: poderoso, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel' },
+            } as any);
+            return corregir;
+        };
+        // Elegida en el nivel 1, con Fuerza 12 (el +1 llegó en el 4): no la cumplía.
+        expect(conLaDoteEn(0).dotesSinSusPrerrequisitos().map((d) => [d.idDote, d.nivel])).toEqual([[60, 1]]);
+        // Elegida en el nivel 4, ya con Fuerza 13: sí.
+        expect(conLaDoteEn(3).dotesSinSusPrerrequisitos()).toEqual([]);
+        // Sin el orden conocido (una ficha de antes), con lo de ahora.
+        const deAntes = conLaDoteEn(0);
+        (deAntes as any).ordenConocidoNiveles = [false, false, false, false];
+        expect(deAntes.dotesSinSusPrerrequisitos()).toEqual([]);
+    });
+
+    it('la corrección elige otra dote en el hueco de la quitada: el tipo que admite su hueco y su mismo origen y nivel', () => {
+        const svc = crear(HUMANO, {});
+        aplicarNivel(svc, GUERRERO);
+        const guardado = guardar(svc);
+        const corregir = subir(guardado, HUMANO);
+        const deGuerrero = { ...dote(70, 'Esquiva'), Tipos: [{ Id: 2, Nombre: 'Guerrero', Usado: 1 }] };
+        corregir.setCatalogoDotes([...DOTES, deGuerrero]);
+        corregir.setCatalogoClases([clase({ ...GUERRERO, Desglose_niveles: [nivel(1, { Especiales: [
+            { Especial: { Id: 900, Nombre: 'Dote adicional', Otorga_dote: true }, Extra: 'Guerrero', Id_extra: 0, Opcional: 0, Id_interno: 1 }] })] }),
+            ...CLASES.filter((c) => c.Id !== GUERRERO.Id)]);
+        const hueco = corregir.registrarDoteEnLugarDe({ idDote: 50, idExtra: 0, origen: 'Dote adicional: Guerrero nivel 1' }, 0);
+        expect(hueco.tipoPermitido).toBe('Guerrero');
+        const candidatos = corregir.obtenerCandidatosDotePendiente(hueco.id);
+        expect(candidatos.find((c) => c.dote.Id === 70)?.restringidaPorTipo).toBeFalse();
+        expect(candidatos.find((c) => c.dote.Id === 51)?.restringidaPorTipo).toBeTrue();
+        expect(corregir.aplicarDotePendiente(hueco.id, { idDote: 70, idExtra: 0, extra: '' })).toBeTrue();
+        expect(corregir.PersonajeCreacion.DotesContextuales.some((d) => d?.Dote?.Id === 70 && (d.Contexto as any).Origen === 'Dote adicional: Guerrero nivel 1')).toBeTrue();
+        expect(corregir.getOrdenNiveles()[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 70, origen: 'Dote adicional: Guerrero nivel 1' }));
+        // Un origen que ningún hueco da (una ficha de antes): cualquier dote.
+        expect(corregir.registrarDoteEnLugarDe({ idDote: 51, idExtra: 0, origen: 'API' }, null).tipoPermitido).toBeNull();
+    });
+
+    it('la corrección reparte otra vez los rangos de todos los niveles con la Inteligencia corregida (x4 en el primero)', () => {
+        const svc = crear(HUMANO, { Inteligencia: 10 });
+        [1, 2].forEach(() => aplicarNivel(svc, GUERRERO));
+        const corregir = subir(guardar(svc), HUMANO);
+        corregir.corregirBaseCaracteristica('Inteligencia', 12);
+        const pasos = corregir.pasosDelRepartoDeRangos();
+        expect(pasos.map((p) => [p.tipo, p.indice, p.nivelPersonaje])).toEqual([['clase', 0, 1], ['clase', 1, 2]]);
+        corregir.empezarRepartoDeRangos();
+        expect(corregir.PersonajeCreacion.Habilidades.every((h) => toNumber(h.Rangos) === 0)).toBeTrue();
+        expect(corregir.abrirPasoDelRepartoDeRangos(pasos[0])).toBeTrue();
+        expect(corregir.EstadoFlujo.habilidades.puntosTotales).toBe(12);
+        const clave = (id: number) => claveHabilidad(corregir.getHabilidadesSesion().find((h) => h.Id === id)!);
+        expect(corregir.obtenerLimiteRangoHabilidad(clave(2))).toBe(4);
+        expect(corregir.ajustarRangoHabilidad(clave(2), 4)).toBeTrue();
+        for (let i = 0; i < 20 && corregir.puedeSubirRangoHabilidad(clave(3)); i++)
+            corregir.ajustarRangoHabilidad(clave(3), 1);
+        expect(corregir.cerrarDistribucionHabilidades()).not.toBeNull();
+        expect(corregir.abrirPasoDelRepartoDeRangos(pasos[1])).toBeTrue();
+        expect(corregir.EstadoFlujo.habilidades.puntosTotales).toBe(3);
+        expect(corregir.ajustarRangoHabilidad(clave(2), 1)).toBeTrue();
+        expect(corregir.getOrdenNiveles()[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'rangos', idElemento: 2, valor: 4 }));
+    });
+
+    it('la corrección de la edad aplica el envejecimiento de la tabla 6-5 a las características', () => {
+        const svc = crear(ENANO, { Fuerza: 14, Sabiduria: 12 });
+        aplicarNivel(svc, GUERRERO);
+        const guardado = guardar(svc);
+        guardado.personaje.Edad = 50;
+        const corregir = subir(guardado, ENANO);
+        const [fuerza, sabiduria] = [corregir.PersonajeCreacion.Fuerza, corregir.PersonajeCreacion.Sabiduria];
+        corregir.corregirEdad(130);
+        expect(corregir.PersonajeCreacion.Fuerza).toBe(fuerza - 1);
+        expect(corregir.PersonajeCreacion.Sabiduria).toBe(sabiduria + 1);
+        corregir.corregirEdad(50);
+        expect(corregir.PersonajeCreacion.Fuerza).toBe(fuerza);
     });
 });

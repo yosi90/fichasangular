@@ -93,6 +93,25 @@ export function pgTrasCambioDeCon(entrada: PersonajeCreateRequestDto, nivelPerso
     });
 }
 
+/**
+ * Los PG tras corregir la ficha: el retroactivo de la Constitución (`pgTrasCambioDeCon`) y lo que cambian las tiradas de
+ * PG corregidas (`tiradas`: el índice del nivel en `entrada.niveles` y la nueva), cada DG con el modificador de después y
+ * al menos 1. Solo cambia la de un nivel con su tirada guardada y no tomado al máximo (el primero del personaje).
+ */
+export function pgTrasCorreccion(entrada: PersonajeCreateRequestDto, nivelPersonaje: number, modConDespues: number,
+    tiradas: Record<number, number> = {}): PgSubida {
+    const base = pgTrasCambioDeCon(entrada, nivelPersonaje, modConDespues, null);
+    const mod = toInt(modConDespues);
+    let porTiradas = 0;
+    (entrada.niveles ?? []).forEach((nivel, i) => {
+        const vieja = toInt(nivel?.pg?.tirada);
+        if (tiradas[i] === undefined || vieja < 1 || nivel?.pg?.maximo)
+            return;
+        porTiradas += Math.max(1, toInt(tiradas[i]) + mod) - Math.max(1, vieja + mod);
+    });
+    return { ...base, total: Math.max(1, base.total + porTiradas), delNivel: porTiradas };
+}
+
 /** El modificador de Constitución de una ficha del alta (sin Constitución, 0). */
 export function modConstitucionDeEntrada(ficha: PersonajeCreateRequestDto | null | undefined): number {
     const con = ficha?.caracteristicas?.constitucion;
@@ -106,7 +125,7 @@ const SE_CONSERVAN_PERSONAJE = new Set([
     'altura', 'peso',
 ]);
 
-type Lista = Array<Record<string, any>>;
+export type Lista = Array<Record<string, any>>;
 
 /** Una clave estable de un elemento (sus campos ordenados, sin los vacíos), para comparar listas como multiconjuntos. */
 function claveElemento(elemento: unknown): string {
@@ -166,7 +185,7 @@ function aplicarDiferencia(guardada: Lista | undefined, antes: Lista | undefined
  * sus rangos varios (un rasgo que se gana a N DG con su bonificador de habilidad): la diferencia del motor, con su texto
  * de varios. Lo que el motor ya contaba antes y la ficha guardada no (una ficha de antes) no se toca.
  */
-function aplicarRangos(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
+export function aplicarRangos(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
     const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${Math.max(0, toInt(h?.['idExtra']))}`;
     const previas = new Map((antes ?? []).map((h) => [clave(h), h]));
     const resultado = (guardadas ?? []).map((h) => ({ ...h }));

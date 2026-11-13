@@ -69,33 +69,46 @@ export function getVectorDesdeNombreBasico(nombre: string): AlineamientoVector |
  * ninguno: el eje que pide queda sin valor.
  */
 function esPreferenciaProhibitiva(normalizado: string): boolean {
-    return normalizado.includes("nunca") || normalizado.includes("tendencia a no");
+    return normalizado.includes("nunca") || normalizado.includes("jamas") || normalizado.includes("prohib")
+        || normalizado.includes("tendencia a no");
 }
 
+/** Lo que pide una preferencia de un eje: el valor del eje (1 legal o bueno, 0 neutral, −1 caótico o maligno) y si lo prohíbe. */
+export interface ReglaPreferenciaAlineamiento {
+    valor: number;
+    prohibe: boolean;
+    /** «Siempre …» o «Nunca …» (no «casi», ni «tendencia»): no se salta sin volver homebrew, traiga o no su prioridad. */
+    estricta: boolean;
+}
+
+/**
+ * La regla de una preferencia de ley o de moral (`preferencia_ley`, `preferencia_moral`: «Siempre legal», «Nunca bueno»,
+ * «Tendencia a no ser caótico»), o `null` si no pide nada («Ninguna preferencia», «No aplica»). El catálogo de las
+ * preferencias solo trae su nombre, así que es el único sitio que lo lee (propuesta en el bugs.md de sesiones: darles su
+ * valor y si prohíben como datos). Cuánto pesa lo dice la prioridad del alineamiento y, sin ella, «siempre» o «nunca».
+ */
+export function reglaDePreferenciaAlineamiento(nombre: string | null | undefined, eje: 'ley' | 'moral'): ReglaPreferenciaAlineamiento | null {
+    const n = normalizarTexto(`${nombre ?? ''}`);
+    if (esAlineamientoSinPreferencia(n) || n === 'cualquiera')
+        return null;
+    const valores: Array<[string, number]> = eje === 'ley'
+        ? [["legal", 1], ["caot", -1], ["neutral", 0]]
+        : [["malign", -1], ["buen", 1], ["neutral", 0]];
+    const encontrado = valores.find(([texto]) => n.includes(texto));
+    const estricta = (n.includes('siempre') || n.includes('nunca')) && !n.includes('casi') && !n.includes('tendencia');
+    return encontrado ? { valor: encontrado[1], prohibe: esPreferenciaProhibitiva(n), estricta } : null;
+}
+
+/** El valor que exige una preferencia de ley (`null` si no exige ninguno: sin preferencia o una que prohíbe). */
 export function parseLeyDesdePreferencia(nombre: string): number | null {
-    const n = normalizarTexto(nombre);
-    if (esAlineamientoSinPreferencia(n) || esPreferenciaProhibitiva(n))
-        return null;
-    if (n.includes("legal"))
-        return 1;
-    if (n.includes("caot"))
-        return -1;
-    if (n.includes("neutral"))
-        return 0;
-    return null;
+    const regla = reglaDePreferenciaAlineamiento(nombre, 'ley');
+    return regla && !regla.prohibe ? regla.valor : null;
 }
 
+/** El valor que exige una preferencia moral (`null` si no exige ninguno: sin preferencia o una que prohíbe). */
 export function parseMoralDesdePreferencia(nombre: string): number | null {
-    const n = normalizarTexto(nombre);
-    if (esAlineamientoSinPreferencia(n) || esPreferenciaProhibitiva(n))
-        return null;
-    if (n.includes("malign"))
-        return -1;
-    if (n.includes("buen"))
-        return 1;
-    if (n.includes("neutral"))
-        return 0;
-    return null;
+    const regla = reglaDePreferenciaAlineamiento(nombre, 'moral');
+    return regla && !regla.prohibe ? regla.valor : null;
 }
 
 /** El vector (ley, moral) de un alineamiento básico por su id (`alineamientos_basicos`: 1 legal bueno … 9 caótico maligno). */

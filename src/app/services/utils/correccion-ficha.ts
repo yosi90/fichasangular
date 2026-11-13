@@ -1,6 +1,8 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
-import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { toInt } from './normalizacion';
+import { DecisionHomebrew } from './personaje-oficialidad';
+import { aplicarRangos } from './subida-nivel';
 
 /*
  * La corrección de la ficha (roadmap de sesiones, fase 6; guía `docs/publica/SESIONES_FRONT.md`, «Modificar y corregir»):
@@ -30,6 +32,26 @@ export interface CambiosCorreccion {
     dotesMantenidas: number[];
     idiomasQuitados: number[];
     conjurosQuitados: Array<{ idConjuro: number; idClase: number | null; }>;
+    /** Las dotes elegidas en el hueco de una quitada (`registrarDoteEnLugarDe`), con su nivel en `niveles` (o `null`). */
+    dotesNuevas?: Array<DoteDeLaFicha & { indiceNivel: number | null; }>;
+    /** Los datos de la ficha que se corrigen tal cual (alineamiento, deidad, edad, altura, peso). */
+    personaje?: Partial<Pick<PersonajeCreateRequestDto['personaje'], 'idAlineamiento' | 'deidad' | 'edad' | 'altura' | 'peso'>>;
+    /** Las tiradas de PG corregidas: el índice del nivel en `niveles` y la nueva (solo el máster; sin campaña, el dueño). */
+    tiradasPg?: Record<number, number>;
+    /**
+     * Los rangos repartidos otra vez (nivel a nivel): el cuerpo del motor antes y después del reparto (la diferencia de
+     * cada habilidad, como la subida) y los rangos de cada nivel, en el orden de `niveles`.
+     */
+    rangos?: {
+        antes: PersonajeCreateRequestDto;
+        despues: PersonajeCreateRequestDto;
+        porNivel: PersonajeCreateNivelEleccionDto[][];
+    } | null;
+    /**
+     * Las decisiones homebrew que se vuelven a calcular con lo corregido (las de estos `tipos` se sustituyen por
+     * `decisiones`): el alineamiento de una clase, la edad, la altura y el peso.
+     */
+    decisionesRecalculadas?: { tipos: string[]; decisiones: DecisionHomebrew[]; } | null;
 }
 
 /** Quita el primer elemento que cumple `es` (y devuelve si lo ha quitado). */
@@ -69,6 +91,33 @@ export function fichaDeLaCorreccion(entrada: PersonajeCreateRequestDto, cambios:
             || quitarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === d.idDote && toInt(x?.idExtra) === d.idExtra);
         quitarEleccion(ficha, 'dote', d.idDote, d.idExtra);
     });
+    (cambios.dotesNuevas ?? []).forEach((d) => {
+        col.dotes.push({ idDote: d.idDote, idExtra: d.idExtra, origen: d.origen });
+        const nivel = d.indiceNivel !== null ? ficha.niveles?.[d.indiceNivel] : undefined;
+        if (nivel)
+            nivel.elecciones = [...(nivel.elecciones ?? []), { tipo: 'dote', idElemento: d.idDote, idExtra: d.idExtra, origen: d.origen }];
+    });
+    Object.entries(cambios.personaje ?? {}).forEach(([clave, valor]) => {
+        if (valor !== undefined && valor !== null)
+            (ficha.personaje as any)[clave] = valor;
+    });
+    Object.entries(cambios.tiradasPg ?? {}).forEach(([indice, tirada]) => {
+        const nivel = ficha.niveles?.[toInt(indice)];
+        if (nivel?.pg && !nivel.pg.maximo)
+            nivel.pg = { ...nivel.pg, tirada: toInt(tirada) };
+    });
+    if (cambios.rangos) {
+        const antes: any = cambios.rangos.antes.colecciones?.habilidades ?? {};
+        const despues: any = cambios.rangos.despues.colecciones?.habilidades ?? {};
+        col.habilidades = {
+            ...(col.habilidades ?? {}),
+            base: aplicarRangos(col.habilidades?.base, antes.base, despues.base),
+            custom: aplicarRangos(col.habilidades?.custom, antes.custom, despues.custom),
+        };
+        (ficha.niveles ?? []).forEach((nivel, i) => {
+            nivel.elecciones = [...(nivel.elecciones ?? []).filter((e) => e.tipo !== 'rangos'), ...(cambios.rangos!.porNivel[i] ?? [])];
+        });
+    }
     col.idiomas = [...(col.idiomas ?? [])];
     cambios.idiomasQuitados.forEach((id) => {
         quitarPrimero(col.idiomas, (x: any) => toInt(x?.idIdioma) === toInt(id));
@@ -81,7 +130,9 @@ export function fichaDeLaCorreccion(entrada: PersonajeCreateRequestDto, cambios:
         quitarEleccion(ficha, 'conjuro', c.idConjuro, c.idClase);
     });
 
-    const decisiones = [...(ficha.decisionesHomebrew ?? [])];
+    const recalculadas = cambios.decisionesRecalculadas;
+    const decisiones = [...(ficha.decisionesHomebrew ?? [])
+        .filter((d) => !recalculadas || !recalculadas.tipos.includes(d.tipo)), ...(recalculadas?.decisiones ?? [])];
     cambios.dotesMantenidas.forEach((id) => {
         if (!decisiones.some((d) => d.tipo === 'requisitos_dote' && toInt(d.idElemento) === toInt(id)))
             decisiones.push({ tipo: 'requisitos_dote', idElemento: toInt(id) });

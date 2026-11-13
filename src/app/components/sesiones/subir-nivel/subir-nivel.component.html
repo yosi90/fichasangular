@@ -68,24 +68,7 @@
 
             <!-- Habilidades -->
             <ng-container *ngSwitchCase="'habilidades'">
-                <h2 class="subida__seccion">Habilidades: te quedan {{puntosHabilidadRestantes}} puntos</h2>
-                <p class="subida__nota">Las de clase de cualquiera de sus clases cuestan 1 y llegan a nivel + 3; las demás cuestan 2 y llegan a la mitad.</p>
-                <table class="subida__tabla">
-                    <thead><tr><th scope="col">Habilidad</th><th scope="col">Rangos</th><th scope="col">Este nivel</th><th scope="col">Tope</th><th scope="col"><span class="cdk-visually-hidden">Cambiar</span></th></tr></thead>
-                    <tbody>
-                        <tr *ngFor="let h of habilidadesSesion">
-                            <th scope="row">{{h.Nombre}}<ng-container *ngIf="h.Extra && h.Extra !== 'No aplica'"> ({{h.Extra}})</ng-container>
-                                <span *ngIf="esDeClase(h)" class="subida__etiqueta subida__etiqueta--clase">de clase</span></th>
-                            <td>{{h.Rangos}}</td>
-                            <td>{{rangosDeLaSesion(h) ? '+' + rangosDeLaSesion(h) : ''}}</td>
-                            <td>{{limite(h)}}</td>
-                            <td class="subida__botones">
-                                <button mat-icon-button type="button" [attr.aria-label]="'Quitar un rango de ' + h.Nombre" [disabled]="rangosDeLaSesion(h) < 1" (click)="ajustar(h, -1)"><mat-icon>remove</mat-icon></button>
-                                <button mat-icon-button type="button" [attr.aria-label]="'Poner un rango en ' + h.Nombre" [disabled]="!puedeSubir(h)" (click)="ajustar(h, 1)"><mat-icon>add</mat-icon></button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <app-reparto-rangos [motor]="svc"></app-reparto-rangos>
             </ng-container>
 
             <!-- Dotes: en el selector de la creación -->

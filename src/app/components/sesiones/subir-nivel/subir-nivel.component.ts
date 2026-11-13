@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ComponentRef, Input, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,11 +11,13 @@ import { SelectorDominiosModalComponent } from 'src/app/components/nuevo-persona
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
+import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
+import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { PersonajeContextoIdsDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ExperienciaPersonaje, SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { CampanaService } from 'src/app/services/campana.service';
 import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
@@ -23,12 +25,10 @@ import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.se
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase, SeleccionOpcionalesClase } from 'src/app/services/nuevo-personaje.service';
-import { PersonajeService } from 'src/app/services/personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
-import { claveHabilidad } from 'src/app/services/utils/habilidad-clave';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { carasDado, MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
@@ -62,7 +62,7 @@ const CADUCIDAD_BORRADOR_MS = 7 * 24 * 60 * 60 * 1000;
 @Component({
     selector: 'app-subir-nivel',
     standalone: true,
-    imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule],
+    imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, RepartoRangosComponent],
     templateUrl: './subir-nivel.component.html',
     styleUrls: ['./subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -105,14 +105,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     cambios: CambioSubida[] = [];
     private antes: PersonajeCreateRequestDto | null = null;
     private uid = '';
-    private modalAbierto: ComponentRef<unknown> | null = null;
+    private readonly selectores = new HuecoDeSelectores(() => this.modalHost);
     private destruido = false;
 
     constructor(
         public svc: NuevoPersonajeService,
         private auth: Auth,
         private sesionesSvc: SesionesService,
-        private personajeSvc: PersonajeService,
         private puerta: SubidaNivelPuertaService,
         private campanaSvc: CampanaService,
         private motor: MotorDesdeFichaService,
@@ -136,14 +135,6 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     get puedeSeguir(): boolean {
         return toInt(this.experiencia?.nivelesPorSubir) > 1;
-    }
-
-    get habilidadesSesion() {
-        return this.svc.getHabilidadesSesion();
-    }
-
-    get puntosHabilidadRestantes(): number {
-        return toInt(this.svc.EstadoFlujo.habilidades.puntosRestantes);
     }
 
     get entradaConjuros() {
@@ -240,24 +231,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     /** El cuerpo del alta que arma el motor ahora (para la diferencia de la subida). */
     private cuerpoDelMotor(): PersonajeCreateRequestDto {
-        const entrada = this.entrada!;
-        const personaje = { ...this.svc.PersonajeCreacion, Nombre: entrada.personaje.nombre, Campana: 'Sin campaña' } as Personaje;
-        const catalogo = (lista: Array<{ Id?: number; Nombre?: string; }>) => lista
-            .map((x) => ({ id: toInt(x?.Id), nombre: `${x?.Nombre ?? ''}` })).filter((x) => x.id > 0);
-        const s: any = this.svc;
-        const contexto: PersonajeContextoIdsDto = {
-            idAlineamiento: toInt(entrada.personaje.idAlineamiento) || 1,
-            idGenero: toInt(entrada.personaje.idGenero) || 1,
-            idDeidad: toInt(entrada.personaje.deidad),
-            idRegion: toInt(entrada.personaje.idRegion),
-            catalogos: {
-                clases: catalogo(s.catalogoClases ?? []),
-                dominios: catalogo(s.catalogoDominios ?? []),
-                idiomas: catalogo(this.svc.EstadoFlujo.ventajas.catalogoIdiomas ?? []),
-            },
-        };
-        return this.personajeSvc.construirPayloadCreacionDesdePersonaje(personaje, contexto, null,
-            this.svc.getProgresionLanzadorPersistible(), null);
+        return this.motor.cuerpoDelMotor(this.svc, this.entrada!);
     }
 
     private sigueLaMismaCuenta(): boolean {
@@ -523,32 +497,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         return !this.daDg || this.tiradaElegida !== null;
     }
 
-    // Habilidades
-    claveDe(habilidad: any): string {
-        return claveHabilidad(habilidad);
-    }
-
-    esDeClase(habilidad: any): boolean {
-        return this.svc.esHabilidadClaseaEfectiva(claveHabilidad(habilidad));
-    }
-
-    limite(habilidad: any): number {
-        return this.svc.obtenerLimiteRangoHabilidad(claveHabilidad(habilidad));
-    }
-
-    puedeSubir(habilidad: any): boolean {
-        return this.svc.puedeSubirRangoHabilidad(claveHabilidad(habilidad));
-    }
-
-    rangosDeLaSesion(habilidad: any): number {
-        return Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0))
-            - Math.trunc(Number(this.svc.EstadoFlujo.habilidades.rangosIniciales?.[claveHabilidad(habilidad)] ?? 0)));
-    }
-
-    ajustar(habilidad: any, delta: number): void {
-        this.svc.ajustarRangoHabilidad(claveHabilidad(habilidad), delta);
-    }
-
+    // Habilidades (la tabla es `app-reparto-rangos`)
     cerrarHabilidades(): void {
         if (!this.svc.puedeCerrarDistribucionHabilidades())
             return;
@@ -761,33 +710,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     // --- Los selectores de la creación ---------------------------------------------------------------------------------
 
-    /**
-     * Abre un selector de la creación (declarados en `AppModule`) en el hueco de los modales: le pone sus entradas y
-     * resuelve con lo que emita en `aceptar` (su valor) o en `rechazar` (`null`); `fijos` resuelve esas salidas con un valor.
-     */
     private abrirModal<T>(tipo: Type<unknown>, entradas: Record<string, unknown>, aceptar: string[], rechazar: string[],
         fijos: Record<string, unknown> = {}): Promise<T | null> {
-        this.cerrarModal();
-        if (!this.modalHost)
-            return Promise.resolve(null);
-        const ref = this.modalHost.createComponent(tipo);
-        Object.entries(entradas).forEach(([k, v]) => ref.setInput(k, v));
-        this.modalAbierto = ref;
-        return new Promise<T | null>((resolve) => {
-            const terminar = (valor: T | null) => {
-                this.cerrarModal();
-                resolve(valor);
-            };
-            const instancia = ref.instance as Record<string, any>;
-            aceptar.forEach((salida) => instancia[salida]?.subscribe((valor: T) => terminar(valor)));
-            rechazar.forEach((salida) => instancia[salida]?.subscribe(() => terminar(null)));
-            Object.entries(fijos).forEach(([salida, valor]) => instancia[salida]?.subscribe(() => terminar(valor as T)));
-        });
+        return this.selectores.abrir<T>(tipo, entradas, aceptar, rechazar, fijos);
     }
 
     private cerrarModal(): void {
-        this.modalAbierto?.destroy();
-        this.modalAbierto = null;
+        this.selectores.cerrar();
     }
 
     private async avisar(titulo: string, texto: string): Promise<void> {

@@ -803,6 +803,16 @@ export interface EleccionRacialPendiente {
     opciones: RacialDetalle[];
 }
 
+/** Un paso del reparto de los rangos de la corrección (`pasosDelRepartoDeRangos`). */
+export interface PasoRepartoRangos {
+    tipo: 'raza_dg' | 'plantilla_dg' | 'clase';
+    /** En un nivel de clase, su índice en `Orden_niveles`. */
+    indice: number | null;
+    etiqueta: string;
+    /** Su nivel de personaje (DG incluidos): el tope de los rangos es este + 3. */
+    nivelPersonaje: number;
+}
+
 export interface DotePendienteState {
     id: number;
     fuente: DoteFuentePendiente;
@@ -812,6 +822,12 @@ export interface DotePendienteState {
     nivelProgresion?: number | null;
     /** El nivel de clase que la da (el nivel en curso al registrarla); `null` en las de los DG raciales o de plantilla. */
     nivel?: RefNivelTomado | null;
+    /**
+     * En la corrección de la ficha, la que sustituye a una dote quitada: el origen de la quitada (el mismo hueco) y el
+     * índice de su nivel en `Orden_niveles`, con cuyo estado se evalúan los prerrequisitos de las candidatas.
+     */
+    origenFijo?: string | null;
+    alNivel?: number | null;
 }
 
 export interface DoteEvaluacionResultado {
@@ -1234,6 +1250,8 @@ export class NuevoPersonajeService {
      * nivel de clase: las plantillas o los DG raciales). Lo que se elige mientras, se apunta en él (`apuntarEnNivel`).
      */
     private nivelEnCurso: RefNivelTomado | null = null;
+    /** De cada nivel de `Orden_niveles` de un personaje guardado, si se sabe su orden (`ordenConocido`; la corrección). */
+    private ordenConocidoNiveles: boolean[] = [];
     private draftUidActivo = '';
     private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
     private draftPersistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2296,7 +2314,8 @@ export class NuevoPersonajeService {
      * (`dgRacialSustituible`), no: el primer nivel de clase ocupa su lugar (Guía del DM, pág. 172), y solo si el personaje
      * termina sin clases se reparten, entonces (`sinClases`, volviendo después al paso en que se termina, `pasoVuelta`).
      */
-    iniciarDistribucionHabilidadesPorRazaDG(sinClases: boolean = false, pasoVuelta: StepNuevoPersonaje = 'plantillas'): boolean {
+    iniciarDistribucionHabilidadesPorRazaDG(sinClases: boolean = false, pasoVuelta: StepNuevoPersonaje = 'plantillas',
+        modInteligencia: number = toNumber(this.personajeCreacion?.ModInteligencia)): boolean {
         this.nivelEnCurso = null;
         const raza = this.razaSeleccionada;
         if (!raza)
@@ -2311,7 +2330,7 @@ export class NuevoPersonajeService {
         const total = puntosHabilidadDgRaciales({
             puntosPorDg: toNumber(raza?.Dgs_adicionales?.Multiplicador_puntos_habilidad),
             multiplicador: toNumber(raza?.Dgs_adicionales?.Puntos_habilidad),
-            modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
+            modInteligencia,
         });
         if (total < 1)
             return false;
@@ -2353,7 +2372,8 @@ export class NuevoPersonajeService {
         return dgsRacialesQueCuentan(toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad), this.getNivelClasesActual());
     }
 
-    iniciarDistribucionHabilidadesPorPlantillasDG(plantillasObjetivo?: Plantilla[]): boolean {
+    iniciarDistribucionHabilidadesPorPlantillasDG(plantillasObjetivo?: Plantilla[],
+        modInteligencia: number = toNumber(this.personajeCreacion?.ModInteligencia)): boolean {
         this.nivelEnCurso = null;
         const seleccionadas = plantillasObjetivo ?? this.estadoFlujo.plantillas.seleccionadas ?? [];
         if (seleccionadas.length < 1)
@@ -2367,7 +2387,7 @@ export class NuevoPersonajeService {
         const total = plantillasConDg.reduce((acc, plantilla) => acc + puntosHabilidadDgPlantilla({
             puntosPorDg: toNumber(plantilla?.Licantronia_dg?.Tipo_criatura?.Puntos_habilidad),
             dgs: dgsDePlantilla(plantilla),
-            modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
+            modInteligencia,
         }), 0);
 
         if (total < 1)
@@ -2402,12 +2422,15 @@ export class NuevoPersonajeService {
      * Llamar con el nivel de clase ya aplicado (`aplicarSiguienteNivelClase`). Un nivel sin DG de una clase con tabla (las
      * de monstruo, *Libris Mortis*, pág. 35) no da puntos de habilidad, tampoco los extra de la raza: van con los DG.
      */
-    iniciarDistribucionHabilidadesPorClase(clase: Clase): boolean {
-        const daDg = daDgEnNivel(clase, this.obtenerNivelActualClase(clase?.Nombre ?? ''));
+    iniciarDistribucionHabilidadesPorClase(clase: Clase,
+        nivel: { nivelClase?: number; primerNivel?: boolean; modInteligencia?: number; } = {}): boolean {
+        // Sin `nivel`, el nivel que se acaba de aplicar; la corrección de la ficha (`abrirPasoDelRepartoDeRangos`) da el
+        // de un nivel de antes, con la Inteligencia que tenía entonces.
+        const daDg = daDgEnNivel(clase, nivel.nivelClase ?? this.obtenerNivelActualClase(clase?.Nombre ?? ''));
         const total = !daDg ? 0 : puntosHabilidadNivelClase({
             puntosClase: toNumber(clase?.Puntos_habilidad?.Valor),
-            modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
-            primerNivelPersonaje: this.esPrimerNivelDelPersonaje(),
+            modInteligencia: nivel.modInteligencia ?? toNumber(this.personajeCreacion?.ModInteligencia),
+            primerNivelPersonaje: nivel.primerNivel ?? this.esPrimerNivelDelPersonaje(),
             extraPrimerNivel: toNumber(this.razaSeleccionada?.Puntos_habilidad_extra_primer_nivel),
             extraPorNivel: toNumber(this.razaSeleccionada?.Puntos_habilidad_extra_por_nivel),
         });
@@ -3763,9 +3786,10 @@ export class NuevoPersonajeService {
             };
         }
 
+        const alNivel = pendiente.alNivel ?? null;
         if (!requiereExtra) {
             const repeticionValida = this.validarRepeticionDote(dote, 0, '');
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, 0, '');
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, 0, '', alNivel);
             return {
                 dote,
                 restringidaPorTipo,
@@ -3782,7 +3806,7 @@ export class NuevoPersonajeService {
             const extra = extrasDisponibles.find((item) => toNumber(item?.Id) === idExtra);
             const extraNombre = `${extra?.Nombre ?? extraTexto}`.trim();
             const repeticionValida = this.validarRepeticionDote(dote, idExtra, extraNombre);
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, idExtra, extraNombre);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, idExtra, extraNombre, alNivel);
             return {
                 dote,
                 restringidaPorTipo,
@@ -3801,7 +3825,7 @@ export class NuevoPersonajeService {
             const id = toNumber(extra?.Id);
             const nombre = `${extra?.Nombre ?? ''}`.trim();
             const repeticionValida = this.validarRepeticionDote(dote, id, nombre);
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, id, nombre);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, id, nombre, alNivel);
             if (repeticionValida && evaluacion.estado === 'eligible')
                 hayElegible = true;
             if (evaluacion.estado === 'blocked_unknown')
@@ -3960,7 +3984,11 @@ export class NuevoPersonajeService {
         return false;
     }
 
-    private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string): DoteEvaluacionResultado {
+    /**
+     * Los prerrequisitos de una dote con lo que tiene el personaje; con `alNivel` (un índice de `Orden_niveles`), con lo
+     * que tenía al tomar ese nivel (`contextoAlNivel`: la corrección de la ficha, MJ pág. 87).
+     */
+    private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string, alNivel: number | null = null): DoteEvaluacionResultado {
         const identidad = this.identidadPrerrequisitosActual();
 
         const nivelesClase = (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
@@ -4176,7 +4204,7 @@ export class NuevoPersonajeService {
 
         const evaluacion = evaluarElegibilidadDote({
             dote,
-            contexto,
+            contexto: alNivel === null ? contexto : this.contextoAlNivel(contexto, alNivel),
             idExtraSeleccionado: Math.max(0, toNumber(idExtra)),
             extraSeleccionado: `${extraTexto ?? ''}`.trim(),
         });
@@ -5072,6 +5100,9 @@ export class NuevoPersonajeService {
     }
 
     private construirOrigenDoteDesdePendiente(pendiente: DotePendienteState): string {
+        // La que sustituye a una dote quitada al corregir la ficha va en su mismo hueco, con su origen.
+        if (`${pendiente?.origenFijo ?? ''}`.trim())
+            return `${pendiente.origenFijo}`.trim();
         if (pendiente.fuente === 'nivel') {
             const nivelProgresion = Math.max(0, toInt(pendiente?.nivelProgresion));
             if (nivelProgresion > 0)
@@ -11169,7 +11200,11 @@ export class NuevoPersonajeService {
         this.personajeCreacion = { ...this.crearPersonajeBase(), ...ficha } as Personaje;
         const pj = this.personajeCreacion;
         const niveles = datos.entrada?.niveles ?? [];
-        pj.Orden_niveles = niveles.map((n) => ({ idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase) }));
+        // Con lo que se eligió en cada nivel: la corrección evalúa con ello las dotes en su nivel y reparte los rangos.
+        pj.Orden_niveles = niveles.map((n) => ({
+            idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase), elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
+        }));
+        this.ordenConocidoNiveles = niveles.map((n) => (n as any)?.ordenConocido !== false);
         this.razaSeleccionada = this.clonarProfundo(datos.raza ?? (pj.Raza as Raza) ?? null);
         this.razaBaseSeleccionadaCompleta = this.clonarProfundo(datos.razaBase ?? null);
         const plantillas = this.clonarProfundo(datos.plantillas ?? []);
@@ -11332,35 +11367,134 @@ export class NuevoPersonajeService {
     // --- La corrección de la ficha (roadmap de sesiones, fase 6) -------------------------------------------------------
     // La corrección es retroactiva: lo corregido vale desde que se creó, y lo que deja de cumplirse se quita o se mantiene
     // como homebrew (dictamen del máster de Rol). El motor, hidratado como para la subida, recalcula las puntuaciones
-    // desde su base y vuelve a evaluar los prerrequisitos de las dotes que tiene.
+    // desde su base, vuelve a evaluar los prerrequisitos de las dotes que tiene (cada una con lo que tenía en el nivel en
+    // que la eligió, si su registro lo dice), deja elegir otra dote en el hueco de una quitada y reparte otra vez los
+    // rangos, nivel a nivel, como la creación.
 
-    /** La base de las características (lo que el motor no suma: la tirada con los incrementos de antes). */
-    getBaseCaracteristicas(): Record<Caracteristica, number> {
-        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
-        return Object.fromEntries(CARACTERISTICAS.map((key) => [key, toNumber(base?.[key])])) as Record<Caracteristica, number>;
+    /** El ajuste racial de una característica (`Modificadores` de la raza): la creación lo suma a la tirada en la base. */
+    private ajusteRacialCaracteristica(key: Caracteristica): number {
+        return this.esCaracteristicaPerdida(key) ? 0 : toNumber(this.razaSeleccionada?.Modificadores?.[key]);
     }
 
-    /** Corrige la base de una característica y recalcula su puntuación (con la raza, las plantillas, las dotes…). */
+    /**
+     * La base de las características como la enseña la corrección: la tirada con los incrementos de antes, sin el ajuste
+     * de la raza (el +2 a la Constitución del enano), que el motor guarda en su base y no vuelve a calcular.
+     */
+    getBaseCaracteristicas(): Record<Caracteristica, number> {
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        return Object.fromEntries(CARACTERISTICAS.map((key) => [key, toNumber(base?.[key]) - this.ajusteRacialCaracteristica(key)])) as Record<Caracteristica, number>;
+    }
+
+    /** Corrige la base (sin la raza: `getBaseCaracteristicas`) y recalcula su puntuación (con la raza, las plantillas…). */
     corregirBaseCaracteristica(key: Caracteristica, valor: number): void {
         const base = this.estadoFlujo.ventajas.baseCaracteristicas;
         if (!base || !CARACTERISTICAS.includes(key) || this.esCaracteristicaPerdida(key))
             return;
-        base[key] = Math.max(1, Math.trunc(toNumber(valor)));
+        base[key] = Math.max(1, Math.trunc(toNumber(valor))) + this.ajusteRacialCaracteristica(key);
         this.aplicarCaracteristicasFinalesDesdeBase();
     }
 
-    /** Quita del personaje una dote que tiene (la primera con ese id, extra y origen). `false` si no la tiene. */
+    /** Corrige la edad y recalcula lo que depende de ella (el envejecimiento de la tabla 6-5 en las características). */
+    corregirEdad(edad: number): void {
+        const pj = this.personajeCreacion;
+        pj.Edad = Math.max(0, Math.trunc(toNumber(edad)));
+        const ventajas = [...(pj.Ventajas ?? [])];
+        this.recalcularEfectosVentajas();
+        pj.Ventajas = ventajas;
+    }
+
+    /** Lo que se eligió en cada nivel, en su orden (una copia). */
+    getOrdenNiveles(): Array<{ idClase: number; nivelClase: number; elecciones: PersonajeCreateNivelEleccionDto[]; }> {
+        return (this.personajeCreacion?.Orden_niveles ?? []).map((n) => ({
+            idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase), elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
+        }));
+    }
+
+    /**
+     * El índice en `Orden_niveles` del nivel en que se eligió la dote (por su elección `dote`, la última que la tiene), si
+     * se sabe el orden de ese nivel; `null` si no (las fichas de antes del historial, las dotes de la raza).
+     */
+    indiceNivelDeLaDote(idDote: number, idExtra: number): number | null {
+        const orden = this.personajeCreacion?.Orden_niveles ?? [];
+        for (let i = orden.length - 1; i >= 0; i--) {
+            const eleccion = (orden[i]?.elecciones ?? []).find((e) => e.tipo === 'dote' && toInt(e.idElemento) === toInt(idDote)
+                && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
+            if (eleccion)
+                return this.ordenConocidoNiveles[i] === false ? null : i;
+        }
+        return null;
+    }
+
+    /**
+     * El contexto de los prerrequisitos de una dote con lo que tenía el personaje al tomar el nivel `indice` de su orden
+     * (MJ pág. 87: la dote se elige con lo que se tiene en ese nivel). Desde lo de ahora, sin lo que llegó en los niveles
+     * posteriores según su registro: sus incrementos (las características), sus niveles de clase (el ataque base, el nivel
+     * y los DG), sus dotes y sus rangos. Lo demás (el nivel de lanzador, los conjuros…) se queda con lo de ahora.
+     */
+    private contextoAlNivel(contexto: DoteEvaluacionContexto, indice: number): DoteEvaluacionContexto {
+        const orden = this.personajeCreacion?.Orden_niveles ?? [];
+        if (indice < 0 || indice >= orden.length - 1)
+            return contexto;
+        const posteriores = orden.slice(indice + 1);
+        const elecciones = posteriores.flatMap((n) => n?.elecciones ?? []);
+        const caracteristicas = { ...contexto.caracteristicas } as Record<string, number>;
+        elecciones.filter((e) => e.tipo === 'incremento').forEach((e) => {
+            const key = CARACTERISTICAS[toInt(e.idElemento) - 1];
+            if (key)
+                caracteristicas[key] = toNumber(caracteristicas[key]) - Math.max(1, toInt(e.valor));
+        });
+        const hasta = new Map<number, number>();
+        orden.slice(0, indice + 1).forEach((n) => hasta.set(toInt(n?.idClase), Math.max(hasta.get(toInt(n?.idClase)) ?? 0, toInt(n?.nivelClase))));
+        const ataqueDe = (idClase: number, nivel: number) => {
+            const clase = this.catalogoClases.find((c) => toInt(c?.Id) === idClase);
+            return clase && nivel > 0 ? (primerEntero(this.obtenerDetalleNivelClase(clase, nivel)?.Ataque_base) ?? 0) : 0;
+        };
+        const ataqueAhora = (contexto.nivelesClase ?? []).reduce((acc, c) => acc + ataqueDe(toInt(c.id), toInt(c.nivel)), 0);
+        const ataqueEntonces = Array.from(hasta.entries()).reduce((acc, [id, nivel]) => acc + ataqueDe(id, nivel), 0);
+        const dotes = [...(contexto.dotes ?? [])];
+        elecciones.filter((e) => e.tipo === 'dote').forEach((e) => {
+            const i = dotes.findIndex((d) => toInt(d.id) === toInt(e.idElemento) && Math.max(0, toInt(d.idExtra)) === Math.max(0, toInt(e.idExtra)));
+            if (i >= 0)
+                dotes.splice(i, 1);
+        });
+        const habilidades = (contexto.habilidades ?? []).map((h) => ({ ...h }));
+        elecciones.filter((e) => e.tipo === 'rangos').forEach((e) => {
+            const h = habilidades.find((x) => toInt(x.id) === toInt(e.idElemento) && Math.max(0, toInt(x.idExtra)) === Math.max(0, toInt(e.idExtra)));
+            if (h)
+                h.rangos = Math.max(0, toNumber(h.rangos) - toInt(e.valor));
+        });
+        return {
+            ...contexto,
+            caracteristicas: caracteristicas as DoteEvaluacionContexto['caracteristicas'],
+            ataqueBase: toNumber(contexto.ataqueBase) - (ataqueAhora - ataqueEntonces),
+            nivelesClase: (contexto.nivelesClase ?? [])
+                .map((c) => ({ ...c, nivel: hasta.get(toInt(c.id)) ?? 0 }))
+                .filter((c) => c.nivel > 0),
+            dotes,
+            habilidades,
+            dgTotal: Math.max(0, toNumber(contexto.dgTotal) - posteriores.length),
+            nivelTotal: Math.max(0, toNumber(contexto.nivelTotal) - posteriores.length),
+        };
+    }
+
+    /** Quita del personaje una dote que tiene (la primera con ese id, extra y origen) y su elección. `false` si no la tiene. */
     quitarDoteDeLaFicha(idDote: number, idExtra: number, origen: string): boolean {
         const pj = this.personajeCreacion;
         const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(idDote)
             && toInt(d?.Contexto?.Id_extra) === toInt(idExtra) && `${(d?.Contexto as any)?.Origen ?? ''}` === `${origen ?? ''}`);
         if (i < 0)
             return false;
+        const indiceNivel = this.indiceNivelDeLaDote(idDote, idExtra);
         const [quitada] = pj.DotesContextuales.splice(i, 1);
         const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quitada?.Dote?.Nombre ?? '')
             && `${d?.Origen ?? ''}` === `${(quitada?.Contexto as any)?.Origen ?? ''}`);
         if (j >= 0)
             pj.Dotes.splice(j, 1);
+        const nivel = indiceNivel !== null ? pj.Orden_niveles?.[indiceNivel] : undefined;
+        const k = (nivel?.elecciones ?? []).findIndex((e) => e.tipo === 'dote' && toInt(e.idElemento) === toInt(idDote)
+            && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
+        if (nivel && k >= 0)
+            nivel.elecciones!.splice(k, 1);
         return true;
     }
 
@@ -11373,21 +11507,146 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Las dotes del personaje que no cumplen sus prerrequisitos con lo que tiene ahora (las del catálogo; una que no se
-     * puede comprobar no cuenta). Se evalúan con el estado de ahora, también las de las fichas sin el nivel de cada
-     * elección.
+     * Las dotes del personaje que no cumplen sus prerrequisitos (las del catálogo; una que no se puede comprobar no
+     * cuenta), cada una con lo que tenía en el nivel en que la eligió (`indiceNivelDeLaDote`, `contextoAlNivel`) o, sin
+     * ese dato, con lo de ahora. `nivel` es su nivel en ese orden (1, 2…), o `null`.
      */
-    dotesSinSusPrerrequisitos(): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; razones: string[]; }> {
+    dotesSinSusPrerrequisitos(): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; razones: string[]; nivel: number | null; }> {
         return this.dotesDelPersonaje().flatMap((d) => {
             const dote = this.catalogoDotes.find((c) => toInt(c?.Id) === toInt(d?.Dote?.Id));
             if (!dote)
                 return [];
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, toInt(d?.Contexto?.Id_extra), `${d?.Contexto?.Extra ?? ''}`);
+            const indice = this.indiceNivelDeLaDote(toInt(dote.Id), toInt(d?.Contexto?.Id_extra));
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, toInt(d?.Contexto?.Id_extra), `${d?.Contexto?.Extra ?? ''}`, indice);
             return evaluacion.estado === 'blocked_failed'
                 ? [{ idDote: toInt(dote.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${(d?.Contexto as any)?.Origen ?? ''}`,
-                    nombre: `${dote.Nombre ?? ''}`, razones: evaluacion.razones ?? [] }]
+                    nombre: `${dote.Nombre ?? ''}`, razones: evaluacion.razones ?? [], nivel: indice === null ? null : indice + 1 }]
                 : [];
         });
+    }
+
+    /**
+     * El hueco de dote que tenía un origen (el de una dote quitada): de qué fuente es y qué tipo de dote admite, con los
+     * huecos que le dan sus datos (las dotes de la progresión, las de las aptitudes de sus clases nivel a nivel, la
+     * adicional y las de los DG de su raza y las de sus rasgos) y sus orígenes construidos como en la creación
+     * (`construirOrigenDoteDesdePendiente`). `null` si ninguno tiene ese origen (una ficha de antes con otro texto).
+     */
+    private huecoDeDote(origen: string): Pick<DotePendienteState, 'fuente' | 'tipoPermitido' | 'nivelProgresion'> | null {
+        const buscado = `${origen ?? ''}`.trim();
+        const pendientes = this.dotesPendientes;
+        const secuencia = this.secuenciaDotePendiente;
+        const nivelEnCurso = this.nivelEnCurso;
+        this.nivelEnCurso = null;
+        try {
+            const huecos: DotePendienteState[] = [];
+            this.dotesPendientes = huecos;
+            const raza = `${this.razaSeleccionada?.Nombre ?? 'Raza'}`;
+            this.getHitosDotesProgresion().forEach((n) => huecos.push(this.crearDotePendiente('nivel', '', null, n)));
+            (this.personajeCreacion.desgloseClases ?? []).forEach((entrada) => {
+                const clase = this.obtenerClaseDeDesglose(entrada);
+                for (let n = 1; clase && n <= toInt(entrada?.Nivel); n++)
+                    (this.obtenerDetalleNivelClase(clase, n)?.Especiales ?? [])
+                        .filter((e) => toBoolean((e?.Especial as Record<string, any>)?.['Otorga_dote']))
+                        .forEach((e) => huecos.push(this.crearDotePendiente('adicional', `${clase.Nombre} nivel ${n}`, `${e?.Extra ?? ''}`.trim() || null)));
+            });
+            for (let n = 0; n < toNumber(this.razaSeleccionada?.Dotes_adicionales); n++)
+                huecos.push(this.crearDotePendiente('raza', raza, null));
+            for (let n = 0; n < toNumber(this.razaSeleccionada?.Dgs_adicionales?.Dotes_extra); n++)
+                huecos.push(this.crearDotePendiente('raza_dg', raza, null));
+            this.progresionRacialActual().dotes.forEach((d) => huecos.push(this.crearDotePendiente('adicional', d.Racial.Nombre, d.Tipo_dote.Nombre)));
+            const hueco = huecos.find((h) => this.construirOrigenDoteDesdePendiente(h) === buscado);
+            return hueco ? { fuente: hueco.fuente, tipoPermitido: hueco.tipoPermitido, nivelProgresion: hueco.nivelProgresion } : null;
+        } finally {
+            this.dotesPendientes = pendientes;
+            this.secuenciaDotePendiente = secuencia;
+            this.nivelEnCurso = nivelEnCurso;
+        }
+    }
+
+    /**
+     * Una dote pendiente en el hueco de una quitada (la corrección: elegir otra en su lugar, con el selector de dotes de la
+     * creación): con su origen, el tipo que admite su hueco (`huecoDeDote`; sin él, cualquiera) y su nivel, con cuyo estado
+     * se evalúan las candidatas. Se resuelve con `aplicarDotePendiente`, que la apunta en su nivel.
+     */
+    registrarDoteEnLugarDe(quitada: { idDote: number; idExtra: number; origen: string; }, indiceNivel: number | null): DotePendienteState {
+        const hueco = this.huecoDeDote(quitada.origen) ?? { fuente: 'nivel' as const, tipoPermitido: null, nivelProgresion: null };
+        const nivel = indiceNivel !== null ? this.personajeCreacion.Orden_niveles?.[indiceNivel] : undefined;
+        const pendiente: DotePendienteState = {
+            ...this.crearDotePendiente(hueco.fuente, '', hueco.tipoPermitido, hueco.nivelProgresion ?? null),
+            nivel: nivel ? { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) } : null,
+            origenFijo: `${quitada.origen ?? ''}`.trim() || 'API',
+            alNivel: nivel ? indiceNivel : null,
+        };
+        this.dotesPendientes = [...this.dotesPendientes, pendiente];
+        return { ...pendiente };
+    }
+
+    /** El modificador de Inteligencia al tomar el nivel `indice` de su orden (sin los incrementos de después); −1, antes del primero. */
+    private modInteligenciaAlNivel(indice: number): number {
+        const orden = this.personajeCreacion?.Orden_niveles ?? [];
+        const idInteligencia = CARACTERISTICAS.indexOf('Inteligencia') + 1;
+        const despues = orden.slice(Math.max(0, indice + 1)).flatMap((n) => n?.elecciones ?? [])
+            .filter((e) => e.tipo === 'incremento' && toInt(e.idElemento) === idInteligencia)
+            .reduce((acc, e) => acc + Math.max(1, toInt(e.valor)), 0);
+        return modificadorCaracteristica(toNumber(this.personajeCreacion?.Inteligencia) - despues);
+    }
+
+    /**
+     * Los pasos del reparto de los rangos de la corrección, en el orden de la creación: los DG raciales que cuentan, los de
+     * sus plantillas y cada nivel de clase de su orden, con su nivel de personaje (el tope de los rangos).
+     */
+    pasosDelRepartoDeRangos(): PasoRepartoRangos[] {
+        const pasos: PasoRepartoRangos[] = [];
+        const dgRaza = !this.dgRacialSustituible() ? this.dgsRacialesEfectivos() : 0;
+        if (dgRaza > 0)
+            pasos.push({ tipo: 'raza_dg', indice: null, etiqueta: `DG raciales (${dgRaza})`, nivelPersonaje: dgRaza });
+        const dgPlantillas = dgsDePlantillas(this.estadoFlujo.plantillas.seleccionadas ?? []);
+        if (dgPlantillas > 0)
+            pasos.push({ tipo: 'plantilla_dg', indice: null, etiqueta: `DG de plantilla (${dgPlantillas})`, nivelPersonaje: dgRaza + dgPlantillas });
+        (this.personajeCreacion?.Orden_niveles ?? []).forEach((n, i) => {
+            const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(n?.idClase));
+            pasos.push({
+                tipo: 'clase', indice: i, nivelPersonaje: dgRaza + dgPlantillas + i + 1,
+                etiqueta: `Nivel ${i + 1}: ${`${clase?.Nombre ?? 'clase'}`.toLowerCase()} ${toInt(n?.nivelClase)}`,
+            });
+        });
+        return pasos;
+    }
+
+    /** Empieza el reparto: todos los rangos a 0 y sin los rangos apuntados en sus niveles. */
+    empezarRepartoDeRangos(): void {
+        (this.personajeCreacion?.Habilidades ?? []).forEach((h) => h.Rangos = 0);
+        (this.personajeCreacion?.Orden_niveles ?? []).forEach((n) => n.elecciones = (n.elecciones ?? []).filter((e) => e.tipo !== 'rangos'));
+        this.estadoFlujo.habilidades = this.crearHabilidadesFlujoBase();
+    }
+
+    /**
+     * Abre el reparto de un paso con las reglas de la creación: sus puntos con la Inteligencia de entonces (×4 en el primer
+     * nivel del personaje), sus habilidades de clase y el tope de su nivel; los de un nivel de clase se apuntan en él al
+     * cerrarlo (`cerrarDistribucionHabilidades`). `false` si el paso no da puntos.
+     */
+    abrirPasoDelRepartoDeRangos(paso: PasoRepartoRangos): boolean {
+        const modInicial = this.modInteligenciaAlNivel(-1);
+        let abierto = false;
+        if (paso.tipo === 'raza_dg')
+            abierto = this.iniciarDistribucionHabilidadesPorRazaDG(false, 'clases', modInicial);
+        else if (paso.tipo === 'plantilla_dg')
+            abierto = this.iniciarDistribucionHabilidadesPorPlantillasDG(undefined, modInicial);
+        else {
+            const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(paso.indice)];
+            const clase = nivel ? this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel.idClase)) : undefined;
+            if (!nivel || !clase)
+                return false;
+            this.nivelEnCurso = { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) };
+            abierto = this.iniciarDistribucionHabilidadesPorClase(clase, {
+                nivelClase: toInt(nivel.nivelClase),
+                primerNivel: toInt(paso.indice) === 0 && !primerDgEsRacial(this.getPartesNivelPersonaje()),
+                modInteligencia: this.modInteligenciaAlNivel(toInt(paso.indice)),
+            });
+        }
+        if (abierto)
+            this.estadoFlujo.habilidades.nivelPersonajeReferencia = Math.max(1, toInt(paso.nivelPersonaje));
+        return abierto && toInt(this.estadoFlujo.habilidades.puntosTotales) > 0;
     }
 
     /** El estado del motor para el borrador de la subida (el mismo que el de la creación, sin la cuenta). */

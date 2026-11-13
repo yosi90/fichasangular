@@ -110,7 +110,8 @@ import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, esPlantillaLicantropa, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
-import { incumpleAlineamientoDeidad } from 'src/app/services/utils/alineamiento-deidad';
+import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
+import { alturaFueraDeRango, pesoFueraDeRango } from 'src/app/services/utils/medidas-raza';
 import {
     ConOficial,
     ContextoOficialidad,
@@ -2077,31 +2078,11 @@ export class NuevoPersonajeComponent {
     }
 
     get pesoFueraRango(): boolean {
-        const raza = this.razaSeleccionada;
-        const peso = Number(this.Personaje.Peso);
-        const min = Number(raza?.Peso_rango_inf);
-        const max = Number(raza?.Peso_rango_sup);
-        const epsilon = 0.0001;
-
-        // Una raza sin el rango (0: el manual no lo da) no tiene nada con lo que comparar.
-        if (!raza || Number.isNaN(peso) || Number.isNaN(min) || Number.isNaN(max) || peso <= 0 || max <= 0) {
-            return false;
-        }
-        return peso < (min - epsilon) || peso > (max + epsilon);
+        return pesoFueraDeRango(this.Personaje.Peso, this.razaSeleccionada);
     }
 
     get alturaFueraRango(): boolean {
-        const raza = this.razaSeleccionada;
-        const altura = Number(this.Personaje.Altura);
-        const min = Number(raza?.Altura_rango_inf);
-        const max = Number(raza?.Altura_rango_sup);
-        const epsilon = 0.0001;
-
-        // Una raza sin el rango (0: el manual no lo da) no tiene nada con lo que comparar.
-        if (!raza || Number.isNaN(altura) || Number.isNaN(min) || Number.isNaN(max) || altura <= 0 || max <= 0) {
-            return false;
-        }
-        return altura < (min - epsilon) || altura > (max + epsilon);
+        return alturaFueraDeRango(this.Personaje.Altura, this.razaSeleccionada);
     }
 
     get mostrarPanelDeidad(): boolean {
@@ -8290,9 +8271,14 @@ export class NuevoPersonajeComponent {
             && normalizado !== 'unknown';
     }
 
+    /**
+     * El alineamiento de la clase frente al del personaje y su deidad (`evaluarAlineamientoClase`, el mismo de la
+     * corrección de la ficha): sus prerrequisitos de alineamiento van con los demás en `evaluarClaseParaSeleccion`. Solo una
+     * regla de prioridad «siempre» obliga a confirmar y vuelve homebrew el personaje; una preferencia («casi siempre»,
+     * prioridad menor) se avisa en el tooltip sin más (auditoría de la matriz, 2026-10-26).
+     */
     private evaluarCompatibilidadAlineamientoClase(clase: Clase): ClaseCompatibilidadAlineamientoItem {
-        const vectorPersonaje = getVectorDesdeNombreBasico(this.Personaje.Alineamiento ?? '');
-        if (!vectorPersonaje) {
+        if (!getVectorDesdeNombreBasico(this.Personaje.Alineamiento ?? '')) {
             return {
                 estado: 'compatible',
                 etiqueta: 'Compatible',
@@ -8302,197 +8288,34 @@ export class NuevoPersonajeComponent {
                 marcaHomebrew: false,
             };
         }
-
-        const reglas: Array<{ tipo: 'require' | 'forbid'; eje: 'ley' | 'moral' | 'basico'; valor: number | { ley: number; moral: number; }; texto: string; }> = [];
-        const advertenciasParser: string[] = [];
-        const alineamientoClase = clase?.Alineamiento;
-        const basico = `${alineamientoClase?.Basico?.Nombre ?? ''}`.trim();
-        const ley = `${alineamientoClase?.Ley?.Nombre ?? ''}`.trim();
-        const moral = `${alineamientoClase?.Moral?.Nombre ?? ''}`.trim();
-
-        const reglaBasico = this.parseReglaAlineamientoBasico(basico);
-        if (reglaBasico)
-            reglas.push(reglaBasico);
-        else if (this.esTextoAlineamientoConContenido(basico)) {
-            const reglaBasicoLey = this.parseReglaAlineamientoEje(basico, 'ley');
-            const reglaBasicoMoral = this.parseReglaAlineamientoEje(basico, 'moral');
-            if (reglaBasicoLey)
-                reglas.push(reglaBasicoLey);
-            if (reglaBasicoMoral)
-                reglas.push(reglaBasicoMoral);
-            if (!reglaBasicoLey && !reglaBasicoMoral)
-                advertenciasParser.push(`No se interpretó la restricción básica: "${basico}"`);
-        }
-
-        const reglaLey = this.parseReglaAlineamientoEje(ley, 'ley');
-        if (reglaLey)
-            reglas.push(reglaLey);
-        else if (this.esTextoAlineamientoConContenido(ley))
-            advertenciasParser.push(`No se interpretó la restricción legal: "${ley}"`);
-
-        const reglaMoral = this.parseReglaAlineamientoEje(moral, 'moral');
-        if (reglaMoral)
-            reglas.push(reglaMoral);
-        else if (this.esTextoAlineamientoConContenido(moral))
-            advertenciasParser.push(`No se interpretó la restricción moral: "${moral}"`);
-
-        // MJ cap. 3: el clérigo (las clases con `Alineamiento_deidad`), a un paso de su deidad y neutral solo si ella lo es.
-        const motivoDeidad = clase?.Alineamiento_deidad === true
-            ? incumpleAlineamientoDeidad(this.Personaje.Alineamiento ?? '', this.deidadSeleccionadaDetalle)
-            : null;
-        if (reglas.length < 1 && !motivoDeidad) {
-            const tooltip = advertenciasParser.length > 0
-                ? advertenciasParser.join(' | ')
-                : 'La clase no impone una restricción interpretable de alineamiento.';
-            return {
-                estado: 'compatible',
-                etiqueta: 'Compatible',
-                tooltip,
-                prioridad: Number(alineamientoClase?.Prioridad?.Id_prioridad ?? 0) || 0,
-                requiereConfirmacion: false,
-                marcaHomebrew: false,
-            };
-        }
-
-        const incompatibilidades: string[] = [];
-        if (motivoDeidad)
-            incompatibilidades.push(motivoDeidad);
-        reglas.forEach((regla) => {
-            if (regla.eje === 'basico') {
-                const valor = regla.valor as { ley: number; moral: number; };
-                const coincide = vectorPersonaje.ley === valor.ley && vectorPersonaje.moral === valor.moral;
-                if (regla.tipo === 'require' && !coincide)
-                    incompatibilidades.push(`Requiere ${regla.texto}`);
-                if (regla.tipo === 'forbid' && coincide)
-                    incompatibilidades.push(`Prohíbe ${regla.texto}`);
-                return;
-            }
-
-            const valor = Number(regla.valor);
-            const valorActual = regla.eje === 'ley' ? vectorPersonaje.ley : vectorPersonaje.moral;
-            const coincide = valorActual === valor;
-            if (regla.tipo === 'require' && !coincide)
-                incompatibilidades.push(`Requiere ${regla.texto}`);
-            if (regla.tipo === 'forbid' && coincide)
-                incompatibilidades.push(`Prohíbe ${regla.texto}`);
+        const evaluacion = evaluarAlineamientoClase(clase, {
+            alineamiento: this.Personaje.Alineamiento ?? '',
+            deidad: this.deidadSeleccionadaDetalle,
+            conPrerrequisitos: false,
         });
-
-        // La regla de la deidad no se puede saltar sin volver homebrew el personaje (prioridad «siempre»), ni una
-        // preferencia «Siempre …» o «Nunca …» aunque la clase no traiga la prioridad.
-        const preferenciaDura = [basico, ley, moral].some((texto) => {
-            const normalizado = normalizarTexto(texto);
-            return (normalizado.includes('siempre') || normalizado.includes('nunca')) && !normalizado.includes('casi');
-        });
-        const prioridad = motivoDeidad || preferenciaDura ? 3 : (Number(alineamientoClase?.Prioridad?.Id_prioridad ?? 0) || 0);
-        if (incompatibilidades.length > 0) {
-            const mensajes = [
-                ...incompatibilidades,
-                ...advertenciasParser,
-            ];
-            // Solo una restricción «siempre» obliga a confirmar y vuelve homebrew el personaje; una preferencia («casi
-            // siempre», prioridad menor) se avisa en el tooltip sin más (auditoría de la matriz, 2026-10-26).
+        if (evaluacion.incumple.length > 0) {
             return {
                 estado: 'incompatible',
                 etiqueta: 'Incompatible',
-                tooltip: mensajes.join(' | '),
-                prioridad,
-                requiereConfirmacion: prioridad >= 3,
-                marcaHomebrew: prioridad >= 3,
+                tooltip: [...evaluacion.incumple, ...evaluacion.sinComprobar].join(' | '),
+                prioridad: evaluacion.prioridad,
+                requiereConfirmacion: evaluacion.estricta,
+                marcaHomebrew: evaluacion.estricta,
             };
         }
-
-        const tooltip = advertenciasParser.length > 0
-            ? `Compatible con reservas: ${advertenciasParser.join(' | ')}`
-            : 'Compatible con el alineamiento del personaje.';
+        const tooltip = !evaluacion.restringe
+            ? (evaluacion.sinComprobar.join(' | ') || 'La clase no impone una restricción interpretable de alineamiento.')
+            : evaluacion.sinComprobar.length > 0
+                ? `Compatible con reservas: ${evaluacion.sinComprobar.join(' | ')}`
+                : 'Compatible con el alineamiento del personaje.';
         return {
             estado: 'compatible',
             etiqueta: 'Compatible',
             tooltip,
-            prioridad,
+            prioridad: evaluacion.prioridad,
             requiereConfirmacion: false,
             marcaHomebrew: false,
         };
-    }
-
-    /** Si una parte del alineamiento de una clase restringe algo. Sin dato, la API da `null` (antes, «No aplica»). */
-    private esTextoAlineamientoConContenido(valor: string): boolean {
-        const normalizado = normalizarTexto(valor ?? '');
-        return normalizado.length > 0
-            && normalizado !== 'ninguna preferencia'
-            && normalizado !== 'cualquiera';
-    }
-
-    private parseReglaAlineamientoBasico(texto: string): { tipo: 'require' | 'forbid'; eje: 'basico'; valor: { ley: number; moral: number; }; texto: string; } | null {
-        const normalizado = normalizarTexto(texto ?? '');
-        if (!this.esTextoAlineamientoConContenido(texto))
-            return null;
-
-        const esProhibicion = normalizado.includes('nunca') || normalizado.includes('jamas') || normalizado.includes('prohib');
-        const valor = this.extraerVectorAlineamientoDesdeTexto(normalizado);
-        if (!valor)
-            return null;
-        return {
-            tipo: esProhibicion ? 'forbid' : 'require',
-            eje: 'basico',
-            valor,
-            texto: nombreBasicoDesdeVector(valor.ley, valor.moral),
-        };
-    }
-
-    private parseReglaAlineamientoEje(
-        texto: string,
-        eje: 'ley' | 'moral'
-    ): { tipo: 'require' | 'forbid'; eje: 'ley' | 'moral'; valor: number; texto: string; } | null {
-        if (!this.esTextoAlineamientoConContenido(texto))
-            return null;
-
-        const normalizado = normalizarTexto(texto);
-        const esProhibicion = normalizado.includes('nunca') || normalizado.includes('jamas') || normalizado.includes('prohib');
-        const valor = eje === 'ley'
-            ? this.extraerValorLeyDesdeTexto(normalizado)
-            : this.extraerValorMoralDesdeTexto(normalizado);
-        if (valor === null)
-            return null;
-
-        return {
-            tipo: esProhibicion ? 'forbid' : 'require',
-            eje,
-            valor,
-            texto: eje === 'ley'
-                ? (valor > 0 ? 'Legal' : valor < 0 ? 'Caótico' : 'Neutral')
-                : (valor > 0 ? 'Bueno' : valor < 0 ? 'Maligno' : 'Neutral'),
-        };
-    }
-
-    private extraerVectorAlineamientoDesdeTexto(textoNormalizado: string): { ley: number; moral: number; } | null {
-        const vectorDirecto = getVectorDesdeNombreBasico(textoNormalizado);
-        if (vectorDirecto)
-            return vectorDirecto;
-        const ley = this.extraerValorLeyDesdeTexto(textoNormalizado);
-        const moral = this.extraerValorMoralDesdeTexto(textoNormalizado);
-        if (ley === null || moral === null)
-            return null;
-        return { ley, moral };
-    }
-
-    private extraerValorLeyDesdeTexto(textoNormalizado: string): number | null {
-        if (textoNormalizado.includes('legal'))
-            return 1;
-        if (textoNormalizado.includes('caot'))
-            return -1;
-        if (textoNormalizado.includes('neutral'))
-            return 0;
-        return null;
-    }
-
-    private extraerValorMoralDesdeTexto(textoNormalizado: string): number | null {
-        if (textoNormalizado.includes('buen'))
-            return 1;
-        if (textoNormalizado.includes('malign'))
-            return -1;
-        if (textoNormalizado.includes('neutral'))
-            return 0;
-        return null;
     }
 
     private recalcularPlantillasVisibles(): void {
