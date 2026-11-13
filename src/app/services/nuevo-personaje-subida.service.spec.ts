@@ -12,6 +12,7 @@ import { claveDeHabilidad, claveHabilidad } from './utils/habilidad-clave';
 import { toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
+import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
 
 // La subida de nivel con el motor de la creación (roadmap de sesiones, fase 4; estudio de reglas, apartado 1): personajes
 // de referencia de los manuales creados nivel a nivel, guardados como el cuerpo del alta (con sus `niveles` y las
@@ -708,8 +709,14 @@ describe('Los rasgos y los ataques especiales de las plantillas, en la ficha (20
         aplicarNivel(svc, GUERRERO, 'Fuerza');
         const guardado = guardar(svc);
         const motor = subir(guardado, HUMANO);
+        const cuerpo = () => new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+            { ...motor.PersonajeCreacion, Nombre: 'Tordek', Campana: 'Sin campaña' } as Personaje, { idAlineamiento: 1, idGenero: 1, idDeidad: 0 } as any);
+        const antes = cuerpo();
         expect(motor.agregarPlantillaSeleccion(CELESTIAL)).toBeTrue();
         expect(raciales(motor)).toEqual(jasmine.arrayContaining([[8, 'Celestial'], [128, 'Celestial']]));
+        // La ficha que manda la adquisición los lleva (`POST /personajes/{id}/plantillas`).
+        const ficha = fichaDeLaPlantilla({ entrada: guardado.entrada, antes, despues: cuerpo(), idPlantilla: 1, puntosGolpe: 10, idAlineamiento: null });
+        expect(ficha.colecciones?.raciales).toEqual([{ idRacial: 8, origen: 'Celestial' }, { idRacial: 128, origen: 'Celestial' }]);
 
         // Una ficha con la plantilla guardada antes, sin sus rasgos: el motor (la subida, la corrección) se los da.
         const sinEllos = catalogos(new NuevoPersonajeService());
