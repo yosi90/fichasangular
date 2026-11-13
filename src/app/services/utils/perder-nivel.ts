@@ -1,9 +1,8 @@
-import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
-import { Clase, ClaseNivelDetalle } from 'src/app/interfaces/clase';
+import { Clase } from 'src/app/interfaces/clase';
 import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica } from './caracteristicas';
-import { daDgEnNivel } from './clase-niveles';
+import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA } from './correccion-ficha';
 import { experienciaParaNivel } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
@@ -91,6 +90,11 @@ export interface QuitadoPorPerdida {
     incremento: number | null;
 }
 
+/** Nada quitado: el punto de partida de `fichaSinElNivel` y lo que pierde quien pierde Constitución en lugar del nivel. */
+export function quitadoVacio(): QuitadoPorPerdida {
+    return { dotes: [], especiales: [], idiomas: [], dominios: [], conjuros: [], vuelven: [], rangos: [], incremento: null };
+}
+
 export interface ResultadoPerdida {
     ficha: PersonajeCreateRequestDto;
     quitado: QuitadoPorPerdida;
@@ -103,10 +107,6 @@ export interface ResultadoPerdida {
 }
 
 const SALVACIONES = [['fortaleza', 'Fortaleza'], ['reflejos', 'Reflejos'], ['voluntad', 'Voluntad']] as const;
-
-function detalleDelNivel(clase: Clase | null, nivel: number): ClaseNivelDetalle | null {
-    return (clase?.Desglose_niveles ?? []).find((d) => toInt(d?.Nivel) === toInt(nivel)) ?? null;
-}
 
 function quitarPrimero<T>(lista: T[] | undefined, es: (x: T) => boolean): boolean {
     const i = (lista ?? []).findIndex(es);
@@ -130,15 +130,6 @@ export function caracteristicaMasAlta(entrada: PersonajeCreateRequestDto): numbe
     return mejor;
 }
 
-/** Si el DG número `dg` del personaje da incremento (cada 4: MJ, tabla 3-2) o dote (1.º y cada 3), sin clase con tabla. */
-export function dgDaIncremento(dg: number): boolean {
-    return toInt(dg) > 0 && toInt(dg) % 4 === 0;
-}
-
-export function dgDaDote(dg: number): boolean {
-    return toInt(dg) === 1 || (toInt(dg) > 0 && toInt(dg) % 3 === 0);
-}
-
 /**
  * La ficha sin el nivel que pierde (ver arriba): un nivel menos en su clase, sin su registro, sin lo que se eligió en él
  * (dotes, aptitudes, idiomas, dominios, conjuros conocidos —salvo los de una clase con libro: el mago conserva lo que
@@ -156,7 +147,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
     const clase = datos.clase;
     const conRegistro = ordenConocido(nivel);
     const avisos: string[] = [];
-    const quitado: QuitadoPorPerdida = { dotes: [], especiales: [], idiomas: [], dominios: [], conjuros: [], vuelven: [], rangos: [], incremento: null };
+    const quitado = quitadoVacio();
     const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) };
     ['dotes', 'especiales', 'idiomas', 'dominios', 'conjurosConocidos'].forEach((k) => col[k] = [...(col[k] ?? [])]);
     col.habilidades = { ...(col.habilidades ?? {}), base: (col.habilidades?.base ?? []).map((h: any) => ({ ...h })) };
@@ -234,9 +225,9 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
     } else {
         // Sin su registro (Guía del DM, pág. 295): el incremento de la más alta, los rangos de las habilidades con más y
         // las dotes y aptitudes de la tabla de su clase.
-        if (dgDaIncremento(datos.dgsAntes))
+        if (daIncrementoPorNivelDePersonaje(datos.dgsAntes))
             bajarCaracteristica(toInt(datos.incrementoSinRegistro) || caracteristicaMasAlta(entrada), 1);
-        const detalle = detalleDelNivel(clase, nivelClase);
+        const detalle = filaDeNivel(clase, nivelClase);
         (detalle?.Dotes ?? []).forEach((d) => {
             const idDote = toInt(d?.Dote?.Id);
             if (idDote > 0)
@@ -273,8 +264,8 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         };
 
     // El ataque base y las salvaciones de clase de ese nivel (las de la creación: un modificador por nivel con su origen).
-    const ahora = detalleDelNivel(clase, nivelClase);
-    const previo = nivelClase > 1 ? detalleDelNivel(clase, nivelClase - 1) : null;
+    const ahora = filaDeNivel(clase, nivelClase);
+    const previo = nivelClase > 1 ? filaDeNivel(clase, nivelClase - 1) : null;
     const ataqueAntes = `${entrada.personaje.ataqueBase ?? '+0'}`;
     const deltaAtaque = (primerEntero(ahora?.Ataque_base) ?? 0) - (primerEntero(previo?.Ataque_base) ?? 0);
     ficha.personaje.ataqueBase = textoAtaqueBase((primerEntero(ataqueAntes) ?? 0) - deltaAtaque);
@@ -324,9 +315,4 @@ export function fichaConConstitucionPerdida(entrada: PersonajeCreateRequestDto, 
     const pg = pgTrasCambioDeCon(entrada, Math.max(1, toInt(dgs)), modificadorCaracteristica(ficha.caracteristicas.constitucion.valor), null);
     ficha.personaje.puntosGolpe = pg.total;
     return { ficha, antes: toInt(con.valor), despues: ficha.caracteristicas.constitucion.valor, pg: { antes: toInt(entrada.personaje.puntosGolpe), despues: pg.total } };
-}
-
-/** La clave de una característica del motor (`Fuerza`…) por su id de las elecciones (1 Fuerza … 6 Carisma). */
-export function caracteristicaDeId(id: number): string {
-    return CARACTERISTICAS[toInt(id) - 1] ?? '';
 }

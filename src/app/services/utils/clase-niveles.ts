@@ -40,9 +40,23 @@ export function tieneTablaPorNivel(clase: ClaseConTabla | null | undefined): boo
     return (clase?.Desglose_niveles ?? []).some((fila) => fila?.Dote === true || fila?.Dote === false);
 }
 
-function filaDeNivel(clase: ClaseConTabla | null | undefined, nivel: number): FilaTablaClase | null {
+/** La fila de la tabla de la clase de ese nivel (con lo que traiga: el ataque base, las salvaciones…), o `null`. */
+export function filaDeNivel<F extends FilaTablaClase>(clase: { Desglose_niveles?: readonly F[] | null; } | null | undefined,
+    nivel: number): F | null {
     const buscado = toInt(nivel);
     return (clase?.Desglose_niveles ?? []).find((fila) => toInt(fila?.Nivel) === buscado) ?? null;
+}
+
+/** Si el nivel de personaje `nivel` da una dote por la regla de siempre (Manual del jugador, cap. 3: el 1.º y cada 3). */
+export function daDotePorNivelDePersonaje(nivel: number): boolean {
+    const n = toInt(nivel);
+    return n === 1 || (n > 0 && n % 3 === 0);
+}
+
+/** Si el nivel de personaje `nivel` da un aumento de característica (Manual del jugador, tabla 3-2: cada 4). */
+export function daIncrementoPorNivelDePersonaje(nivel: number): boolean {
+    const n = toInt(nivel);
+    return n > 0 && n % 4 === 0;
 }
 
 /** Si ese nivel de la clase da un DG (y sus puntos de habilidad). Sin tabla, siempre. */
@@ -110,7 +124,7 @@ export function hitosDotesProgresion(entrada: EntradaHitosDotes): number[] {
     const hitos: number[] = [];
     let nivelPersonaje = Math.max(0, toInt(entrada.dgsRaza));
     const porNivelDePersonaje = (nivel: number) => {
-        if (nivel === 1 || nivel % 3 === 0)
+        if (daDotePorNivelDePersonaje(nivel))
             hitos.push(nivel);
     };
     for (let dg = 0; dg < Math.max(0, toInt(entrada.dgsPlantillas)); dg++)

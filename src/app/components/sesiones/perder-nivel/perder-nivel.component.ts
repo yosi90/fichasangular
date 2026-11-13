@@ -12,13 +12,16 @@ import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.servi
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA } from 'src/app/services/utils/correccion-ficha';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { toInt } from 'src/app/services/utils/normalizacion';
 import {
-    CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, dgDaDote, dgDaIncremento, fichaConConstitucionPerdida, fichaSinElNivel,
-    indiceDelNivelQueSePierde, ordenConocido, pxTrasPerder, ResultadoPerdida,
+    CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde,
+    ordenConocido, pxTrasPerder, quitadoVacio, ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /** Una fila de «Lo que pierde»: qué, antes, ahora. */
 export interface FilaPerdida {
@@ -26,8 +29,6 @@ export interface FilaPerdida {
     antes: string;
     ahora: string;
 }
-
-const NOMBRES_CARACTERISTICAS = ['Fuerza', 'Destreza', 'Constitución', 'Inteligencia', 'Sabiduría', 'Carisma'];
 
 /**
  * Perder un nivel con el personaje ya creado (roadmap de sesiones, fase 7, segunda tanda): la causa (volver a la vida,
@@ -112,16 +113,16 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
 
     /** Sin su registro, si el DG que pierde daba incremento o dote (cada 4 y 1.º y cada 3). */
     get pideIncremento(): boolean {
-        return this.sinOrden && !this.unSoloDg && dgDaIncremento(this.dgs);
+        return this.sinOrden && !this.unSoloDg && daIncrementoPorNivelDePersonaje(this.dgs);
     }
 
     get pideDote(): boolean {
-        return this.sinOrden && !this.unSoloDg && dgDaDote(this.dgs);
+        return this.sinOrden && !this.unSoloDg && daDotePorNivelDePersonaje(this.dgs);
     }
 
     get caracteristicas(): Array<{ id: number; nombre: string; valor: number; }> {
-        return CARACTERISTICAS_DEL_ALTA.map(([clave], i) => ({
-            id: i + 1, nombre: NOMBRES_CARACTERISTICAS[i], valor: toInt((this.entrada?.caracteristicas as any)?.[clave]?.valor),
+        return CARACTERISTICAS_DEL_ALTA.map(([clave, motor], i) => ({
+            id: i + 1, nombre: NOMBRES_CARACTERISTICAS[motor], valor: toInt((this.entrada?.caracteristicas as any)?.[clave]?.valor),
         })).filter((c) => !(this.entrada?.caracteristicas as any)?.[CARACTERISTICAS_DEL_ALTA[c.id - 1][0]]?.perdido);
     }
 
@@ -130,7 +131,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         return (this.pj?.DotesContextuales ?? []).filter((d) => !d?.Contexto?.Entidad || d.Contexto.Entidad === 'personaje')
             .map((d) => ({
                 clave: `${toInt(d?.Dote?.Id)}|${toInt(d?.Contexto?.Id_extra)}|${(d?.Contexto as any)?.Origen ?? ''}`,
-                nombre: `${d?.Dote?.Nombre ?? ''}${d?.Contexto?.Extra && d.Contexto.Extra !== 'No aplica' ? ` (${d.Contexto.Extra})` : ''}`,
+                nombre: nombreDoteConExtra(d),
             }));
     }
 
@@ -220,7 +221,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
                 this.impedimento = 'Con su Constitución no se le puede devolver la vida: los 2 puntos que pierde la dejarían en 0 (Manual del jugador, pág. 285).';
                 return;
             }
-            this.resultado = { ficha: con.ficha, quitado: vacio(), pg: { ...con.pg, exacto: true }, ataqueBase: { antes: '', despues: '' }, salvaciones: {}, avisos: [] };
+            this.resultado = { ficha: con.ficha, quitado: quitadoVacio(), pg: { ...con.pg, exacto: true }, ataqueBase: { antes: '', despues: '' }, salvaciones: {}, avisos: [] };
             this.filas = [
                 { que: 'Constitución', antes: `${con.antes}`, ahora: `${con.despues}` },
                 { que: 'Puntos de golpe', antes: `${con.pg.antes}`, ahora: `${con.pg.despues}` },
@@ -260,7 +261,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         const q = resultado.quitado;
         if (q.incremento !== null) {
             const c = this.caracteristicas.find((x) => x.id === q.incremento);
-            filas.push({ que: `${NOMBRES_CARACTERISTICAS[q.incremento - 1]} (incremento)`, antes: `${c?.valor ?? ''}`, ahora: `${toInt(c?.valor) - 1}` });
+            filas.push({ que: `${NOMBRES_CARACTERISTICAS[CARACTERISTICAS_DEL_ALTA[q.incremento - 1][1]]} (incremento)`, antes: `${c?.valor ?? ''}`, ahora: `${toInt(c?.valor) - 1}` });
         }
         const lista = (que: string, nombres: string[]) => nombres.length > 0 && filas.push({ que, antes: nombres.join(', '), ahora: '—' });
         lista('Dotes', q.dotes.map((d) => this.nombreDote(d.idDote, d.idExtra)));
@@ -272,7 +273,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         lista('Dominios', q.dominios.map((id) => this.pj?.Dominios?.find((x) => toInt(x?.Id) === id)?.Nombre ?? `Dominio ${id}`));
         q.rangos.forEach((r) => {
             const h = this.pj?.Habilidades?.find((x) => toInt(x?.Id) === r.idHabilidad && !x.Custom);
-            const nombre = h ? `${h.Nombre}${h.Extra && normalizarTexto(h.Extra) !== 'no aplica' && toInt(r.idExtra) > 0 ? ` (${h.Extra})` : ''}` : `Habilidad ${r.idHabilidad}`;
+            const nombre = h ? `${h.Nombre}${tieneTextoVisible(h.Extra) && toInt(r.idExtra) > 0 ? ` (${h.Extra})` : ''}` : `Habilidad ${r.idHabilidad}`;
             filas.push({ que: `Rangos de ${nombre}`, antes: `${h?.Rangos ?? ''}`, ahora: `${toInt(h?.Rangos) - r.rangos}` });
         });
         this.filas = filas;
@@ -281,8 +282,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
     private nombreDote(idDote: number, idExtra: number): string {
         const d = (this.pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote && toInt(x?.Contexto?.Id_extra) === idExtra)
             ?? (this.pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote);
-        const extra = d?.Contexto?.Extra && d.Contexto.Extra !== 'No aplica' ? ` (${d.Contexto.Extra})` : '';
-        return d ? `${d.Dote?.Nombre ?? ''}${extra}` : `Dote ${idDote}`;
+        return d ? nombreDoteConExtra(d) : `Dote ${idDote}`;
     }
 
     // --- Guardar -------------------------------------------------------------------------------------------------------
@@ -331,8 +331,4 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
     cancelar(): void {
         this.alTerminar?.();
     }
-}
-
-function vacio(): ResultadoPerdida['quitado'] {
-    return { dotes: [], especiales: [], idiomas: [], dominios: [], conjuros: [], vuelven: [], rangos: [], incremento: null };
 }
