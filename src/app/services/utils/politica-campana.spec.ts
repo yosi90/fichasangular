@@ -68,6 +68,9 @@ describe('politica-campana', () => {
             expect(campanaDejaMantenerDoteSinPrerrequisitos(null)).toBeTrue();
             expect(campanaDejaMantenerDoteSinPrerrequisitos({ permitirHomebrewGeneral: true })).toBeTrue();
             expect(campanaDejaMantenerDoteSinPrerrequisitos({ permitirHomebrewGeneral: false })).toBeFalse();
+            expect(campanaDejaMantenerDoteSinPrerrequisitos({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 0 })).toBeFalse();
+            expect(campanaDejaMantenerDoteSinPrerrequisitos({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBeTrue();
+            expect(campanaDejaMantenerDoteSinPrerrequisitos({})).toBeTrue();
         });
 
         it('una regla de alineamiento, solo con permitirIgnorarRestriccionesAlineamiento; sin campaña, siempre', () => {
