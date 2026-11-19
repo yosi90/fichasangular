@@ -3,15 +3,13 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { PrerrequisitoMutacion, Raza } from 'src/app/interfaces/raza';
 import { TipoPrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
 import { ExperienciaPersonaje } from 'src/app/interfaces/sesiones';
-import { CambioPlantilla, filasDeCaracteristicas, nombresDeDotes } from './adquirir-plantilla';
+import { CambioPlantilla, filaDeLosPx, filasDeCaracteristicas, nombresDeDotes, nombresNuevos } from './adquirir-plantilla';
 import { nombreExClase } from './alineamiento-clase';
 import { sacarDoteDeLaFicha } from './correccion-ficha';
 import { etapaEdad } from './edad-personaje';
-import { experienciaParaNivel } from './experiencia-nivel';
 import { dgsRacialesQueCuentan } from './nivel-personaje';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
 import { esRazaMutada } from './raza-mutacion';
-import { formatoPx } from './sesiones-texto';
 import { diferencia, fichaConLoDelMotor, PgSubida, SE_CONSERVAN_PERSONAJE } from './subida-nivel';
 
 /*
@@ -235,12 +233,6 @@ function nombres(lista: ReadonlyArray<{ Nombre?: string | null; } | null | undef
     return (lista ?? []).map((x) => `${x?.Nombre ?? ''}`.trim()).filter((n) => n.length > 0);
 }
 
-/** Lo que hay en `despues` y no en `antes`, por su nombre (sin repetir). */
-function nuevos(antes: string[], despues: string[]): string[] {
-    const habia = new Set(antes.map((n) => normalizarTexto(n)));
-    return Array.from(new Set(despues.filter((n) => !habia.has(normalizarTexto(n)))));
-}
-
 /**
  * «Lo que cambia» al adquirir la raza mutada, antes de guardar: la raza (y su base), el NEP y los PX (que no cambian; si
  * baja el NEP, puede subir antes), el tipo, las características, los PG, los rasgos, los idiomas y las dotes que gana o
@@ -260,13 +252,9 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
         que: 'NEP', antes: `${nivel}`, ahora: `${e.nepDespues}`,
         porque: e.nepDespues === nivel ? 'No cambia' : `Ajuste de nivel ${ajusteAntes} → ${ajusteDespues}`,
     });
-    if (e.experiencia)
-        filas.push({
-            que: 'PX', antes: formatoPx(e.experiencia.px), ahora: formatoPx(e.experiencia.px),
-            porque: e.nepDespues < nivel
-                ? `No cambian: puede subir antes, a nivel ${e.nepDespues + 1} con ${formatoPx(experienciaParaNivel(e.nepDespues + 1))} PX`
-                : `No cambian: sube a nivel ${e.nepDespues + 1} con ${formatoPx(experienciaParaNivel(e.nepDespues + 1))} PX`,
-        });
+    const px = filaDeLosPx(e.experiencia, e.nepDespues);
+    if (px)
+        filas.push(px);
     const tipoA = `${e.antes?.Tipo_criatura?.Nombre ?? ''}`;
     const tipoD = `${e.despues?.Tipo_criatura?.Nombre ?? ''}`;
     if (normalizarTexto(tipoA) !== normalizarTexto(tipoD))
@@ -279,11 +267,11 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
         });
     const racialesA = nombres(e.antes?.Raciales);
     const racialesD = nombres(e.despues?.Raciales);
-    const pierde = nuevos(racialesD, racialesA);
-    const gana = nuevos(racialesA, racialesD);
+    const pierde = nombresNuevos(racialesD, racialesA);
+    const gana = nombresNuevos(racialesA, racialesD);
     if (pierde.length || gana.length)
         filas.push({ que: 'Rasgos raciales', antes: pierde.join(', ') || '—', ahora: gana.join(', ') || '—', porque: porLaRaza });
-    const idiomas = nuevos(nombres(e.antes?.Idiomas), nombres(e.despues?.Idiomas));
+    const idiomas = nombresNuevos(nombres(e.antes?.Idiomas), nombres(e.despues?.Idiomas));
     if (idiomas.length)
         filas.push({ que: 'Idiomas', antes: '—', ahora: idiomas.join(', '), porque: porLaRaza });
     if (e.dotesPerdidas.length)
@@ -292,7 +280,7 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
         que: 'Dote', antes: c.antes, ahora: c.ahora ?? '—',
         porque: c.ahora ? 'Deja de cumplir sus prerrequisitos: otra en su hueco' : 'Deja de cumplir sus prerrequisitos y no hay otra que cumpla',
     }));
-    const dotesNuevas = nuevos(nombresDeDotes(e.antes), nombresDeDotes(e.despues))
+    const dotesNuevas = nombresNuevos(nombresDeDotes(e.antes), nombresDeDotes(e.despues))
         .filter((n) => !e.dotesCambiadas.some((c) => normalizarTexto(c.ahora ?? '') === normalizarTexto(n)));
     if (dotesNuevas.length)
         filas.push({ que: 'Dotes', antes: '—', ahora: dotesNuevas.join(', '), porque: porLaRaza });

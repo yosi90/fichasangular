@@ -200,6 +200,26 @@ export function nombresDeDotes(pj: Personaje): string[] {
     }).filter((n) => n.length > 0);
 }
 
+/** Lo que hay en `despues` y no en `antes`, por su nombre (sin repetir). Lo usan la plantilla y la raza mutada adquiridas. */
+export function nombresNuevos(antes: string[], despues: string[]): string[] {
+    const habia = new Set(antes.map((n) => normalizarTexto(n)));
+    return Array.from(new Set(despues.filter((n) => !habia.has(normalizarTexto(n)))));
+}
+
+/**
+ * La fila de los PX de «Lo que cambia» al adquirir una plantilla o una raza mutada: no cambian (*Especies salvajes*, pág.
+ * 145), con el nivel al que sube con el NEP nuevo; si el NEP baja, puede subir antes. Sin experiencia, ninguna.
+ */
+export function filaDeLosPx(experiencia: ExperienciaPersonaje | null | undefined, nepDespues: number): CambioPlantilla | null {
+    if (!experiencia)
+        return null;
+    const siguiente = `a nivel ${nepDespues + 1} con ${formatoPx(experienciaParaNivel(nepDespues + 1))} PX`;
+    return {
+        que: 'PX', antes: formatoPx(experiencia.px), ahora: formatoPx(experiencia.px),
+        porque: nepDespues < toInt(experiencia.nivel) ? `No cambian: puede subir antes, ${siguiente}` : `No cambian: sube ${siguiente}`,
+    };
+}
+
 function velocidades(pj: Personaje): string {
     const partes: Array<[string, number]> = [['', toInt(pj?.Correr)], ['nadar', toInt(pj?.Nadar)], ['volar', toInt(pj?.Volar)],
         ['trepar', toInt(pj?.Trepar)], ['excavar', toInt(pj?.Excavar)]];
@@ -222,13 +242,9 @@ export function cambiosDeLaPlantilla(e: EntradaCambiosPlantilla): CambioPlantill
         que: 'NEP', antes: `${nivel}`, ahora: `${e.nepDespues}`,
         porque: [ajuste ? `ajuste de nivel ${ajuste > 0 ? '+' : ''}${ajuste}` : '', dgs ? `${dgs} DG nuevos` : ''].filter(Boolean).join(' y ') || porPlantilla,
     });
-    if (e.experiencia) {
-        const siguiente = experienciaParaNivel(e.nepDespues + 1);
-        filas.push({
-            que: 'PX', antes: formatoPx(e.experiencia.px), ahora: formatoPx(e.experiencia.px),
-            porque: `No cambian: sube a nivel ${e.nepDespues + 1} con ${formatoPx(siguiente)} PX`,
-        });
-    }
+    const px = filaDeLosPx(e.experiencia, e.nepDespues);
+    if (px)
+        filas.push(px);
     const texto = (a: string, d: string, que: string, porque = porPlantilla) => {
         if (normalizarTexto(a) !== normalizarTexto(d))
             filas.push({ que, antes: a || '—', ahora: d || '—', porque });
@@ -247,8 +263,7 @@ export function cambiosDeLaPlantilla(e: EntradaCambiosPlantilla): CambioPlantill
     if (toInt(e.antes?.Armadura_natural) !== toInt(e.despues?.Armadura_natural))
         filas.push({ que: 'Armadura natural', antes: `${toInt(e.antes?.Armadura_natural)}`, ahora: `${toInt(e.despues?.Armadura_natural)}`, porque: porPlantilla });
     texto(velocidades(e.antes), velocidades(e.despues), 'Velocidades');
-    const antes = new Set(nombresDeDotes(e.antes).map((n) => normalizarTexto(n)));
-    const nuevas = nombresDeDotes(e.despues).filter((n) => !antes.has(normalizarTexto(n)));
+    const nuevas = nombresNuevos(nombresDeDotes(e.antes), nombresDeDotes(e.despues));
     if (nuevas.length)
         filas.push({ que: 'Dotes', antes: '—', ahora: nuevas.join(', '), porque: porPlantilla });
     if (e.razaContraAlineamiento)
