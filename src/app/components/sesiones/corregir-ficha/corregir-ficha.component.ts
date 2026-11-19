@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
+import { doteElegidaEnElHueco } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
@@ -30,6 +31,7 @@ import {
     campanaDejaSaltarAlineamiento,
     maximoFuentesHomebrew,
     modoHomebrewDeCampana,
+    ofreceHomebrewALaFicha,
 } from 'src/app/services/utils/politica-campana';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
@@ -515,7 +517,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
      * (o la que tiene).
      */
     get deidadesElegibles(): DeidadDetalle[] {
-        const conHomebrew = this.pj?.Oficial === false && modoHomebrewDeCampana(this.politica) !== 'forbidden';
+        const conHomebrew = ofreceHomebrewALaFicha(this.pj?.Oficial, this.politica);
         const actual = toInt(this.entrada?.personaje?.deidad);
         return this.deidades.filter((d) => toInt(d.Id) === actual
             || ((d.Oficial !== false || (conHomebrew && !this.superaLasFuentes('deidad', d, 'deidad'))) && !this.rompeDeidadTutelar(d)));
@@ -625,12 +627,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             this.svc.omitirDotePendiente(pendiente.id);
             return;
         }
-        const elegida = [...(this.svc.PersonajeCreacion.DotesContextuales ?? [])].reverse()
-            .find((d) => toInt(d?.Dote?.Id) === toInt(seleccion.idDote) && `${(d?.Contexto as any)?.Origen ?? ''}` === `${pendiente.origenFijo}`);
-        fila.sustituta = {
-            idDote: toInt(seleccion.idDote), idExtra: toInt(elegida?.Contexto?.Id_extra ?? seleccion.idExtra),
-            nombre: `${elegida?.Dote?.Nombre ?? ''}`, extra: toInt(elegida?.Contexto?.Id_extra) > 0 ? `${elegida?.Contexto?.Extra ?? ''}` : '',
-        };
+        fila.sustituta = doteElegidaEnElHueco(this.svc, pendiente, seleccion);
         this.recalcular();
     }
 

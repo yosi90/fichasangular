@@ -3,7 +3,7 @@ import { SelectorAumentosCaracteristicaModalComponent } from 'src/app/components
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { CampanaService } from 'src/app/services/campana.service';
-import { DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { DotePendienteState, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
@@ -12,7 +12,8 @@ import { HuecoDeSelectores } from './hueco-selectores';
 /*
  * Los pasos que la subida de nivel y la adquisición de una plantilla resuelven igual, con el motor de la creación en su
  * propia instancia y sus selectores en el hueco común (`HuecoDeSelectores`): el incremento de característica y las dotes
- * pendientes, las tiradas de PG que deja la campaña y el aviso de un paso que no se puede cerrar.
+ * pendientes, las tiradas de PG que deja la campaña y el aviso de un paso que no se puede cerrar. La corrección de la ficha
+ * usa además la dote que queda en un hueco (`doteElegidaEnElHueco`).
  */
 
 /** El aviso de algo que no se puede aplicar en un paso (una clase, una dote, un incremento que falta), con «Entendido». */
@@ -85,4 +86,17 @@ export async function resolverDotesPendientes(svc: NuevoPersonajeService, select
         else if (!svc.aplicarDotePendiente(pendiente.id, seleccion))
             await avisarPaso('No se pudo aplicar la dote', 'La selección ya no vale con el personaje de ahora. Elige otra.');
     }
+}
+
+/**
+ * La dote que queda en el hueco `pendiente` tras aplicar `seleccion` (`aplicarDotePendiente`): su id, su extra (el del
+ * motor, o el elegido) y sus nombres, para enseñarla. La usan la corrección (otra dote en lugar de la quitada) y el
+ * reciclaje de la subida (la dote que entra en el hueco de la reciclada).
+ */
+export function doteElegidaEnElHueco(svc: NuevoPersonajeService, pendiente: DotePendienteState, seleccion: DoteSeleccionConfirmada)
+    : { idDote: number; idExtra: number; nombre: string; extra: string; } {
+    const elegida = [...(svc.PersonajeCreacion.DotesContextuales ?? [])].reverse()
+        .find((d) => toInt(d?.Dote?.Id) === toInt(seleccion.idDote) && `${(d?.Contexto as any)?.Origen ?? ''}` === `${pendiente.origenFijo}`);
+    const idExtra = toInt(elegida?.Contexto?.Id_extra ?? seleccion.idExtra);
+    return { idDote: toInt(seleccion.idDote), idExtra, nombre: `${elegida?.Dote?.Nombre ?? ''}`, extra: idExtra > 0 ? `${elegida?.Contexto?.Extra ?? ''}` : '' };
 }

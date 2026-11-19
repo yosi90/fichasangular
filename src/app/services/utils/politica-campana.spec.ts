@@ -1,6 +1,6 @@
 import {
     campanaDejaMantenerDoteSinPrerrequisitos, campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, leerPoliticaCompra,
-    modoHomebrewDeCampana,
+    modoHomebrewDeCampana, ofreceHomebrewALaFicha,
 } from './politica-campana';
 import { politicaTienda } from './tienda-equipo';
 
@@ -79,5 +79,13 @@ describe('politica-campana', () => {
             expect(campanaDejaSaltarAlineamiento({ permitirIgnorarRestriccionesAlineamiento: false })).toBeFalse();
             expect(campanaDejaSaltarAlineamiento({})).toBeFalse();
         });
+    });
+
+    it('ofreceHomebrewALaFicha: solo a una ficha ya homebrew y si la campaña lo admite (sin campaña, sí)', () => {
+        expect(ofreceHomebrewALaFicha(false, null)).toBeTrue();
+        expect(ofreceHomebrewALaFicha(false, { permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBeTrue();
+        expect(ofreceHomebrewALaFicha(false, { permitirHomebrewGeneral: false })).toBeFalse();
+        expect(ofreceHomebrewALaFicha(true, null)).toBeFalse();
+        expect(ofreceHomebrewALaFicha(undefined, null)).toBeFalse();
     });
 });

@@ -28,6 +28,15 @@ export function modoHomebrewDeCampana(
 }
 
 /**
+ * Si a una ficha guardada se le ofrecen elementos homebrew (al corregirla o al reciclar en la subida): solo si ya es
+ * homebrew (`ficha.oficial` en `false`) y la campaña admite homebrew. A una oficial no: no hay que avisar de que se vuelve
+ * homebrew.
+ */
+export function ofreceHomebrewALaFicha(fichaOficial: boolean | null | undefined, policy: Parameters<typeof modoHomebrewDeCampana>[0]): boolean {
+    return fichaOficial === false && modoHomebrewDeCampana(policy) !== 'forbidden';
+}
+
+/**
  * Si la campaña deja elegir una plantilla sin cumplir sus prerrequisitos (la decisión `requisitos_plantilla`): solo si
  * admite homebrew sin límite de fuentes, porque el personaje pasa a serlo (sin campaña, siempre). La usan la creación y la
  * adquisición de una plantilla (sesiones, fase 7); la API aplica la misma regla en el alta y en

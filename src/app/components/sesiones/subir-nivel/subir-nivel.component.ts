@@ -12,7 +12,7 @@ import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuev
 import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
-import { avisarPaso, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
+import { avisarPaso, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { Clase } from 'src/app/interfaces/clase';
@@ -31,7 +31,7 @@ import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.s
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
-import { modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
+import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
 import {
     aplicarReciclajeAlMotor,
     ClaseConConocidos,
@@ -514,12 +514,9 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         return { idClase: this.clasesConConocidos.length === 1 ? this.clasesConConocidos[0].id : null, olvida: null, aprende: null };
     }
 
-    /**
-     * Si se ofrecen elementos homebrew al reciclar: si la ficha ya lo es y la campaña admite homebrew (como los conjuros de
-     * la subida). Una ficha oficial solo ve los oficiales: no hay que avisar de que se vuelve homebrew.
-     */
+    /** Si se ofrecen elementos homebrew al reciclar (`ofreceHomebrewALaFicha`). */
     private get conHomebrew(): boolean {
-        return this.pj?.Oficial === false && modoHomebrewDeCampana(this.pj?.PoliticaCompra) !== 'forbidden';
+        return ofreceHomebrewALaFicha(this.pj?.Oficial, this.pj?.PoliticaCompra);
     }
 
     /** Los tipos del paso, con el motivo si no hay nada de ese tipo que mirar (al preparar el paso). */
@@ -564,13 +561,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 await avisarPaso('No se puede elegir esa dote', 'Con el personaje de antes de subir, y sin la que se recicla, no la cumple. Elige otra.');
                 return;
             }
-            const elegida = [...(this.svc.PersonajeCreacion.DotesContextuales ?? [])].reverse()
-                .find((d) => toInt(d?.Dote?.Id) === toInt(seleccion.idDote) && `${(d?.Contexto as any)?.Origen ?? ''}` === `${hueco.pendiente.origenFijo}`);
-            const idExtra = toInt(elegida?.Contexto?.Id_extra ?? seleccion.idExtra);
-            this.planDote = {
-                tipo: 'dote', quita: dote, seleccion,
-                pone: { idDote: toInt(seleccion.idDote), idExtra, nombre: `${elegida?.Dote?.Nombre ?? ''}`, extra: idExtra > 0 ? `${elegida?.Contexto?.Extra ?? ''}` : '' },
-            };
+            this.planDote = { tipo: 'dote', quita: dote, seleccion, pone: doteElegidaEnElHueco(this.svc, hueco.pendiente, seleccion) };
         } finally {
             this.svc.restaurarEstadoSubida(estado);
         }
