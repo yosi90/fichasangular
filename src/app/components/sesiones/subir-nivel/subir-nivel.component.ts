@@ -56,7 +56,7 @@ import {
 } from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
-import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
+import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, estadoDelPaso, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
 /** El borrador de la subida (`fichas35.subidaNivel.draft.v1.<uid>.<id>`), solo de esta cuenta y este personaje. */
 interface BorradorSubida {
@@ -239,9 +239,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     estadoPaso(paso: PasoSubida): 'hecho' | 'actual' | 'pendiente' {
-        const i = this.pasos.indexOf(paso);
-        const actual = this.pasos.indexOf(this.paso);
-        return i < actual ? 'hecho' : i === actual ? 'actual' : 'pendiente';
+        return estadoDelPaso(this.pasos, paso, this.paso);
     }
 
     // --- Carga -------------------------------------------------------------------------------------------------------

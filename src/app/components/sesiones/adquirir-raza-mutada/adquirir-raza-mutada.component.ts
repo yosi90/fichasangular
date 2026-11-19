@@ -26,7 +26,7 @@ import {
     pagaLosPuntos, puntosDevueltos, quitaDgRaciales, tipoQueNoCumpleLaMutacion,
 } from 'src/app/services/utils/adquirir-raza-mutada';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
-import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
+import { modConstitucionQueCuenta } from 'src/app/services/utils/caracteristicas';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
@@ -40,6 +40,7 @@ import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
 import { clasesQueDejanDeCumplir, DoteReciclable, dotesParaReciclar, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { pgTrasCambioDeCon, PgSubida } from 'src/app/services/utils/subida-nivel';
+import { estadoDelPaso } from 'src/app/services/utils/subida-nivel-vista';
 
 export type PasoMutacion = 'raza' | 'dote' | 'habilidades' | 'dotes' | 'resumen';
 
@@ -213,9 +214,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     }
 
     estadoPaso(paso: PasoMutacion): 'hecho' | 'actual' | 'pendiente' {
-        const i = this.pasos.indexOf(paso);
-        const actual = this.pasos.indexOf(this.paso);
-        return i < actual ? 'hecho' : i === actual ? 'actual' : 'pendiente';
+        return estadoDelPaso(this.pasos, paso, this.paso);
     }
 
     // --- Carga -------------------------------------------------------------------------------------------------------
@@ -480,11 +479,6 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
 
     // --- El resumen y el guardado --------------------------------------------------------------------------------------
 
-    private modConstitucion(): number {
-        const p = this.svc.PersonajeCreacion;
-        return caracteristicasPerdidasDe(p).Constitucion ? 0 : toInt(p.ModConstitucion);
-    }
-
     /** Lo que exige el alineamiento de su raza nueva si ya no es el suyo (y la de antes no lo exigía): se propone el cambio. */
     private alineamientoExigido(): string | null {
         const alineamiento = `${this.pjAntes?.Alineamiento ?? ''}`;
@@ -494,7 +488,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     }
 
     private prepararResumen(): void {
-        this.pg = pgTrasCambioDeCon(this.entrada!, toInt(this.pj?.Nivel_personaje), this.modConstitucion(), null);
+        this.pg = pgTrasCambioDeCon(this.entrada!, toInt(this.pj?.Nivel_personaje), modConstitucionQueCuenta(this.svc.PersonajeCreacion), null);
         this.cambios = cambiosDeLaMutacion({
             antes: this.pjAntes!,
             despues: this.svc.PersonajeCreacion,

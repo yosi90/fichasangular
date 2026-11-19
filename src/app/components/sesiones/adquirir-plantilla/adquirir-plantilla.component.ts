@@ -23,7 +23,7 @@ import { cambiosDeLaPlantilla, CambioPlantilla, esPlantillaAdquirible, fichaDeLa
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
-import { caracteristicasPerdidasDe, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { caracteristicasPerdidasDe, modConstitucionQueCuenta, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
 import { ajusteDePlantillas, dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
@@ -32,6 +32,7 @@ import { evaluarPlantillaParaElegir, PlantillaEvaluacionParaElegir } from 'src/a
 import { campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import { estadoDelPaso } from 'src/app/services/utils/subida-nivel-vista';
 
 export type PasoPlantilla = 'plantilla' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'resumen';
 
@@ -188,9 +189,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     }
 
     estadoPaso(paso: PasoPlantilla): 'hecho' | 'actual' | 'pendiente' {
-        const i = this.pasos.indexOf(paso);
-        const actual = this.pasos.indexOf(this.paso);
-        return i < actual ? 'hecho' : i === actual ? 'actual' : 'pendiente';
+        return estadoDelPaso(this.pasos, paso, this.paso);
     }
 
     // --- Carga -------------------------------------------------------------------------------------------------------
@@ -235,12 +234,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         this.carasClaseAntes = new Map((this.entrada!.niveles ?? []).map((n) =>
             [toInt(n?.idClase), this.svc.carasDadoGolpeDeClase(this.svc.claseDelCatalogo(n?.idClase))] as const));
         this.carasRacialAntes = this.svc.carasDadoGolpeRacial();
-        this.modConAntes = this.modConstitucion();
-    }
-
-    private modConstitucion(): number {
-        const p = this.svc.PersonajeCreacion;
-        return caracteristicasPerdidasDe(p).Constitucion ? 0 : toInt(p.ModConstitucion);
+        this.modConAntes = modConstitucionQueCuenta(this.svc.PersonajeCreacion);
     }
 
     // --- La plantilla --------------------------------------------------------------------------------------------------
@@ -385,7 +379,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             entrada: this.entrada,
             dgsAntes: toInt(this.pj?.Nivel_personaje),
             modConAntes: this.modConAntes,
-            modConDespues: this.modConstitucion(),
+            modConDespues: modConstitucionQueCuenta(this.svc.PersonajeCreacion),
             carasClaseAntes: (id) => this.carasClaseAntes.get(id) ?? this.svc.carasDadoGolpeDeClase(clase(id)),
             carasClaseDespues: (id) => this.svc.carasDadoGolpeDeClase(clase(id)),
             carasRacialAntes: this.carasRacialAntes,
