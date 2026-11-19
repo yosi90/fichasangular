@@ -13,6 +13,11 @@ import { toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
 import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
+import {
+    aplicarReciclajeAlMotor, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dotesParaReciclar, fichaConElReciclaje,
+    habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, PlanReciclaje, reciclajeDelPlan,
+    topeDeRangosDelReciclaje,
+} from './utils/reciclaje';
 
 // La subida de nivel con el motor de la creación (roadmap de sesiones, fase 4; estudio de reglas, apartado 1): personajes
 // de referencia de los manuales creados nivel a nivel, guardados como el cuerpo del alta (con sus `niveles` y las
@@ -187,8 +192,9 @@ function guardar(svc: NuevoPersonajeService): { entrada: PersonajeCreateRequestD
     return { entrada, personaje: JSON.parse(JSON.stringify(pj)) };
 }
 
-function subir(guardado: { entrada: PersonajeCreateRequestDto; personaje: Personaje; }, raza: Raza): NuevoPersonajeService {
+function subir(guardado: { entrada: PersonajeCreateRequestDto; personaje: Personaje; }, raza: Raza, clases: Clase[] = CLASES): NuevoPersonajeService {
     const svc = catalogos(new NuevoPersonajeService());
+    svc.setCatalogoClases(clases);
     svc.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza });
     return svc;
 }
@@ -790,5 +796,158 @@ describe('Las dotes que se quedan sin un prerrequisito al perder un nivel (MJ p�
         // Una que se va con el nivel no cuenta.
         expect(motor.dotesSinPrerrequisitosTrasPerder({ caracteristica: { clave: 'Fuerza', menos: 1 }, dotesQuitadas: [{ idDote: 62, idExtra: 0 }] })).toEqual([]);
         expect((motor.PersonajeCreacion.DotesContextuales ?? []).some((d) => toInt(d.Dote?.Id) === 62)).toBeTrue();
+    });
+});
+
+describe('El reciclaje del Manual del jugador II con el motor de la creación (págs. 194-196)', () => {
+    const HUMANO = crearRaza('Humano');
+    const GUERRERO_6 = clase({ ...GUERRERO, Id: 17, Nombre: 'Guerrero veterano', Desglose_niveles: [1, 2, 3, 4, 5, 6].map((n) => nivel(n)) });
+    const ESQUIVA = dote(50, 'Esquiva');
+    const MOVILIDAD = { ...dote(51, 'Movilidad'), Prerrequisitos: { dote: [
+        { Id_dote_prerrequisito: 50, Dote_prerrequisito: 'Esquiva', Opcional: 0, Frase: 'Esquiva' }] } };
+    const DE_ATAQUE_6 = { ...dote(60, 'Golpe de veterano'), Prerrequisitos: { ataque_base: [{ Ataque_base: 6, Opcional: 0, Frase: 'Ataque base +6' }] } };
+
+    /** Un humano creado nivel a nivel (sus dotes, 50, 51… por orden) y su subida, con el catálogo de dotes dado. */
+    function subidaDe(niveles: number, catalogo: any[], deClase: Clase = GUERRERO): NuevoPersonajeService {
+        const svc = crear(HUMANO, { Fuerza: 13, Destreza: 13 });
+        if (deClase !== GUERRERO)
+            svc.setCatalogoClases([...CLASES, deClase]);
+        Array.from({ length: niveles }).forEach(() => aplicarNivel(svc, deClase));
+        const motor = subir(guardar(svc), HUMANO, deClase !== GUERRERO ? [...CLASES, deClase] : CLASES);
+        motor.setCatalogoDotes(catalogo);
+        return motor;
+    }
+
+    it('Esquiva no se recicla si tiene Movilidad (la pide), y Movilidad sí; el motor se queda como estaba', () => {
+        const motor = subidaDe(3, [ESQUIVA, MOVILIDAD, ...DOTES.slice(2)]);
+        const dotes = dotesParaReciclar(motor);
+        expect(dotes.map((d) => [d.idDote, d.indiceNivel])).toEqual([[50, 0], [51, 2]]);
+        expect(dotes[0].motivo).toBe('La necesita lo que tiene: Movilidad (No cumple: Esquiva).');
+        expect(dotes[1].motivo).toBeNull();
+        expect(motor.PersonajeCreacion.DotesContextuales.map((d) => toInt(d.Dote?.Id))).toEqual([50, 51]);
+        expect(motor.dotesSinSusPrerrequisitos()).toEqual([]);
+    });
+
+    it('Esquiva no se cambia por Movilidad: sin la que se va, Movilidad no cumple sus prerrequisitos', () => {
+        const motor = subidaDe(1, [ESQUIVA, MOVILIDAD, ...DOTES.slice(2)]);
+        const [esquiva] = dotesParaReciclar(motor);
+        expect(esquiva.motivo).toBeNull();
+        const hueco = huecoDeLaDoteReciclada(motor, esquiva, false)!;
+        expect(hueco.candidatos.some((c) => c.dote.Id === 50)).toBeFalse();
+        expect(hueco.candidatos.find((c) => c.dote.Id === 51)?.evaluacion.estado).not.toBe('eligible');
+        expect(hueco.candidatos.find((c) => c.dote.Id === 52)?.evaluacion.estado).toBe('eligible');
+        expect(motor.aplicarDotePendiente(hueco.pendiente.id, { idDote: 51, idExtra: 0, extra: '' })).toBeFalse();
+    });
+
+    it('una dote de nivel 3 no se cambia por una que pide ataque base +6, aunque ahora lo tenga; la de nivel 6, sí', () => {
+        const motor = subidaDe(6, [...DOTES, DE_ATAQUE_6], GUERRERO_6);
+        expect(motor.PersonajeCreacion.Ataque_base).toContain('6');
+        const dotes = dotesParaReciclar(motor);
+        expect(dotes.map((d) => d.indiceNivel)).toEqual([0, 2, 5]);
+        const estado = motor.exportarEstadoSubida();
+        const deNivel3 = huecoDeLaDoteReciclada(motor, dotes[1], false)!;
+        expect(deNivel3.candidatos.find((c) => c.dote.Id === 60)?.evaluacion.estado).not.toBe('eligible');
+        expect(motor.restaurarEstadoSubida(estado)).toBeTrue();
+        const deNivel6 = huecoDeLaDoteReciclada(motor, dotes[2], false)!;
+        expect(deNivel6.candidatos.find((c) => c.dote.Id === 60)?.evaluacion.estado).toBe('eligible');
+    });
+
+    it('la dote en el motor: la nueva en el hueco de la antigua; y la ficha que se manda, con el cambio y el nivel nuevo', () => {
+        const svc = crear(HUMANO, {});
+        [1, 2].forEach(() => aplicarNivel(svc, GUERRERO));
+        const guardado = guardar(svc);
+        const motor = subir(guardado, HUMANO);
+        const [quita] = dotesParaReciclar(motor);
+        expect(quita.motivo).toBeNull();
+        const plan: PlanReciclaje = { tipo: 'dote', quita, seleccion: { idDote: 53, idExtra: 0, extra: '' }, pone: { idDote: 53, idExtra: 0, nombre: 'Dote 53', extra: '' } };
+        expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+        const contextuales = motor.PersonajeCreacion.DotesContextuales;
+        expect(contextuales.some((d) => toInt(d.Dote?.Id) === quita.idDote)).toBeFalse();
+        expect((contextuales.find((d) => toInt(d.Dote?.Id) === 53)?.Contexto as any)?.Origen).toBe(quita.origen);
+        expect(reciclajeDelPlan(plan)).toEqual({ tipo: 'dote', quita: { idDote: quita.idDote, idExtra: 0, orden: 1 }, pone: { idDote: 53, idExtra: 0 } });
+
+        const entrada = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { origenDote: quita.origen });
+        const conNivel = JSON.parse(JSON.stringify(entrada)) as PersonajeCreateRequestDto;
+        conNivel.colecciones!.dotes = [...(conNivel.colecciones!.dotes ?? []), { idDote: 54, idExtra: 0, origen: 'Dote por nivel 3' }];
+        const ficha = fichaDeLaSubida({
+            entrada, antes: entrada, despues: conNivel, idClase: 7, puntosGolpe: 20,
+            nivel: { idClase: 7, nivelClase: 3, elecciones: [{ tipo: 'dote', idElemento: 54, idExtra: 0 }] },
+        });
+        expect((ficha.colecciones?.dotes ?? []).map((d) => toInt(d.idDote)).sort()).toEqual([53, 54]);
+        expect((ficha.colecciones?.dotes ?? []).find((d) => d.idDote === 53)?.origen).toBe(quita.origen);
+        expect(ficha.niveles?.slice(0, 2)).toEqual(guardado.entrada.niveles as any);
+        expect(ficha.niveles?.length).toBe(3);
+    });
+
+    it('los rangos, a una de clase para alguna de sus clases o la que sube, sin pasar del nivel + 3; y no los que pide algo que tiene', () => {
+        const svc = crear(HUMANO, { Inteligencia: 10 });
+        [1, 2].forEach(() => aplicarNivel(svc, GUERRERO));
+        const guardado = guardar(svc);
+        const motor = subir(guardado, HUMANO);
+        const trepar = habilidadesConRangos(motor, guardado.entrada).find((h) => h.idHabilidad === 2)!;
+        expect(trepar.rangos).toBeGreaterThan(0);
+        const concentracion = (destinos: ReturnType<typeof destinosDeRangos>) => destinos.find((d) => d.idHabilidad === 3)!;
+        // Concentración no es de guerrero: vale si puede subir de paladín, y entonces la subida tiene que ser de paladín.
+        expect(concentracion(destinosDeRangos(motor, guardado.entrada, trepar, 1, 2, [GUERRERO])).motivo).toContain('No es de clase');
+        const conPaladin = concentracion(destinosDeRangos(motor, guardado.entrada, trepar, 1, 2, [GUERRERO, PALADIN]));
+        expect(conPaladin.motivo).toBeNull();
+        expect(conPaladin.clases).toEqual([{ id: 11, nombre: 'Paladín' }]);
+        expect(topeDeRangosDelReciclaje(2)).toBe(5);
+        expect(concentracion(destinosDeRangos(motor, guardado.entrada, trepar, 4, 0, [PALADIN])).motivo).toContain('pasaría de 3 rangos');
+
+        const trepador = { ...dote(63, 'Trepador'), Prerrequisitos: { habilidad: [
+            { Id_habilidad: 2, Habilidad: 'Trepar', Cantidad: trepar.rangos, Requiere_extra: 0, Extras: [], Opcional: 0, Frase: `Trepar ${trepar.rangos} rangos` }] } };
+        motor.setCatalogoDotes([...DOTES, trepador]);
+        motor.PersonajeCreacion.DotesContextuales.push({
+            Dote: trepador, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel 1' },
+        } as any);
+        expect(motor.dotesSinSusPrerrequisitos()).toEqual([]);
+        expect(loQueDejariaDeCumplir(motor, { rangos: { idHabilidad: 2, idExtra: 0, rangos: 1 } })).toEqual([`Trepador (No cumple: Trepar ${trepar.rangos} rangos)`]);
+        expect(motor.PersonajeCreacion.Habilidades.find((h) => h.Id === 2)?.Rangos).toBe(trepar.rangos);
+    });
+
+    it('los conjuros: solo las clases con tabla de conocidos, y otro del mismo nivel que no conozca', () => {
+        const svc = crear(HUMANO, { Carisma: 16 });
+        aplicarNivel(svc, HECHICERO);
+        svc.PersonajeCreacion.Conjuros = CONJUROS.filter((c) => [201, 202, 211].includes(c.Id))
+            .map((c) => ({ ...c, Clase_origen: 'Hechicero', Origen_clase: 'Hechicero' } as Conjuro));
+        const guardado = guardar(svc);
+        const motor = subir(guardado, HUMANO);
+        // El hechicero de estas pruebas no trae su tabla de conocidos: sin ella, no recicla (el mago, por su libro, tampoco).
+        expect(conocidosParaReciclar(motor, guardado.entrada)).toEqual([]);
+        const conTabla = clase({ ...HECHICERO, Conjuros: { ...HECHICERO.Conjuros, Conocidos_nivel_a_nivel: true } });
+        motor.setCatalogoClases([GUERRERO, PALADIN, MAGO, conTabla]);
+        const [hechicero] = conocidosParaReciclar(motor, guardado.entrada);
+        expect(hechicero.id).toBe(8);
+        expect(hechicero.conocidos.map((c) => [c.idConjuro, c.nivel, c.motivo])).toEqual([[201, 0, null], [202, 0, null], [211, 1, null]]);
+        expect(conjurosParaAprender(motor, guardado.entrada, hechicero, 0, false).map((c) => c.Id)).toEqual([203]);
+        expect(conjurosParaAprender(motor, guardado.entrada, hechicero, 0, false, [203])).toEqual([]);
+        expect(conjurosParaAprender(motor, guardado.entrada, hechicero, 2, false).map((c) => c.Id)).toEqual([221]);
+    });
+
+    it('el idioma y los conjuros, en el motor: el que entra en lugar del que sale', () => {
+        const svc = crear(HUMANO, { Carisma: 16 });
+        aplicarNivel(svc, HECHICERO);
+        svc.PersonajeCreacion.Conjuros = CONJUROS.filter((c) => [201, 202].includes(c.Id))
+            .map((c) => ({ ...c, Clase_origen: 'Hechicero', Origen_clase: 'Hechicero' } as Conjuro));
+        const motor = subir(guardar(svc), HUMANO);
+        expect(aplicarReciclajeAlMotor(motor, { tipo: 'conjuros', cambios: [
+            { idClase: 8, clase: 'Hechicero', olvida: { id: 201, nombre: 'Luz' }, aprende: { id: 203, nombre: 'Detectar magia' } }] })).toBeTrue();
+        expect(motor.PersonajeCreacion.Conjuros.map((c) => c.Id).sort()).toEqual([202, 203]);
+        motor.setCatalogoIdiomas([
+            { Id: 1, Nombre: 'Común', Descripcion: '', Secreto: false, Oficial: true },
+            { Id: 2, Nombre: 'Élfico', Descripcion: '', Secreto: false, Oficial: true },
+            { Id: 3, Nombre: 'Druídico', Descripcion: '', Secreto: true, Oficial: true },
+        ]);
+        motor.PersonajeCreacion.Idiomas = [
+            { Nombre: 'Común', Descripcion: '', Secreto: false, Oficial: true, Origen: 'Humano' },
+            { Nombre: 'Druídico', Descripcion: '', Secreto: true, Oficial: true, Origen: 'Druida nivel 1' },
+        ];
+        const entrada = { colecciones: { idiomas: [{ idIdioma: 1, origen: 'Humano' }, { idIdioma: 3, origen: 'Druida nivel 1' }] } } as PersonajeCreateRequestDto;
+        const { quitables, aprendibles } = idiomasParaReciclar(motor, entrada, false);
+        expect(quitables.map((i) => [i.nombre, i.motivo])).toEqual([['Común', null], ['Druídico', 'Es un idioma secreto: no se recicla.']]);
+        expect(aprendibles.map((i) => i.nombre)).toEqual(['Élfico']);
+        expect(aplicarReciclajeAlMotor(motor, { tipo: 'idioma', quita: { idIdioma: 1, nombre: 'Común' }, pone: { idIdioma: 2, nombre: 'Élfico' } })).toBeTrue();
+        expect(motor.PersonajeCreacion.Idiomas.map((i) => [i.Nombre, i.Origen])).toEqual([['Druídico', 'Druida nivel 1'], ['Élfico', 'Humano']]);
     });
 });

@@ -1135,7 +1135,7 @@ interface NivelListaConjuro {
 }
 
 /** Los niveles del conjuro en las listas de clase (`Nivel_clase`), leídos igual de la API y de la caché. */
-function nivelesDeClaseDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
+export function nivelesDeClaseDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
     return toArray<Record<string, any>>(conjuro?.Nivel_clase).map((nivel) => ({
         id: toNumber(nivel?.['Id_clase'] ?? nivel?.['id_clase']),
         nombre: normalizarTexto(nivel?.['Clase'] ?? nivel?.['clase'] ?? ''),
@@ -11724,6 +11724,11 @@ export class NuevoPersonajeService {
             dgTotal: Math.max(0, toNumber(contexto.dgTotal) - posteriores.length),
             nivelTotal: Math.max(0, toNumber(contexto.nivelTotal) - posteriores.length),
         };
+    }
+
+    /** Si la dote con ese origen se eligió en un hueco (de nivel, adicional de una clase o de la raza), no la dio fija nada. */
+    esDoteElegida(origen: string): boolean {
+        return this.huecoDeDote(origen) !== null;
     }
 
     /** Quita del personaje una dote que tiene (la primera con ese id, extra y origen) y su elección. `false` si no la tiene. */

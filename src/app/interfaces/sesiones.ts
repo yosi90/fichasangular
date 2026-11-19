@@ -140,6 +140,17 @@ export interface NivelPerdido {
     restablecible?: boolean;
 }
 
+/**
+ * El reciclaje de la subida (*Manual del jugador II*, págs. 194-196; `docs/publica/endpoints/personajes.md`, «Subida de
+ * nivel», «El reciclaje»): una sola cosa elegida antes, cambiada por otra antes de añadir nada del nivel nuevo. En la dote,
+ * `quita.orden` es el nivel de su registro en que la eligió (1, 2…, el orden de `ficha.niveles`), o `null` si no se sabe.
+ */
+export type ReciclajeSubidaDto =
+    | { tipo: 'dote'; quita: { idDote: number; idExtra: number; orden: number | null; }; pone: { idDote: number; idExtra: number; }; }
+    | { tipo: 'idioma'; quita: { idIdioma: number; }; pone: { idIdioma: number; }; }
+    | { tipo: 'rangos'; quita: { idHabilidad: number; idExtra: number; }; pone: { idHabilidad: number; idExtra: number; }; rangos: number; }
+    | { tipo: 'conjuros'; cambios: Array<{ idClase: number; olvida: number; aprende: number; }>; };
+
 /** El cuerpo de `POST /personajes/{id}/niveles`: la ficha completa con un nivel más, la clase y la tirada de PG. */
 export interface SubidaNivelDto {
     idClase: number;
@@ -147,6 +158,8 @@ export interface SubidaNivelDto {
     pg?: { tirada: number; tiradas?: number[]; };
     ficha: PersonajeCreateRequestDto;
     version: string;
+    /** Lo que recicla (opcional); la `ficha` ya trae el cambio. */
+    reciclaje?: ReciclajeSubidaDto;
 }
 
 /** Lo que responde la subida: la sesión, los PX y la subida (cuántos niveles le quedan por subir). */
