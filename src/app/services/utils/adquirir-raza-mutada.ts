@@ -3,7 +3,6 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { PrerrequisitoMutacion, Raza } from 'src/app/interfaces/raza';
 import { TipoPrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
 import { ExperienciaPersonaje } from 'src/app/interfaces/sesiones';
-import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { CambioPlantilla, filasDeCaracteristicas, nombresDeDotes } from './adquirir-plantilla';
 import { nombreExClase } from './alineamiento-clase';
 import { sacarDoteDeLaFicha } from './correccion-ficha';
@@ -12,7 +11,6 @@ import { experienciaParaNivel } from './experiencia-nivel';
 import { dgsRacialesQueCuentan } from './nivel-personaje';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
 import { esRazaMutada } from './raza-mutacion';
-import { clasesQueTiene } from './reciclaje';
 import { formatoPx } from './sesiones-texto';
 import { diferencia, fichaConLoDelMotor, PgSubida, SE_CONSERVAN_PERSONAJE } from './subida-nivel';
 
@@ -210,26 +208,6 @@ export function fichaDeLaMutacion(datos: EntradaFichaMutacion): PersonajeCreateR
         ficha.decisionesHomebrew = ficha.decisionesHomebrew.filter((d) =>
             !(d.tipo === 'requisitos_dote' && !dotes.some((x) => toInt(x?.idDote) === toInt(d.idElemento))));
     return ficha;
-}
-
-// --- Con el motor de la creación ------------------------------------------------------------------------------------
-
-/** Lo que no cumplía cada clase que tiene (`evaluarClaseParaSeleccion`), para ver después qué deja de cumplir. */
-export function razonesDeSusClases(motor: NuevoPersonajeService): Map<number, Set<string>> {
-    return new Map(clasesQueTiene(motor).map((c) => [toInt(c.Id), new Set(motor.evaluarClaseParaSeleccion(c).razones ?? [])]));
-}
-
-/**
- * Las clases que dejan de cumplir lo que piden con la raza nueva (una de prestigio que pide una raza): quedan ex mientras
- * no cumplan (*El arcano completo*, pág. 17), como al adquirir una plantilla. Solo lo que no fallaba antes (`antes`).
- */
-export function clasesQueDejanDeCumplir(motor: NuevoPersonajeService, antes: Map<number, Set<string>>)
-    : Array<{ idClase: number; nombre: string; razones: string[]; }> {
-    return clasesQueTiene(motor).flatMap((c) => {
-        const previas = antes.get(toInt(c.Id)) ?? new Set<string>();
-        const razones = (motor.evaluarClaseParaSeleccion(c).razones ?? []).filter((r) => !previas.has(r));
-        return razones.length > 0 ? [{ idClase: toInt(c.Id), nombre: `${c.Nombre}`, razones }] : [];
-    });
 }
 
 // --- El resumen ---------------------------------------------------------------------------------------------------------

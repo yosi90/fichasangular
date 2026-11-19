@@ -22,8 +22,8 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { CambioPlantilla } from 'src/app/services/utils/adquirir-plantilla';
 import {
-    cambiosDeLaMutacion, clasesQueDejanDeCumplir, condicionesDelMaster, edadNoAdulta, esRazaMutadaAdquirible, fichaDeLaMutacion, loQuePierdeEnSuHueco, nepTrasLaMutacion,
-    pagaLosPuntos, puntosDevueltos, quitaDgRaciales, razonesDeSusClases, tipoQueNoCumpleLaMutacion,
+    cambiosDeLaMutacion, condicionesDelMaster, edadNoAdulta, esRazaMutadaAdquirible, fichaDeLaMutacion, loQuePierdeEnSuHueco, nepTrasLaMutacion,
+    pagaLosPuntos, puntosDevueltos, quitaDgRaciales, tipoQueNoCumpleLaMutacion,
 } from 'src/app/services/utils/adquirir-raza-mutada';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
@@ -36,7 +36,7 @@ import { costeRangoHabilidad } from 'src/app/services/utils/puntos-habilidad';
 import { evaluarGruposParaSelectorRacial } from 'src/app/services/utils/racial-prerrequisitos';
 import { agruparRacialesPorOpcional, SeleccionRacialesOpcionales } from 'src/app/services/utils/racial-opcionales';
 import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
-import { DoteReciclable, dotesParaReciclar } from 'src/app/services/utils/reciclaje';
+import { clasesQueDejanDeCumplir, DoteReciclable, dotesParaReciclar, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { pgTrasCambioDeCon, PgSubida } from 'src/app/services/utils/subida-nivel';
 

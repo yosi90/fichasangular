@@ -211,12 +211,34 @@ export interface LoQueQuita {
     conjuros?: Array<{ idConjuro: number; clase: string; }>;
 }
 
-/** Las clases que tiene, del catálogo del motor (también para la raza mutada adquirida: las que dejan de cumplir). */
-export function clasesQueTiene(motor: NuevoPersonajeService): Clase[] {
+/** Las clases que tiene, del catálogo del motor. */
+function clasesQueTiene(motor: NuevoPersonajeService): Clase[] {
     return (motor.PersonajeCreacion.desgloseClases ?? [])
         .filter((c) => toInt(c?.Nivel) > 0)
         .map((c) => motor.claseDelCatalogo(toInt(c?.Id)))
         .filter((c): c is Clase => !!c);
+}
+
+/**
+ * Lo que no cumplía cada clase que tiene (`evaluarClaseParaSeleccion`), para ver después qué deja de cumplir
+ * (`clasesQueDejanDeCumplir`). Lo usan el reciclaje (`loQueDejariaDeCumplir`) y la raza mutada adquirida.
+ */
+export function razonesDeSusClases(motor: NuevoPersonajeService): Map<number, Set<string>> {
+    return new Map(clasesQueTiene(motor).map((c) => [toInt(c.Id), new Set(motor.evaluarClaseParaSeleccion(c).razones ?? [])]));
+}
+
+/**
+ * Las clases que dejan de cumplir lo que piden (una de prestigio que pide una dote, unos rangos o una raza): solo lo que no
+ * fallaba antes (`antes`, de `razonesDeSusClases`). Con la raza mutada adquirida, quedan ex mientras no cumplan (*El arcano
+ * completo*, pág. 17), como al adquirir una plantilla.
+ */
+export function clasesQueDejanDeCumplir(motor: NuevoPersonajeService, antes: Map<number, Set<string>>)
+    : Array<{ idClase: number; nombre: string; razones: string[]; }> {
+    return clasesQueTiene(motor).flatMap((c) => {
+        const previas = antes.get(toInt(c.Id)) ?? new Set<string>();
+        const razones = (motor.evaluarClaseParaSeleccion(c).razones ?? []).filter((r) => !previas.has(r));
+        return razones.length > 0 ? [{ idClase: toInt(c.Id), nombre: `${c.Nombre}`, razones }] : [];
+    });
 }
 
 /**
@@ -228,8 +250,7 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
     const pj = motor.PersonajeCreacion;
     const clave = (d: { idDote: number; idExtra: number; origen: string; }) => `${d.idDote}|${d.idExtra}|${d.origen}`;
     const dotesAntes = new Set(motor.dotesSinSusPrerrequisitos().map(clave));
-    const clases = clasesQueTiene(motor);
-    const razonesAntes = new Map(clases.map((c) => [toInt(c.Id), new Set(motor.evaluarClaseParaSeleccion(c).razones ?? [])]));
+    const razonesAntes = razonesDeSusClases(motor);
     const guardado = {
         contextuales: [...(pj.DotesContextuales ?? [])],
         dotes: [...(pj.Dotes ?? [])],
@@ -259,12 +280,7 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         const motivos = motor.dotesSinSusPrerrequisitos()
             .filter((d) => !dotesAntes.has(clave(d)) && sinDote(d))
             .map((d) => `${d.nombre} (${(d.razones ?? []).join('; ') || 'sus prerrequisitos'})`);
-        clases.forEach((c) => {
-            const antes = razonesAntes.get(toInt(c.Id)) ?? new Set<string>();
-            const nuevas = (motor.evaluarClaseParaSeleccion(c).razones ?? []).filter((r) => !antes.has(r));
-            if (nuevas.length > 0)
-                motivos.push(`${c.Nombre} (${nuevas.join('; ')})`);
-        });
+        clasesQueDejanDeCumplir(motor, razonesAntes).forEach((c) => motivos.push(`${c.nombre} (${c.razones.join('; ')})`));
         return motivos;
     } finally {
         pj.DotesContextuales = guardado.contextuales;
