@@ -109,4 +109,12 @@ describe('subida-nivel (la subida de nivel: PG, intercambio y la ficha que se ma
         expect(campoDelErrorASubida('subida_cambio_no_permitido', 'ficha.personaje.nombre', pasos)).toBe('resumen');
         expect(campoDelErrorASubida('tirada_no_valida', 'pg.tirada', ['clase', 'resumen'])).toBe('resumen');
     });
+
+    it('los errores del reciclaje, en «Reciclar» (y sin ese paso, en el resumen)', () => {
+        const pasos: PasoSubida[] = ['reciclar', 'clase', 'pg', 'resumen'];
+        expect(campoDelErrorASubida('reciclaje_no_permitido', 'reciclaje', pasos)).toBe('reciclar');
+        expect(campoDelErrorASubida('reciclaje_no_valido', 'reciclaje.pone.idDote', pasos)).toBe('reciclar');
+        expect(campoDelErrorASubida('reciclaje_no_valido', 'reciclaje.cambios[1].aprende', pasos)).toBe('reciclar');
+        expect(campoDelErrorASubida('reciclaje_no_permitido', 'reciclaje', ['clase', 'resumen'])).toBe('resumen');
+    });
 });

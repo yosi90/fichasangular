@@ -7,8 +7,11 @@ import { textoConSigno } from './equipo-texto';
 import { normalizarTexto, toInt } from './normalizacion';
 import { PgSubida } from './subida-nivel';
 
-/** Los pasos de la subida, en el orden del MJ (p. 58-59); solo salen los que dispara el nivel. */
-export type PasoSubida = 'clase' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'conjuros' | 'intercambio' | 'resumen';
+/**
+ * Los pasos de la subida, en el orden del MJ (p. 58-59); solo salen los que dispara el nivel. «Reciclar» va antes de todos
+ * (*Manual del jugador II*, pág. 194: antes de añadir nada del nivel nuevo), si la campaña lo deja.
+ */
+export type PasoSubida = 'reciclar' | 'clase' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'conjuros' | 'intercambio' | 'resumen';
 
 /** Una fila de «Lo que cambia» (lienzo, pantalla 4): qué, antes, ahora y por qué. */
 export interface CambioSubida {
@@ -38,6 +41,8 @@ export interface EntradaCambiosSubida {
     caras: number;
     elecciones: PersonajeCreateNivelEleccionDto[];
     nombreConjuro: (id: number) => string;
+    /** Lo reciclado antes del nivel (su fila va la primera) y el idioma que aprende con ello, que no es del nivel. */
+    reciclado?: { fila: CambioSubida; idiomaNuevo?: string; } | null;
 }
 
 /**
@@ -46,7 +51,7 @@ export interface EntradaCambiosSubida {
  * rangos, las dotes, los conjuros (y el intercambio), los idiomas y las aptitudes del nivel.
  */
 export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
-    const filas: CambioSubida[] = [];
+    const filas: CambioSubida[] = e.reciclado ? [{ ...e.reciclado.fila }] : [];
     const nombreClase = e.clase?.Nombre ?? '';
     filas.push({ que: 'Clase', antes: clasesTexto(e.antes), ahora: clasesTexto(e.despues), porque: `Nivel ${e.nivelNuevo} del personaje` });
 
@@ -110,7 +115,8 @@ export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
         .some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? '') && normalizarTexto(y?.Extra ?? '') === normalizarTexto(x?.Extra ?? '')));
     if (especialesNuevos.length || nuevos('especial'))
         filas.push({ que: 'Aptitudes', antes: '—', ahora: especialesNuevos.map((x) => x.Extra && x.Extra !== 'No aplica' ? `${x.Nombre} (${x.Extra})` : x.Nombre).join(', '), porque: `${nombreClase} ${e.nivelClase}` });
-    const idiomasNuevos = (e.despues?.Idiomas ?? []).filter((x) => !(e.antes?.Idiomas ?? []).some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? '')));
+    const idiomasNuevos = (e.despues?.Idiomas ?? []).filter((x) => !(e.antes?.Idiomas ?? []).some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? ''))
+        && normalizarTexto(x?.Nombre ?? '') !== normalizarTexto(e.reciclado?.idiomaNuevo ?? ''));
     if (idiomasNuevos.length)
         filas.push({ que: 'Idiomas', antes: '—', ahora: idiomasNuevos.map((x) => x.Nombre).join(', '), porque: `${nombreClase} ${e.nivelClase}` });
     const dominiosNuevos = (e.despues?.Dominios ?? []).filter((x) => !(e.antes?.Dominios ?? []).some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? '')));
@@ -121,13 +127,16 @@ export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
 
 /**
  * El paso donde enseñar un error de la API de la subida (`docs/publica/ERRORES.md`, «Sesiones y subida de nivel»), por su
- * `field` (y su `code`): la tirada, en los PG; la clase, en la clase; los conjuros y el intercambio, en el suyo; lo demás
- * (y lo que no es de un paso de esta subida), en el resumen.
+ * `field` (y su `code`): la tirada, en los PG; la clase, en la clase; los conjuros y el intercambio, en el suyo; el
+ * reciclaje (`reciclaje_no_valido`, `reciclaje_no_permitido`, `field` dentro de `reciclaje`), en «Reciclar»; lo demás (y lo
+ * que no es de un paso de esta subida), en el resumen.
  */
 export function campoDelErrorASubida(code: unknown, field: unknown, pasos: PasoSubida[]): PasoSubida {
     const campo = `${field ?? ''}`;
     const codigo = `${code ?? ''}`;
     const elegir = (paso: PasoSubida): PasoSubida => pasos.includes(paso) ? paso : 'resumen';
+    if (codigo.startsWith('reciclaje_') || campo === 'reciclaje' || campo.startsWith('reciclaje.'))
+        return elegir('reciclar');
     if (campo.startsWith('pg') || codigo === 'tirada_no_valida')
         return elegir('pg');
     if (codigo === 'intercambio_conjuro_no_valido')
