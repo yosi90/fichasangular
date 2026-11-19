@@ -73,6 +73,14 @@ export function extraHabilidadElegido(extra: unknown): boolean {
     return normalizarTexto(extra).length > 0 && !esTextoExtraPorElegir(extra);
 }
 
+/**
+ * El nombre de una habilidad del motor con su extra si ya está elegido («Saber (los planos)»). Lo usan el reciclaje y la raza
+ * mutada adquirida (los rangos que se quitan).
+ */
+export function nombreDeHabilidadConExtra(h: { Nombre?: string | null; Extra?: string | null; } | null | undefined): string {
+    return extraHabilidadElegido(h?.Extra) ? `${h?.Nombre ?? ''} (${h?.Extra})` : `${h?.Nombre ?? ''}`;
+}
+
 export function resolverExtraHabilidadVisible(options: ResolverExtraHabilidadOptions): string {
     const extraRaw = `${options?.extra ?? ''}`.trim();
 

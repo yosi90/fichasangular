@@ -29,6 +29,7 @@ import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raz
 import { modConstitucionQueCuenta } from 'src/app/services/utils/caracteristicas';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
+import { nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
@@ -416,7 +417,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             .filter((h) => toNumber(h?.Rangos) > 0)
             .map((h) => ({
                 id: toInt(h.Id), custom: !!h.Custom, rangos: toInt(h.Rangos), quitados: 0,
-                nombre: `${h.Nombre ?? ''}`.trim() + (`${h.Extra ?? ''}`.trim() && `${h.Extra}` !== 'Elegir' ? ` (${h.Extra})` : ''),
+                nombre: nombreDeHabilidadConExtra(h),
                 coste: costeRangoHabilidad(this.svc.esHabilidadDeClaseEnAlguna(h)),
             }))
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
