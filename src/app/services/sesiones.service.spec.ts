@@ -182,7 +182,7 @@ describe('SesionesService', () => {
             http.request.and.returnValue(of({
                 ...venta, sesion: { ...venta.sesion, eventos: [...venta.sesion.eventos.map((e: any) => ({ ...e, deshacible: false })), evento] },
                 razaMutada: { idEvento: 101, numeroSesion: 1, raza: { id: 21, nombre: 'Prole de Bahamut' }, razaBase: { id: 25, nombre: 'Humano' },
-                    nepAntes: 5, nepDespues: 5, coste: { po: 100, poCoste: 100, poPagadasPorOtro: false } },
+                    nepAntes: 5, nepDespues: 5, coste: { px: 0, po: 100, poCoste: 100, poPagadasPorOtro: false } },
                 reglasIgnoradas: [],
             }));
             const cuerpo = { idRaza: 21, ficha: {} as any, version: sesion.version, concepto: 'el Rito del Renacimiento' };
@@ -190,20 +190,20 @@ describe('SesionesService', () => {
             expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/raza-mutada`, jasmine.objectContaining({ body: cuerpo })]);
             expect(respuesta.razaMutada).toEqual({
                 idEvento: 101, numeroSesion: 1, raza: { id: 21, nombre: 'Prole de Bahamut' }, razaBase: { id: 25, nombre: 'Humano' },
-                nepAntes: 5, nepDespues: 5, coste: { po: 100, poCoste: 100, poPagadasPorOtro: false },
+                nepAntes: 5, nepDespues: 5, coste: { px: 0, po: 100, poCoste: 100, poPagadasPorOtro: false },
             });
             const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
             expect([ultimo.tipo, ultimo.texto, ultimo.deshacible]).toEqual(['raza_mutada_adquirida', texto, true]);
         });
 
-        it('una raza mutada sin coste (el nacido del Infierno) y un id que no vale', async () => {
+        it('una raza mutada que no cuesta nada (el nacido del Infierno), con el NEP que baja, y un id que no vale', async () => {
             http.request.and.returnValue(of({
                 ...respuestaSesiones<any>('venta'), reglasIgnoradas: [],
                 razaMutada: { idEvento: 7, numeroSesion: 2, raza: { id: 952, nombre: 'Nacido del Infierno' }, razaBase: { id: 308, nombre: 'Drow' },
-                    nepAntes: 7, nepDespues: 5, coste: null },
+                    nepAntes: 7, nepDespues: 5, coste: { px: 0, po: 0, poCoste: 0, poPagadasPorOtro: false } },
             }));
             const respuesta = await servicio.adquirirRazaMutada(129, { idRaza: 952, ficha: {} as any, version: sesion.version });
-            expect(respuesta.razaMutada.coste).toBeNull();
+            expect(respuesta.razaMutada.coste).toEqual({ px: 0, po: 0, poCoste: 0, poPagadasPorOtro: false });
             expect([respuesta.razaMutada.nepAntes, respuesta.razaMutada.nepDespues]).toEqual([7, 5]);
             await expectAsync(servicio.adquirirRazaMutada(0, { idRaza: 952, ficha: {} as any, version: sesion.version })).toBeRejected();
         });

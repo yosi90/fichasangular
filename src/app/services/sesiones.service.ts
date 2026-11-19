@@ -265,7 +265,7 @@ export class SesionesService {
         const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
         const ref = (valor: any) => ({ id: toInt(valor?.id), nombre: `${valor?.nombre ?? ''}` });
         const coste = r?.coste && typeof r.coste === 'object'
-            ? { po: Number(r.coste.po) || 0, poCoste: Number(r.coste.poCoste) || 0, poPagadasPorOtro: r.coste.poPagadasPorOtro === true }
+            ? { px: toInt(r.coste.px), po: Number(r.coste.po) || 0, poCoste: Number(r.coste.poCoste) || 0, poPagadasPorOtro: r.coste.poPagadasPorOtro === true }
             : null;
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),

@@ -250,8 +250,8 @@ export interface RespuestaRazaMutada extends RespuestaSesion {
         razaBase: { id: number; nombre: string; };
         nepAntes: number | null;
         nepDespues: number | null;
-        /** `po`, lo que salió de su saldo; `poCoste`, lo que costaba. */
-        coste: { po: number; poCoste: number; poPagadasPorOtro: boolean; } | null;
+        /** `px`, los que pagó; `po`, lo que salió de su saldo; `poCoste`, lo que costaba. */
+        coste: { px: number; po: number; poCoste: number; poPagadasPorOtro: boolean; } | null;
     };
 }
 
