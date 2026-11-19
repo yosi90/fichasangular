@@ -4430,9 +4430,9 @@ export class NuevoPersonajeService {
 
     /**
      * Las clases del desglose con su id, su nombre, su nivel y su clase del catálogo (`obtenerClaseDeDesglose`): lo que usan
-     * los `niveles` del alta, la penalización de PX y los prerrequisitos. El id, el de la entrada (el que manda el alta en
-     * `colecciones.clases` y el de `Orden_niveles`) y, si no lo trae (un borrador de antes), el de su clase del catálogo; el
-     * nombre, el de la entrada o, si no lo trae, el de su clase.
+     * los `niveles` del alta, la penalización de PX, los prerrequisitos y los hitos de dotes. El id, el de la entrada (el
+     * que manda el alta en `colecciones.clases` y el de `Orden_niveles`) y, si no lo trae (un borrador de antes), el de su
+     * clase del catálogo; el nombre, el de la entrada o, si no lo trae, el de su clase.
      */
     private clasesDelDesglose(): Array<{ id: number; nombre: string; nivel: number; clase: Clase | null; }> {
         return (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => {
@@ -12151,10 +12151,7 @@ export class NuevoPersonajeService {
         return hitosDotesProgresion({
             dgsRaza: partes.dgsRaza,
             dgsPlantillas: sinDgsDePlantillas ? 0 : partes.dgsPlantillas,
-            clases: (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => ({
-                clase: this.obtenerClaseDeDesglose(entrada),
-                nivel: toInt(entrada?.Nivel),
-            })),
+            clases: this.clasesDelDesglose(),
         });
     }
 
