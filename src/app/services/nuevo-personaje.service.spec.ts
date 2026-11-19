@@ -2606,6 +2606,45 @@ describe('NuevoPersonajeService (clases)', () => {
         });
     });
 
+    describe('las clases del desglose, una sola proyección (`clasesDelDesglose`)', () => {
+        const nivel = (n: number) => ({ ...crearClaseBase().Desglose_niveles[0], Nivel: n });
+        const guerrero = () => crearClaseBase({ Id: 7, Nombre: 'Guerrero', Desglose_niveles: [1, 2].map(nivel) });
+        const mago = () => crearClaseBase({ Id: 9, Nombre: 'Mago', Desglose_niveles: [1, 2].map(nivel) });
+        const proyeccion = () => (service as any).clasesDelDesglose().map(({ id, nombre, nivel }: any) => ({ id, nombre, nivel }));
+        const prerrequisitos = () => (service as any).nivelesDeClaseParaPrerrequisitos();
+
+        beforeEach(() => service.setCatalogoClases([guerrero(), mago()]));
+
+        it('el id de la entrada y, en un borrador de antes sin él, el de su clase del catálogo por su nombre', () => {
+            service.PersonajeCreacion.desgloseClases = [{ Id: 7, Nombre: 'Guerrero', Nivel: 2 }, { Nombre: ' Mago ', Nivel: 1 }] as any;
+            expect(proyeccion()).toEqual([{ id: 7, nombre: 'Guerrero', nivel: 2 }, { id: 9, nombre: 'Mago', nivel: 1 }]);
+            expect(prerrequisitos()).toEqual([{ id: 7, nombre: 'Guerrero', nivel: 2 }, { id: 9, nombre: 'Mago', nivel: 1 }]);
+            // Los `niveles` del alta cuadran con el orden también en la del borrador de antes.
+            service.PersonajeCreacion.Orden_niveles = [
+                { idClase: 7, nivelClase: 1, elecciones: [] }, { idClase: 9, nivelClase: 1, elecciones: [] }, { idClase: 7, nivelClase: 2, elecciones: [] },
+            ] as any;
+            expect(service.getNivelesParaGuardar(null, null)?.map((n) => n.idClase)).toEqual([7, 9, 7]);
+        });
+
+        it('el id de la entrada aunque el catálogo tenga otra con su nombre (el que manda el alta y el de su orden)', () => {
+            // Una clase renombrada en el catálogo: los prerrequisitos ya no la pierden por su nombre de antes.
+            service.PersonajeCreacion.desgloseClases = [{ Id: 9, Nombre: 'Mago antiguo', Nivel: 2 }] as any;
+            expect(prerrequisitos()).toEqual([{ id: 9, nombre: 'Mago antiguo', nivel: 2 }]);
+            // Un id que el catálogo no tiene, con el nombre de otra: el de la entrada, en las tres.
+            service.PersonajeCreacion.desgloseClases = [{ Id: 70, Nombre: 'Guerrero', Nivel: 1 }] as any;
+            expect(proyeccion()).toEqual([{ id: 70, nombre: 'Guerrero', nivel: 1 }]);
+            expect(prerrequisitos()[0].id).toBe(70);
+            service.PersonajeCreacion.Orden_niveles = [{ idClase: 70, nivelClase: 1, elecciones: [] }] as any;
+            expect(service.getNivelesParaGuardar(null, null)?.map((n) => n.idClase)).toEqual([70]);
+        });
+
+        it('sin la clase en el catálogo ni id, fuera de los prerrequisitos por su nombre vacío y con id 0 en el resto', () => {
+            service.PersonajeCreacion.desgloseClases = [{ Nombre: '', Nivel: 1 }] as any;
+            expect(proyeccion()).toEqual([{ id: 0, nombre: '', nivel: 1 }]);
+            expect(prerrequisitos()).toEqual([]);
+        });
+    });
+
     describe('las habilidades en multiclase (MJ cap. 3, «Personajes multiclase»)', () => {
         const nivel = (n: number) => ({ ...crearClaseBase().Desglose_niveles[0], Nivel: n });
         const habilidad = (Id_habilidad: number, Nombre: string) => ({

@@ -4063,25 +4063,17 @@ export class NuevoPersonajeService {
         return false;
     }
 
+    /** Sus clases con su nivel (`clasesDelDesglose`): para `nivel_de_clase` de las dotes y las plantillas. */
+    private nivelesDeClaseParaPrerrequisitos(): ClaseConNivel[] {
+        return this.clasesDelDesglose()
+            .map(({ id, nombre, nivel }) => ({ id: id > 0 ? id : null, nombre, nivel }))
+            .filter((item) => item.nombre.length > 0);
+    }
+
     /**
      * Los prerrequisitos de una dote con lo que tiene el personaje; con `alNivel` (un índice de `Orden_niveles`), con lo
      * que tenía al tomar ese nivel (`contextoAlNivel`: la corrección de la ficha, MJ pág. 87).
      */
-    /** Sus clases con su nivel (el id, del catálogo por su nombre): para `nivel_de_clase` de las dotes y las plantillas. */
-    private nivelesDeClaseParaPrerrequisitos(): ClaseConNivel[] {
-        return (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
-            const nombre = `${clase?.Nombre ?? ''}`.trim();
-            const idClase = this.catalogoClases.find((item) =>
-                normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)
-            );
-            return {
-                id: toNumber(idClase?.Id) > 0 ? toNumber(idClase?.Id) : null,
-                nombre,
-                nivel: Math.max(0, toNumber(clase?.Nivel)),
-            };
-        }).filter((item) => item.nombre.length > 0);
-    }
-
     private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string, alNivel: number | null = null): DoteEvaluacionResultado {
         const identidad = this.identidadPrerrequisitosActual();
 
@@ -4434,6 +4426,24 @@ export class NuevoPersonajeService {
                 return porId;
         }
         return this.obtenerClaseCatalogoPorNombre(`${entrada?.Nombre ?? ''}`);
+    }
+
+    /**
+     * Las clases del desglose con su id, su nombre, su nivel y su clase del catálogo (`obtenerClaseDeDesglose`): lo que usan
+     * los `niveles` del alta, la penalización de PX y los prerrequisitos. El id, el de la entrada (el que manda el alta en
+     * `colecciones.clases` y el de `Orden_niveles`) y, si no lo trae (un borrador de antes), el de su clase del catálogo; el
+     * nombre, el de la entrada o, si no lo trae, el de su clase.
+     */
+    private clasesDelDesglose(): Array<{ id: number; nombre: string; nivel: number; clase: Clase | null; }> {
+        return (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => {
+            const clase = this.obtenerClaseDeDesglose(entrada);
+            return {
+                id: toInt(entrada?.Id) > 0 ? toInt(entrada?.Id) : toInt(clase?.Id),
+                nombre: `${entrada?.Nombre ?? clase?.Nombre ?? ''}`.trim(),
+                nivel: Math.max(0, toInt(entrada?.Nivel)),
+                clase,
+            };
+        });
     }
 
     /** El nivel de conjuro más alto de ese tipo que el personaje puede lanzar (con la característica a 10 + nivel). */
@@ -9534,15 +9544,8 @@ export class NuevoPersonajeService {
      * de monstruo de *Libris Mortis*, pág. 35).
      */
     penalizacionExperiencia(claseNueva?: Clase | null): PenalizacionExperiencia {
-        const clases: ClaseParaPenalizacion[] = (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => {
-            const clase = this.obtenerClaseDeDesglose(entrada);
-            return {
-                id: toInt(clase?.Id ?? entrada?.Id),
-                nombre: `${entrada?.Nombre ?? clase?.Nombre ?? ''}`.trim(),
-                nivel: toInt(entrada?.Nivel),
-                prestigio: noPenalizaMulticlase(clase),
-            };
-        });
+        const clases: ClaseParaPenalizacion[] = this.clasesDelDesglose()
+            .map(({ id, nombre, nivel, clase }) => ({ id, nombre, nivel, prestigio: noPenalizaMulticlase(clase) }));
         if (claseNueva) {
             const id = toInt(claseNueva.Id);
             const nombre = normalizarTexto(claseNueva.Nombre);
@@ -11410,11 +11413,7 @@ export class NuevoPersonajeService {
     ): PersonajeCreateNivelDto[] | null {
         return construirNivelesCreacion({
             orden: this.personajeCreacion?.Orden_niveles,
-            clases: (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => ({
-                id: toInt(entrada?.Id) || toInt(this.obtenerClaseDeDesglose(entrada)?.Id),
-                nombre: `${entrada?.Nombre ?? ''}`,
-                nivel: toInt(entrada?.Nivel),
-            })),
+            clases: this.clasesDelDesglose().map(({ id, nombre, nivel }) => ({ id, nombre, nivel })),
             dados,
             aumentosLanzador: progresionLanzador?.selecciones,
         });
