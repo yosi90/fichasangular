@@ -207,13 +207,20 @@ export interface AdquirirPlantillaDto {
     poPagadasPorOtro?: boolean;
 }
 
-/** Lo que costó adquirir una plantilla (`plantilla.coste` de la respuesta). */
-export interface CosteDePlantillaCobrado {
+/**
+ * Lo que costó adquirir una raza mutada (`razaMutada.coste` de la respuesta): `px`, los que pagó; `po`, lo que salió de su
+ * saldo; `poCoste`, lo que costaba.
+ */
+export interface CosteCobrado {
     px: number;
     po: number;
     poCoste: number;
-    niveles: number;
     poPagadasPorOtro: boolean;
+}
+
+/** Lo que costó adquirir una plantilla (`plantilla.coste` de la respuesta): el de la raza mutada y los niveles que perdió. */
+export interface CosteDePlantillaCobrado extends CosteCobrado {
+    niveles: number;
 }
 
 /** Lo que responde la adquisición: la sesión donde queda, los PX (que no cambian) y el NEP de antes y de ahora. */
@@ -250,8 +257,7 @@ export interface RespuestaRazaMutada extends RespuestaSesion {
         razaBase: { id: number; nombre: string; };
         nepAntes: number | null;
         nepDespues: number | null;
-        /** `px`, los que pagó; `po`, lo que salió de su saldo; `poCoste`, lo que costaba. */
-        coste: { px: number; po: number; poCoste: number; poPagadasPorOtro: boolean; } | null;
+        coste: CosteCobrado | null;
     };
 }
 

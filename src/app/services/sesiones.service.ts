@@ -6,6 +6,7 @@ import {
     AbrirSesionDto,
     AdquirirPlantillaDto,
     AdquirirRazaMutadaDto,
+    CosteCobrado,
     CosteDePlantillaCobrado,
     RestablecerNivelDto,
     RespuestaRestablecimiento,
@@ -141,17 +142,22 @@ export function leerHistorial(valor: any): HistorialSesiones {
     };
 }
 
-/** Lo que costó adquirir una plantilla, o `null` si la API no lo da. */
-export function leerCosteDePlantilla(valor: any): CosteDePlantillaCobrado | null {
+/** Lo que costó adquirir una raza mutada, o `null` si la API no lo da. */
+export function leerCosteCobrado(valor: any): CosteCobrado | null {
     if (!valor || typeof valor !== 'object')
         return null;
     return {
         px: toInt(valor.px),
         po: Number(valor.po) || 0,
         poCoste: Number(valor.poCoste) || 0,
-        niveles: toInt(valor.niveles),
         poPagadasPorOtro: valor.poPagadasPorOtro === true,
     };
+}
+
+/** Lo que costó adquirir una plantilla (el de la raza mutada y los niveles), o `null` si la API no lo da. */
+export function leerCosteDePlantilla(valor: any): CosteDePlantillaCobrado | null {
+    const coste = leerCosteCobrado(valor);
+    return coste ? { ...coste, niveles: toInt(valor.niveles) } : null;
 }
 
 /** La respuesta de una escritura: `{ sesion, experiencia }` y, según la ruta, `idEvento` o `deshecho`. */
@@ -264,14 +270,11 @@ export class SesionesService {
         const r = respuesta?.razaMutada;
         const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
         const ref = (valor: any) => ({ id: toInt(valor?.id), nombre: `${valor?.nombre ?? ''}` });
-        const coste = r?.coste && typeof r.coste === 'object'
-            ? { px: toInt(r.coste.px), po: Number(r.coste.po) || 0, poCoste: Number(r.coste.poCoste) || 0, poPagadasPorOtro: r.coste.poPagadasPorOtro === true }
-            : null;
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             razaMutada: {
                 idEvento: toInt(r?.idEvento), numeroSesion: toInt(r?.numeroSesion), raza: ref(r?.raza), razaBase: ref(r?.razaBase),
-                nepAntes: nep(r?.nepAntes), nepDespues: nep(r?.nepDespues), coste,
+                nepAntes: nep(r?.nepAntes), nepDespues: nep(r?.nepDespues), coste: leerCosteCobrado(r?.coste),
             },
         };
     }
