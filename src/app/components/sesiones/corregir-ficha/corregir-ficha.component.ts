@@ -289,16 +289,13 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         this.error = '';
         this.cuenta.fijar();
         try {
-            const historial = await this.sesionesSvc.historial(this.idPersonaje);
-            if (!historial.puedeApuntar)
-                throw new Error('Solo su dueño o el máster de su campaña pueden corregir la ficha.');
-            const abierta = historial.sesiones.find((s) => s.estado === 'abierta') ?? null;
-            if (!abierta)
-                throw new Error('Para corregir la ficha hace falta una sesión abierta: ábrela o reabre la última desde el historial.');
-            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta.numero, () => this.cuenta.sigue());
-            if (!cargada)
+            const leida = await this.motor.cargarSesionDeJuego(this.svc, this.idPersonaje, () => this.cuenta.sigue(), {
+                sinPermiso: 'Solo su dueño o el máster de su campaña pueden corregir la ficha.',
+                sinSesion: 'Para corregir la ficha hace falta una sesión abierta: ábrela o reabre la última desde el historial.',
+            }, { deCualquierTipo: true });
+            if (!leida)
                 return;
-            const { sesion, entrada, pj } = cargada;
+            const { historial, cargada: { sesion, entrada, pj } } = leida;
             this.sesion = sesion;
             this.entrada = entrada;
             this.pj = pj;

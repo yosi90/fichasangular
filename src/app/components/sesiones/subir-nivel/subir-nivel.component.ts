@@ -185,19 +185,16 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.errorPaso = null;
         this.cuenta.fijar();
         try {
-            const historial = await this.sesionesSvc.historial(this.idPersonaje);
-            this.experiencia = historial.experiencia;
-            const abierta = toInt(historial.experiencia?.sesionAbierta?.numero);
-            if (!historial.puedeApuntar)
-                throw new Error('Solo su dueño o el máster de su campaña pueden subirle de nivel.');
-            if (abierta < 1)
-                throw new Error('Para subir de nivel hace falta una sesión de juego abierta: ábrela desde el historial.');
-            if (!historial.experiencia?.puedeSubir)
-                throw new Error('Aún no le llegan los PX para el siguiente nivel.');
-            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.cuenta.sigue());
-            if (!cargada)
+            const leida = await this.motor.cargarSesionDeJuego(this.svc, this.idPersonaje, () => this.cuenta.sigue(), {
+                sinPermiso: 'Solo su dueño o el máster de su campaña pueden subirle de nivel.',
+                sinSesion: 'Para subir de nivel hace falta una sesión de juego abierta: ábrela desde el historial.',
+            }, {
+                alLeer: (historial) => this.experiencia = historial.experiencia,
+                exigir: (historial) => historial.experiencia?.puedeSubir ? null : 'Aún no le llegan los PX para el siguiente nivel.',
+            });
+            if (!leida)
                 return;
-            const { sesion, entrada, pj, nivelesPerdidos } = cargada;
+            const { sesion, entrada, pj, nivelesPerdidos } = leida.cargada;
             this.nivelesPerdidos = nivelesPerdidos ?? [];
             this.sesion = sesion;
             this.entrada = entrada;
