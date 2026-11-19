@@ -356,6 +356,7 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     mutada: { etiqueta: 'Raza mutada', paso: 5 },
     prerrequisitos_mutacion: { etiqueta: 'Prerrequisitos de mutación', paso: 5 },
     cambios_mutacion: { etiqueta: 'Cambios sobre la raza base', paso: 5 },
+    coste_al_adquirir: { etiqueta: 'Lo que cuesta adquirirla', paso: 5 },
 };
 
 
@@ -597,6 +598,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         puntos_hab: [0],
         puntos_hab_mult: [0],
         mutada: [false],
+        // Lo que cuesta adquirir la raza mutada con el personaje ya creado (van en `coste_al_adquirir`).
+        coste_px: [0, [Validators.min(0)]],
+        coste_po: [0, [Validators.min(0)]],
         id_alineamiento: [0, [this.alineamientoResueltoValidator()]],
         alineamiento_modo: ['basico' as AlineamientoModo],
         id_alineamiento_basico: [0],
@@ -850,6 +854,14 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 puntos_hab: this.tieneDgsExtra() ? this.numero(raw.puntos_hab) : (dgsOcultos?.Puntos_habilidad ?? 0),
                 puntos_hab_mult: this.tieneDgsExtra() ? this.numero(raw.puntos_hab_mult) : (dgsOcultos?.Multiplicador_puntos_habilidad ?? 0),
                 mutada: esMutada,
+                // Lo que cuesta adquirirla con el personaje ya creado (la prole: 100 po del huevo), solo en una mutada: sin
+                // él, el alta lo deja en 0 y la edición conserva el que tiene (una que no es mutada lee 0).
+                ...(esMutada ? {
+                    coste_al_adquirir: {
+                        px: Math.max(0, Math.trunc(this.numero(raw.coste_px))),
+                        po: Math.round(Math.max(0, toNumberOrNull(raw.coste_po) ?? 0) * 100) / 100,
+                    },
+                } : {}),
                 id_alineamiento: this.numero(raw.id_alineamiento),
                 oficial: raw.oficial === true,
                 cuadrupedo: raw.cuadrupedo === true,
@@ -2868,6 +2880,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             puntos_hab: 0,
             puntos_hab_mult: 0,
             mutada: false,
+            coste_px: 0,
+            coste_po: 0,
             id_alineamiento: 0,
             alineamiento_modo: 'basico',
             id_alineamiento_basico: 0,
@@ -3002,6 +3016,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             puntos_hab: this.numero(dgs?.Puntos_habilidad),
             puntos_hab_mult: this.numero(dgs?.Multiplicador_puntos_habilidad),
             mutada: raza.Mutada === true,
+            coste_px: this.numero(raza.Coste_al_adquirir?.Px),
+            coste_po: toNumberOrNull(raza.Coste_al_adquirir?.Po) ?? 0,
             ...alineamiento,
             oficial: raza.Oficial === true,
             id_clase_lanzamiento: this.numero(raza.Lanzamiento?.Clase?.Id),

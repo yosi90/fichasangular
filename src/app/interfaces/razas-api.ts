@@ -78,6 +78,11 @@ export interface RazaCreateCore {
     puntos_hab: number;
     puntos_hab_mult: number;
     mutada: boolean;
+    /**
+     * Lo que cuesta adquirir la raza mutada con el personaje ya creado (`RazaDetalle.Coste_al_adquirir`, como el de las
+     * plantillas sin los niveles): los PX y las po; sin mutar, 0.
+     */
+    coste_al_adquirir?: { px: number; po: number; };
     id_alineamiento: number;
     oficial: boolean;
     /** Carga como un cuadrúpedo (el centauro). Opcional en la API (por defecto, no). */
