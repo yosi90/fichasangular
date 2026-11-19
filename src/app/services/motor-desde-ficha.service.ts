@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { firstValueFrom, Observable, take } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeContextoIdsDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
+import { HistorialSesiones, NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { ArmaService } from './arma.service';
 import { ArmaduraService } from './armadura.service';
 import { ClaseService } from './clase.service';
@@ -22,6 +22,14 @@ import { SesionesService } from './sesiones.service';
 import { SubtipoService } from './subtipo.service';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
 import { toInt } from './utils/normalizacion';
+
+/** Lo que da `cargarSesion`: la sesión abierta, su `entrada`, su ficha normalizada y los niveles que ha perdido. */
+export interface SesionCargada {
+    sesion: SesionPersonaje;
+    entrada: PersonajeCreateRequestDto;
+    pj: Personaje;
+    nivelesPerdidos?: NivelPerdido[];
+}
 
 /**
  * Prepara una instancia del motor de la creación (`NuevoPersonajeService`) para un personaje guardado: lee la sesión
@@ -67,7 +75,7 @@ export class MotorDesdeFichaService {
      * es la misma cuenta (`sigue`), `null` sin cargar nada; sin la `entrada`, un error.
      */
     async cargarSesion(motor: NuevoPersonajeService, idPersonaje: number, numero: number, sigue: () => boolean)
-        : Promise<{ sesion: SesionPersonaje; entrada: PersonajeCreateRequestDto; pj: Personaje; nivelesPerdidos?: NivelPerdido[]; } | null> {
+        : Promise<SesionCargada | null> {
         const { sesion, ficha, entrada, nivelesPerdidos } = await this.sesionesSvc.sesion(idPersonaje, numero);
         if (!sigue())
             return null;
@@ -76,6 +84,37 @@ export class MotorDesdeFichaService {
         const pj = this.personajeSvc.fichaDeApi(ficha);
         await this.cargarCatalogos(motor);
         return { sesion, entrada, pj, nivelesPerdidos: nivelesPerdidos ?? [] };
+    }
+
+    /**
+     * El tramo común de la carga de las pantallas que apuntan en una sesión (la subida, la adquisición de una plantilla, la
+     * pérdida de un nivel y la corrección): el historial, que pueda apuntar (`frases.sinPermiso`), la sesión abierta
+     * (`frases.sinSesion`) y `cargarSesion`. La de juego (`experiencia.sesionAbierta`) o, con `deCualquierTipo` (la
+     * corrección), cualquier abierta del historial. `alLeer` recibe el historial antes de comprobar nada (los PX de la
+     * cabecera se ven aunque no se pueda seguir) y `exigir`, después del permiso y la sesión y antes de cargarla, da la frase
+     * de lo que aún falta (la subida: los PX) o `null`. Lo que no se cumple, un error con su frase; si al responder ya no es
+     * la misma cuenta (`sigue`), `null`.
+     */
+    async cargarSesionDeJuego(motor: NuevoPersonajeService, idPersonaje: number, sigue: () => boolean,
+        frases: { sinPermiso: string; sinSesion: string; }, opciones: {
+            deCualquierTipo?: boolean;
+            alLeer?: (historial: HistorialSesiones) => void;
+            exigir?: (historial: HistorialSesiones) => string | null;
+        } = {}): Promise<{ historial: HistorialSesiones; cargada: SesionCargada; } | null> {
+        const historial = await this.sesionesSvc.historial(idPersonaje);
+        opciones.alLeer?.(historial);
+        if (!historial.puedeApuntar)
+            throw new Error(frases.sinPermiso);
+        const abierta = opciones.deCualquierTipo
+            ? toInt(historial.sesiones.find((s) => s.estado === 'abierta')?.numero ?? -1)
+            : toInt(historial.experiencia?.sesionAbierta?.numero);
+        if (opciones.deCualquierTipo ? abierta < 0 : abierta < 1)
+            throw new Error(frases.sinSesion);
+        const falta = opciones.exigir?.(historial);
+        if (falta)
+            throw new Error(falta);
+        const cargada = await this.cargarSesion(motor, idPersonaje, abierta, sigue);
+        return cargada ? { historial, cargada } : null;
     }
 
     /** Los catálogos que usa el motor, como en la creación. */

@@ -25,7 +25,10 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
             sesion: sesion(0), ficha: {},
             entrada: { personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 } }, colecciones: {}, niveles: [], ...entrada },
         } as any);
-        motor = jasmine.createSpyObj<MotorDesdeFichaService>('MotorDesdeFichaService', ['cargarSesion', 'hidratar', 'primero', 'cuerpoDelMotor']);
+        motor = jasmine.createSpyObj<MotorDesdeFichaService>('MotorDesdeFichaService', ['cargarSesionDeJuego', 'cargarSesion', 'hidratar', 'primero', 'cuerpoDelMotor']);
+        // El tramo común de la carga, el de verdad, con el historial de `sesiones` y la sesión de `cargarSesion` (abajo).
+        motor.cargarSesionDeJuego.and.callFake((...args) =>
+            MotorDesdeFichaService.prototype.cargarSesionDeJuego.apply({ sesionesSvc: sesiones, cargarSesion: motor.cargarSesion } as any, args));
         motor.primero.and.callFake(async (origen: any) => {
             let valor: any = null;
             (await origen).subscribe((v: any) => valor = v);

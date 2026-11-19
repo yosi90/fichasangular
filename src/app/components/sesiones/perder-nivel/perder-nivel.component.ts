@@ -150,16 +150,13 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         this.error = '';
         this.cuenta.fijar();
         try {
-            const historial = await this.sesionesSvc.historial(this.idPersonaje);
-            this.experiencia = historial.experiencia;
-            const abierta = toInt(historial.experiencia?.sesionAbierta?.numero);
-            if (!historial.puedeApuntar)
-                throw new Error('Solo su dueño o el máster de su campaña pueden apuntar que pierde un nivel.');
-            if (abierta < 1)
-                throw new Error('Para perder un nivel hace falta una sesión de juego abierta: ábrela desde el historial.');
-            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.cuenta.sigue());
-            if (!cargada)
+            const leida = await this.motor.cargarSesionDeJuego(this.svc, this.idPersonaje, () => this.cuenta.sigue(), {
+                sinPermiso: 'Solo su dueño o el máster de su campaña pueden apuntar que pierde un nivel.',
+                sinSesion: 'Para perder un nivel hace falta una sesión de juego abierta: ábrela desde el historial.',
+            }, { alLeer: (historial) => this.experiencia = historial.experiencia });
+            if (!leida)
                 return;
+            const { cargada } = leida;
             this.sesion = cargada.sesion;
             this.entrada = cargada.entrada;
             this.pj = cargada.pj;

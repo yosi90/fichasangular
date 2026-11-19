@@ -41,13 +41,13 @@ export function campanaDejaSaltarRequisitosPlantilla(
 
 /**
  * Si la campaña deja mantener una dote que deja de cumplir sus prerrequisitos (la decisión `requisitos_dote` de la
- * corrección): si admite homebrew (`permitirHomebrewGeneral`), con la regla de la API
- * (`decisiones_homebrew.incumplimientos_politica`); sin campaña, siempre.
+ * corrección): si admite algo de homebrew (el modo no es «nada»: con un límite de 0 fuentes, no), con la regla de la
+ * API (`campaign_policy_service.deja_mantener_dote_sin_prerrequisitos`); sin campaña, siempre.
  */
 export function campanaDejaMantenerDoteSinPrerrequisitos(
-    policy: Partial<Pick<CampaignCreationPolicy, 'permitirHomebrewGeneral'>> | null | undefined,
+    policy: Parameters<typeof modoHomebrewDeCampana>[0],
 ): boolean {
-    return !policy || policy.permitirHomebrewGeneral !== false;
+    return modoHomebrewDeCampana(policy) !== 'forbidden';
 }
 
 /**
