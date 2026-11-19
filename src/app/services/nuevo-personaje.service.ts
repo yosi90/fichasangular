@@ -105,6 +105,7 @@ import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosG
 import { apuntarEleccion, construirNivelesCreacion, nivelDelOrden, RefNivelTomado } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
+import { claveDoteDeLaFicha } from './utils/correccion-ficha';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
@@ -11807,8 +11808,7 @@ export class NuevoPersonajeService {
         rangos?: ReadonlyArray<{ idHabilidad: number; idExtra: number; rangos: number; }>;
         dotesQuitadas?: ReadonlyArray<{ idDote: number; idExtra: number; }>;
     }): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> {
-        const clave = (d: { idDote: number; idExtra: number; origen: string; }) => `${d.idDote}|${d.idExtra}|${d.origen}`;
-        const antes = new Set(this.dotesSinSusPrerrequisitos().map(clave));
+        const antes = new Set(this.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
         const pj = this.personajeCreacion;
         const guardado = {
             ataqueBase: pj.Ataque_base,
@@ -11841,7 +11841,7 @@ export class NuevoPersonajeService {
             });
             if (caracteristica)
                 this.corregirBaseCaracteristica(caracteristica.clave, caracteristica.valor - toInt(cambios.caracteristica?.menos));
-            return this.dotesSinSusPrerrequisitos().filter((d) => !antes.has(clave(d)))
+            return this.dotesSinSusPrerrequisitos().filter((d) => !antes.has(claveDoteDeLaFicha(d)))
                 .map(({ idDote, idExtra, origen, nombre }) => ({ idDote, idExtra, origen, nombre }));
         } finally {
             if (caracteristica)

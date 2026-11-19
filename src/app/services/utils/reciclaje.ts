@@ -5,7 +5,7 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
 import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
-import { sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
+import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from './habilidad-extra-visible';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
@@ -248,8 +248,7 @@ export function clasesQueDejanDeCumplir(motor: NuevoPersonajeService, antes: Map
  */
 export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQueQuita): string[] {
     const pj = motor.PersonajeCreacion;
-    const clave = (d: { idDote: number; idExtra: number; origen: string; }) => `${d.idDote}|${d.idExtra}|${d.origen}`;
-    const dotesAntes = new Set(motor.dotesSinSusPrerrequisitos().map(clave));
+    const dotesAntes = new Set(motor.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
     const razonesAntes = razonesDeSusClases(motor);
     const guardado = {
         contextuales: [...(pj.DotesContextuales ?? [])],
@@ -276,9 +275,9 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         }
         (quita.conjuros ?? []).forEach((c) => sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.idConjuro && esConjuroDeLaClase(x, normalizarTexto(c.clase))));
 
-        const sinDote = (d: { idDote: number; idExtra: number; origen: string; }) => !quita.dote || clave(d) !== clave(quita.dote);
+        const sinDote = (d: DoteDeLaFicha) => !quita.dote || claveDoteDeLaFicha(d) !== claveDoteDeLaFicha(quita.dote);
         const motivos = motor.dotesSinSusPrerrequisitos()
-            .filter((d) => !dotesAntes.has(clave(d)) && sinDote(d))
+            .filter((d) => !dotesAntes.has(claveDoteDeLaFicha(d)) && sinDote(d))
             .map((d) => `${d.nombre} (${(d.razones ?? []).join('; ') || 'sus prerrequisitos'})`);
         clasesQueDejanDeCumplir(motor, razonesAntes).forEach((c) => motivos.push(`${c.nombre} (${c.razones.join('; ')})`));
         return motivos;

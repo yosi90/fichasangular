@@ -28,6 +28,7 @@ import {
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
+import { claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
@@ -344,7 +345,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         // hueco del humano ya no está) y lo que costó cada rango.
         const pierde = loQuePierdeEnSuHueco(this.anterior, opcion.combinada, this.nivelesClase);
         this.razonesClasesAntes = razonesDeSusClases(this.svc);
-        this.claveRotasAntes = new Set(this.svc.dotesSinSusPrerrequisitos().map((d) => this.clave(d)));
+        this.claveRotasAntes = new Set(this.svc.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
         const perderibles = pierde.dotes > 0 ? dotesParaReciclar(this.svc) : [];
         const rangos = pierde.puntos > 0 ? this.filasDeRangos() : [];
         if (!this.svc.adquirirRazaMutada(opcion.combinada, seleccion)) {
@@ -444,12 +445,8 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         await this.siguiente();
     }
 
-    private clave(d: { idDote: number; idExtra: number; origen: string; }): string {
-        return `${d.idDote}|${d.idExtra}|${d.origen}`;
-    }
-
     private hayDotesRotas(): boolean {
-        return this.svc.dotesSinSusPrerrequisitos().some((d) => !this.claveRotasAntes.has(this.clave(d)));
+        return this.svc.dotesSinSusPrerrequisitos().some((d) => !this.claveRotasAntes.has(claveDoteDeLaFicha(d)));
     }
 
     /**
@@ -459,14 +456,14 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
      */
     private async resolverDotesRotas(): Promise<void> {
         for (let vuelta = 0; vuelta < 5; vuelta++) {
-            const rotas = this.svc.dotesSinSusPrerrequisitos().filter((d) => !this.claveRotasAntes.has(this.clave(d)));
+            const rotas = this.svc.dotesSinSusPrerrequisitos().filter((d) => !this.claveRotasAntes.has(claveDoteDeLaFicha(d)));
             if (rotas.length < 1)
                 break;
             for (const rota of rotas) {
                 const indice = rota.nivel === null ? null : rota.nivel - 1;
                 if (!this.svc.quitarDoteDeLaFicha(rota.idDote, rota.idExtra, rota.origen))
                     continue;
-                const claveDe = (d: any) => this.clave({ idDote: toInt(d?.Dote?.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${d?.Contexto?.Origen ?? ''}` });
+                const claveDe = (d: any) => claveDoteDeLaFicha({ idDote: toInt(d?.Dote?.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${d?.Contexto?.Origen ?? ''}` });
                 const antes = new Set((this.svc.PersonajeCreacion.DotesContextuales ?? []).map(claveDe));
                 this.svc.registrarDoteEnLugarDe(rota, indice);
                 if (!await resolverDotesPendientes(this.svc, this.selectores)) {
