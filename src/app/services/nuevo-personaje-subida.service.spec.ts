@@ -881,6 +881,26 @@ describe('El reciclaje del Manual del jugador II con el motor de la creación (p
         expect(ficha.niveles?.length).toBe(3);
     });
 
+    it('los rangos, también a una de clase por su raza o un dominio, como en la ficha (Esconderse, con el dominio de la Superchería)', () => {
+        const svc = crear(HUMANO, { Inteligencia: 10 });
+        [1, 2].forEach(() => aplicarNivel(svc, GUERRERO));
+        const destinoEsconderse = (deClase: boolean) => {
+            const guardado = guardar(svc);
+            // La ficha de la API la da de clase (`deClase`) por su dominio (`dominio_habilidades`) o un racial «siempre de
+            // clase» (`se_considera_clasea`), aunque no sea de guerrero.
+            const fila = guardado.personaje.Habilidades.find((h) => toInt(h.Id) === 2)!;
+            guardado.personaje.Habilidades.push({ ...fila, Id: 4, Nombre: 'Esconderse', Clasea: deClase, Rangos: 0, Rangos_varios: 0 });
+            const motor = subir(guardado, HUMANO);
+            const trepar = habilidadesConRangos(motor, guardado.entrada).find((h) => h.idHabilidad === 2)!;
+            return destinosDeRangos(motor, guardado.entrada, trepar, 1, 2, [GUERRERO]).find((d) => d.idHabilidad === 4)!;
+        };
+        const deClase = destinoEsconderse(true);
+        expect(deClase.motivo).toBeNull();
+        // Es de las suyas: la subida no tiene que ser de otra clase.
+        expect(deClase.clases).toBeNull();
+        expect(destinoEsconderse(false).motivo).toContain('No es de clase');
+    });
+
     it('los rangos, a una de clase para alguna de sus clases o la que sube, sin pasar del nivel + 3; y no los que pide algo que tiene', () => {
         const svc = crear(HUMANO, { Inteligencia: 10 });
         [1, 2].forEach(() => aplicarNivel(svc, GUERRERO));

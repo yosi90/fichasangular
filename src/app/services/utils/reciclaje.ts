@@ -5,11 +5,11 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
 import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
-import { CARACTERISTICAS_DEL_ALTA, sacarPrimero } from './correccion-ficha';
+import { sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from './habilidad-extra-visible';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
-import { aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subida-nivel';
+import { aplicarCaracteristicasDelMotor, aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subida-nivel';
 import { CambioSubida } from './subida-nivel-vista';
 
 /*
@@ -158,9 +158,7 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
     if (reciclaje.tipo === 'dote') {
         const { quita, pone } = reciclaje;
         const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
-        const es = (x: any) => toInt(x?.idDote) === toInt(quita.idDote) && Math.max(0, toInt(x?.idExtra)) === Math.max(0, toInt(quita.idExtra));
-        const quitada = (opciones.origenDote !== undefined ? sacarPrimero(dotes, (x) => es(x) && `${x?.origen ?? ''}` === opciones.origenDote) : undefined)
-            ?? sacarPrimero(dotes, es);
+        const quitada = sacarDoteDeLaFicha(dotes, quita.idDote, quita.idExtra, opciones.origenDote);
         const origen = `${quitada?.origen ?? opciones.origenDote ?? ''}`.trim();
         dotes.push({ idDote: toInt(pone.idDote), idExtra: Math.max(0, toInt(pone.idExtra)), ...(origen ? { origen } : {}) });
         // La que mantenía sin sus prerrequisitos (`requisitos_dote`) y ya no tiene: fuera, o la API la rechaza.
@@ -197,12 +195,7 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
     const motor = opciones.motor;
     if (motor) {
         aplicarModificadoresDelMotor(ficha, motor.antes, motor.despues);
-        CARACTERISTICAS_DEL_ALTA.forEach(([clave]) => {
-            const guardada = (ficha.caracteristicas as any)?.[clave];
-            const delta = toInt((motor.despues.caracteristicas as any)?.[clave]?.valor) - toInt((motor.antes.caracteristicas as any)?.[clave]?.valor);
-            if (guardada && !guardada.perdido && delta !== 0)
-                guardada.valor = toInt(guardada.valor) + delta;
-        });
+        aplicarCaracteristicasDelMotor(ficha, motor.antes, motor.despues);
         aplicarHabilidadesDelMotor(ficha, motor.antes, motor.despues, true);
     }
     return ficha;
@@ -347,9 +340,12 @@ function nombreDeHabilidad(h: Personaje['Habilidades'][number]): string {
     return extraHabilidadElegido(h?.Extra) ? `${h.Nombre} (${h.Extra})` : `${h?.Nombre ?? ''}`;
 }
 
-/** Si la habilidad es de clase para la clase (`Habilidades.Base` de su catálogo; un extra en 0 o sin él, cualquiera). */
-export function esHabilidadDeClaseDe(clase: Clase | null | undefined, idHabilidad: number, idExtra: number): boolean {
-    return (clase?.Habilidades?.Base ?? []).some((ref) => {
+/**
+ * Si la habilidad sería de clase para una clase que puede subir (`habilidadesDeClaseDeLaClase` del motor; un extra en 0 o
+ * sin él, cualquiera).
+ */
+function esHabilidadDeClaseDe(motor: NuevoPersonajeService, clase: Clase, idHabilidad: number, idExtra: number): boolean {
+    return motor.habilidadesDeClaseDeLaClase(clase).some((ref) => {
         const id = toInt(ref?.['Id_habilidad'] ?? ref?.['id_habilidad'] ?? ref?.['Id']);
         const extra = toInt(ref?.['Id_extra'] ?? ref?.['id_extra']);
         return id === toInt(idHabilidad) && (extra <= 0 || extra === toInt(idExtra));
@@ -370,14 +366,14 @@ export function habilidadesConRangos(motor: NuevoPersonajeService, entrada: Pers
 
 /**
  * Las habilidades a las que puede traspasar `rangos` desde `origen`: de clase para alguna de sus clases, contando la que
- * sube (`clasesQuePuedeSubir`: si solo lo es para una de ellas, `clases` dice cuáles), con su especialidad elegida y sin
- * pasar del tope (nivel de antes + 3). Las que no valen, con su motivo. Las personalizadas no: el contrato no las tiene.
+ * sube (`clasesQuePuedeSubir`: si solo lo es para una de ellas, `clases` dice cuáles), o por su raza o un dominio, como en
+ * la ficha (contrato, «El reciclaje»), con su especialidad elegida y sin pasar del tope (nivel de antes + 3). Las que no
+ * valen, con su motivo. Las personalizadas no: el contrato no las tiene.
  */
 export function destinosDeRangos(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto, origen: HabilidadConRangos,
     rangos: number, nivelPersonaje: number, clasesQuePuedeSubir: Clase[]): DestinoDeRangos[] {
     // El de una de clase con el nivel de antes de subir (MJ II, pág. 196).
     const tope = limiteRangosHabilidad(nivelPersonaje, true);
-    const propias = clasesQueTiene(motor);
     const guardadas = entrada.colecciones?.habilidades?.base ?? [];
     return (motor.PersonajeCreacion.Habilidades ?? [])
         .filter((h) => !h?.Custom && toInt(h?.Id) > 0 && toInt(h.Id) !== origen.idHabilidad)
@@ -391,11 +387,12 @@ export function destinosDeRangos(motor: NuevoPersonajeService, entrada: Personaj
             const base = { idHabilidad, idExtra, nombre: nombreDeHabilidad(h), rangos: tiene };
             if (h.Soporta_extra && extraGuardado <= 0)
                 return { ...base, clases: null, motivo: 'Aún no tiene elegida su especialidad.' };
-            const deLasSuyas = propias.some((c) => esHabilidadDeClaseDe(c, idHabilidad, idExtra));
-            const deLaQueSube = deLasSuyas ? [] : clasesQuePuedeSubir.filter((c) => esHabilidadDeClaseDe(c, idHabilidad, idExtra))
+            // De clase como en la ficha: por sus clases (con sus dominios) o su raza (el motor, `esHabilidadDeClaseEnAlguna`).
+            const deLasSuyas = motor.esHabilidadDeClaseEnAlguna(h);
+            const deLaQueSube = deLasSuyas ? [] : clasesQuePuedeSubir.filter((c) => esHabilidadDeClaseDe(motor, c, idHabilidad, idExtra))
                 .map((c) => ({ id: toInt(c.Id), nombre: `${c.Nombre}` }));
             if (!deLasSuyas && deLaQueSube.length < 1)
-                return { ...base, clases: null, motivo: 'No es de clase para ninguna de sus clases ni para las que puede subir.' };
+                return { ...base, clases: null, motivo: 'No es de clase para ninguna de sus clases, ni por su raza o un dominio, ni para las que puede subir.' };
             if (tiene + rangos > tope)
                 return { ...base, clases: deLasSuyas ? null : deLaQueSube, motivo: `Con ${rangos} más pasaría de ${tope} rangos (su nivel, ${toInt(nivelPersonaje)}, + 3).` };
             return { ...base, clases: deLasSuyas ? null : deLaQueSube, motivo: null };
@@ -408,7 +405,7 @@ export function destinosDeRangos(motor: NuevoPersonajeService, entrada: Personaj
  * sus conocidos (no los copiados al libro), cada uno con su nivel en la lista de la clase y si se puede olvidar.
  */
 export function conocidosParaReciclar(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto): ClaseConConocidos[] {
-    const catalogo: Conjuro[] = (motor as any).catalogoConjuros ?? [];
+    const catalogo = motor.CatalogoConjuros;
     return clasesQueTiene(motor)
         .filter((c) => !!(c.Conjuros?.Conocidos_total || c.Conjuros?.Conocidos_nivel_a_nivel))
         .map((c) => {
@@ -433,7 +430,7 @@ export function conocidosParaReciclar(motor: NuevoPersonajeService, entrada: Per
 /** Los que puede aprender en lugar de un conocido de la clase: de su lista, del mismo nivel y que no conozca ya. */
 export function conjurosParaAprender(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto, clase: { id: number; nombre: string; },
     nivel: number, conHomebrew: boolean, yaElegidos: number[] = []): Conjuro[] {
-    const catalogo: Conjuro[] = (motor as any).catalogoConjuros ?? [];
+    const catalogo = motor.CatalogoConjuros;
     const conoce = new Set([...(entrada.colecciones?.conjurosConocidos ?? [])
         .filter((x) => !x.copiado && toInt(x.idClase) === clase.id).map((x) => toInt(x.idConjuro)), ...yaElegidos.map((id) => toInt(id))]);
     return catalogo
@@ -472,7 +469,7 @@ export function aplicarReciclajeAlMotor(motor: NuevoPersonajeService, plan: Plan
         destino.Rangos = toNumber(destino.Rangos) + plan.rangos;
         return true;
     }
-    const catalogo: Conjuro[] = (motor as any).catalogoConjuros ?? [];
+    const catalogo = motor.CatalogoConjuros;
     for (const c of plan.cambios) {
         const nuevo = catalogo.find((k) => toInt(k?.Id) === c.aprende.id);
         if (!nuevo || !sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.olvida.id && esConjuroDeLaClase(x, normalizarTexto(c.clase))))

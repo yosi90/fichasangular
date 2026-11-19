@@ -4,7 +4,7 @@ import { CausaPerdidaDto } from 'src/app/interfaces/sesiones';
 import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica } from './caracteristicas';
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
-import { CARACTERISTICAS_DEL_ALTA, sacarPrimero } from './correccion-ficha';
+import { CARACTERISTICAS_DEL_ALTA, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
 import { modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
@@ -186,10 +186,8 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         .filter((c: any) => toInt(c.nivel) > 0);
 
     const quitarDote = (idDote: number, idExtra: number, origen?: string | null) => {
-        const hecho = (origen && sacarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === idDote && toInt(x?.idExtra) === idExtra && `${x?.origen ?? ''}` === origen))
-            || sacarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === idDote && toInt(x?.idExtra) === idExtra)
-            || sacarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === idDote);
-        if (hecho)
+        // Una ficha de antes puede guardarla con otro extra: en último caso, la primera con ese id.
+        if (sacarDoteDeLaFicha(col.dotes, idDote, idExtra, origen, { cualquierExtra: true }))
             quitado.dotes.push({ idDote, idExtra });
     };
     const quitarEspecial = (idEspecial: number, idExtra: number) => {

@@ -1309,6 +1309,11 @@ export class NuevoPersonajeService {
         return this.estadoFlujo;
     }
 
+    /** El catálogo de conjuros cargado (`setCatalogoConjuros`), para leerlo: el reciclaje y los nombres de las sesiones. */
+    get CatalogoConjuros(): readonly Conjuro[] {
+        return this.catalogoConjuros;
+    }
+
     get TieneRestriccionCampanaGenerador(): boolean {
         return this.restriccionCampanaGenerador !== null;
     }
@@ -7095,10 +7100,12 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Su tope es el de una de clase (nivel + 3): lo es en cualquiera de las clases del personaje, en sus DG raciales o de
-     * plantilla, o en esta sesión (MJ cap. 3, «Personajes multiclase»). El compañero, solo con lo suyo.
+     * Su tope es el de una de clase (nivel + 3): lo es en cualquiera de las clases del personaje (con sus dominios), por
+     * su raza (los raciales «siempre de clase»), en sus DG raciales o de plantilla, o en esta sesión (MJ cap. 3,
+     * «Personajes multiclase»); en un personaje guardado, también la que su ficha da de clase (`deClase`). El compañero,
+     * solo con lo suyo. La usa también el reciclaje de la subida (el destino de los rangos).
      */
-    private esHabilidadDeClaseEnAlguna(habilidad: Personaje['Habilidades'][number]): boolean {
+    esHabilidadDeClaseEnAlguna(habilidad: Personaje['Habilidades'][number]): boolean {
         if (habilidad.Clasea || this.esHabilidadClaseaParaSesion(habilidad))
             return true;
         if (this.estadoFlujo.habilidades.origen === 'companero_dg' || toNumber(habilidad?.Id) <= 0)
@@ -7778,6 +7785,15 @@ export class NuevoPersonajeService {
         });
     }
 
+    /**
+     * Las habilidades del catálogo que la clase hace de clase: las de `Habilidades.Base` y las que lo son solo con un
+     * alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma). Las personalizadas van aparte
+     * (`Habilidades.Custom`). Las usan el primer nivel de la clase y el reciclaje de la subida (la clase que sube).
+     */
+    habilidadesDeClaseDeLaClase(clase: Clase): Record<string, any>[] {
+        return [...(clase?.Habilidades?.Base ?? []) as Record<string, any>[], ...this.habilidadesPorAlineamientoDeClase(clase)];
+    }
+
     private aplicarHabilidadesPrimerNivelClase(clase: Clase): void {
         const refsBase = (clase?.Habilidades?.Base ?? []);
         const refsCustom = (clase?.Habilidades?.Custom ?? []);
@@ -7785,17 +7801,12 @@ export class NuevoPersonajeService {
             return;
 
         const aseguradas = [
-            ...refsBase.map((ref) => this.asegurarHabilidadDesdeReferencia(ref as Record<string, any>, {
-                marcarClasea: true,
-                customPreferido: false,
-            })),
+            ...this.habilidadesDeClaseDeLaClase(clase)
+                .map((ref) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false })),
             ...refsCustom.map((ref) => this.asegurarHabilidadDesdeReferencia(ref as Record<string, any>, {
                 marcarClasea: true,
                 customPreferido: true,
             })),
-            // Las que son de clase solo con un alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma).
-            ...this.habilidadesPorAlineamientoDeClase(clase)
-                .map((ref) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false })),
         ];
         this.anotarHabilidadesDeClase(origenDeClase(clase?.Nombre), aseguradas);
 

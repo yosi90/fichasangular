@@ -220,7 +220,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     nombreConjuro(id: number): string {
-        return (this.svc as any).catalogoConjuros?.find((c: Conjuro) => toInt(c?.Id) === toInt(id))?.Nombre ?? `#${id}`;
+        return this.svc.CatalogoConjuros.find((c) => toInt(c?.Id) === toInt(id))?.Nombre ?? `#${id}`;
     }
 
     etiquetaPaso(paso: PasoSubida): string {

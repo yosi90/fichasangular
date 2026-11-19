@@ -1,6 +1,7 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ENTRADA_ENANO_CLERIGO_1 } from 'src/testing/subida-nivel-api';
 import { claveBorradorSubida, fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida, tocaIntercambioConjuros } from './subida-nivel';
+import { fichaDeLaPlantilla } from './adquirir-plantilla';
 import { campoDelErrorASubida, PasoSubida } from './subida-nivel-vista';
 
 const copia = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -116,5 +117,22 @@ describe('subida-nivel (la subida de nivel: PG, intercambio y la ficha que se ma
         expect(campoDelErrorASubida('reciclaje_no_valido', 'reciclaje.pone.idDote', pasos)).toBe('reciclar');
         expect(campoDelErrorASubida('reciclaje_no_valido', 'reciclaje.cambios[1].aprende', pasos)).toBe('reciclar');
         expect(campoDelErrorASubida('reciclaje_no_permitido', 'reciclaje', ['clase', 'resumen'])).toBe('resumen');
+    });
+
+    it('un personaje sin Constitución que sube: la característica perdida no suma lo que cambia el motor', () => {
+        const entrada = copia(ENTRADA_ENANO_CLERIGO_1);
+        entrada.caracteristicas.constitucion = { valor: 0, minimo: 0, perdido: true };
+        const antes = copia(entrada);
+        const despues = copia(entrada);
+        // El motor cuenta la Constitución perdida con otro valor (un incremento o una dote que la toca).
+        antes.caracteristicas.constitucion = { valor: 10, minimo: 0, perdido: false };
+        despues.caracteristicas.constitucion = { valor: 11, minimo: 0, perdido: false };
+        despues.caracteristicas.fuerza.valor += 1;
+        const ficha = fichaDeLaSubida({ entrada, antes, despues, idClase: 4, nivel: { idClase: 4, nivelClase: 2 }, puntosGolpe: 20 });
+        expect(ficha.caracteristicas.constitucion).toEqual({ valor: 0, minimo: 0, perdido: true });
+        expect(ficha.caracteristicas.fuerza.valor).toBe(entrada.caracteristicas.fuerza.valor + 1);
+        // La adquisición de una plantilla, igual.
+        const conPlantilla = fichaDeLaPlantilla({ entrada, antes, despues, idPlantilla: 3, puntosGolpe: 20, idAlineamiento: null });
+        expect(conPlantilla.caracteristicas.constitucion).toEqual({ valor: 0, minimo: 0, perdido: true });
     });
 });

@@ -351,7 +351,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             })
             .filter((d) => d.idDote > 0);
         const s: any = this.svc;
-        const nombre = (lista: Array<{ Id?: number; Nombre?: string; }> | undefined, id: number) =>
+        const nombre = (lista: ReadonlyArray<{ Id?: number; Nombre?: string; }> | undefined, id: number) =>
             (lista ?? []).find((x) => toInt(x?.Id) === toInt(id))?.Nombre ?? `#${id}`;
         this.idiomas = (entrada.colecciones?.idiomas ?? []).map((i) => ({
             id: toInt(i.idIdioma), idClase: null, nombre: nombre(this.svc.EstadoFlujo.ventajas.catalogoIdiomas as any, toInt(i.idIdioma)), quitado: false,
@@ -359,7 +359,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         this.conjuros = (entrada.colecciones?.conjurosConocidos ?? []).filter((c) => !c.copiado).map((c) => {
             const idClase = toInt(c.idClase) > 0 ? toInt(c.idClase) : null;
             const clase = idClase ? ` (${nombre(s.catalogoClases, idClase).toLowerCase()})` : '';
-            return { id: toInt(c.idConjuro), idClase, nombre: `${nombre(s.catalogoConjuros, toInt(c.idConjuro))}${clase}`, quitado: false };
+            return { id: toInt(c.idConjuro), idClase, nombre: `${nombre(this.svc.CatalogoConjuros, toInt(c.idConjuro))}${clase}`, quitado: false };
         });
         this.tiradas = (entrada.niveles ?? []).flatMap((n, indice) => {
             const clase = this.svc.claseDelCatalogo(toInt(n.idClase));

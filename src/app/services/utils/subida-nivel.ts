@@ -242,6 +242,21 @@ export function aplicarModificadoresDelMotor(ficha: PersonajeCreateRequestDto, a
 }
 
 /**
+ * Las características de `ficha` con lo que cambia el motor entre `antes` y `despues`, como diferencia sobre lo guardado,
+ * salvo las perdidas (`perdido`: la Constitución de un no muerto), que no tienen valor. Lo usan la subida, la adquisición
+ * de una plantilla y el reciclaje.
+ */
+export function aplicarCaracteristicasDelMotor(ficha: PersonajeCreateRequestDto, antes: PersonajeCreateRequestDto,
+    despues: PersonajeCreateRequestDto): void {
+    Object.entries(despues.caracteristicas ?? {}).forEach(([k, valor]) => {
+        const previa = (antes.caracteristicas as any)?.[k];
+        const guardada = (ficha.caracteristicas as any)?.[k];
+        if (guardada && !guardada.perdido && toInt(valor?.valor) !== toInt(previa?.valor))
+            guardada.valor = toInt(guardada.valor) + toInt(valor?.valor) - toInt(previa?.valor);
+    });
+}
+
+/**
  * Las habilidades de `guardadas` con solo lo que cambia el motor en sus rangos varios (lo que suma una dote, como Alerta,
  * o un rasgo), sin tocar los rangos comprados ni si es de clase: lo que cambia al quitar o poner una dote.
  */
@@ -333,12 +348,7 @@ export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreate
     });
     ficha.personaje.puntosGolpe = Math.max(0, toInt(datos.puntosGolpe));
 
-    Object.entries(despues.caracteristicas ?? {}).forEach(([k, valor]) => {
-        const previa = (antes.caracteristicas as any)?.[k];
-        const guardada = (ficha.caracteristicas as any)?.[k];
-        if (guardada && toInt(valor?.valor) !== toInt(previa?.valor))
-            guardada.valor = toInt(guardada.valor) + toInt(valor?.valor) - toInt(previa?.valor);
-    });
+    aplicarCaracteristicasDelMotor(ficha, antes, despues);
     if (claveElemento(despues.tamano) !== claveElemento(antes.tamano))
         ficha.tamano = { ...despues.tamano };
 
