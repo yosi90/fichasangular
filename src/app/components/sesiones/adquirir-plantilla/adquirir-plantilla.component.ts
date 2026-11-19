@@ -4,9 +4,11 @@ import { Auth } from '@angular/fire/auth';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
+import { CosteAlAdquirirComponent } from 'src/app/components/sesiones/coste-al-adquirir/coste-al-adquirir.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
+import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
@@ -25,14 +27,13 @@ import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raz
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { caracteristicasPerdidasDe, modConstitucionQueCuenta, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
 import { ajusteDePlantillas, dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { DecisionHomebrew, motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { evaluarPlantillaParaElegir, PlantillaEvaluacionParaElegir } from 'src/app/services/utils/plantilla-elegibilidad';
 import { campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { estadoDelPaso } from 'src/app/services/utils/subida-nivel-vista';
 
 export type PasoPlantilla = 'plantilla' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'resumen';
 
@@ -71,7 +72,7 @@ export interface OpcionPlantilla {
 @Component({
     selector: 'app-adquirir-plantilla',
     standalone: true,
-    imports: [CommonModule, MatButtonModule, MatIconModule, RepartoRangosComponent],
+    imports: [CommonModule, CosteAlAdquirirComponent, MatButtonModule, MatIconModule, PasosSesionComponent, RepartoRangosComponent],
     templateUrl: './adquirir-plantilla.component.html',
     styleUrls: ['../subir-nivel/subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -110,8 +111,9 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         return c && (c.Px > 0 || c.Po > 0 || c.Niveles_perdidos > 0) ? { px: c.Px, po: c.Po, niveles: c.Niveles_perdidos } : null;
     }
 
-    textoPx(valor: number): string {
-        return formatoPx(valor);
+    /** Las po que tiene, para «Lo que cuesta». */
+    get saldo(): number {
+        return toNumber(this.pj?.Dinero?.po);
     }
 
     tiradasPermitidas = 1;
@@ -176,7 +178,8 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         return formatoPx(valor);
     }
 
-    etiquetaPaso(paso: PasoPlantilla): string {
+    /** El texto de cada paso en la fila de pasos (`app-pasos-sesion`), con su número. */
+    readonly etiquetaPaso = (paso: PasoPlantilla): string => {
         const nombres: Record<PasoPlantilla, string> = {
             plantilla: this.elegida ? `Plantilla: ${this.elegida.Nombre}` : 'Plantilla',
             incremento: 'Incremento',
@@ -186,11 +189,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             resumen: 'Resumen',
         };
         return `${this.pasos.indexOf(paso) + 1} · ${nombres[paso]}`;
-    }
-
-    estadoPaso(paso: PasoPlantilla): 'hecho' | 'actual' | 'pendiente' {
-        return estadoDelPaso(this.pasos, paso, this.paso);
-    }
+    };
 
     // --- Carga -------------------------------------------------------------------------------------------------------
 

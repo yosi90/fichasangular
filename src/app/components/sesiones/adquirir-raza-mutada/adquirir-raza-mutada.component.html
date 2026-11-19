@@ -15,10 +15,7 @@
     </div>
 
     <ng-container *ngIf="!cargando && pj && entrada && anterior">
-        <nav class="subida__pasos" aria-label="Pasos de la raza mutada">
-            <span *ngFor="let p of pasos" class="subida__paso" [class.subida__paso--hecho]="estadoPaso(p) === 'hecho'"
-                [class.subida__paso--actual]="estadoPaso(p) === 'actual'" [attr.aria-current]="estadoPaso(p) === 'actual' ? 'step' : null">{{etiquetaPaso(p)}}</span>
-        </nav>
+        <app-pasos-sesion [pasos]="pasos" [actual]="paso" [etiqueta]="etiquetaPaso" nombre="Pasos de la raza mutada"></app-pasos-sesion>
 
         <div *ngIf="error && elegida" class="subida__aviso subida__aviso--error" role="alert">
             <mat-icon aria-hidden="true">error_outline</mat-icon>
@@ -108,17 +105,7 @@
                         <tr *ngFor="let c of cambios" [class.subida__fila--bloqueada]="c.aviso"><th scope="row">{{c.que}}</th><td>{{c.antes}}</td><td class="subida__ahora">{{c.ahora}}</td><td>{{c.porque}}</td></tr>
                     </tbody>
                 </table>
-                <ng-container *ngIf="coste as c">
-                    <h2 class="subida__seccion">Lo que cuesta</h2>
-                    <p class="subida__nota">
-                        <ng-container *ngIf="c.px > 0">Paga {{px(c.px)}} PX, que no le pueden bajar de nivel. </ng-container>
-                        <ng-container *ngIf="c.po > 0">Paga {{px(c.po)}} po de su saldo (tiene {{px(saldo)}} po).<ng-container *ngIf="!poPagadasPorOtro && saldo < c.po"> No le llega: márcalo si las paga otro.</ng-container></ng-container>
-                    </p>
-                    <label *ngIf="c.po > 0" class="subida__campo">
-                        <span><input type="checkbox" [checked]="poPagadasPorOtro" (change)="poPagadasPorOtro = $any($event.target).checked">
-                        Las po las paga otro (un mecenas) o ya están apuntadas</span>
-                    </label>
-                </ng-container>
+                <app-coste-al-adquirir [coste]="coste" [saldo]="saldo" [(poPagadasPorOtro)]="poPagadasPorOtro"></app-coste-al-adquirir>
                 <label class="subida__campo">
                     Concepto (opcional)
                     <input type="text" [attr.maxlength]="maximoConcepto" [value]="concepto" (input)="concepto = $any($event.target).value"

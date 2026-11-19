@@ -5,9 +5,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
+import { CosteAlAdquirirComponent } from 'src/app/components/sesiones/coste-al-adquirir/coste-al-adquirir.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { resolverDotesPendientes } from 'src/app/components/sesiones/pasos-con-selectores';
+import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { Raza } from 'src/app/interfaces/raza';
@@ -41,7 +43,6 @@ import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
 import { clasesQueDejanDeCumplir, DoteReciclable, dotesParaReciclar, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { pgTrasCambioDeCon, PgSubida } from 'src/app/services/utils/subida-nivel';
-import { estadoDelPaso } from 'src/app/services/utils/subida-nivel-vista';
 
 export type PasoMutacion = 'raza' | 'dote' | 'habilidades' | 'dotes' | 'resumen';
 
@@ -82,7 +83,7 @@ export interface FilaRangos {
 @Component({
     selector: 'app-adquirir-raza-mutada',
     standalone: true,
-    imports: [CommonModule, MatButtonModule, MatIconModule],
+    imports: [CommonModule, CosteAlAdquirirComponent, MatButtonModule, MatIconModule, PasosSesionComponent],
     templateUrl: './adquirir-raza-mutada.component.html',
     styleUrls: ['../subir-nivel/subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -203,7 +204,8 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         return formatoPx(valor);
     }
 
-    etiquetaPaso(paso: PasoMutacion): string {
+    /** El texto de cada paso en la fila de pasos (`app-pasos-sesion`), con su número. */
+    readonly etiquetaPaso = (paso: PasoMutacion): string => {
         const nombres: Record<PasoMutacion, string> = {
             raza: this.elegida ? `Raza: ${this.elegida.raza.Nombre}` : 'Raza mutada',
             dote: 'La dote que pierde',
@@ -212,11 +214,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             resumen: 'Resumen',
         };
         return `${this.pasos.indexOf(paso) + 1} · ${nombres[paso]}`;
-    }
-
-    estadoPaso(paso: PasoMutacion): 'hecho' | 'actual' | 'pendiente' {
-        return estadoDelPaso(this.pasos, paso, this.paso);
-    }
+    };
 
     // --- Carga -------------------------------------------------------------------------------------------------------
 

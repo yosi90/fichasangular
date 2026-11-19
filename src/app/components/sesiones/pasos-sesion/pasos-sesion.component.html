@@ -1,0 +1,4 @@
+<nav class="subida__pasos" [attr.aria-label]="nombre">
+    <span *ngFor="let p of pasos" class="subida__paso" [class.subida__paso--hecho]="estado(p) === 'hecho'"
+        [class.subida__paso--actual]="estado(p) === 'actual'" [attr.aria-current]="estado(p) === 'actual' ? 'step' : null">{{etiqueta(p)}}</span>
+</nav>
