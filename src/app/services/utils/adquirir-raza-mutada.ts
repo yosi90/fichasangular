@@ -77,6 +77,30 @@ export function tipoQueNoCumpleLaMutacion(raza: Pick<Raza, 'Prerrequisitos'> | n
     return fallan;
 }
 
+/**
+ * Las condiciones que confirma el máster (el arrepentimiento del alma del nacido del Infierno): los prerrequisitos con su
+ * `Texto`, que solo llevan esas. No bloquean y la API no las devuelve: se enseñan como aviso, con la frase de la raza.
+ */
+export function condicionesDelMaster(raza: Pick<Raza, 'Prerrequisitos'> | null | undefined): string[] {
+    return prerrequisitosDe(raza).filter((p) => `${p.Texto ?? ''}`.trim().length > 0).map((p) => p.Frase);
+}
+
+type EdadesDeRaza = Pick<Raza, 'Edad_adulto' | 'Edad_mediana' | 'Edad_viejo' | 'Edad_venerable'>;
+
+/**
+ * Si con la tabla de edades de la raza mutada no es adulto (la prole «renace adulta», *Races of the Dragon*, pág. 8: un
+ * elfo de 250 años ya es de mediana edad con la suya): la categoría que tendría, o `null`. Solo si la mutación trae su
+ * propia tabla; con la de la raza de ahora (el nacido del Infierno), la categoría no cambia y no se mira (contrato:
+ * `409 mutacion_edad_no_adulta`).
+ */
+export function edadNoAdulta(edad: number, anterior: EdadesDeRaza | null | undefined, combinada: EdadesDeRaza | null | undefined): string | null {
+    const campos = ['Edad_adulto', 'Edad_mediana', 'Edad_viejo', 'Edad_venerable'] as const;
+    if (!combinada || campos.every((k) => toNumber(combinada[k]) === toNumber(anterior?.[k])))
+        return null;
+    const etapa = etapaEdad(edad, combinada);
+    return etapa && etapa.id !== 'adulto' ? etapa.nombre : null;
+}
+
 type RazaDelNep = Pick<Raza, 'Ajuste_nivel' | 'Dgs_adicionales'>;
 
 /** Los DG raciales de una raza (`Dgs_adicionales.Cantidad`). */

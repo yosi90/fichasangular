@@ -4,7 +4,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { NACIDO_DEL_INFIERNO_SOBRE_HUMANO_API, PROLE_SOBRE_API, RAZAS_API } from 'src/testing/razas-mutadas-api';
 import { ENTRADA_ENANO_CLERIGO_1 } from 'src/testing/subida-nivel-api';
 import {
-    cambiosDeLaMutacion, esRazaMutadaAdquirible, fichaDeLaMutacion, loQuePierdeEnSuHueco, nepTrasLaMutacion, pagaLosPuntos,
+    cambiosDeLaMutacion, condicionesDelMaster, edadNoAdulta, esRazaMutadaAdquirible, fichaDeLaMutacion, loQuePierdeEnSuHueco, nepTrasLaMutacion, pagaLosPuntos,
     puntosDevueltos, quitaDgRaciales, tipoQueNoCumpleLaMutacion,
 } from './adquirir-raza-mutada';
 import { normalizeRazaApi } from './raza-mapper';
@@ -53,6 +53,17 @@ describe('Adquirir una raza mutada (la utilidad)', () => {
         } } as unknown as Raza;
         expect(tipoQueNoCumpleLaMutacion(conGrupo, TIPOS, 2)).toEqual([]);
         expect(tipoQueNoCumpleLaMutacion(conGrupo, TIPOS, 9)).toEqual(['No ser de tipo muerto viviente', 'Tipo 1 o Tipo 2']);
+    });
+
+    it('la condición del máster sale del `pr` de la raza (la API no la devuelve), y la edad solo se mira con la tabla de la mutada', () => {
+        expect(condicionesDelMaster(NACIDO)).toEqual([NACIDO.Prerrequisitos['condicion_master'][0].Frase]);
+        expect(condicionesDelMaster(PROLE)).toEqual([]);
+        // La prole trae su tabla (adulto hasta los 200): un mediano de 250 ya no es adulto; uno de 60, sí.
+        expect(edadNoAdulta(250, MEDIANO, PROLE_SOBRE_MEDIANO)).toBe('Mediana edad');
+        expect(edadNoAdulta(60, MEDIANO, PROLE_SOBRE_MEDIANO)).toBeNull();
+        // Con la tabla de la raza de ahora (el nacido del Infierno), no se mira.
+        expect(edadNoAdulta(90, MEDIANO, { ...NACIDO, Edad_adulto: MEDIANO.Edad_adulto, Edad_mediana: MEDIANO.Edad_mediana,
+            Edad_viejo: MEDIANO.Edad_viejo, Edad_venerable: MEDIANO.Edad_venerable } as Raza)).toBeNull();
     });
 
     it('el nacido del Infierno baja el NEP: pierde el ajuste de la base (el drow, +2) y los PX no cambian', () => {
