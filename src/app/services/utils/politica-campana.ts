@@ -85,5 +85,6 @@ export function leerPoliticaCompra(valor: any): CampaignPurchasePolicy | null {
         precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(valor.precioMaximoPorObjeto),
         permitirCopiarConjuros: toBoolean(valor.permitirCopiarConjuros, true),
         permitirIgnorarRestriccionesAlineamiento: toBoolean(valor.permitirIgnorarRestriccionesAlineamiento, false),
+        permitirReciclaje: toBoolean(valor.permitirReciclaje, true),
     };
 }

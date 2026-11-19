@@ -157,6 +157,33 @@ describe('CampanaService', () => {
         }));
     });
 
+    it('permitirReciclaje: sin dato, sí (también en las campañas de antes); se lee el false de la API y se manda al crear y al editar (MJ II, págs. 194-196)', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({ idCampana: 7, nombre: 'Campaña sin reciclaje', campaignRole: 'master', membershipStatus: 'activo',
+                    politicaCreacion: { permitirReciclaje: false }, tramas: [] });
+            if (url.endsWith('campanas/8'))
+                return of({ idCampana: 8, nombre: 'Campaña de antes', campaignRole: 'master', membershipStatus: 'activo',
+                    politicaCreacion: {}, tramas: [] });
+            if (url.endsWith('/jugadores'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+        httpMock.post.and.returnValue(of({ idCampana: 9, nombre: 'Campaña nueva' }));
+        httpMock.patch.and.returnValue(of({ idCampana: 8, nombre: 'Campaña de antes' }));
+
+        expect((await service.getCampaignDetail(7, true)).politicaCreacion.permitirReciclaje).toBeFalse();
+        expect((await service.getCampaignDetail(8, true)).politicaCreacion.permitirReciclaje).toBeTrue();
+        await service.createCampaign({ nombre: 'Campaña nueva', politicaCreacion: { permitirReciclaje: false } });
+        expect(httpMock.post.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
+            politicaCreacion: jasmine.objectContaining({ permitirReciclaje: false }),
+        }));
+        await service.updateCampaign(8, { politicaCreacion: { permitirReciclaje: true } });
+        expect(httpMock.patch.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
+            politicaCreacion: jasmine.objectContaining({ permitirReciclaje: true }),
+        }));
+    });
+
     it('createCampaign rechaza nombres demasiado cortos', async () => {
         await expectAsync(service.createCampaign('Mini')).toBeRejectedWithError(
             'El nombre de campaña debe tener entre 5 y 150 caracteres.'

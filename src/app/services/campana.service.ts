@@ -1152,6 +1152,7 @@ export class CampanaService {
             permitirCopiarConjuros: toBoolean(raw?.permitirCopiarConjuros, true),
             maxTiradasPuntosGolpe: this.normalizeNullableTiradasPuntosGolpe(raw?.maxTiradasPuntosGolpe),
             permitirClasesDeMonstruo: toBoolean(raw?.permitirClasesDeMonstruo, true),
+            permitirReciclaje: toBoolean(raw?.permitirReciclaje, true),
         };
     }
 
@@ -1281,6 +1282,8 @@ export class CampanaService {
             payload.maxTiradasPuntosGolpe = this.normalizeNullableTiradasPuntosGolpe(raw.maxTiradasPuntosGolpe);
         if ('permitirClasesDeMonstruo' in raw)
             payload.permitirClasesDeMonstruo = toBoolean(raw.permitirClasesDeMonstruo, true);
+        if ('permitirReciclaje' in raw)
+            payload.permitirReciclaje = toBoolean(raw.permitirReciclaje, true);
 
         return payload;
     }
