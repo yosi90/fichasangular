@@ -13,6 +13,7 @@ import { toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
 import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
+import { fichaDeLaMutacion, loQuePierdeEnSuHueco } from './utils/adquirir-raza-mutada';
 import { fichaDeLaCorreccion } from './utils/correccion-ficha';
 import {
     aplicarReciclajeAlMotor, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dotesParaReciclar, fichaConElReciclaje,
@@ -151,7 +152,8 @@ function aplicarNivel(svc: NuevoPersonajeService, c: Clase, incremento: Car = 'F
     const aumentos = svc.getAumentosCaracteristicaPendientes();
     if (aumentos.length)
         expect(svc.aplicarAumentosCaracteristica(aumentos.map((a) => ({ idPendiente: a.id, caracteristica: incremento })))).toBeTrue();
-    svc.registrarDotesPendientesPorRazaExtras('Raza');
+    // Con el nombre de su raza, como la creación y la subida (el origen de su hueco).
+    svc.registrarDotesPendientesPorRazaExtras(`${svc.RazaSeleccionada?.Nombre ?? 'Raza'}`);
     svc.registrarDotesPendientesPorProgresion(contexto);
     antesDeLosRangos?.();
     svc.iniciarDistribucionHabilidadesPorClase(c);
@@ -1032,5 +1034,83 @@ describe('Lo que da una dote, al quitarla y al poner otra en su hueco (el recicl
         expect(deLaDote(ficha.modificadores?.iniciativa, 'Iniciativa mejorada')).toEqual([]);
         expect(deLaDote(ficha.modificadores?.salvaciones?.reflejos?.varios, 'Reflejos rápidos').map((m) => m.valor)).toEqual([2]);
         expect(ficha.colecciones?.dotes?.map((x) => x.idDote)).toEqual([52]);
+    });
+});
+
+describe('Adquirir una raza mutada con el motor de la creación (sesiones, fase 7; Races of the Dragon, pág. 10)', () => {
+    // Un humano con su dote adicional y sus puntos de habilidad extra (Manual del jugador, pág. 13) y su idioma.
+    const HUMANO = {
+        ...crearRaza('Humano'), Id: 25, Dotes_adicionales: 1, Puntos_habilidad_extra_primer_nivel: 4, Puntos_habilidad_extra_por_nivel: 1,
+        Idiomas: [{ Nombre: 'Común' }],
+    } as unknown as Raza;
+    // La prole de Bahamut sobre el humano, como la combina la API: los ajustes de la base más +2 Con y −2 Des, sin la dote ni
+    // los puntos del humano, y el Dracónico.
+    const PROLE = {
+        ...HUMANO, Id: 21, Nombre: 'Prole de Bahamut', Mutada: true, Dotes_adicionales: 0, Puntos_habilidad_extra_primer_nivel: 0,
+        Puntos_habilidad_extra_por_nivel: 0, Modificadores: { ...HUMANO.Modificadores, Constitucion: 2, Destreza: -2 },
+        Idiomas: [{ Nombre: 'Común' }, { Nombre: 'Dracónico' }],
+    } as unknown as Raza;
+    const IDIOMAS = [{ id: 1, nombre: 'Común' }, { id: 7, nombre: 'Dracónico' }];
+    const cuerpo = (motor: NuevoPersonajeService) => new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+        { ...motor.PersonajeCreacion, Nombre: 'Tordek', Campana: 'Sin campaña' } as Personaje,
+        { idAlineamiento: 1, idGenero: 1, idDeidad: 0, catalogos: { clases: CLASES.map((c) => ({ id: c.Id, nombre: c.Nombre })), idiomas: IDIOMAS } } as any);
+
+    it('la prole sobre un humano guerrero 2: Con +2 y Des −2, pierde la dote del humano que elige y sus puntos, y aprende el Dracónico', () => {
+        const svc = crear(HUMANO, { Fuerza: 15, Constitucion: 14, Destreza: 12 });
+        [1, 2].forEach(() => aplicarNivel(svc, GUERRERO));
+        const g = guardar(svc);
+        const motor = subir(g, HUMANO);
+        const antes = cuerpo(motor);
+        const { Constitucion: con, Destreza: des } = motor.PersonajeCreacion;
+        expect(loQuePierdeEnSuHueco(HUMANO, PROLE, 2)).toEqual({ dotes: 1, puntos: 5 });
+        // La dote que pierde se elige con su raza de ahora: con la prole, el hueco del humano ya no está.
+        const perderibles = dotesParaReciclar(motor).filter((d) => !d.motivo);
+        expect(perderibles.length).toBe(2);
+
+        expect(motor.adquirirRazaMutada(PROLE)).toBeTrue();
+        expect(motor.PersonajeCreacion.Constitucion).toBe(con + 2);
+        expect(motor.PersonajeCreacion.Destreza).toBe(des - 2);
+        expect(motor.PersonajeCreacion.RazaBase?.Nombre).toBe('Humano');
+        expect(motor.RazaSeleccionada?.Nombre).toBe('Prole de Bahamut');
+        expect((motor.PersonajeCreacion.Idiomas ?? []).map((i) => i.Nombre)).toContain('Dracónico');
+        // No se pone una mutación sobre otra.
+        expect(motor.adquirirRazaMutada(PROLE)).toBeFalse();
+        const [laDelHumano] = perderibles;
+        expect(motor.quitarDoteDeLaFicha(laDelHumano.idDote, laDelHumano.idExtra, laDelHumano.origen)).toBeTrue();
+
+        const ficha = fichaDeLaMutacion({ entrada: g.entrada, antes, despues: cuerpo(motor), idRaza: 21, idRazaBase: 25, puntosGolpe: 20 });
+        expect([ficha.personaje.idRaza, ficha.personaje.idRazaBase]).toEqual([21, 25]);
+        expect(ficha.caracteristicas.constitucion.valor).toBe(g.entrada.caracteristicas.constitucion.valor + 2);
+        expect(ficha.caracteristicas.destreza.valor).toBe(g.entrada.caracteristicas.destreza.valor - 2);
+        expect(ficha.caracteristicas.fuerza.valor).toBe(g.entrada.caracteristicas.fuerza.valor);
+        expect((ficha.colecciones?.dotes ?? []).length).toBe((g.entrada.colecciones?.dotes ?? []).length - 1);
+        expect((ficha.colecciones?.dotes ?? []).some((d) => d.idDote === laDelHumano.idDote)).toBeFalse();
+        expect(ficha.colecciones?.idiomas).toContain(jasmine.objectContaining({ idIdioma: 7 }));
+        expect(ficha.personaje.puntosGolpe).toBe(20);
+        expect(ficha.niveles).toEqual(g.entrada.niveles!);
+    });
+
+    it('una dote que deja de cumplirse (Des 13, con la Des −2 de la prole) se cambia por otra en su mismo hueco', () => {
+        const svc = crear(HUMANO, { Fuerza: 15, Destreza: 13 });
+        aplicarNivel(svc, GUERRERO);
+        const g = guardar(svc);
+        const conDes = [{ ...DOTES[0], Prerrequisitos: { caracteristica: [{ Id_caracteristica: 2, Caracteristica: 'Destreza', Cantidad: 13, Opcional: 0 }] } },
+            ...DOTES.slice(1)];
+        const motor = subir(g, HUMANO, CLASES, conDes);
+        expect(motor.dotesSinSusPrerrequisitos()).toEqual([]);
+        const antes = cuerpo(motor);
+        expect(motor.adquirirRazaMutada(PROLE)).toBeTrue();
+        const [rota, ...otras] = motor.dotesSinSusPrerrequisitos();
+        expect([rota?.idDote, otras.length]).toEqual([50, 0]);
+        expect(motor.quitarDoteDeLaFicha(rota.idDote, rota.idExtra, rota.origen)).toBeTrue();
+        const hueco = motor.registrarDoteEnLugarDe(rota, rota.nivel === null ? null : rota.nivel - 1);
+        expect(motor.aplicarDotePendiente(hueco.id, { idDote: 53, idExtra: 0, extra: '' })).toBeTrue();
+        expect(motor.dotesSinSusPrerrequisitos()).toEqual([]);
+
+        const ficha = fichaDeLaMutacion({ entrada: g.entrada, antes, despues: cuerpo(motor), idRaza: 21, idRazaBase: 25, puntosGolpe: 12 });
+        const dotes = (ficha.colecciones?.dotes ?? []).map((d) => [d.idDote, d.origen]);
+        expect(dotes).toContain([53, rota.origen]);
+        expect(dotes.some(([id]) => id === 50)).toBeFalse();
+        expect(dotes.length).toBe((g.entrada.colecciones?.dotes ?? []).length);
     });
 });

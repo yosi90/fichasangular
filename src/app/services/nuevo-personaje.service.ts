@@ -11923,6 +11923,75 @@ export class NuevoPersonajeService {
         return { ...pendiente };
     }
 
+    // --- Adquirir una raza mutada (roadmap de sesiones, fase 7) --------------------------------------------------------
+
+    /**
+     * Pasa el personaje guardado (hidratado con `iniciarSubidaDesdeFicha`) a la raza mutada `combinada`, la que da la API con
+     * su raza de ahora como base (`GET /razas/{id}/sobre/{idBase}`; la web no combina), con sus rasgos opcionales elegidos
+     * (el aspecto dracónico, el infernal). Su raza de ahora pasa a ser la base y se rehace lo que sale de la raza, como al
+     * elegirla en la creación, sin tocar lo demás (sus clases, sus dotes elegidas, sus rangos, sus plantillas): los ajustes
+     * de característica (los de la combinada en lugar de los de antes, en la base de sus puntuaciones), sus rasgos y sus
+     * sortílegas, las dotes de su raza, sus idiomas automáticos (el Dracónico), el tipo y los subtipos (con sus plantillas)
+     * y el recálculo de la creación (velocidades, salvaciones, habilidades raciales, la edad con la tabla de la mutada).
+     * Lo que pierde en su hueco (la dote y los puntos del humano, las dotes que dejan de cumplirse) lo elige el jugador
+     * después. `false` si no se puede: no es mutada, ya tiene una (no hay mutación sobre mutación) o faltan sus opcionales.
+     */
+    adquirirRazaMutada(combinada: Raza, seleccionOpcionales: SeleccionRacialesOpcionales | null = null): boolean {
+        const anterior = this.razaSeleccionada;
+        if (!anterior || !esRazaMutada(combinada) || esRazaMutada(anterior) || this.razaBaseSeleccionadaCompleta)
+            return false;
+        const nueva = this.copiarRaza(combinada);
+        const opcionales = this.copiarRaciales(nueva.Raciales).filter((racial) => toInt(racial?.Opcional) > 0);
+        const raciales = resolverRacialesFinales(this.copiarRaciales(nueva.Raciales), seleccionOpcionales);
+        if (!raciales)
+            return false;
+        nueva.Raciales = raciales;
+        const pj = this.personajeCreacion;
+        const deLaAnterior = (origen: unknown) => normalizarTexto(`${origen ?? ''}`) === normalizarTexto(`${anterior.Nombre ?? ''}`);
+
+        // La base de sus puntuaciones lleva el ajuste de su raza (`getBaseCaracteristicas`): el de la combinada en su lugar.
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        if (base)
+            CARACTERISTICAS.forEach((key) => {
+                if (!this.esCaracteristicaPerdida(key))
+                    base[key] = toNumber(base[key]) - toNumber(anterior.Modificadores?.[key]) + toNumber(nueva.Modificadores?.[key]);
+            });
+
+        // Las dotes de su raza de antes (las suyas y las de sus rasgos) se van; las de la combinada llegan con ella.
+        this.resolverDotesDeRaza(anterior).forEach(({ dote, idExtra, origen }) => {
+            const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(dote?.Id)
+                && toInt(d?.Contexto?.Id_extra) === Math.max(0, toInt(idExtra))
+                && normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === normalizarTexto(origen));
+            if (i >= 0)
+                pj.DotesContextuales.splice(i, 1);
+            const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(dote?.Nombre ?? '')
+                && normalizarTexto(d?.Origen ?? '') === normalizarTexto(origen));
+            if (j >= 0)
+                pj.Dotes.splice(j, 1);
+        });
+
+        this.racialesOpcionalesRaza = opcionales;
+        this.razaBaseSeleccionadaCompleta = this.copiarRaza(anterior);
+        this.razaSeleccionada = nueva;
+        pj.Raza = nueva;
+        pj.RazaBase = this.construirRazaSimpleDesdeRaza(anterior);
+        // Sus rasgos y sus sortílegas: los de la raza de antes se van y entran los de la combinada (con lo que conserve de ella).
+        this.estadoFlujo.ventajas.baseRaciales = [
+            ...(this.estadoFlujo.ventajas.baseRaciales ?? []).filter((racial) => !deLaAnterior(racial?.Origen)),
+            ...this.asignarOrigenRaciales(this.copiarRaciales(raciales), nueva.Nombre),
+        ];
+        pj.Sortilegas = [
+            ...(pj.Sortilegas ?? []).filter((sortilega) => !deLaAnterior(sortilega?.Origen)),
+            ...this.asignarOrigenSortilegas(this.copiarSortilegas(nueva.Sortilegas), nueva.Nombre),
+        ];
+        this.agregarDotesDeRaza(nueva);
+        this.aplicarIdiomasAutomaticos(nueva.Nombre, nueva.Idiomas ?? []);
+        this.recalcularTipoYSubtiposDerivados();
+        this.recalcularEfectosConservandoVentajas();
+        this.recalcularDerivadasPorCombate();
+        return true;
+    }
+
     /** El modificador de Inteligencia al tomar el nivel `indice` de su orden (sin los incrementos de después); −1, antes del primero. */
     private modInteligenciaAlNivel(indice: number): number {
         const orden = this.personajeCreacion?.Orden_niveles ?? [];
