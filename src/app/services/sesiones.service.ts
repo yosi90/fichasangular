@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import {
     AbrirSesionDto,
     AdquirirPlantillaDto,
+    AdquirirRazaMutadaDto,
     CosteDePlantillaCobrado,
     RestablecerNivelDto,
     RespuestaRestablecimiento,
@@ -18,6 +19,7 @@ import {
     RespuestaCorreccion,
     RespuestaPerdida,
     RespuestaPlantilla,
+    RespuestaRazaMutada,
     RespuestaSesion,
     RespuestaSubidaNivel,
     ResumenSesion,
@@ -46,7 +48,7 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
-    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'nivel_perdido',
+    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'raza_mutada_adquirida', 'nivel_perdido',
     'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'nota',
 ]);
 
@@ -246,6 +248,30 @@ export class SesionesService {
                 nepAntes: nep(respuesta?.plantilla?.nepAntes),
                 nepDespues: nep(respuesta?.plantilla?.nepDespues),
                 coste: leerCosteDePlantilla(respuesta?.plantilla?.coste),
+            },
+        };
+    }
+
+    /**
+     * Adquirir una raza mutada (fase 7): queda en la sesión de juego abierta, con lo que costó; el máster, con el aviso de lo
+     * que se salta.
+     */
+    async adquirirRazaMutada(idPersonaje: number, cuerpo: AdquirirRazaMutadaDto): Promise<RespuestaRazaMutada> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/raza-mutada`, cuerpo, 'No se ha podido adquirir la raza mutada.');
+        const r = respuesta?.razaMutada;
+        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
+        const ref = (valor: any) => ({ id: toInt(valor?.id), nombre: `${valor?.nombre ?? ''}` });
+        const coste = r?.coste && typeof r.coste === 'object'
+            ? { po: Number(r.coste.po) || 0, poCoste: Number(r.coste.poCoste) || 0, poPagadasPorOtro: r.coste.poPagadasPorOtro === true }
+            : null;
+        return {
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
+            razaMutada: {
+                idEvento: toInt(r?.idEvento), numeroSesion: toInt(r?.numeroSesion), raza: ref(r?.raza), razaBase: ref(r?.razaBase),
+                nepAntes: nep(r?.nepAntes), nepDespues: nep(r?.nepDespues), coste,
             },
         };
     }

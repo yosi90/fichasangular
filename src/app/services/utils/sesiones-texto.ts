@@ -113,6 +113,7 @@ export const ETIQUETA_EVENTO: Record<TipoEventoSesion, string> = {
     modificacion: 'Corrección',
     correccion_master: 'Corrección del máster',
     plantilla_adquirida: 'Plantilla',
+    raza_mutada_adquirida: 'Raza mutada',
     nivel_perdido: 'Nivel perdido',
     nivel_restablecido: 'Nivel restablecido',
     cambio_alineamiento: 'Alineamiento',

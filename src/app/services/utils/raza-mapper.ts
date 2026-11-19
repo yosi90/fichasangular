@@ -18,6 +18,7 @@ import { normalizeManualApi } from './manual-mapper';
 import { camposEdadRacial, normalizarBonificadoresCondicionales, normalizarCuentaComo, normalizarProgresionRacial } from './racial-mapper';
 import { parteCondicionalHabilidadRaza } from 'src/app/services/utils/habilidad-raza-condicional';
 import { leerArmasNaturales } from './armas-naturales';
+import { leerCosteAlAdquirir } from './coste-al-adquirir';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -191,7 +192,7 @@ type CamposCreacionRaza = 'Dotes_adicionales' | 'Puntos_habilidad_extra_primer_n
     | 'Id_clase_predilecta' | 'Clase_predilecta_comodin' | 'Edad_maxima_dados' | 'Edad_maxima_caras'
     | 'Edad_inicial_dados_1' | 'Edad_inicial_caras_1' | 'Edad_inicial_dados_2' | 'Edad_inicial_caras_2'
     | 'Edad_inicial_dados_3' | 'Edad_inicial_caras_3' | 'Vd' | 'Vd_mod_clases_pj' | 'Vd_mod_clases_pnj' | 'Clases_asociadas'
-    | 'Clases_predilectas_extra' | 'Clases_multiclase_libre' | 'Armas_naturales';
+    | 'Clases_predilectas_extra' | 'Clases_multiclase_libre' | 'Armas_naturales' | 'Coste_al_adquirir';
 
 /**
  * Lo que la raza aporta a las reglas de la creación: su dote adicional y sus puntos de habilidad extra, si carga como un
@@ -238,6 +239,8 @@ export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacio
         Clases_multiclase_libre: refs(raw?.Clases_multiclase_libre),
         // Las armas naturales como dato (desde el 2026-11-06), las mismas en la API y en la caché.
         Armas_naturales: leerArmasNaturales(raw?.Armas_naturales),
+        // Lo que cuesta adquirir una raza mutada con el personaje ya creado (desde el 2026-11-19), como el de las plantillas.
+        Coste_al_adquirir: leerCosteAlAdquirir(raw?.Coste_al_adquirir),
     };
 }
 
