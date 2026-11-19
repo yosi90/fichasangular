@@ -179,7 +179,21 @@ export interface EntradaCambiosPlantilla {
     razaContraAlineamiento?: string | null;
 }
 
-function nombresDeDotes(pj: Personaje): string[] {
+/**
+ * Las filas de «Lo que cambia» de las características que cambian (o que pierde: «Sin ella»), con su porqué. Las usan la
+ * plantilla y la raza mutada adquiridas.
+ */
+export function filasDeCaracteristicas(antes: Personaje, despues: Personaje, porque: string): CambioPlantilla[] {
+    return CARACTERISTICAS.flatMap((k) => {
+        const a = toInt((antes as any)?.[k]);
+        const d = toInt((despues as any)?.[k]);
+        const perdida = caracteristicasPerdidasDe(despues)[k] && !caracteristicasPerdidasDe(antes)[k];
+        return a !== d || perdida ? [{ que: NOMBRES_CARACTERISTICAS[k], antes: `${a}`, ahora: perdida ? 'Sin ella' : `${d}`, porque }] : [];
+    });
+}
+
+/** Los nombres de sus dotes, con su extra («Soltura con un arma (espada larga)»). */
+export function nombresDeDotes(pj: Personaje): string[] {
     return (pj?.DotesContextuales ?? []).map((d) => {
         const extra = `${d?.Contexto?.Extra ?? ''}`.trim();
         return `${d?.Dote?.Nombre ?? ''}`.trim() + (extra && extra !== 'No aplica' ? ` (${extra})` : '');
@@ -221,13 +235,7 @@ export function cambiosDeLaPlantilla(e: EntradaCambiosPlantilla): CambioPlantill
     };
     texto(`${e.antes?.Tipo_criatura?.Nombre ?? ''}`, `${e.despues?.Tipo_criatura?.Nombre ?? ''}`, 'Tipo');
     texto(`${e.antes?.Alineamiento ?? ''}`, `${e.despues?.Alineamiento ?? ''}`, 'Alineamiento', `${nombre} fija su alineamiento`);
-    CARACTERISTICAS.forEach((k) => {
-        const a = toInt((e.antes as any)?.[k]);
-        const d = toInt((e.despues as any)?.[k]);
-        const perdida = caracteristicasPerdidasDe(e.despues)[k] && !caracteristicasPerdidasDe(e.antes)[k];
-        if (a !== d || perdida)
-            filas.push({ que: NOMBRES_CARACTERISTICAS[k], antes: `${a}`, ahora: perdida ? 'Sin ella' : `${d}`, porque: porPlantilla });
-    });
+    filas.push(...filasDeCaracteristicas(e.antes, e.despues, porPlantilla));
     if (e.pg) {
         const partes = [
             dgs ? `${dgs} DG nuevos (tiradas ${e.tiradas.join(', ')}): +${e.pg.nuevos}` : '',

@@ -127,6 +127,9 @@ export const SE_CONSERVAN_PERSONAJE: ReadonlySet<string> = new Set([
 
 export type Lista = Array<Record<string, any>>;
 
+/** Las colecciones de las que la ficha del motor quita lo que quita el motor si no se dice otra cosa: los raciales. */
+const QUITAR_EN_POR_DEFECTO: ReadonlySet<string> = new Set(['raciales']);
+
 /** Una clave estable de un elemento (sus campos ordenados, sin los vacíos), para comparar listas como multiconjuntos. */
 function claveElemento(elemento: unknown): string {
     if (elemento === null || typeof elemento !== 'object')
@@ -137,8 +140,11 @@ function claveElemento(elemento: unknown): string {
     return JSON.stringify(limpio);
 }
 
-/** Lo que hay en `despues` y no en `antes` (contando repetidos), y lo contrario. */
-function diferencia(antes: Lista, despues: Lista): { nuevos: Lista; quitados: Lista; } {
+/**
+ * Lo que hay en `despues` y no en `antes` (contando repetidos), y lo contrario. Lo usan la ficha del motor (abajo) y la
+ * adquisición de una raza mutada (las dotes que se van, `adquirir-raza-mutada.ts`).
+ */
+export function diferencia(antes: Lista, despues: Lista): { nuevos: Lista; quitados: Lista; } {
     const quedan = new Map<string, number>();
     antes.forEach((x) => quedan.set(claveElemento(x), (quedan.get(claveElemento(x)) ?? 0) + 1));
     const nuevos: Lista = [];
@@ -300,6 +306,11 @@ export interface EntradaFichaDelMotor {
     olvidados?: Array<{ idConjuro: number; idClase: number; }>;
     /** Lo de `personaje` que se queda como en la `entrada` aunque el motor lo cambie (por defecto, lo de la subida). */
     seConservan?: ReadonlySet<string>;
+    /**
+     * Las colecciones de las que también se quita lo que quita el motor (por defecto, los raciales): las que salen de la
+     * raza, en una raza mutada adquirida.
+     */
+    quitarEn?: ReadonlySet<string>;
 }
 
 export interface EntradaFichaSubida extends EntradaFichaDelMotor {
@@ -341,6 +352,7 @@ export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreate
     const antes = datos.antes;
     const despues = datos.despues;
     const seConservan = datos.seConservan ?? SE_CONSERVAN_PERSONAJE;
+    const quitarEn = datos.quitarEn ?? QUITAR_EN_POR_DEFECTO;
 
     Object.entries(despues.personaje ?? {}).forEach(([k, valor]) => {
         if (!seConservan.has(k) && claveElemento(valor) !== claveElemento((antes.personaje as any)?.[k]))
@@ -361,9 +373,9 @@ export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreate
         if (k === 'clases' || k === 'habilidades' || k === 'conjurosConocidos' || !Array.isArray(colD[k] ?? colA[k] ?? []))
             return;
         // Los raciales, también lo que quitan: el rasgo que sustituye otro al llegar a N DG (la visión en la oscuridad 30'
-        // que pasa a 60'). Lo demás, solo se añade.
+        // que pasa a 60'); con `quitarEn`, esas. Lo demás, solo se añade.
         if (claveElemento(colA[k] ?? []) !== claveElemento(colD[k] ?? []))
-            col[k] = aplicarDiferencia(col[k], colA[k], colD[k], k === 'raciales');
+            col[k] = aplicarDiferencia(col[k], colA[k], colD[k], quitarEn.has(k));
     });
     aplicarHabilidadesDelMotor(ficha, antes, despues);
     // Los conjuros conocidos: los nuevos del motor y, del intercambio, sin el que olvida.

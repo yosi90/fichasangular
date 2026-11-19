@@ -211,8 +211,8 @@ export interface LoQueQuita {
     conjuros?: Array<{ idConjuro: number; clase: string; }>;
 }
 
-/** Las clases que tiene, del catálogo del motor. */
-function clasesQueTiene(motor: NuevoPersonajeService): Clase[] {
+/** Las clases que tiene, del catálogo del motor (también para la raza mutada adquirida: las que dejan de cumplir). */
+export function clasesQueTiene(motor: NuevoPersonajeService): Clase[] {
     return (motor.PersonajeCreacion.desgloseClases ?? [])
         .filter((c) => toInt(c?.Nivel) > 0)
         .map((c) => motor.claseDelCatalogo(toInt(c?.Id)))
