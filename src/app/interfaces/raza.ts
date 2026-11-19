@@ -35,6 +35,11 @@ export interface PrerrequisitoMutacion {
     Sujeto: SujetoPrerrequisitoMutacion;
     Id_referencia: number | null;
     Referencia: string | null;
+    /**
+     * La clave estable de la referencia si su catálogo la tiene (desde el 2026-11-19): hoy, la del momento (`al_crear` o
+     * `despues`); `null` en los demás.
+     */
+    Clave_referencia: string | null;
     Cantidad: number | null;
     Texto: string | null;
     Opcional: number;

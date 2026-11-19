@@ -118,7 +118,8 @@ describe('AdquirirRazaMutadaComponent (adquirir una raza mutada, fase 7)', () =>
             const opcion = await componente.evaluar(PROLE, MEDIANO, false);
             expect(opcion.estado).toBe('elegible');
             expect(opcion.combinada?.Nombre).toBe('Prole de Bahamut');
-            expect(razas.getRazaSobreBase).toHaveBeenCalledWith(21, 5, null);
+            // Con el momento de la adquisición (`?momento=despues`); la creación lo pide sin él.
+            expect(razas.getRazaSobreBase).toHaveBeenCalledWith(21, 5, null, 'despues');
         });
 
         it('un mediano semicelestial (ajeno, por su plantilla) no hace el Rito, aunque su raza base sea humanoide', async () => {

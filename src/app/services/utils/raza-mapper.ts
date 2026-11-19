@@ -78,6 +78,7 @@ export function normalizarPrerrequisitosMutacion(raw: any): RazaPrerrequisitos {
             Sujeto: SUJETOS_MUTACION.includes(item?.Sujeto) ? item.Sujeto : 'raza_base',
             Id_referencia: toNumberOrNull(item?.Id_referencia),
             Referencia: toNullableText(item?.Referencia),
+            Clave_referencia: toNullableText(item?.Clave_referencia),
             Cantidad: toNumberOrNull(item?.Cantidad),
             Texto: toNullableText(item?.Texto),
             Opcional: toNumber(item?.Opcional),

@@ -24,7 +24,7 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { CambioPlantilla } from 'src/app/services/utils/adquirir-plantilla';
 import {
-    cambiosDeLaMutacion, condicionesDelMaster, edadNoAdulta, esRazaMutadaAdquirible, fichaDeLaMutacion, loQuePierdeEnSuHueco, nepTrasLaMutacion,
+    cambiosDeLaMutacion, condicionesDelMaster, edadNoAdulta, esRazaMutadaAdquirible, fichaDeLaMutacion, loQuePierdeEnSuHueco, MOMENTO_DESPUES, nepTrasLaMutacion,
     pagaLosPuntos, puntosDevueltos, quitaDgRaciales, tipoQueNoCumpleLaMutacion,
 } from 'src/app/services/utils/adquirir-raza-mutada';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
@@ -299,7 +299,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             .map((frase) => `Su tipo, con sus plantillas: ${frase}`);
         try {
             const paso = razaPorEdades(anterior) ? toInt(this.entrada?.personaje?.idPasoEdad) || null : null;
-            opcion.combinada = await this.razaSvc.getRazaSobreBase(raza.Id, anterior.Id, paso);
+            opcion.combinada = await this.razaSvc.getRazaSobreBase(raza.Id, anterior.Id, paso, MOMENTO_DESPUES);
         } catch (error: any) {
             motivos.push(`${error?.message ?? ''}`.trim() || `No se puede aplicar sobre ${anterior.Nombre}.`);
         }

@@ -25,6 +25,8 @@ import { diferencia, fichaConLoDelMotor, PgSubida, SE_CONSERVAN_PERSONAJE } from
 
 /** El sujeto de un prerrequisito de mutación que mira el momento de adquirirla (al crear el personaje o después). */
 const SUJETO_MOMENTO = 'creacion';
+/** La clave del momento de adquirirla con el personaje ya creado (`Clave_referencia`, `momentos_mutacion.clave`). */
+export const MOMENTO_DESPUES = 'despues';
 /** El dato del tipo de criatura (`TipoPrerrequisitoMutacion.Dato`), el que se compara con el del personaje. */
 const DATO_TIPO_CRIATURA = 'tipo_criatura';
 
@@ -34,13 +36,13 @@ function prerrequisitosDe(raza: Pick<Raza, 'Prerrequisitos'> | null | undefined)
 
 /**
  * Si la raza mutada se puede adquirir con el personaje ya creado, por su dato `momento` (los prerrequisitos de sujeto
- * `creacion`): una que no lo restringe, sí (la prole, el nacido del Infierno). Una que lo restringe no se ofrece: el
- * contrato da su momento por su id y su nombre, sin su clave (`al_crear`, `despues`), así que la web no sabe si es «solo
- * al crear» (las variantes elementales, las de *Libris Mortis*) sin fijar un id o un nombre. La API lo comprueba igual
- * (`400 mutacion_fuera_de_momento`).
+ * `creacion`, con la clave de su momento en `Clave_referencia`): una que no lo restringe (la prole, el nacido del
+ * Infierno) o que admite `despues`, sí; una que solo es `al_crear` (las variantes elementales, que son de nacimiento), no.
+ * La API lo comprueba igual (`400 mutacion_fuera_de_momento`).
  */
 export function esRazaMutadaAdquirible(raza: Raza | null | undefined): boolean {
-    return esRazaMutada(raza) && !prerrequisitosDe(raza).some((p) => p.Sujeto === SUJETO_MOMENTO);
+    const momentos = prerrequisitosDe(raza).filter((p) => p.Sujeto === SUJETO_MOMENTO);
+    return esRazaMutada(raza) && (momentos.length < 1 || momentos.some((p) => p.Clave_referencia === MOMENTO_DESPUES));
 }
 
 /**

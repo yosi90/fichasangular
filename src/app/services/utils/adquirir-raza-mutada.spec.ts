@@ -28,16 +28,18 @@ function entrada(): PersonajeCreateRequestDto {
 }
 
 describe('Adquirir una raza mutada (la utilidad)', () => {
-    it('se ofrecen las mutadas sin momento («después de crear» o cualquiera): la prole y el nacido del Infierno; no una de nacimiento', () => {
+    it('se ofrecen las mutadas sin momento o con «despues» (la prole, el nacido del Infierno); no una solo «al_crear» (de nacimiento)', () => {
         expect(esRazaMutadaAdquirible(PROLE)).toBeTrue();
         expect(esRazaMutadaAdquirible(NACIDO)).toBeTrue();
         expect(esRazaMutadaAdquirible(MEDIANO)).toBeFalse();
-        // Una variante elemental: pide su momento («Se adquiere al crear el personaje»).
-        const elemental = { ...PROLE, Prerrequisitos: { ...PROLE.Prerrequisitos, momento: [{
-            Id: 90, Tipo: 'momento', Sujeto: 'creacion', Id_referencia: 1, Referencia: 'Al crear el personaje', Cantidad: null, Texto: null,
-            Opcional: 0, Frase: 'Se adquiere al crear el personaje',
-        }] } } as Raza;
-        expect(esRazaMutadaAdquirible(elemental)).toBeFalse();
+        const conMomento = (Id_referencia: number, Clave_referencia: string, Frase: string) => ({ ...PROLE, Prerrequisitos: { ...PROLE.Prerrequisitos, momento: [{
+            Id: 90, Tipo: 'momento', Sujeto: 'creacion' as const, Id_referencia, Referencia: Frase, Clave_referencia, Cantidad: null, Texto: null,
+            Opcional: 0, Frase,
+        }] } } as Raza);
+        // Una variante elemental: solo al crear el personaje.
+        expect(esRazaMutadaAdquirible(conMomento(1, 'al_crear', 'Se adquiere al crear el personaje'))).toBeFalse();
+        // Una que se adquiere después de crearlo, sí.
+        expect(esRazaMutadaAdquirible(conMomento(2, 'despues', 'Se adquiere después de crear el personaje'))).toBeTrue();
     });
 
     it('el tipo se compara con el del personaje, con sus plantillas: un humano semicelestial (ajeno) no hace el Rito', () => {
