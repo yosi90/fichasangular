@@ -114,6 +114,13 @@ describe('plantilla-formulario', () => {
         expect(normalizePlantillaApi(plantillaApiDeEjemplo()).Coste_al_adquirir).toEqual({ Px: 0, Po: 0, Niveles_perdidos: 0 });
     });
 
+    it('las po que cuesta adquirirla van con dos decimales, como en la raza mutada (la API las guarda en numeric(12, 2))', () => {
+        const cuerpo = construirPlantillaRequest({ ...valorPlantillaNueva(), coste_px: 10.7, coste_po: 12.345, coste_niveles: 30 }, listasPlantillaVacias());
+        expect(cuerpo.plantilla.coste_al_adquirir).toEqual({ px: 10, po: 12.35, niveles_perdidos: 20 });
+        const plantilla = normalizePlantillaApi({ ...plantillaApiDeEjemplo(), Coste_al_adquirir: { Px: 0, Po: 2.5, Niveles_perdidos: 0 } });
+        expect(valorDesdePlantilla(plantilla)).toEqual(jasmine.objectContaining({ coste_po: 2.5 }));
+    });
+
     it('cambiar la forma animal marca su campo, en el paso de los DG', () => {
         const plantilla = normalizePlantillaApi(plantillaApiDeEjemplo());
         const antes = construirPlantillaRequest(valorDesdePlantilla(plantilla), listasPlantillaVacias());

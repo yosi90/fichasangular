@@ -155,8 +155,9 @@
                     <section class="insercion-tarjeta">
                         <h3 class="insercion-tarjeta__titulo">Lo que cuesta adquirirla</h3>
                         <div class="insercion-campos plantilla-campos-2">
+                            <!-- Las po, con dos decimales como mucho (como las guarda la API) -->
                             <ng-container *ngFor="let campo of ['coste_px', 'coste_po', 'coste_niveles']">
-                                <ng-container *ngTemplateOutlet="numero; context: { $implicit: campo }"></ng-container>
+                                <ng-container *ngTemplateOutlet="numero; context: { $implicit: campo, paso: campo === 'coste_po' ? 0.01 : 1 }"></ng-container>
                             </ng-container>
                         </div>
                     </section>
@@ -279,10 +280,10 @@
         </app-insercion-marco>
 
         <!-- Piezas repetidas -->
-        <ng-template #numero let-campo>
+        <ng-template #numero let-campo let-paso="paso">
             <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado(campo)">
                 <mat-label>{{etiqueta(campo)}}</mat-label>
-                <input matInput type="number" step="1" [formControl]="control(campo)">
+                <input matInput type="number" [attr.step]="paso || 1" [formControl]="control(campo)">
                 <mat-error *ngIf="errorDe(campo) as error">{{error}}</mat-error>
             </mat-form-field>
         </ng-template>

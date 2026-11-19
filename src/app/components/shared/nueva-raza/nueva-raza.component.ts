@@ -1,4 +1,5 @@
 import { datoDePreferencia } from 'src/app/services/utils/alineamiento-contrato';
+import { costeAlAdquirirParaGuardar } from 'src/app/services/utils/coste-al-adquirir';
 import {
     Component, EventEmitter, HostListener, Injector, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, forwardRef,
     inject,
@@ -857,10 +858,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 // Lo que cuesta adquirirla con el personaje ya creado (la prole: 100 po del huevo), solo en una mutada: sin
                 // él, el alta lo deja en 0 y la edición conserva el que tiene (una que no es mutada lee 0).
                 ...(esMutada ? {
-                    coste_al_adquirir: {
-                        px: Math.max(0, Math.trunc(this.numero(raw.coste_px))),
-                        po: Math.round(Math.max(0, toNumberOrNull(raw.coste_po) ?? 0) * 100) / 100,
-                    },
+                    coste_al_adquirir: costeAlAdquirirParaGuardar(raw.coste_px, raw.coste_po),
                 } : {}),
                 id_alineamiento: this.numero(raw.id_alineamiento),
                 oficial: raw.oficial === true,

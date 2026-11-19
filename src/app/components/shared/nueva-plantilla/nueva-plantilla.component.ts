@@ -211,6 +211,8 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         controles.id_manual.setValidators([Validators.required, Validators.min(1)]);
         controles.id_tamano.setValidators([elegido, entero]);
         controles.pagina.addValidators(Validators.min(0));
+        // Las po que cuesta adquirirla, con dos decimales como mucho (las redondea `costeAlAdquirirPlantillaParaGuardar`).
+        controles.coste_po.setValidators([]);
         Object.values(controles).forEach((control) => control.updateValueAndValidity({ emitEvent: false }));
         this.form = this.fb.group(controles);
     }
