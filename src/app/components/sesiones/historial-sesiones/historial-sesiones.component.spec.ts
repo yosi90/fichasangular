@@ -134,6 +134,24 @@ describe('HistorialSesionesComponent', () => {
         expect(component.enElPanel).toBeFalse();
     });
 
+    it('«Adquirir una raza mutada»: solo con una sesión de juego abierta y sin raza mutada; abre su pestaña', async () => {
+        await crear('historial');
+        expect(boton('Adquirir una raza mutada')).withContext('sin sesión de juego abierta').toBeUndefined();
+
+        await crear('historial_con_abierta');
+        expect(boton('Adquirir una plantilla')).toBeTruthy();
+        const pedidas: number[] = [];
+        puerta.mutaciones$.subscribe((id) => pedidas.push(id));
+        boton('Adquirir una raza mutada')!.click();
+        expect(pedidas).toEqual([129]);
+
+        // Con una raza mutada ya (su raza base en la ficha), no: no se pone una mutación sobre otra.
+        component.pj = { ...component.pj, RazaBase: { Id: 25, Nombre: 'Humano' } } as Personaje;
+        fixture.detectChanges();
+        expect(boton('Adquirir una raza mutada')).toBeUndefined();
+        expect(boton('Adquirir una plantilla')).toBeTruthy();
+    });
+
     it('una subida hecha de este personaje vuelve a leer el historial', async () => {
         await crear('historial');
         sesiones.historial.calls.reset();
