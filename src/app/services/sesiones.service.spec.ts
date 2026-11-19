@@ -208,6 +208,16 @@ describe('SesionesService', () => {
             await expectAsync(servicio.adquirirRazaMutada(0, { idRaza: 952, ficha: {} as any, version: sesion.version })).toBeRejected();
         });
 
+        it('un NEP que falta o no es un número se lee como null, no como 0 (toIntOrNull)', async () => {
+            http.request.and.returnValue(of({
+                ...respuestaSesiones<any>('venta'), reglasIgnoradas: [],
+                razaMutada: { idEvento: 7, numeroSesion: 2, raza: { id: 952, nombre: 'Nacido del Infierno' }, razaBase: { id: 308, nombre: 'Drow' },
+                    nepAntes: '', nepDespues: null, coste: null },
+            }));
+            const respuesta = await servicio.adquirirRazaMutada(129, { idRaza: 952, ficha: {} as any, version: sesion.version });
+            expect([respuesta.razaMutada.nepAntes, respuesta.razaMutada.nepDespues, respuesta.razaMutada.coste]).toEqual([null, null, null]);
+        });
+
         it('restablecer un nivel: la ruta, el conjuro y cuántos quedan; el historial dice cuántos se pueden', async () => {
             const venta = respuestaSesiones<any>('venta');
             http.request.and.returnValue(of({

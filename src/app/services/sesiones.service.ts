@@ -243,7 +243,6 @@ export class SesionesService {
         if (id <= 0)
             throw new Error('Id de personaje no válido');
         const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/plantillas`, cuerpo, 'No se ha podido adquirir la plantilla.');
-        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             plantilla: {
@@ -251,8 +250,8 @@ export class SesionesService {
                 numeroSesion: toInt(respuesta?.plantilla?.numeroSesion),
                 id: toInt(respuesta?.plantilla?.plantilla?.id),
                 nombre: `${respuesta?.plantilla?.plantilla?.nombre ?? ''}`,
-                nepAntes: nep(respuesta?.plantilla?.nepAntes),
-                nepDespues: nep(respuesta?.plantilla?.nepDespues),
+                nepAntes: toIntOrNull(respuesta?.plantilla?.nepAntes),
+                nepDespues: toIntOrNull(respuesta?.plantilla?.nepDespues),
                 coste: leerCosteDePlantilla(respuesta?.plantilla?.coste),
             },
         };
@@ -268,13 +267,12 @@ export class SesionesService {
             throw new Error('Id de personaje no válido');
         const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/raza-mutada`, cuerpo, 'No se ha podido adquirir la raza mutada.');
         const r = respuesta?.razaMutada;
-        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
         const ref = (valor: any) => ({ id: toInt(valor?.id), nombre: `${valor?.nombre ?? ''}` });
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             razaMutada: {
                 idEvento: toInt(r?.idEvento), numeroSesion: toInt(r?.numeroSesion), raza: ref(r?.raza), razaBase: ref(r?.razaBase),
-                nepAntes: nep(r?.nepAntes), nepDespues: nep(r?.nepDespues), coste: leerCosteCobrado(r?.coste),
+                nepAntes: toIntOrNull(r?.nepAntes), nepDespues: toIntOrNull(r?.nepDespues), coste: leerCosteCobrado(r?.coste),
             },
         };
     }
@@ -286,16 +284,15 @@ export class SesionesService {
             throw new Error('Id de personaje no válido');
         const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/niveles/perdida`, cuerpo, 'No se ha podido apuntar la pérdida del nivel.');
         const p = respuesta?.perdida ?? {};
-        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             perdida: {
                 idEvento: toInt(p.idEvento),
                 numeroSesion: toInt(p.numeroSesion),
                 clase: p.clase ? { id: toInt(p.clase.id), nombre: `${p.clase.nombre ?? ''}` } : null,
-                nivelClase: nep(p.nivelClase),
-                nepAntes: nep(p.nepAntes),
-                nepDespues: nep(p.nepDespues),
+                nivelClase: toIntOrNull(p.nivelClase),
+                nepAntes: toIntOrNull(p.nepAntes),
+                nepDespues: toIntOrNull(p.nepDespues),
                 pxAntes: toInt(p.pxAntes),
                 pxDespues: toInt(p.pxDespues),
                 constitucion: p.constitucion ? { antes: toInt(p.constitucion.antes), despues: toInt(p.constitucion.despues) } : null,
