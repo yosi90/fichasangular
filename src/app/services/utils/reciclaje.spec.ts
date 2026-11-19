@@ -1,6 +1,6 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ENTRADA_ENANO_CLERIGO_1 } from 'src/testing/subida-nivel-api';
-import { fichaConElReciclaje, filaDelReciclaje, PlanReciclaje, reciclajeDelPlan, topeDeRangosDelReciclaje } from './reciclaje';
+import { fichaConElReciclaje, filaDelReciclaje, PlanReciclaje, reciclajeDelPlan } from './reciclaje';
 import { fichaDeLaSubida } from './subida-nivel';
 
 const copia = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -85,10 +85,5 @@ describe('reciclaje (Manual del jugador II, págs. 194-196: la ficha que se mand
         const conjuros: PlanReciclaje = { tipo: 'conjuros', cambios: [{ idClase: 4, clase: 'Hechicero', olvida: { id: 101, nombre: 'luz' }, aprende: { id: 140, nombre: 'mano de mago' } }] };
         expect(reciclajeDelPlan(conjuros)).toEqual({ tipo: 'conjuros', cambios: [{ idClase: 4, olvida: 101, aprende: 140 }] });
         expect(filaDelReciclaje(conjuros).porque).toContain('hechicero');
-    });
-
-    it('el tope de rangos del destino: el nivel de antes de subir + 3', () => {
-        expect(topeDeRangosDelReciclaje(5)).toBe(8);
-        expect(topeDeRangosDelReciclaje(0)).toBe(3);
     });
 });

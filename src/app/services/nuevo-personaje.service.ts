@@ -1135,12 +1135,28 @@ interface NivelListaConjuro {
 }
 
 /** Los niveles del conjuro en las listas de clase (`Nivel_clase`), leídos igual de la API y de la caché. */
-export function nivelesDeClaseDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
+function nivelesDeClaseDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
     return toArray<Record<string, any>>(conjuro?.Nivel_clase).map((nivel) => ({
         id: toNumber(nivel?.['Id_clase'] ?? nivel?.['id_clase']),
         nombre: normalizarTexto(nivel?.['Clase'] ?? nivel?.['clase'] ?? ''),
         nivel: toNumber(nivel?.['Nivel'] ?? nivel?.['nivel']),
     }));
+}
+
+/** El nivel del conjuro en la lista de la clase (`Nivel_clase`, por su id o su nombre); −1 si no está. */
+export function nivelDelConjuroEnLaClase(conjuro: Conjuro | null | undefined, clase: { id: number; nombre: string; }): number {
+    if (!conjuro)
+        return -1;
+    const nombre = normalizarTexto(clase.nombre);
+    return nivelesDeClaseDelConjuro(conjuro).find((n) => n.id === toInt(clase.id) || n.nombre === nombre)?.nivel ?? -1;
+}
+
+/** Si un conjuro conocido del personaje es de esa clase (su origen, `claseNorm` normalizado); sin origen, cuenta para todas. */
+export function esConjuroDeLaClase(conjuro: Conjuro, claseNorm: string): boolean {
+    const origenClase = normalizarTexto(
+        `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
+    );
+    return origenClase.length < 1 || origenClase === claseNorm;
 }
 
 /** Los niveles del conjuro en las listas de dominio (`Nivel_dominio`), leídos igual de la API y de la caché. */
@@ -8806,7 +8822,7 @@ export class NuevoPersonajeService {
         const claseNorm = normalizarTexto(claseObjetivo.Nombre ?? '');
         const sinDominios = new Set<string>();
         return (this.personajeCreacion.Conjuros ?? [])
-            .filter((conjuro) => toNumber(conjuro?.Id) > 0 && this.esConjuroDeLaClase(conjuro, claseNorm))
+            .filter((conjuro) => toNumber(conjuro?.Id) > 0 && esConjuroDeLaClase(conjuro, claseNorm))
             .map((conjuro) => ({
                 conjuro,
                 nivel: this.resolverNivelConjuroParaClase(
@@ -9396,15 +9412,7 @@ export class NuevoPersonajeService {
 
         const claseNorm = normalizarTexto(nombreClase);
         return (this.personajeCreacion.Conjuros ?? [])
-            .some((conjuro) => toNumber(conjuro?.Id) === id && this.esConjuroDeLaClase(conjuro, claseNorm));
-    }
-
-    /** Si un conjuro conocido es de esa clase (su origen); sin origen, cuenta para todas. */
-    private esConjuroDeLaClase(conjuro: Conjuro, claseNorm: string): boolean {
-        const origenClase = normalizarTexto(
-            `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
-        );
-        return origenClase.length < 1 || origenClase === claseNorm;
+            .some((conjuro) => toNumber(conjuro?.Id) === id && esConjuroDeLaClase(conjuro, claseNorm));
     }
 
     private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {
@@ -11565,13 +11573,10 @@ export class NuevoPersonajeService {
         if (tope < 0)
             return null;
         const claseNorm = normalizarTexto(clase.Nombre);
-        const nivelEnLaClase = (conjuro: Conjuro): number => {
-            const entrada = nivelesDeClaseDelConjuro(conjuro).find((n) => n.id === toInt(clase.Id) || n.nombre === claseNorm);
-            return entrada ? entrada.nivel : -1;
-        };
+        const nivelEnLaClase = (conjuro: Conjuro): number => nivelDelConjuroEnLaClase(conjuro, { id: toInt(clase.Id), nombre: clase.Nombre ?? '' });
         const deEsteNivel = new Set(this.getEleccionesDelNivelEnCurso().filter((e) => e.tipo === 'conjuro').map((e) => toInt(e.idElemento)));
         const olvidables = (this.personajeCreacion.Conjuros ?? [])
-            .filter((c) => this.esConjuroDeLaClase(c, claseNorm) && !deEsteNivel.has(toInt(c?.Id)))
+            .filter((c) => esConjuroDeLaClase(c, claseNorm) && !deEsteNivel.has(toInt(c?.Id)))
             .map((c) => ({ conjuro: this.obtenerConjuroCatalogoPorId(toInt(c?.Id)) ?? c, nivel: -1 }))
             .map((o) => ({ ...o, nivel: nivelEnLaClase(o.conjuro) }))
             .filter((o) => o.nivel >= 0 && o.nivel <= tope)
@@ -11597,7 +11602,7 @@ export class NuevoPersonajeService {
             return false;
         const claseNorm = normalizarTexto(opciones.clase.nombre);
         const indice = (this.personajeCreacion.Conjuros ?? [])
-            .findIndex((c) => toInt(c?.Id) === toInt(idOlvidado) && this.esConjuroDeLaClase(c, claseNorm));
+            .findIndex((c) => toInt(c?.Id) === toInt(idOlvidado) && esConjuroDeLaClase(c, claseNorm));
         if (indice < 0)
             return false;
         this.personajeCreacion.Conjuros.splice(indice, 1);

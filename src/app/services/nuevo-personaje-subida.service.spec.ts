@@ -17,7 +17,6 @@ import { fichaDeLaCorreccion } from './utils/correccion-ficha';
 import {
     aplicarReciclajeAlMotor, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dotesParaReciclar, fichaConElReciclaje,
     habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, PlanReciclaje, reciclajeDelPlan,
-    topeDeRangosDelReciclaje,
 } from './utils/reciclaje';
 
 // La subida de nivel con el motor de la creación (roadmap de sesiones, fase 4; estudio de reglas, apartado 1): personajes
@@ -895,7 +894,6 @@ describe('El reciclaje del Manual del jugador II con el motor de la creación (p
         const conPaladin = concentracion(destinosDeRangos(motor, guardado.entrada, trepar, 1, 2, [GUERRERO, PALADIN]));
         expect(conPaladin.motivo).toBeNull();
         expect(conPaladin.clases).toEqual([{ id: 11, nombre: 'Paladín' }]);
-        expect(topeDeRangosDelReciclaje(2)).toBe(5);
         expect(concentracion(destinosDeRangos(motor, guardado.entrada, trepar, 4, 0, [PALADIN])).motivo).toContain('pasaría de 3 rangos');
 
         const trepador = { ...dote(63, 'Trepador'), Prerrequisitos: { habilidad: [

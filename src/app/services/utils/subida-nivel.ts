@@ -185,7 +185,7 @@ function aplicarDiferencia(guardada: Lista | undefined, antes: Lista | undefined
  * sus rangos varios (un rasgo que se gana a N DG con su bonificador de habilidad): la diferencia del motor, con su texto
  * de varios. Lo que el motor ya contaba antes y la ficha guardada no (una ficha de antes) no se toca.
  */
-export function aplicarRangos(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
+function aplicarRangos(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
     const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${Math.max(0, toInt(h?.['idExtra']))}`;
     const previas = new Map((antes ?? []).map((h) => [clave(h), h]));
     const resultado = (guardadas ?? []).map((h) => ({ ...h }));
@@ -245,7 +245,7 @@ export function aplicarModificadoresDelMotor(ficha: PersonajeCreateRequestDto, a
  * Las habilidades de `guardadas` con solo lo que cambia el motor en sus rangos varios (lo que suma una dote, como Alerta,
  * o un rasgo), sin tocar los rangos comprados ni si es de clase: lo que cambia al quitar o poner una dote.
  */
-export function conLosRangosVariosDelMotor(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
+function conLosRangosVariosDelMotor(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
     const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${Math.max(0, toInt(h?.['idExtra']))}`;
     const previas = new Map((antes ?? []).map((h) => [clave(h), h]));
     const soloVarios = (despues ?? []).map((h) => {
@@ -253,6 +253,24 @@ export function conLosRangosVariosDelMotor(guardadas: Lista | undefined, antes: 
         return { ...h, rangos: toInt(previa?.['rangos']), clasea: !!previa?.['clasea'] };
     });
     return aplicarRangos(guardadas, antes, soloVarios);
+}
+
+/**
+ * Las habilidades de `ficha` (las del catálogo y las personalizadas) con lo que cambia el motor entre `antes` y `despues`:
+ * sus rangos (`aplicarRangos`) o, con `soloVarios`, solo sus rangos varios (`conLosRangosVariosDelMotor`). Lo usan la
+ * subida, la adquisición de una plantilla, el reciclaje y la corrección de la ficha.
+ */
+export function aplicarHabilidadesDelMotor(ficha: PersonajeCreateRequestDto, antes: PersonajeCreateRequestDto,
+    despues: PersonajeCreateRequestDto, soloVarios = false): void {
+    const aplicar = soloVarios ? conLosRangosVariosDelMotor : aplicarRangos;
+    const col: any = ficha.colecciones ??= {} as PersonajeCreateRequestDto['colecciones'];
+    const a: any = antes.colecciones?.habilidades ?? {};
+    const d: any = despues.colecciones?.habilidades ?? {};
+    col.habilidades = {
+        ...(col.habilidades ?? {}),
+        base: aplicar(col.habilidades?.base, a.base, d.base),
+        custom: aplicar(col.habilidades?.custom, a.custom, d.custom),
+    };
 }
 
 export interface EntradaFichaDelMotor {
@@ -337,11 +355,7 @@ export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreate
         if (claveElemento(colA[k] ?? []) !== claveElemento(colD[k] ?? []))
             col[k] = aplicarDiferencia(col[k], colA[k], colD[k], k === 'raciales');
     });
-    col.habilidades = {
-        ...(col.habilidades ?? {}),
-        base: aplicarRangos(col.habilidades?.base, colA.habilidades?.base, colD.habilidades?.base),
-        custom: aplicarRangos(col.habilidades?.custom, colA.habilidades?.custom, colD.habilidades?.custom),
-    };
+    aplicarHabilidadesDelMotor(ficha, antes, despues);
     // Los conjuros conocidos: los nuevos del motor y, del intercambio, sin el que olvida.
     const olvidados = datos.olvidados ?? [];
     const conocidos = (col.conjurosConocidos ?? []).filter((c: any) => !olvidados.some((o) =>

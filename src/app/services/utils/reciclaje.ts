@@ -4,11 +4,12 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
 import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
-import { nivelesDeClaseDelConjuro } from 'src/app/services/nuevo-personaje.service';
-import { CARACTERISTICAS_DEL_ALTA } from './correccion-ficha';
+import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
+import { CARACTERISTICAS_DEL_ALTA, sacarPrimero } from './correccion-ficha';
 import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from './habilidad-extra-visible';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
-import { aplicarModificadoresDelMotor, conLosRangosVariosDelMotor } from './subida-nivel';
+import { limiteRangosHabilidad } from './puntos-habilidad';
+import { aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subida-nivel';
 import { CambioSubida } from './subida-nivel-vista';
 
 /*
@@ -24,11 +25,6 @@ import { CambioSubida } from './subida-nivel-vista';
 export const MAXIMO_RANGOS_RECICLADOS = 4;
 /** Como mucho, los conocidos que se cambian (MJ II, pág. 196). */
 export const MAXIMO_CONJUROS_RECICLADOS = 2;
-
-/** El tope de rangos de la habilidad de destino: el nivel de personaje de antes de subir + 3 (MJ II, pág. 196). */
-export function topeDeRangosDelReciclaje(nivelPersonaje: number): number {
-    return Math.max(0, toInt(nivelPersonaje)) + 3;
-}
 
 /** Lo que se elige en el paso «Reciclar», con los nombres para el resumen. */
 export type PlanReciclaje =
@@ -146,12 +142,6 @@ export function filaDelReciclaje(plan: PlanReciclaje): CambioSubida {
     };
 }
 
-/** Quita el primero que cumple `es` y lo devuelve (o `undefined`). */
-function sacarPrimero<T>(lista: T[], es: (x: T) => boolean): T | undefined {
-    const i = lista.findIndex(es);
-    return i < 0 ? undefined : lista.splice(i, 1)[0];
-}
-
 /**
  * La `entrada` con el reciclaje hecho: la ficha sobre la que sigue la subida (la que se manda lleva, además, el nivel).
  * Lo nuevo va en el hueco de lo antiguo (la dote, con su origen; el idioma y el conocido, con el suyo); los rangos pasan
@@ -213,13 +203,7 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
             if (guardada && !guardada.perdido && delta !== 0)
                 guardada.valor = toInt(guardada.valor) + delta;
         });
-        const antes: any = motor.antes.colecciones?.habilidades ?? {};
-        const despues: any = motor.despues.colecciones?.habilidades ?? {};
-        col.habilidades = {
-            ...(col.habilidades ?? {}),
-            base: conLosRangosVariosDelMotor(col.habilidades?.base, antes.base, despues.base),
-            custom: conLosRangosVariosDelMotor(col.habilidades?.custom, antes.custom, despues.custom),
-        };
+        aplicarHabilidadesDelMotor(ficha, motor.antes, motor.despues, true);
     }
     return ficha;
 }
@@ -232,11 +216,6 @@ export interface LoQueQuita {
     idioma?: string;
     rangos?: { idHabilidad: number; idExtra: number; rangos: number; };
     conjuros?: Array<{ idConjuro: number; clase: string; }>;
-}
-
-function esDeLaClase(conjuro: Conjuro, clase: string): boolean {
-    const origen = normalizarTexto(`${(conjuro as any)?.Clase_origen ?? (conjuro as any)?.Origen_clase ?? ''}`);
-    return origen.length < 1 || origen === normalizarTexto(clase);
 }
 
 /** Las clases que tiene, del catálogo del motor. */
@@ -281,7 +260,7 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
             if (h)
                 h.Rangos = Math.max(0, toNumber(h.Rangos) - r.rangos);
         }
-        (quita.conjuros ?? []).forEach((c) => sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.idConjuro && esDeLaClase(x, c.clase)));
+        (quita.conjuros ?? []).forEach((c) => sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.idConjuro && esConjuroDeLaClase(x, normalizarTexto(c.clase))));
 
         const sinDote = (d: { idDote: number; idExtra: number; origen: string; }) => !quita.dote || clave(d) !== clave(quita.dote);
         const motivos = motor.dotesSinSusPrerrequisitos()
@@ -396,7 +375,8 @@ export function habilidadesConRangos(motor: NuevoPersonajeService, entrada: Pers
  */
 export function destinosDeRangos(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto, origen: HabilidadConRangos,
     rangos: number, nivelPersonaje: number, clasesQuePuedeSubir: Clase[]): DestinoDeRangos[] {
-    const tope = topeDeRangosDelReciclaje(nivelPersonaje);
+    // El de una de clase con el nivel de antes de subir (MJ II, pág. 196).
+    const tope = limiteRangosHabilidad(nivelPersonaje, true);
     const propias = clasesQueTiene(motor);
     const guardadas = entrada.colecciones?.habilidades?.base ?? [];
     return (motor.PersonajeCreacion.Habilidades ?? [])
@@ -421,14 +401,6 @@ export function destinosDeRangos(motor: NuevoPersonajeService, entrada: Personaj
             return { ...base, clases: deLasSuyas ? null : deLaQueSube, motivo: null };
         })
         .sort((a, b) => Number(!!a.motivo) - Number(!!b.motivo) || a.nombre.localeCompare(b.nombre, 'es'));
-}
-
-/** El nivel del conjuro en la lista de la clase (`Nivel_clase`); −1 si no está. */
-export function nivelDelConjuroEnLaClase(conjuro: Conjuro | null | undefined, clase: { id: number; nombre: string; }): number {
-    if (!conjuro)
-        return -1;
-    const nombre = normalizarTexto(clase.nombre);
-    return nivelesDeClaseDelConjuro(conjuro).find((n) => n.id === toInt(clase.id) || n.nombre === nombre)?.nivel ?? -1;
 }
 
 /**
@@ -503,7 +475,7 @@ export function aplicarReciclajeAlMotor(motor: NuevoPersonajeService, plan: Plan
     const catalogo: Conjuro[] = (motor as any).catalogoConjuros ?? [];
     for (const c of plan.cambios) {
         const nuevo = catalogo.find((k) => toInt(k?.Id) === c.aprende.id);
-        if (!nuevo || !sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.olvida.id && esDeLaClase(x, c.clase)))
+        if (!nuevo || !sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.olvida.id && esConjuroDeLaClase(x, normalizarTexto(c.clase))))
             return false;
         pj.Conjuros.push({ ...JSON.parse(JSON.stringify(nuevo)), Clase_origen: c.clase, Origen_clase: c.clase } as Conjuro);
     }

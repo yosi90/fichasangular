@@ -2,7 +2,7 @@ import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristi
 import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { toInt } from './normalizacion';
 import { DecisionHomebrew } from './personaje-oficialidad';
-import { aplicarModificadoresDelMotor, aplicarRangos, conLosRangosVariosDelMotor } from './subida-nivel';
+import { aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subida-nivel';
 
 /*
  * La corrección de la ficha (roadmap de sesiones, fase 6; guía `docs/publica/SESIONES_FRONT.md`, «Modificar y corregir»):
@@ -59,19 +59,19 @@ export interface CambiosCorreccion {
     motor?: { antes: PersonajeCreateRequestDto; despues: PersonajeCreateRequestDto; } | null;
 }
 
-/** Quita el primer elemento que cumple `es` (y devuelve si lo ha quitado). */
-function quitarPrimero<T>(lista: T[] | undefined, es: (x: T) => boolean): boolean {
+/**
+ * Quita de `lista` el primer elemento que cumple `es` y lo devuelve (o `undefined` si no hay ninguno). Lo usan la
+ * corrección, la pérdida de nivel (`perder-nivel.ts`) y el reciclaje (`reciclaje.ts`).
+ */
+export function sacarPrimero<T>(lista: T[] | undefined, es: (x: T) => boolean): T | undefined {
     const i = (lista ?? []).findIndex(es);
-    if (i < 0)
-        return false;
-    lista!.splice(i, 1);
-    return true;
+    return i < 0 ? undefined : lista!.splice(i, 1)[0];
 }
 
 /** Las elecciones de los niveles guardados sin la de ese tipo y ese elemento (la primera, de abajo arriba). */
 function quitarEleccion(ficha: PersonajeCreateRequestDto, tipo: string, idElemento: number, idExtra: number | null): void {
     for (const nivel of [...(ficha.niveles ?? [])].reverse()) {
-        if (quitarPrimero(nivel.elecciones, (e) => e.tipo === tipo && toInt(e.idElemento) === toInt(idElemento)
+        if (sacarPrimero(nivel.elecciones, (e) => e.tipo === tipo && toInt(e.idElemento) === toInt(idElemento)
             && (idExtra === null || toInt(e.idExtra) === toInt(idExtra))))
             return;
     }
@@ -92,8 +92,8 @@ export function fichaDeLaCorreccion(entrada: PersonajeCreateRequestDto, cambios:
     const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) };
     col.dotes = [...(col.dotes ?? [])];
     cambios.dotesQuitadas.forEach((d) => {
-        quitarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === d.idDote && toInt(x?.idExtra) === d.idExtra && `${x?.origen ?? ''}` === d.origen)
-            || quitarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === d.idDote && toInt(x?.idExtra) === d.idExtra);
+        sacarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === d.idDote && toInt(x?.idExtra) === d.idExtra && `${x?.origen ?? ''}` === d.origen)
+            || sacarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === d.idDote && toInt(x?.idExtra) === d.idExtra);
         quitarEleccion(ficha, 'dote', d.idDote, d.idExtra);
     });
     (cambios.dotesNuevas ?? []).forEach((d) => {
@@ -114,36 +114,23 @@ export function fichaDeLaCorreccion(entrada: PersonajeCreateRequestDto, cambios:
     if (cambios.motor) {
         aplicarModificadoresDelMotor(ficha, cambios.motor.antes, cambios.motor.despues);
         // Con los rangos repartidos otra vez, sus varios van con ellos (abajo).
-        if (!cambios.rangos) {
-            const antes: any = cambios.motor.antes.colecciones?.habilidades ?? {};
-            const despues: any = cambios.motor.despues.colecciones?.habilidades ?? {};
-            col.habilidades = {
-                ...(col.habilidades ?? {}),
-                base: conLosRangosVariosDelMotor(col.habilidades?.base, antes.base, despues.base),
-                custom: conLosRangosVariosDelMotor(col.habilidades?.custom, antes.custom, despues.custom),
-            };
-        }
+        if (!cambios.rangos)
+            aplicarHabilidadesDelMotor(ficha, cambios.motor.antes, cambios.motor.despues, true);
     }
     if (cambios.rangos) {
-        const antes: any = cambios.rangos.antes.colecciones?.habilidades ?? {};
-        const despues: any = cambios.rangos.despues.colecciones?.habilidades ?? {};
-        col.habilidades = {
-            ...(col.habilidades ?? {}),
-            base: aplicarRangos(col.habilidades?.base, antes.base, despues.base),
-            custom: aplicarRangos(col.habilidades?.custom, antes.custom, despues.custom),
-        };
+        aplicarHabilidadesDelMotor(ficha, cambios.rangos.antes, cambios.rangos.despues);
         (ficha.niveles ?? []).forEach((nivel, i) => {
             nivel.elecciones = [...(nivel.elecciones ?? []).filter((e) => e.tipo !== 'rangos'), ...(cambios.rangos!.porNivel[i] ?? [])];
         });
     }
     col.idiomas = [...(col.idiomas ?? [])];
     cambios.idiomasQuitados.forEach((id) => {
-        quitarPrimero(col.idiomas, (x: any) => toInt(x?.idIdioma) === toInt(id));
+        sacarPrimero(col.idiomas, (x: any) => toInt(x?.idIdioma) === toInt(id));
         quitarEleccion(ficha, 'idioma', id, null);
     });
     col.conjurosConocidos = [...(col.conjurosConocidos ?? [])];
     cambios.conjurosQuitados.forEach((c) => {
-        quitarPrimero(col.conjurosConocidos, (x: any) => !x?.copiado && toInt(x?.idConjuro) === c.idConjuro
+        sacarPrimero(col.conjurosConocidos, (x: any) => !x?.copiado && toInt(x?.idConjuro) === c.idConjuro
             && (c.idClase === null || toInt(x?.idClase) === c.idClase));
         quitarEleccion(ficha, 'conjuro', c.idConjuro, c.idClase);
     });
