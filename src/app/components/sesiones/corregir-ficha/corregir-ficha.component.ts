@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
+import { doteElegidaEnElHueco } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
@@ -30,6 +31,7 @@ import {
     campanaDejaSaltarAlineamiento,
     maximoFuentesHomebrew,
     modoHomebrewDeCampana,
+    ofreceHomebrewALaFicha,
 } from 'src/app/services/utils/politica-campana';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
@@ -349,7 +351,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             })
             .filter((d) => d.idDote > 0);
         const s: any = this.svc;
-        const nombre = (lista: Array<{ Id?: number; Nombre?: string; }> | undefined, id: number) =>
+        const nombre = (lista: ReadonlyArray<{ Id?: number; Nombre?: string; }> | undefined, id: number) =>
             (lista ?? []).find((x) => toInt(x?.Id) === toInt(id))?.Nombre ?? `#${id}`;
         this.idiomas = (entrada.colecciones?.idiomas ?? []).map((i) => ({
             id: toInt(i.idIdioma), idClase: null, nombre: nombre(this.svc.EstadoFlujo.ventajas.catalogoIdiomas as any, toInt(i.idIdioma)), quitado: false,
@@ -357,7 +359,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         this.conjuros = (entrada.colecciones?.conjurosConocidos ?? []).filter((c) => !c.copiado).map((c) => {
             const idClase = toInt(c.idClase) > 0 ? toInt(c.idClase) : null;
             const clase = idClase ? ` (${nombre(s.catalogoClases, idClase).toLowerCase()})` : '';
-            return { id: toInt(c.idConjuro), idClase, nombre: `${nombre(s.catalogoConjuros, toInt(c.idConjuro))}${clase}`, quitado: false };
+            return { id: toInt(c.idConjuro), idClase, nombre: `${nombre(this.svc.CatalogoConjuros, toInt(c.idConjuro))}${clase}`, quitado: false };
         });
         this.tiradas = (entrada.niveles ?? []).flatMap((n, indice) => {
             const clase = this.svc.claseDelCatalogo(toInt(n.idClase));
@@ -515,7 +517,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
      * (o la que tiene).
      */
     get deidadesElegibles(): DeidadDetalle[] {
-        const conHomebrew = this.pj?.Oficial === false && modoHomebrewDeCampana(this.politica) !== 'forbidden';
+        const conHomebrew = ofreceHomebrewALaFicha(this.pj?.Oficial, this.politica);
         const actual = toInt(this.entrada?.personaje?.deidad);
         return this.deidades.filter((d) => toInt(d.Id) === actual
             || ((d.Oficial !== false || (conHomebrew && !this.superaLasFuentes('deidad', d, 'deidad'))) && !this.rompeDeidadTutelar(d)));
@@ -625,12 +627,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             this.svc.omitirDotePendiente(pendiente.id);
             return;
         }
-        const elegida = [...(this.svc.PersonajeCreacion.DotesContextuales ?? [])].reverse()
-            .find((d) => toInt(d?.Dote?.Id) === toInt(seleccion.idDote) && `${(d?.Contexto as any)?.Origen ?? ''}` === `${pendiente.origenFijo}`);
-        fila.sustituta = {
-            idDote: toInt(seleccion.idDote), idExtra: toInt(elegida?.Contexto?.Id_extra ?? seleccion.idExtra),
-            nombre: `${elegida?.Dote?.Nombre ?? ''}`, extra: toInt(elegida?.Contexto?.Id_extra) > 0 ? `${elegida?.Contexto?.Extra ?? ''}` : '',
-        };
+        fila.sustituta = doteElegidaEnElHueco(this.svc, pendiente, seleccion);
         this.recalcular();
     }
 
@@ -778,6 +775,8 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             rangos: this.rangosRepartidos && this.cuerpoAntes
                 ? { antes: this.cuerpoAntes, despues: this.motor.cuerpoDelMotor(this.svc, this.entrada!), porNivel }
                 : null,
+            // Lo que daban las dotes quitadas y lo que dan las que entran en su hueco (la API no lo recalcula).
+            motor: this.cuerpoAntes ? { antes: this.cuerpoAntes, despues: this.motor.cuerpoDelMotor(this.svc, this.entrada!) } : null,
             decisionesRecalculadas: this.decisionesRecalculadas(),
         };
     }

@@ -219,6 +219,42 @@
         color: $ficha-texto
         font: inherit
 
+// El paso «Reciclar»: los tipos, como opciones de 44 px, y los desplegables de cada uno, en fila.
+.subida__opciones
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.subida__opcion
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 4px 10px
+    min-height: 44px
+    padding: 0 12px
+    border-radius: $ficha-radio
+    background: $ficha-fila-alterna
+    cursor: pointer
+
+.subida__opcion--bloqueada
+    cursor: default
+
+    .subida__opcion-texto
+        color: $ficha-texto-suave
+
+.subida__campos
+    display: flex
+    flex-wrap: wrap
+    align-items: flex-end
+    gap: 12px
+
+    .subida__campo
+        flex: 1 1 200px
+        min-width: 0
+
+        select
+            width: 100%
+
 .subida__pie
     display: flex
     flex-wrap: wrap

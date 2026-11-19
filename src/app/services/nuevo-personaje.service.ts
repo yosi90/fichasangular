@@ -1143,6 +1143,22 @@ function nivelesDeClaseDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
     }));
 }
 
+/** El nivel del conjuro en la lista de la clase (`Nivel_clase`, por su id o su nombre); −1 si no está. */
+export function nivelDelConjuroEnLaClase(conjuro: Conjuro | null | undefined, clase: { id: number; nombre: string; }): number {
+    if (!conjuro)
+        return -1;
+    const nombre = normalizarTexto(clase.nombre);
+    return nivelesDeClaseDelConjuro(conjuro).find((n) => n.id === toInt(clase.id) || n.nombre === nombre)?.nivel ?? -1;
+}
+
+/** Si un conjuro conocido del personaje es de esa clase (su origen, `claseNorm` normalizado); sin origen, cuenta para todas. */
+export function esConjuroDeLaClase(conjuro: Conjuro, claseNorm: string): boolean {
+    const origenClase = normalizarTexto(
+        `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
+    );
+    return origenClase.length < 1 || origenClase === claseNorm;
+}
+
 /** Los niveles del conjuro en las listas de dominio (`Nivel_dominio`), leídos igual de la API y de la caché. */
 function nivelesDeDominioDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
     return toArray<Record<string, any>>(conjuro?.Nivel_dominio).map((nivel) => ({
@@ -1291,6 +1307,11 @@ export class NuevoPersonajeService {
 
     get EstadoFlujo(): EstadoFlujoNuevoPersonaje {
         return this.estadoFlujo;
+    }
+
+    /** El catálogo de conjuros cargado (`setCatalogoConjuros`), para leerlo: el reciclaje y los nombres de las sesiones. */
+    get CatalogoConjuros(): readonly Conjuro[] {
+        return this.catalogoConjuros;
     }
 
     get TieneRestriccionCampanaGenerador(): boolean {
@@ -7079,10 +7100,12 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Su tope es el de una de clase (nivel + 3): lo es en cualquiera de las clases del personaje, en sus DG raciales o de
-     * plantilla, o en esta sesión (MJ cap. 3, «Personajes multiclase»). El compañero, solo con lo suyo.
+     * Su tope es el de una de clase (nivel + 3): lo es en cualquiera de las clases del personaje (con sus dominios), por
+     * su raza (los raciales «siempre de clase»), en sus DG raciales o de plantilla, o en esta sesión (MJ cap. 3,
+     * «Personajes multiclase»); en un personaje guardado, también la que su ficha da de clase (`deClase`). El compañero,
+     * solo con lo suyo. La usa también el reciclaje de la subida (el destino de los rangos).
      */
-    private esHabilidadDeClaseEnAlguna(habilidad: Personaje['Habilidades'][number]): boolean {
+    esHabilidadDeClaseEnAlguna(habilidad: Personaje['Habilidades'][number]): boolean {
         if (habilidad.Clasea || this.esHabilidadClaseaParaSesion(habilidad))
             return true;
         if (this.estadoFlujo.habilidades.origen === 'companero_dg' || toNumber(habilidad?.Id) <= 0)
@@ -7762,6 +7785,15 @@ export class NuevoPersonajeService {
         });
     }
 
+    /**
+     * Las habilidades del catálogo que la clase hace de clase: las de `Habilidades.Base` y las que lo son solo con un
+     * alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma). Las personalizadas van aparte
+     * (`Habilidades.Custom`). Las usan el primer nivel de la clase y el reciclaje de la subida (la clase que sube).
+     */
+    habilidadesDeClaseDeLaClase(clase: Clase): Record<string, any>[] {
+        return [...(clase?.Habilidades?.Base ?? []) as Record<string, any>[], ...this.habilidadesPorAlineamientoDeClase(clase)];
+    }
+
     private aplicarHabilidadesPrimerNivelClase(clase: Clase): void {
         const refsBase = (clase?.Habilidades?.Base ?? []);
         const refsCustom = (clase?.Habilidades?.Custom ?? []);
@@ -7769,17 +7801,12 @@ export class NuevoPersonajeService {
             return;
 
         const aseguradas = [
-            ...refsBase.map((ref) => this.asegurarHabilidadDesdeReferencia(ref as Record<string, any>, {
-                marcarClasea: true,
-                customPreferido: false,
-            })),
+            ...this.habilidadesDeClaseDeLaClase(clase)
+                .map((ref) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false })),
             ...refsCustom.map((ref) => this.asegurarHabilidadDesdeReferencia(ref as Record<string, any>, {
                 marcarClasea: true,
                 customPreferido: true,
             })),
-            // Las que son de clase solo con un alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma).
-            ...this.habilidadesPorAlineamientoDeClase(clase)
-                .map((ref) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false })),
         ];
         this.anotarHabilidadesDeClase(origenDeClase(clase?.Nombre), aseguradas);
 
@@ -8806,7 +8833,7 @@ export class NuevoPersonajeService {
         const claseNorm = normalizarTexto(claseObjetivo.Nombre ?? '');
         const sinDominios = new Set<string>();
         return (this.personajeCreacion.Conjuros ?? [])
-            .filter((conjuro) => toNumber(conjuro?.Id) > 0 && this.esConjuroDeLaClase(conjuro, claseNorm))
+            .filter((conjuro) => toNumber(conjuro?.Id) > 0 && esConjuroDeLaClase(conjuro, claseNorm))
             .map((conjuro) => ({
                 conjuro,
                 nivel: this.resolverNivelConjuroParaClase(
@@ -9396,15 +9423,7 @@ export class NuevoPersonajeService {
 
         const claseNorm = normalizarTexto(nombreClase);
         return (this.personajeCreacion.Conjuros ?? [])
-            .some((conjuro) => toNumber(conjuro?.Id) === id && this.esConjuroDeLaClase(conjuro, claseNorm));
-    }
-
-    /** Si un conjuro conocido es de esa clase (su origen); sin origen, cuenta para todas. */
-    private esConjuroDeLaClase(conjuro: Conjuro, claseNorm: string): boolean {
-        const origenClase = normalizarTexto(
-            `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
-        );
-        return origenClase.length < 1 || origenClase === claseNorm;
+            .some((conjuro) => toNumber(conjuro?.Id) === id && esConjuroDeLaClase(conjuro, claseNorm));
     }
 
     private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {
@@ -11523,9 +11542,7 @@ export class NuevoPersonajeService {
         this.estadoFlujo.ventajas.baseCaracteristicas = { ...finales };
         this.estadoFlujo.ventajas.baseRaciales = this.reconstruirBaseRacialesDesdeBorrador();
         this.estadoFlujo.ventajas.baseIdiomas = this.reconstruirBaseIdiomasDesdeBorrador();
-        const ventajas = [...(pj.Ventajas ?? [])];
-        this.recalcularEfectosVentajas();
-        pj.Ventajas = ventajas;
+        this.recalcularEfectosConservandoVentajas();
         const base = this.estadoFlujo.ventajas.baseCaracteristicas!;
         CARACTERISTICAS.forEach((key) => {
             const suma = (pj.CaracteristicasVarios?.[key] ?? []).reduce((acc, mod) => acc + toNumber(mod?.valor), 0);
@@ -11567,13 +11584,10 @@ export class NuevoPersonajeService {
         if (tope < 0)
             return null;
         const claseNorm = normalizarTexto(clase.Nombre);
-        const nivelEnLaClase = (conjuro: Conjuro): number => {
-            const entrada = nivelesDeClaseDelConjuro(conjuro).find((n) => n.id === toInt(clase.Id) || n.nombre === claseNorm);
-            return entrada ? entrada.nivel : -1;
-        };
+        const nivelEnLaClase = (conjuro: Conjuro): number => nivelDelConjuroEnLaClase(conjuro, { id: toInt(clase.Id), nombre: clase.Nombre ?? '' });
         const deEsteNivel = new Set(this.getEleccionesDelNivelEnCurso().filter((e) => e.tipo === 'conjuro').map((e) => toInt(e.idElemento)));
         const olvidables = (this.personajeCreacion.Conjuros ?? [])
-            .filter((c) => this.esConjuroDeLaClase(c, claseNorm) && !deEsteNivel.has(toInt(c?.Id)))
+            .filter((c) => esConjuroDeLaClase(c, claseNorm) && !deEsteNivel.has(toInt(c?.Id)))
             .map((c) => ({ conjuro: this.obtenerConjuroCatalogoPorId(toInt(c?.Id)) ?? c, nivel: -1 }))
             .map((o) => ({ ...o, nivel: nivelEnLaClase(o.conjuro) }))
             .filter((o) => o.nivel >= 0 && o.nivel <= tope)
@@ -11599,7 +11613,7 @@ export class NuevoPersonajeService {
             return false;
         const claseNorm = normalizarTexto(opciones.clase.nombre);
         const indice = (this.personajeCreacion.Conjuros ?? [])
-            .findIndex((c) => toInt(c?.Id) === toInt(idOlvidado) && this.esConjuroDeLaClase(c, claseNorm));
+            .findIndex((c) => toInt(c?.Id) === toInt(idOlvidado) && esConjuroDeLaClase(c, claseNorm));
         if (indice < 0)
             return false;
         this.personajeCreacion.Conjuros.splice(indice, 1);
@@ -11647,9 +11661,17 @@ export class NuevoPersonajeService {
     corregirEdad(edad: number): void {
         const pj = this.personajeCreacion;
         pj.Edad = Math.max(0, Math.trunc(toNumber(edad)));
-        const ventajas = [...(pj.Ventajas ?? [])];
+        this.recalcularEfectosConservandoVentajas();
+    }
+
+    /**
+     * Vuelve a calcular lo que suman sus rasgos, sus dotes, sus plantillas y su edad (`recalcularEfectosVentajas`, el
+     * recálculo de la creación) sin tocar sus ventajas: un personaje guardado las trae en su ficha, no en la selección.
+     */
+    private recalcularEfectosConservandoVentajas(): void {
+        const ventajas = [...(this.personajeCreacion.Ventajas ?? [])];
         this.recalcularEfectosVentajas();
-        pj.Ventajas = ventajas;
+        this.personajeCreacion.Ventajas = ventajas;
     }
 
     /** Lo que se eligió en cada nivel, en su orden (una copia). */
@@ -11726,7 +11748,16 @@ export class NuevoPersonajeService {
         };
     }
 
-    /** Quita del personaje una dote que tiene (la primera con ese id, extra y origen) y su elección. `false` si no la tiene. */
+    /** Si la dote con ese origen se eligió en un hueco (de nivel, adicional de una clase o de la raza), no la dio fija nada. */
+    esDoteElegida(origen: string): boolean {
+        return this.huecoDeDote(origen) !== null;
+    }
+
+    /**
+     * Quita del personaje una dote que tiene (la primera con ese id, extra y origen) y su elección, y lo que daba (sus
+     * modificadores a las características, las salvaciones, la iniciativa, la presa y las habilidades: el recálculo de la
+     * creación, que parte de las dotes que le quedan). `false` si no la tiene.
+     */
     quitarDoteDeLaFicha(idDote: number, idExtra: number, origen: string): boolean {
         const pj = this.personajeCreacion;
         const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(idDote)
@@ -11744,6 +11775,8 @@ export class NuevoPersonajeService {
             && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
         if (nivel && k >= 0)
             nivel.elecciones!.splice(k, 1);
+        this.recalcularEfectosConservandoVentajas();
+        this.recalcularDerivadasPorCombate();
         return true;
     }
 

@@ -5,13 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
+import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { SelectorClaseOpcionalModalComponent } from 'src/app/components/nuevo-personaje/selector-clase-opcional-modal/selector-clase-opcional-modal.component';
 import { SelectorDominiosModalComponent } from 'src/app/components/nuevo-personaje/selector-dominios-modal/selector-dominios-modal.component';
 import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
-import { avisarPaso, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
+import { avisarPaso, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { Clase } from 'src/app/interfaces/clase';
@@ -24,12 +25,35 @@ import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
-import { IntercambioConjurosNivel, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase, SeleccionOpcionalesClase } from 'src/app/services/nuevo-personaje.service';
+import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase, SeleccionOpcionalesClase } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
+import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
+import {
+    aplicarReciclajeAlMotor,
+    ClaseConConocidos,
+    conjurosParaAprender,
+    conocidosParaReciclar,
+    DestinoDeRangos,
+    destinosDeRangos,
+    DoteReciclable,
+    dotesParaReciclar,
+    fichaConElReciclaje,
+    filaDelReciclaje,
+    HabilidadConRangos,
+    habilidadesConRangos,
+    huecoDeLaDoteReciclada,
+    IdiomaReciclable,
+    idiomasParaReciclar,
+    loQueDejariaDeCumplir,
+    MAXIMO_CONJUROS_RECICLADOS,
+    MAXIMO_RANGOS_RECICLADOS,
+    PlanReciclaje,
+    reciclajeDelPlan,
+} from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
@@ -48,6 +72,18 @@ interface BorradorSubida {
     tiradas: number[];
     tiradaElegida: number | null;
     olvidado: { idConjuro: number; idClase: number; } | null;
+    /** Lo reciclado (ya en el motor): el plan, la ficha con el cambio y las clases que exige (los rangos a otra de clase). */
+    reciclaje?: { plan: PlanReciclaje; entrada: PersonajeCreateRequestDto; clases: number[] | null; } | null;
+}
+
+/** Lo que se puede elegir en el paso «Reciclar» (MJ II, tabla 8-1; esta tanda, sin rasgos de clase ni niveles de sustitución). */
+type TipoDeReciclaje = 'ninguno' | PlanReciclaje['tipo'];
+
+/** Un cambio de conjuros a medio elegir: la clase, el que olvida y el que aprende en su lugar. */
+interface CambioDeConjuro {
+    idClase: number | null;
+    olvida: number | null;
+    aprende: number | null;
 }
 
 const CADUCIDAD_BORRADOR_MS = 7 * 24 * 60 * 60 * 1000;
@@ -80,6 +116,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     errorPaso: PasoSubida | null = null;
     paso: PasoSubida = 'clase';
     pasos: PasoSubida[] = ['clase', 'resumen'];
+    /** Si la subida deja reciclar: la campaña (`politicaCompra.permitirReciclaje`); sin campaña o en un PNJ, sí. */
+    permiteReciclar = false;
 
     pj: Personaje | null = null;
     entrada: PersonajeCreateRequestDto | null = null;
@@ -104,6 +142,34 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     filtroConjuros = '';
 
     cambios: CambioSubida[] = [];
+
+    // El reciclaje (Manual del jugador II, págs. 194-196): qué se elige en el paso y lo que ofrece cada tipo.
+    readonly maximoRangos = MAXIMO_RANGOS_RECICLADOS;
+    readonly maximoConjuros = MAXIMO_CONJUROS_RECICLADOS;
+    tipoReciclaje: TipoDeReciclaje = 'ninguno';
+    opcionesReciclaje: Array<{ tipo: TipoDeReciclaje; etiqueta: string; motivo: string; }> = [];
+    dotesReciclables: DoteReciclable[] = [];
+    /** La dote que se recicla y la que entra en su hueco (elegida en el selector de la creación). */
+    planDote: Extract<PlanReciclaje, { tipo: 'dote'; }> | null = null;
+    idiomasReciclables: IdiomaReciclable[] = [];
+    idiomasAprendibles: Array<{ idIdioma: number; nombre: string; }> = [];
+    idiomaQuita: number | null = null;
+    idiomaPone: number | null = null;
+    habilidadesReciclables: HabilidadConRangos[] = [];
+    rangosOrigen: number | null = null;
+    rangosDestino: number | null = null;
+    rangosCantidad = 1;
+    destinosRangos: DestinoDeRangos[] = [];
+    /** Lo que dejaría de cumplir quitar esos rangos («Maestro del saber (No cumple: Saber (religión) 8 rangos)»). */
+    bloqueoRangos = '';
+    clasesConConocidos: ClaseConConocidos[] = [];
+    cambiosConjuros: CambioDeConjuro[] = [{ idClase: null, olvida: null, aprende: null }];
+    /** Lo reciclado, ya hecho en el motor: va en el cuerpo de la subida y en la primera fila del resumen. */
+    plan: PlanReciclaje | null = null;
+    /** La `entrada` con el reciclaje hecho: la ficha sobre la que va el nivel. */
+    private entradaReciclada: PersonajeCreateRequestDto | null = null;
+    /** Las clases que puede subir si los rangos van a una habilidad que solo es de clase para alguna de ellas. */
+    private clasesDelReciclaje: number[] | null = null;
     private antes: PersonajeCreateRequestDto | null = null;
     /** La cuenta con la que se abrió: lo que llega después de cerrarla o de cambiar de cuenta se descarta. */
     private readonly cuenta: MismaCuenta;
@@ -154,11 +220,12 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     nombreConjuro(id: number): string {
-        return (this.svc as any).catalogoConjuros?.find((c: Conjuro) => toInt(c?.Id) === toInt(id))?.Nombre ?? `#${id}`;
+        return this.svc.CatalogoConjuros.find((c) => toInt(c?.Id) === toInt(id))?.Nombre ?? `#${id}`;
     }
 
     etiquetaPaso(paso: PasoSubida): string {
         const nombres: Record<PasoSubida, string> = {
+            reciclar: 'Reciclar',
             clase: this.claseElegida ? `Clase: ${this.claseElegida.Nombre.toLowerCase()}` : 'Clase',
             incremento: 'Incremento',
             pg: 'Puntos de golpe',
@@ -200,11 +267,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.entrada = entrada;
             this.pj = pj;
             this.tiradasPermitidas = await tiradasPermitidasDe(entrada, this.campanaSvc);
+            this.permiteReciclar = pj.PoliticaCompra?.permitirReciclaje !== false;
+            this.pasos = this.pasosIniciales();
             await this.hidratar();
             if (!this.cuenta.sigue())
                 return;
             if (!await this.restaurarBorrador())
-                this.irA('clase');
+                this.irA(this.pasos[0]);
         } catch (error: any) {
             this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido preparar la subida de nivel.';
         } finally {
@@ -216,6 +285,17 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         await this.motor.hidratar(this.svc, this.pj!, this.entrada!, this.nivelesPerdidos);
         this.antes = this.cuerpoDelMotor();
         this.recalcularClases();
+        this.prepararReciclaje();
+    }
+
+    /** Los pasos antes de elegir la clase: «Reciclar», si la campaña lo deja, la clase y el resumen. */
+    private pasosIniciales(): PasoSubida[] {
+        return [...(this.permiteReciclar ? ['reciclar' as const] : []), 'clase', 'resumen'];
+    }
+
+    /** La ficha sobre la que va el nivel: la `entrada`, con lo reciclado si lo hay. */
+    private get entradaDelNivel(): PersonajeCreateRequestDto {
+        return this.entradaReciclada ?? this.entrada!;
     }
 
     /** El cuerpo del alta que arma el motor ahora (para la diferencia de la subida). */
@@ -243,7 +323,16 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 };
             })
             .filter((item) => item.elegible || item.tiene)
+            .map((item) => this.clasesDelReciclaje && item.elegible && !this.clasesDelReciclaje.includes(toInt(item.clase.Id))
+                ? { ...item, elegible: false, motivo: this.motivoClaseDelReciclaje() }
+                : item)
             .sort((a, b) => Number(b.tiene) - Number(a.tiene) || a.clase.Nombre.localeCompare(b.clase.Nombre, 'es'));
+    }
+
+    private motivoClaseDelReciclaje(): string {
+        const plan = this.plan?.tipo === 'rangos' ? this.plan : null;
+        const nombres = (this.clasesDelReciclaje ?? []).map((id) => this.svc.claseDelCatalogo(id)?.Nombre).filter((n) => !!n);
+        return `Los rangos reciclados van a ${plan?.pone.nombre ?? 'una habilidad'}, que solo es de clase para ${nombres.join(' o ')}: este nivel tiene que ser de ${nombres.length > 1 ? 'una de ellas' : 'esa clase'}.`;
     }
 
     async elegirClase(clase: Clase): Promise<void> {
@@ -323,6 +412,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.svc.iniciarDistribucionHabilidadesPorClase(clase);
         this.intercambio = this.svc.getIntercambioConjurosDelNivel();
         this.pasos = [
+            ...(this.permiteReciclar ? ['reciclar' as const] : []),
             'clase',
             ...(this.svc.getAumentosCaracteristicaPendientes().length > 0 ? ['incremento' as const] : []),
             ...(this.daDg && this.carasDg > 0 ? ['pg' as const] : []),
@@ -391,6 +481,235 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         return true;
     }
 
+    // --- El reciclaje (Manual del jugador II, págs. 194-196) ------------------------------------------------------------
+
+    /** Lo que ofrece cada tipo, con el personaje de antes de subir (el motor recién hidratado). */
+    private prepararReciclaje(): void {
+        this.tipoReciclaje = 'ninguno';
+        this.planDote = null;
+        this.idiomaQuita = this.idiomaPone = null;
+        this.rangosOrigen = this.rangosDestino = null;
+        this.rangosCantidad = 1;
+        this.destinosRangos = [];
+        this.bloqueoRangos = '';
+        this.dotesReciclables = [];
+        this.idiomasReciclables = [];
+        this.idiomasAprendibles = [];
+        this.habilidadesReciclables = [];
+        this.clasesConConocidos = [];
+        this.cambiosConjuros = [{ idClase: null, olvida: null, aprende: null }];
+        if (!this.permiteReciclar || !this.entrada)
+            return;
+        this.dotesReciclables = dotesParaReciclar(this.svc);
+        const idiomas = idiomasParaReciclar(this.svc, this.entrada, this.conHomebrew);
+        this.idiomasReciclables = idiomas.quitables;
+        this.idiomasAprendibles = idiomas.aprendibles;
+        this.habilidadesReciclables = habilidadesConRangos(this.svc, this.entrada);
+        this.clasesConConocidos = conocidosParaReciclar(this.svc, this.entrada);
+        this.cambiosConjuros = [this.cambioDeConjuroVacio()];
+        this.opcionesReciclaje = this.opcionesDeReciclaje();
+    }
+
+    private cambioDeConjuroVacio(): CambioDeConjuro {
+        return { idClase: this.clasesConConocidos.length === 1 ? this.clasesConConocidos[0].id : null, olvida: null, aprende: null };
+    }
+
+    /** Si se ofrecen elementos homebrew al reciclar (`ofreceHomebrewALaFicha`). */
+    private get conHomebrew(): boolean {
+        return ofreceHomebrewALaFicha(this.pj?.Oficial, this.pj?.PoliticaCompra);
+    }
+
+    /** Los tipos del paso, con el motivo si no hay nada de ese tipo que mirar (al preparar el paso). */
+    private opcionesDeReciclaje(): Array<{ tipo: TipoDeReciclaje; etiqueta: string; motivo: string; }> {
+        return [
+            { tipo: 'ninguno', etiqueta: 'No reciclar nada', motivo: '' },
+            { tipo: 'dote', etiqueta: 'Reciclar una dote', motivo: this.dotesReciclables.length ? '' : 'No tiene dotes propias.' },
+            { tipo: 'idioma', etiqueta: 'Reciclar un idioma', motivo: this.idiomasReciclables.length ? '' : 'No conoce ningún idioma.' },
+            { tipo: 'rangos', etiqueta: 'Reciclar habilidades', motivo: this.habilidadesReciclables.length ? '' : 'No tiene rangos comprados.' },
+            { tipo: 'conjuros', etiqueta: 'Reciclar conjuros', motivo: this.clasesConConocidos.length ? '' : 'Ninguna de sus clases tiene conocidos limitados (una tabla de conocidos).' },
+        ];
+    }
+
+    elegirTipoReciclaje(tipo: TipoDeReciclaje): void {
+        if (!this.empezada)
+            this.tipoReciclaje = tipo;
+    }
+
+    /**
+     * Otra dote en el hueco de la que se recicla, con el selector de dotes de la creación: sus candidatas se evalúan con el
+     * personaje de antes de subir, sin la que se va y en el nivel en que se eligió (`huecoDeLaDoteReciclada`). El motor se
+     * deja como estaba: el cambio se hace al continuar.
+     */
+    async elegirDoteReciclada(dote: DoteReciclable): Promise<void> {
+        if (dote.motivo || this.empezada)
+            return;
+        const estado = this.svc.exportarEstadoSubida();
+        try {
+            const hueco = huecoDeLaDoteReciclada(this.svc, dote, this.conHomebrew);
+            if (!hueco)
+                return;
+            const seleccion = await this.abrirModal<DoteSeleccionConfirmada>(SelectorDotesModalComponent, {
+                titulo: `Reciclar ${dote.nombre}: otra dote en su lugar`, pendiente: hueco.pendiente, candidatos: hueco.candidatos, pendientesRestantes: 1,
+            }, ['confirmar'], ['omitir']);
+            if (!seleccion)
+                return;
+            if (toInt(seleccion.idDote) === dote.idDote && Math.max(0, toInt(seleccion.idExtra)) === dote.idExtra) {
+                await avisarPaso('La misma dote', `Para reciclar ${dote.nombre} hay que elegir otra que no tenga.`);
+                return;
+            }
+            if (!this.svc.aplicarDotePendiente(hueco.pendiente.id, seleccion)) {
+                await avisarPaso('No se puede elegir esa dote', 'Con el personaje de antes de subir, y sin la que se recicla, no la cumple. Elige otra.');
+                return;
+            }
+            this.planDote = { tipo: 'dote', quita: dote, seleccion, pone: doteElegidaEnElHueco(this.svc, hueco.pendiente, seleccion) };
+        } finally {
+            this.svc.restaurarEstadoSubida(estado);
+        }
+    }
+
+    get habilidadOrigen(): HabilidadConRangos | null {
+        return this.habilidadesReciclables.find((h) => h.idHabilidad === this.rangosOrigen) ?? null;
+    }
+
+    /** Cuántos rangos se pueden traspasar desde la de origen: de 1 a 4, sin pasar de los que tiene comprados. */
+    get cantidadesRangos(): number[] {
+        const maximo = Math.min(this.maximoRangos, this.habilidadOrigen?.rangos ?? 0);
+        return Array.from({ length: Math.max(0, maximo) }, (_, i) => i + 1);
+    }
+
+    /** Con el origen y los rangos elegidos: los destinos (con su motivo si no valen) y si quitarlos rompe algo que tiene. */
+    cambiarRangos(): void {
+        const origen = this.habilidadOrigen;
+        this.rangosCantidad = Math.min(Math.max(1, toInt(this.rangosCantidad)), Math.max(1, this.cantidadesRangos.length));
+        if (!origen || !this.entrada) {
+            this.destinosRangos = [];
+            this.bloqueoRangos = '';
+            this.rangosDestino = null;
+            return;
+        }
+        const nivel = toInt(this.pj?.Nivel_personaje) || toInt(this.experiencia?.nivel);
+        const puedeSubir = this.clases.filter((c) => c.elegible).map((c) => c.clase);
+        this.destinosRangos = destinosDeRangos(this.svc, this.entrada, origen, this.rangosCantidad, nivel, puedeSubir);
+        if (!this.destinosRangos.some((d) => d.idHabilidad === this.rangosDestino && !d.motivo))
+            this.rangosDestino = null;
+        const rotas = loQueDejariaDeCumplir(this.svc, { rangos: { idHabilidad: origen.idHabilidad, idExtra: origen.idExtra, rangos: this.rangosCantidad } });
+        this.bloqueoRangos = rotas.length > 0 ? `Sin esos rangos dejaría de cumplir lo que tiene: ${rotas.join('; ')}.` : '';
+    }
+
+    /** La de destino elegida, si solo es de clase para alguna de las clases que puede subir (la subida tendrá que ser de ellas). */
+    get clasesDelDestino(): string {
+        const destino = this.destinosRangos.find((d) => d.idHabilidad === this.rangosDestino);
+        return (destino?.clases ?? []).map((c) => c.nombre).join(' o ');
+    }
+
+    claseConConocidos(id: number | null): ClaseConConocidos | null {
+        return this.clasesConConocidos.find((c) => c.id === toInt(id)) ?? null;
+    }
+
+    /** Los que puede aprender en lugar del que olvida en ese cambio: de su clase, del mismo nivel y que no conozca. */
+    aprendiblesDe(cambio: CambioDeConjuro): Conjuro[] {
+        const clase = this.claseConConocidos(cambio.idClase);
+        const olvidado = clase?.conocidos.find((c) => c.idConjuro === toInt(cambio.olvida));
+        if (!clase || !olvidado || !this.entrada)
+            return [];
+        const otros = this.cambiosConjuros.filter((c) => c !== cambio && toInt(c.idClase) === clase.id).map((c) => toInt(c.aprende));
+        return conjurosParaAprender(this.svc, this.entrada, clase, olvidado.nivel, this.conHomebrew, otros);
+    }
+
+    /** Si el conocido ya lo olvida otro cambio. */
+    olvidadoEnOtro(cambio: CambioDeConjuro, idConjuro: number): boolean {
+        return this.cambiosConjuros.some((c) => c !== cambio && toInt(c.idClase) === toInt(cambio.idClase) && toInt(c.olvida) === toInt(idConjuro));
+    }
+
+    cambiarConjuro(cambio: CambioDeConjuro, campo: 'clase' | 'olvida'): void {
+        if (campo === 'clase')
+            cambio.olvida = null;
+        cambio.aprende = null;
+    }
+
+    anadirCambioConjuro(): void {
+        if (this.cambiosConjuros.length < this.maximoConjuros)
+            this.cambiosConjuros = [...this.cambiosConjuros, this.cambioDeConjuroVacio()];
+    }
+
+    quitarCambioConjuro(cambio: CambioDeConjuro): void {
+        this.cambiosConjuros = this.cambiosConjuros.length > 1 ? this.cambiosConjuros.filter((c) => c !== cambio) : [this.cambioDeConjuroVacio()];
+    }
+
+    /** El reciclaje elegido en el paso, completo; `null` si no recicla nada o falta algo. */
+    private planElegido(): PlanReciclaje | null {
+        if (this.tipoReciclaje === 'dote')
+            return this.planDote;
+        if (this.tipoReciclaje === 'idioma') {
+            const quita = this.idiomasReciclables.find((i) => i.idIdioma === toInt(this.idiomaQuita) && !i.motivo);
+            const pone = this.idiomasAprendibles.find((i) => i.idIdioma === toInt(this.idiomaPone));
+            return quita && pone ? { tipo: 'idioma', quita: { idIdioma: quita.idIdioma, nombre: quita.nombre }, pone: { ...pone } } : null;
+        }
+        if (this.tipoReciclaje === 'rangos') {
+            const origen = this.habilidadOrigen;
+            const destino = this.destinosRangos.find((d) => d.idHabilidad === toInt(this.rangosDestino) && !d.motivo);
+            if (!origen || !destino || this.bloqueoRangos || !this.cantidadesRangos.includes(toInt(this.rangosCantidad)))
+                return null;
+            return {
+                tipo: 'rangos', rangos: toInt(this.rangosCantidad),
+                quita: { idHabilidad: origen.idHabilidad, idExtra: origen.idExtra, nombre: origen.nombre },
+                pone: { idHabilidad: destino.idHabilidad, idExtra: destino.idExtra, nombre: destino.nombre },
+            };
+        }
+        if (this.tipoReciclaje === 'conjuros') {
+            const cambios: Extract<PlanReciclaje, { tipo: 'conjuros'; }>['cambios'] = [];
+            for (const c of this.cambiosConjuros) {
+                const clase = this.claseConConocidos(c.idClase);
+                const olvida = clase?.conocidos.find((x) => x.idConjuro === toInt(c.olvida) && !x.motivo);
+                const aprende = this.aprendiblesDe(c).find((x) => toInt(x.Id) === toInt(c.aprende));
+                if (!clase || !olvida || !aprende || this.olvidadoEnOtro(c, olvida.idConjuro))
+                    return null;
+                cambios.push({ idClase: clase.id, clase: clase.nombre, olvida: { id: olvida.idConjuro, nombre: olvida.nombre }, aprende: { id: toInt(aprende.Id), nombre: `${aprende.Nombre}` } });
+            }
+            return cambios.length > 0 ? { tipo: 'conjuros', cambios } : null;
+        }
+        return null;
+    }
+
+    get puedeConfirmarReciclaje(): boolean {
+        return this.tipoReciclaje === 'ninguno' || !!this.planElegido();
+    }
+
+    /** Lo reciclado, en una frase para el paso ya cerrado («Alerta → Esquiva»). */
+    get filaReciclada(): CambioSubida | null {
+        return this.plan ? filaDelReciclaje(this.plan) : null;
+    }
+
+    /**
+     * Cierra «Reciclar»: hace el cambio en el motor (el nivel sigue con él), arma la ficha con el cambio y sigue con la
+     * clase. Si los rangos van a una habilidad que solo es de clase para alguna de las que puede subir, la clase tiene que
+     * ser una de ellas.
+     */
+    async confirmarReciclaje(): Promise<void> {
+        if (this.empezada || !this.puedeConfirmarReciclaje)
+            return;
+        const plan = this.planElegido();
+        if (plan) {
+            if (!aplicarReciclajeAlMotor(this.svc, plan)) {
+                await avisarPaso('No se puede reciclar', 'Lo elegido ya no vale con el personaje de ahora. Elige otra cosa.');
+                await this.hidratar();
+                return;
+            }
+            const destino = plan.tipo === 'rangos' ? this.destinosRangos.find((d) => d.idHabilidad === plan.pone.idHabilidad) ?? null : null;
+            this.plan = plan;
+            const despues = this.cuerpoDelMotor();
+            this.entradaReciclada = fichaConElReciclaje(this.entrada!, reciclajeDelPlan(plan), {
+                origenDote: plan.tipo === 'dote' ? plan.quita.origen : undefined,
+                claseaDestino: !!destino && destino.clases === null,
+                // Lo que daba lo antiguo y lo que da lo nuevo: la API guarda tal cual los modificadores que llegan.
+                motor: this.antes ? { antes: this.antes, despues } : null,
+            });
+            this.clasesDelReciclaje = destino?.clases ? destino.clases.map((c) => c.id) : null;
+            this.antes = despues;
+        }
+        await this.siguiente();
+    }
+
     // --- Los pasos -----------------------------------------------------------------------------------------------------
 
     /** El siguiente paso de la lista; los que se resuelven con un selector se abren al llegar. */
@@ -411,6 +730,11 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.paso = paso;
         if (paso === 'clase')
             this.recalcularClases();
+    }
+
+    /** Desde «Reciclar» tras un error del reciclaje: el nivel ya está hecho, así que vuelve al resumen. */
+    volverAlResumen(): void {
+        this.irA('resumen');
     }
 
     private async resolverIncremento(): Promise<void> {
@@ -514,6 +838,9 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             caras: this.carasDg,
             elecciones: this.svc.getEleccionesDelNivelEnCurso(),
             nombreConjuro: (id) => this.nombreConjuro(id),
+            reciclado: this.plan
+                ? { fila: filaDelReciclaje(this.plan), idiomaNuevo: this.plan.tipo === 'idioma' ? this.plan.pone.nombre : undefined }
+                : null,
         });
     }
 
@@ -522,7 +849,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         // Las dotes que conservaba sin sus prerrequisitos (tras perder un nivel) y que con este nivel vuelve a cumplir
         // vuelven a valer (Manual del jugador, pág. 87).
         const siguenSin = this.svc.dotesSinSusPrerrequisitos();
-        const yaCumple = (this.entrada?.colecciones?.dotes ?? []).filter((d: any) => d?.sinPrerrequisitos
+        const yaCumple = (this.entradaDelNivel.colecciones?.dotes ?? []).filter((d: any) => d?.sinPrerrequisitos
             && !siguenSin.some((f) => f.idDote === toInt(d.idDote) && f.idExtra === toInt(d.idExtra)))
             .map((d: any) => ({ idDote: toInt(d.idDote), idExtra: toInt(d.idExtra) }));
         return marcarDotesSinPrerrequisitos(this.fichaDeLaSubidaSinMarcas(elecciones), [], yaCumple);
@@ -530,7 +857,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     private fichaDeLaSubidaSinMarcas(elecciones: PersonajeCreateNivelEleccionDto[]): PersonajeCreateRequestDto {
         return fichaDeLaSubida({
-            entrada: this.entrada!,
+            entrada: this.entradaDelNivel,
             antes: this.antes!,
             despues: this.cuerpoDelMotor(),
             idClase: toInt(this.claseElegida?.Id),
@@ -553,6 +880,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 ...(this.daDg && this.tiradaElegida !== null ? { pg: { tirada: this.tiradaElegida, tiradas: [...this.tiradas] } } : {}),
                 ficha: this.fichaParaGuardar(),
                 version: this.sesion.version,
+                ...(this.plan ? { reciclaje: reciclajeDelPlan(this.plan) } : {}),
             });
             if (!this.cuenta.sigue())
                 return;
@@ -589,17 +917,25 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.borrarBorrador();
         this.reiniciarEstado();
         await this.hidratar();
-        this.irA('clase');
+        this.irA(this.pasos[0]);
     }
 
     cancelar(): void {
         this.alTerminar?.();
     }
 
+    /** Si ya hay algo hecho que «Empezar de nuevo» deshace: la clase o lo reciclado. */
+    get empezada(): boolean {
+        return !!this.claseElegida || !!this.plan;
+    }
+
     private reiniciarEstado(): void {
         this.claseElegida = null;
         this.nivelClase = 0;
-        this.pasos = ['clase', 'resumen'];
+        this.pasos = this.pasosIniciales();
+        this.plan = null;
+        this.entradaReciclada = null;
+        this.clasesDelReciclaje = null;
         this.tiradas = [];
         this.tiradaElegida = null;
         this.pg = null;
@@ -612,12 +948,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     // --- El borrador (por cuenta y personaje) --------------------------------------------------------------------------
 
     private guardarBorrador(): void {
-        if (!this.cuenta.sigue() || !this.claseElegida || !this.sesion || !this.antes)
+        if (!this.cuenta.sigue() || !this.empezada || !this.sesion || !this.antes)
             return;
         const borrador: BorradorSubida = {
             version: 1, uid: this.cuenta.uid, idPersonaje: this.idPersonaje, versionSesion: this.sesion.version, actualizado: Date.now(),
-            paso: this.paso, idClase: toInt(this.claseElegida.Id), motor: this.svc.exportarEstadoSubida(), antes: this.antes,
+            paso: this.paso, idClase: toInt(this.claseElegida?.Id), motor: this.svc.exportarEstadoSubida(), antes: this.antes,
             tiradas: this.tiradas, tiradaElegida: this.tiradaElegida, olvidado: this.olvidado,
+            reciclaje: this.plan && this.entradaReciclada ? { plan: this.plan, entrada: this.entradaReciclada, clases: this.clasesDelReciclaje } : null,
         };
         try {
             localStorage.setItem(claveBorradorSubida(this.cuenta.uid, this.idPersonaje), JSON.stringify({ ...borrador, pasos: this.pasos, nivelClase: this.nivelClase }));
@@ -651,21 +988,27 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             showCancelButton: true, confirmButtonText: 'Seguir', cancelButtonText: 'Empezar de nuevo',
             target: document.body, heightAuto: false, scrollbarPadding: false,
         });
-        const clase = this.svc.claseDelCatalogo(borrador.idClase);
-        if (!r.isConfirmed || !clase || !this.svc.restaurarEstadoSubida(borrador.motor)) {
+        // Sin clase, el borrador de lo reciclado antes de elegirla.
+        const clase = toInt(borrador.idClase) > 0 ? this.svc.claseDelCatalogo(borrador.idClase) : null;
+        const reciclaje = borrador.reciclaje ?? null;
+        if (!r.isConfirmed || (toInt(borrador.idClase) > 0 && !clase) || (!clase && !reciclaje)
+            || !this.svc.restaurarEstadoSubida(borrador.motor)) {
             this.borrarBorrador();
             return false;
         }
         this.antes = borrador.antes;
+        this.plan = reciclaje?.plan ?? null;
+        this.entradaReciclada = reciclaje?.entrada ?? null;
+        this.clasesDelReciclaje = reciclaje?.clases ?? null;
         this.claseElegida = clase;
         this.nivelClase = toInt(borrador.nivelClase);
-        this.pasos = borrador.pasos ?? ['clase', 'resumen'];
+        this.pasos = borrador.pasos ?? this.pasosIniciales();
         this.tiradas = borrador.tiradas ?? [];
         this.tiradaElegida = borrador.tiradaElegida ?? null;
-        this.daDg = daDgEnNivel(clase, this.nivelClase);
+        this.daDg = clase ? daDgEnNivel(clase, this.nivelClase) : true;
         // Con una plantilla que actualiza los DG (el vampiro), su dado: d12.
-        this.carasDg = this.svc.carasDadoGolpeDeClase(clase);
-        this.intercambio = this.svc.getIntercambioConjurosDelNivel();
+        this.carasDg = clase ? this.svc.carasDadoGolpeDeClase(clase) : 0;
+        this.intercambio = clase ? this.svc.getIntercambioConjurosDelNivel() : null;
         this.olvidado = borrador.olvidado ? { ...borrador.olvidado, nivel: -1 } as any : null;
         this.calcularPg();
         this.irA(borrador.paso);

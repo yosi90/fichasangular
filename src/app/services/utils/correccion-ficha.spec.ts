@@ -1,5 +1,5 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { CambiosCorreccion, fichaDeLaCorreccion } from './correccion-ficha';
+import { CambiosCorreccion, fichaDeLaCorreccion, sacarDoteDeLaFicha } from './correccion-ficha';
 
 /*
  * La ficha que manda la corrección (fase 6 de las sesiones): la `entrada` con lo corregido. Lo que sale del motor (las
@@ -125,5 +125,32 @@ describe('fichaDeLaCorreccion (la corrección de la ficha, fase 6)', () => {
             decisionesRecalculadas: { tipos: ['edad_mayor_que_la_maxima', 'alineamiento_clase'], decisiones: [{ tipo: 'alineamiento_clase', idElemento: 11 }] },
         });
         expect(ficha.decisionesHomebrew).toEqual([{ tipo: 'alineamiento_raza', idElemento: 3 }, { tipo: 'alineamiento_clase', idElemento: 11 }]);
+    });
+
+    it('sacarDoteDeLaFicha: -1 y 0 son el mismo extra, como la API (extra_comparable); primero la de su origen', () => {
+        const dotes = () => [
+            { idDote: 2, idExtra: -1, origen: 'Dote de nivel 1' },
+            { idDote: 2, idExtra: 0, origen: 'Dote de nivel 3' },
+            { idDote: 9, idExtra: 4, origen: 'Guerrero nivel 2' },
+        ];
+        const conOrigen = dotes();
+        expect(sacarDoteDeLaFicha(conOrigen, 2, 0, 'Dote de nivel 3')?.origen).toBe('Dote de nivel 3');
+        const sinOrigen = dotes();
+        // Sin su origen, la primera con ese id y extra: la guardada con -1 vale por la de 0.
+        expect(sacarDoteDeLaFicha(sinOrigen, 2, 0, 'Otro origen')?.origen).toBe('Dote de nivel 1');
+        expect(sinOrigen.map((d) => d.origen)).toEqual(['Dote de nivel 3', 'Guerrero nivel 2']);
+        // Otro extra no, salvo con cualquierExtra (la pérdida de nivel, con las fichas de antes).
+        expect(sacarDoteDeLaFicha(dotes(), 9, 5)).toBeUndefined();
+        expect(sacarDoteDeLaFicha(dotes(), 9, 5, null, { cualquierExtra: true })?.idExtra).toBe(4);
+    });
+
+    it('quita la dote guardada con extra -1 aunque la corrección la pida con 0', () => {
+        const e = entrada();
+        e.colecciones!.dotes = [{ idDote: 2, idExtra: -1, origen: 'Dote de nivel 1' }, { idDote: 9, idExtra: 4, origen: 'Guerrero nivel 2' }];
+        const ficha = fichaDeLaCorreccion(e, {
+            caracteristicas: {}, puntosGolpe: null, dotesMantenidas: [], idiomasQuitados: [], conjurosQuitados: [],
+            dotesQuitadas: [{ idDote: 2, idExtra: 0, origen: 'Otro origen' }],
+        });
+        expect(ficha.colecciones?.dotes?.map((d) => d.idDote)).toEqual([9]);
     });
 });

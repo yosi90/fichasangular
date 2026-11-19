@@ -4,7 +4,7 @@ import { CausaPerdidaDto } from 'src/app/interfaces/sesiones';
 import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica } from './caracteristicas';
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
-import { CARACTERISTICAS_DEL_ALTA } from './correccion-ficha';
+import { CARACTERISTICAS_DEL_ALTA, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
 import { modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
@@ -144,14 +144,6 @@ export interface ResultadoPerdida {
 
 const SALVACIONES = [['fortaleza', 'Fortaleza'], ['reflejos', 'Reflejos'], ['voluntad', 'Voluntad']] as const;
 
-function quitarPrimero<T>(lista: T[] | undefined, es: (x: T) => boolean): boolean {
-    const i = (lista ?? []).findIndex(es);
-    if (i < 0)
-        return false;
-    lista!.splice(i, 1);
-    return true;
-}
-
 /** La característica más alta de la ficha (1 Fuerza … 6 Carisma; empate, la primera), sin las perdidas. */
 export function caracteristicaMasAlta(entrada: PersonajeCreateRequestDto): number {
     let mejor = 0;
@@ -194,15 +186,13 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         .filter((c: any) => toInt(c.nivel) > 0);
 
     const quitarDote = (idDote: number, idExtra: number, origen?: string | null) => {
-        const hecho = (origen && quitarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === idDote && toInt(x?.idExtra) === idExtra && `${x?.origen ?? ''}` === origen))
-            || quitarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === idDote && toInt(x?.idExtra) === idExtra)
-            || quitarPrimero(col.dotes, (x: any) => toInt(x?.idDote) === idDote);
-        if (hecho)
+        // Una ficha de antes puede guardarla con otro extra: en último caso, la primera con ese id.
+        if (sacarDoteDeLaFicha(col.dotes, idDote, idExtra, origen, { cualquierExtra: true }))
             quitado.dotes.push({ idDote, idExtra });
     };
     const quitarEspecial = (idEspecial: number, idExtra: number) => {
-        if (quitarPrimero(col.especiales, (x: any) => toInt(x?.idEspecial) === idEspecial && toInt(x?.idExtra) === idExtra)
-            || quitarPrimero(col.especiales, (x: any) => toInt(x?.idEspecial) === idEspecial))
+        if (sacarPrimero(col.especiales, (x: any) => toInt(x?.idEspecial) === idEspecial && toInt(x?.idExtra) === idExtra)
+            || sacarPrimero(col.especiales, (x: any) => toInt(x?.idEspecial) === idEspecial))
             quitado.especiales.push({ idEspecial, idExtra });
     };
     const bajarCaracteristica = (id: number, cuanto: number) => {
@@ -222,22 +212,22 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
                 case 'dote': quitarDote(id, toInt(e.idExtra), e.origen); break;
                 case 'especial': quitarEspecial(id, toInt(e.idExtra)); break;
                 case 'idioma':
-                    if (quitarPrimero(col.idiomas, (x: any) => toInt(x?.idIdioma) === id))
+                    if (sacarPrimero(col.idiomas, (x: any) => toInt(x?.idIdioma) === id))
                         quitado.idiomas.push(id);
                     break;
                 case 'dominio':
-                    if (quitarPrimero(col.dominios, (x: any) => toInt(x?.idDominio) === id))
+                    if (sacarPrimero(col.dominios, (x: any) => toInt(x?.idDominio) === id))
                         quitado.dominios.push(id);
                     break;
                 case 'conjuro':
                     // El mago conserva lo que escribió en su libro (dictamen del máster: el libro es un objeto).
-                    if (!conLibro && quitarPrimero(col.conjurosConocidos, (x: any) => !x?.copiado && toInt(x?.idConjuro) === id
+                    if (!conLibro && sacarPrimero(col.conjurosConocidos, (x: any) => !x?.copiado && toInt(x?.idConjuro) === id
                         && (toInt(x?.idClase) === toInt(e.idExtra) || toInt(x?.idClase) < 1)))
                         quitado.conjuros.push({ idConjuro: id, idClase: toInt(e.idExtra) });
                     break;
                 case 'conjuro_olvidado': {
                     const idClaseConjuro = toInt(e.idExtra) || idClase;
-                    if (e.valor && quitarPrimero(col.conjurosConocidos, (x: any) => !x?.copiado && toInt(x?.idConjuro) === toInt(e.valor)
+                    if (e.valor && sacarPrimero(col.conjurosConocidos, (x: any) => !x?.copiado && toInt(x?.idConjuro) === toInt(e.valor)
                         && (toInt(x?.idClase) === idClaseConjuro || toInt(x?.idClase) < 1)))
                         quitado.conjuros.push({ idConjuro: toInt(e.valor), idClase: idClaseConjuro });
                     col.conjurosConocidos.push({ idConjuro: id, idClase: idClaseConjuro });
@@ -311,7 +301,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
     SALVACIONES.forEach(([s, campo]) => {
         const delta = (primerEntero(ahora?.Salvaciones?.[campo]) ?? 0) - (primerEntero(previo?.Salvaciones?.[campo]) ?? 0);
         const actual = mods.salvaciones[s] = { ...(mods.salvaciones[s] ?? {}), claseos: [...(mods.salvaciones[s]?.claseos ?? [])] };
-        if (quitarPrimero(actual.claseos, (m: any) => `${m?.origen ?? ''}` === origen))
+        if (sacarPrimero(actual.claseos, (m: any) => `${m?.origen ?? ''}` === origen))
             salvaciones[s] = delta;
         else if (delta !== 0)
             avisos.push(`No se ha encontrado la salvación de ${campo} de ${origen}: revísala con «Corregir la ficha».`);

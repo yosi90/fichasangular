@@ -537,6 +537,21 @@ export class CampanasGestionEstado implements OnDestroy {
         });
     }
 
+    abrirInfoCampaignReciclaje(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        void Swal.fire({
+            title: 'Reciclaje (Manual del jugador II)',
+            icon: 'info',
+            html: `
+                <p style="text-align:left; margin-bottom:8px;">Al subir de nivel, antes de elegir lo del nivel nuevo, el personaje puede cambiar <strong>una sola</strong> cosa que eligió antes por otra legal: una dote, un idioma, hasta 4 rangos de una habilidad a otra o hasta dos conjuros conocidos (<em>Manual del jugador II</em>, págs. 194-196).</p>
+                <p style="text-align:left; margin-bottom:8px;">El libro no pide que lo autorice el DM, así que viene activado. Si lo desactivas, la subida no ofrece el paso «Reciclar».</p>
+                <p style="text-align:left; margin:0;">No es homebrew, y los PNJ quedan fuera de esta opción.</p>
+            `,
+            confirmButtonText: 'Entendido',
+        });
+    }
+
     async crearCampana(): Promise<void> {
         if (!this.canCreateCampaign || this.campaignCreateSaving)
             return;
@@ -1095,6 +1110,7 @@ export class CampanasGestionEstado implements OnDestroy {
             permitirCopiarConjuros: true,
             maxTiradasPuntosGolpe: this.campaignHpRollsMax,
             permitirClasesDeMonstruo: true,
+            permitirReciclaje: true,
         };
     }
 
@@ -1121,6 +1137,7 @@ export class CampanasGestionEstado implements OnDestroy {
             permitirCopiarConjuros: this.campaignCreatePolicyDraft.permitirCopiarConjuros !== false,
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe),
             permitirClasesDeMonstruo: this.campaignCreatePolicyDraft.permitirClasesDeMonstruo !== false,
+            permitirReciclaje: this.campaignCreatePolicyDraft.permitirReciclaje !== false,
         };
     }
 
@@ -1413,6 +1430,7 @@ export class CampanasGestionEstado implements OnDestroy {
             permitirCopiarConjuros: source?.permitirCopiarConjuros !== false,
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(source?.maxTiradasPuntosGolpe),
             permitirClasesDeMonstruo: source?.permitirClasesDeMonstruo !== false,
+            permitirReciclaje: source?.permitirReciclaje !== false,
         };
     }
 

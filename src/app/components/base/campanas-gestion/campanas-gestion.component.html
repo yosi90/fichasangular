@@ -162,6 +162,18 @@
                                 <mat-slide-toggle color="primary" aria-label="Permitir personajes de una clase de monstruo"
                                     [(ngModel)]="g.campaignCreatePolicyDraft.permitirClasesDeMonstruo" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
                             </div>
+                            <!-- No es homebrew ni lo autoriza el DM (Manual del jugador II, págs. 193-194): viene activado. -->
+                            <div class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">
+                                    Reciclaje (<em>Manual del jugador II</em>)
+                                    <button type="button" mat-icon-button class="campanas-ayuda" (click)="g.abrirInfoCampaignReciclaje($event)"
+                                        aria-label="Información sobre el reciclaje" matTooltip="Qué supone">
+                                        <mat-icon>help_outline</mat-icon>
+                                    </button>
+                                </span>
+                                <mat-slide-toggle color="primary" aria-label="Permitir reciclar al subir de nivel"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.permitirReciclaje" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
+                            </div>
                         </section>
 
                         <section class="campanas-bloque">

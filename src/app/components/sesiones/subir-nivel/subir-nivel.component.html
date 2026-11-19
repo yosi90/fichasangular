@@ -8,7 +8,7 @@
     </header>
 
     <p *ngIf="cargando" class="subida__estado">Preparando la subida…</p>
-    <div *ngIf="!cargando && error && !claseElegida" class="subida__aviso subida__aviso--error" role="alert">
+    <div *ngIf="!cargando && error && !empezada" class="subida__aviso subida__aviso--error" role="alert">
         <mat-icon aria-hidden="true">error_outline</mat-icon>
         <span>{{error}}</span>
     </div>
@@ -19,12 +19,121 @@
                 [class.subida__paso--actual]="estadoPaso(p) === 'actual'" [attr.aria-current]="estadoPaso(p) === 'actual' ? 'step' : null">{{etiquetaPaso(p)}}</span>
         </nav>
 
-        <div *ngIf="error && claseElegida" class="subida__aviso subida__aviso--error" role="alert">
+        <div *ngIf="error && empezada" class="subida__aviso subida__aviso--error" role="alert">
             <mat-icon aria-hidden="true">error_outline</mat-icon>
             <span>{{error}}</span>
         </div>
 
         <section class="subida__tarjeta" [ngSwitch]="paso">
+            <!-- Reciclar (Manual del jugador II, págs. 194-196): una sola cosa, antes de lo del nivel -->
+            <ng-container *ngSwitchCase="'reciclar'">
+                <h2 class="subida__seccion">Reciclar (opcional)</h2>
+                <p class="subida__nota">Antes de lo del nivel nuevo puedes cambiar <strong>una sola</strong> cosa que elegiste antes por otra legal (<em>Manual del jugador II</em>, págs. 194-196). Se juzga con el personaje de antes de subir; lo que necesita algo que tiene no se puede cambiar.</p>
+                <p *ngIf="empezada" class="subida__resultado">
+                    <ng-container *ngIf="filaReciclada as f; else sinReciclar">{{f.que}}: {{f.antes}} → <strong>{{f.ahora}}</strong>.</ng-container>
+                    <ng-template #sinReciclar>No recicla nada.</ng-template>
+                    Para cambiarlo, empieza la subida de nuevo.
+                </p>
+                <ng-container *ngIf="!empezada">
+                    <div class="subida__opciones" role="radiogroup" aria-label="Qué reciclar">
+                        <label *ngFor="let o of opcionesReciclaje" class="subida__opcion" [class.subida__opcion--bloqueada]="!!o.motivo">
+                            <input type="radio" name="tipoReciclaje" [checked]="tipoReciclaje === o.tipo" [disabled]="!!o.motivo" (change)="elegirTipoReciclaje(o.tipo)">
+                            <span class="subida__opcion-texto">{{o.etiqueta}}</span>
+                            <span *ngIf="o.motivo" class="subida__fila-motivo">{{o.motivo}}</span>
+                        </label>
+                    </div>
+
+                    <!-- Una dote -->
+                    <ng-container *ngIf="tipoReciclaje === 'dote'">
+                        <p class="subida__nota">La nueva tiene que cumplir sus prerrequisitos sin la que se va y en el nivel en que elegiste la antigua; una dote adicional de clase, por otra de su lista.</p>
+                        <ul class="subida__lista">
+                            <li *ngFor="let d of dotesReciclables" class="subida__fila" [class.subida__fila--bloqueada]="!!d.motivo">
+                                <div class="subida__fila-texto">
+                                    <span class="subida__fila-nombre">{{d.nombre}}<ng-container *ngIf="d.extra"> ({{d.extra}})</ng-container>
+                                        <ng-container *ngIf="planDote?.quita === d"> → <strong>{{planDote?.pone?.nombre}}<ng-container *ngIf="planDote?.pone?.extra"> ({{planDote?.pone?.extra}})</ng-container></strong></ng-container>
+                                    </span>
+                                    <span class="subida__etiqueta">{{d.indiceNivel === null ? 'Sin nivel en el registro' : 'Nivel ' + (d.indiceNivel + 1)}}</span>
+                                    <span *ngIf="d.motivo" class="subida__fila-motivo">{{d.motivo}}</span>
+                                </div>
+                                <button *ngIf="!d.motivo" mat-stroked-button type="button" (click)="elegirDoteReciclada(d)">{{planDote?.quita === d ? 'Elegir otra' : 'Cambiar'}}</button>
+                            </li>
+                        </ul>
+                    </ng-container>
+
+                    <!-- Un idioma -->
+                    <ng-container *ngIf="tipoReciclaje === 'idioma'">
+                        <div class="subida__campos">
+                            <label class="subida__campo">Olvidar
+                                <select [(ngModel)]="idiomaQuita" name="idiomaQuita">
+                                    <option [ngValue]="null">—</option>
+                                    <option *ngFor="let i of idiomasReciclables" [ngValue]="i.idIdioma" [disabled]="!!i.motivo">{{i.nombre}}{{i.motivo ? ' — ' + i.motivo : ''}}</option>
+                                </select>
+                            </label>
+                            <label class="subida__campo">Aprender en su lugar
+                                <select [(ngModel)]="idiomaPone" name="idiomaPone" [disabled]="idiomaQuita === null">
+                                    <option [ngValue]="null">—</option>
+                                    <option *ngFor="let i of idiomasAprendibles" [ngValue]="i.idIdioma">{{i.nombre}}</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p class="subida__nota">Uno que no conozca y que no sea secreto.</p>
+                    </ng-container>
+
+                    <!-- Habilidades: traspasar rangos -->
+                    <ng-container *ngIf="tipoReciclaje === 'rangos'">
+                        <div class="subida__campos">
+                            <label class="subida__campo">Quitar rangos de
+                                <select [(ngModel)]="rangosOrigen" (ngModelChange)="cambiarRangos()" name="rangosOrigen">
+                                    <option [ngValue]="null">—</option>
+                                    <option *ngFor="let h of habilidadesReciclables" [ngValue]="h.idHabilidad">{{h.nombre}} ({{h.rangos}})</option>
+                                </select>
+                            </label>
+                            <label class="subida__campo">Rangos
+                                <select [(ngModel)]="rangosCantidad" (ngModelChange)="cambiarRangos()" name="rangosCantidad" [disabled]="!habilidadOrigen">
+                                    <option *ngFor="let n of cantidadesRangos" [ngValue]="n">{{n}}</option>
+                                </select>
+                            </label>
+                            <label class="subida__campo">Ponerlos en
+                                <select [(ngModel)]="rangosDestino" name="rangosDestino" [disabled]="!habilidadOrigen">
+                                    <option [ngValue]="null">—</option>
+                                    <option *ngFor="let h of destinosRangos" [ngValue]="h.idHabilidad" [disabled]="!!h.motivo">{{h.nombre}} ({{h.rangos}}){{h.motivo ? ' — ' + h.motivo : ''}}</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p class="subida__nota">De 1 a {{maximoRangos}} rangos, a una habilidad de clase para alguna de sus clases (o para la que sube), sin pasar de su nivel + 3. Pasan rango por rango.</p>
+                        <p *ngIf="clasesDelDestino" class="subida__nota">Solo es de clase para {{clasesDelDestino}}: este nivel tendrá que ser de esa clase.</p>
+                        <div *ngIf="bloqueoRangos" class="subida__aviso" role="status"><mat-icon aria-hidden="true">block</mat-icon><span>{{bloqueoRangos}}</span></div>
+                    </ng-container>
+
+                    <!-- Conjuros conocidos -->
+                    <ng-container *ngIf="tipoReciclaje === 'conjuros'">
+                        <p class="subida__nota">Hasta {{maximoConjuros}} conocidos de una clase con conocidos limitados, cada uno por otro del mismo nivel de su lista. Se suma al intercambio de la clase.</p>
+                        <div *ngFor="let c of cambiosConjuros; let i = index" class="subida__campos">
+                            <label *ngIf="clasesConConocidos.length > 1" class="subida__campo">Clase
+                                <select [(ngModel)]="c.idClase" (ngModelChange)="cambiarConjuro(c, 'clase')" [name]="'claseConjuro' + i">
+                                    <option [ngValue]="null">—</option>
+                                    <option *ngFor="let k of clasesConConocidos" [ngValue]="k.id">{{k.nombre}}</option>
+                                </select>
+                            </label>
+                            <label class="subida__campo">Olvidar
+                                <select [(ngModel)]="c.olvida" (ngModelChange)="cambiarConjuro(c, 'olvida')" [name]="'olvidaConjuro' + i" [disabled]="!claseConConocidos(c.idClase)">
+                                    <option [ngValue]="null">—</option>
+                                    <option *ngFor="let k of claseConConocidos(c.idClase)?.conocidos ?? []" [ngValue]="k.idConjuro" [disabled]="!!k.motivo || olvidadoEnOtro(c, k.idConjuro)">{{k.nombre}} (nivel {{k.nivel}}){{k.motivo ? ' — ' + k.motivo : ''}}</option>
+                                </select>
+                            </label>
+                            <label class="subida__campo">Aprender en su lugar
+                                <select [(ngModel)]="c.aprende" [name]="'aprendeConjuro' + i" [disabled]="c.olvida === null">
+                                    <option [ngValue]="null">—</option>
+                                    <option *ngFor="let k of aprendiblesDe(c)" [ngValue]="k.Id">{{k.Nombre}}</option>
+                                </select>
+                            </label>
+                            <button *ngIf="cambiosConjuros.length > 1" mat-icon-button type="button" [attr.aria-label]="'Quitar el cambio ' + (i + 1)" (click)="quitarCambioConjuro(c)"><mat-icon>close</mat-icon></button>
+                        </div>
+                        <button *ngIf="cambiosConjuros.length < maximoConjuros" mat-stroked-button type="button" (click)="anadirCambioConjuro()">Cambiar otro conjuro</button>
+                    </ng-container>
+                </ng-container>
+            </ng-container>
+
             <!-- Clase -->
             <ng-container *ngSwitchCase="'clase'">
                 <h2 class="subida__seccion">Elige la clase de este nivel</h2>
@@ -131,9 +240,13 @@
         </section>
 
         <footer class="subida__pie">
-            <button mat-button type="button" (click)="claseElegida ? descartar() : cancelar()">{{claseElegida ? 'Empezar de nuevo' : 'Cancelar'}}</button>
+            <button mat-button type="button" (click)="empezada ? descartar() : cancelar()">{{empezada ? 'Empezar de nuevo' : 'Cancelar'}}</button>
             <span class="subida__hueco"></span>
             <ng-container [ngSwitch]="paso">
+                <ng-container *ngSwitchCase="'reciclar'">
+                    <button *ngIf="!empezada" mat-flat-button color="primary" type="button" [disabled]="!puedeConfirmarReciclaje" (click)="confirmarReciclaje()">{{tipoReciclaje === 'ninguno' ? 'Continuar sin reciclar' : 'Reciclar y continuar'}}</button>
+                    <button *ngIf="claseElegida" mat-stroked-button type="button" (click)="volverAlResumen()">Volver al resumen</button>
+                </ng-container>
                 <button *ngSwitchCase="'pg'" mat-flat-button color="primary" type="button" [disabled]="!puedeSeguirPg" (click)="siguiente()">Continuar</button>
                 <button *ngSwitchCase="'habilidades'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades()" (click)="cerrarHabilidades()">Continuar</button>
                 <button *ngSwitchCase="'conjuros'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarSesionConjuros()" (click)="cerrarConjuros()">Continuar</button>

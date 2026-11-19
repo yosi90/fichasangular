@@ -86,16 +86,23 @@ export interface CampaignCreationPolicy {
      * `clase_de_monstruo_no_permitida`, salvo a un PNJ o al máster que se salta las reglas.
      */
     permitirClasesDeMonstruo?: boolean;
+    /**
+     * Si la subida de nivel deja reciclar una dote, un idioma, rangos de habilidad o conjuros conocidos (*Manual del
+     * jugador II*, págs. 194-196; 2026-11-19); sin dato, sí. Con `false`, la subida da `reciclaje_no_permitido`, salvo a un PNJ.
+     */
+    permitirReciclaje?: boolean;
 }
 
 /**
  * La parte de la política que decide qué se puede comprar u obtener en la tienda (`politicaCompra` de
  * `GET /personajes/{id}`, desde el 2026-11-12): la que comprueba la API en la compra de la creación y en la de una sesión.
- * Con `permitirIgnorarRestriccionesAlineamiento` (2026-11-13): si deja saltarse una regla de alineamiento al corregir.
+ * Con `permitirIgnorarRestriccionesAlineamiento` (2026-11-13): si deja saltarse una regla de alineamiento al corregir; con
+ * `permitirReciclaje` (2026-11-19): si la subida de nivel deja reciclar.
  */
 export type CampaignPurchasePolicy = Required<Pick<CampaignCreationPolicy,
     'permitirHomebrewGeneral' | 'maxFuentesHomebrewGeneralesPorPersonaje' | 'permitirObjetosMagicos' | 'permitirObjetosAMedida'
-    | 'precioMaximoPorObjeto' | 'permitirCopiarConjuros'>> & Partial<Pick<CampaignCreationPolicy, 'permitirIgnorarRestriccionesAlineamiento'>>;
+    | 'precioMaximoPorObjeto' | 'permitirCopiarConjuros'>>
+    & Partial<Pick<CampaignCreationPolicy, 'permitirIgnorarRestriccionesAlineamiento' | 'permitirReciclaje'>>;
 
 export interface CreateCampaignInput {
     nombre: string;

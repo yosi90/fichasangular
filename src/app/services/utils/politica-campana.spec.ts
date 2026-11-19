@@ -1,6 +1,6 @@
 import {
     campanaDejaMantenerDoteSinPrerrequisitos, campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, leerPoliticaCompra,
-    modoHomebrewDeCampana,
+    modoHomebrewDeCampana, ofreceHomebrewALaFicha,
 } from './politica-campana';
 import { politicaTienda } from './tienda-equipo';
 
@@ -39,16 +39,16 @@ describe('politica-campana', () => {
             expect(leerPoliticaCompra('no')).toBeNull();
         });
 
-        it('lee sus siete campos y la tienda la entiende como la política de la creación', () => {
+        it('lee sus ocho campos y la tienda la entiende como la política de la creación', () => {
             const politica = leerPoliticaCompra({
                 permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 0, permitirObjetosMagicos: false,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: 500, permitirCopiarConjuros: false, nepMaximoPersonajeNuevo: 3,
-                permitirIgnorarRestriccionesAlineamiento: true,
+                permitirIgnorarRestriccionesAlineamiento: true, permitirReciclaje: false,
             });
             expect(politica).toEqual({
                 permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 0, permitirObjetosMagicos: false,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: 500, permitirCopiarConjuros: false,
-                permitirIgnorarRestriccionesAlineamiento: true,
+                permitirIgnorarRestriccionesAlineamiento: true, permitirReciclaje: false,
             });
             expect(politicaTienda(politica)).toEqual({ objetosMagicos: false, aMedida: true, precioMaximo: 500, copiarConjuros: false });
             expect(modoHomebrewDeCampana(politica)).toBe('forbidden');
@@ -58,7 +58,7 @@ describe('politica-campana', () => {
             expect(leerPoliticaCompra({})).toEqual({
                 permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: null, permitirObjetosMagicos: true,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: null, permitirCopiarConjuros: true,
-                permitirIgnorarRestriccionesAlineamiento: false,
+                permitirIgnorarRestriccionesAlineamiento: false, permitirReciclaje: true,
             });
         });
     });
@@ -79,5 +79,13 @@ describe('politica-campana', () => {
             expect(campanaDejaSaltarAlineamiento({ permitirIgnorarRestriccionesAlineamiento: false })).toBeFalse();
             expect(campanaDejaSaltarAlineamiento({})).toBeFalse();
         });
+    });
+
+    it('ofreceHomebrewALaFicha: solo a una ficha ya homebrew y si la campaña lo admite (sin campaña, sí)', () => {
+        expect(ofreceHomebrewALaFicha(false, null)).toBeTrue();
+        expect(ofreceHomebrewALaFicha(false, { permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBeTrue();
+        expect(ofreceHomebrewALaFicha(false, { permitirHomebrewGeneral: false })).toBeFalse();
+        expect(ofreceHomebrewALaFicha(true, null)).toBeFalse();
+        expect(ofreceHomebrewALaFicha(undefined, null)).toBeFalse();
     });
 });

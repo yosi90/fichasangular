@@ -139,6 +139,22 @@ describe('CampanasGestionComponent', () => {
         expect((estado as any).buildCampaignPolicyForSave().permitirClasesDeMonstruo).toBeTrue();
     });
 
+    it('el reciclaje del Manual del jugador II, con su ayuda: sin dato, sí; el «no» de la API se lee y se guarda', async () => {
+        await elegir(7);
+        expect(textos('.campanas-fila__etiqueta')).toContain('Reciclaje (Manual del jugador II) help_outline');
+        expect(raiz().querySelector('[aria-label="Información sobre el reciclaje"]')).not.toBeNull();
+        expect(raiz().querySelector('[aria-label="Permitir reciclar al subir de nivel"]')).not.toBeNull();
+        expect(estado.campaignCreatePolicyDraft.permitirReciclaje).toBeTrue();
+        expect((estado as any).buildCampaignPolicyForSave().permitirReciclaje).toBeTrue();
+
+        campanaSvc.getCampaignDetail.and.resolveTo(detalle({ politicaCreacion: { permitirReciclaje: false } }) as any);
+        await elegir(8);
+        expect(estado.campaignCreatePolicyDraft.permitirReciclaje).toBeFalse();
+        expect((estado as any).buildCampaignPolicyForSave().permitirReciclaje).toBeFalse();
+        estado.campaignCreatePolicyDraft.permitirReciclaje = true;
+        expect((estado as any).buildCampaignPolicyForSave().permitirReciclaje).toBeTrue();
+    });
+
     it('las pestañas abren jugadores e historias con las mismas acciones de siempre', async () => {
         await elegir(7);
 
