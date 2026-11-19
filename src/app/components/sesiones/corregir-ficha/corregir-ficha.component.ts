@@ -778,6 +778,8 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             rangos: this.rangosRepartidos && this.cuerpoAntes
                 ? { antes: this.cuerpoAntes, despues: this.motor.cuerpoDelMotor(this.svc, this.entrada!), porNivel }
                 : null,
+            // Lo que daban las dotes quitadas y lo que dan las que entran en su hueco (la API no lo recalcula).
+            motor: this.cuerpoAntes ? { antes: this.cuerpoAntes, despues: this.motor.cuerpoDelMotor(this.svc, this.entrada!) } : null,
             decisionesRecalculadas: this.decisionesRecalculadas(),
         };
     }

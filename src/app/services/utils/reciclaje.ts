@@ -5,8 +5,10 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
 import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { nivelesDeClaseDelConjuro } from 'src/app/services/nuevo-personaje.service';
+import { CARACTERISTICAS_DEL_ALTA } from './correccion-ficha';
 import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from './habilidad-extra-visible';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
+import { aplicarModificadoresDelMotor, conLosRangosVariosDelMotor } from './subida-nivel';
 import { CambioSubida } from './subida-nivel-vista';
 
 /*
@@ -154,10 +156,13 @@ function sacarPrimero<T>(lista: T[], es: (x: T) => boolean): T | undefined {
  * La `entrada` con el reciclaje hecho: la ficha sobre la que sigue la subida (la que se manda lleva, además, el nivel).
  * Lo nuevo va en el hueco de lo antiguo (la dote, con su origen; el idioma y el conocido, con el suyo); los rangos pasan
  * de una habilidad a otra (`claseaDestino`, si la de destino no tenía fila y es de clase). Los niveles no cambian: el
- * registro del cambio lo apunta la API en el nivel en que se eligió lo antiguo.
+ * registro del cambio lo apunta la API en el nivel en que se eligió lo antiguo. Con `motor` (su cuerpo antes y después
+ * del cambio), también lo que daba lo antiguo y lo que da lo nuevo: los modificadores y los rangos varios de una dote (la
+ * API los guarda tal cual) y lo que suma a una característica.
  */
 export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaje: ReciclajeSubidaDto,
-    opciones: { origenDote?: string; claseaDestino?: boolean; } = {}): PersonajeCreateRequestDto {
+    opciones: { origenDote?: string; claseaDestino?: boolean; motor?: { antes: PersonajeCreateRequestDto; despues: PersonajeCreateRequestDto; } | null; } = {})
+    : PersonajeCreateRequestDto {
     const ficha: PersonajeCreateRequestDto = JSON.parse(JSON.stringify(entrada));
     const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) };
     if (reciclaje.tipo === 'dote') {
@@ -198,6 +203,23 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
             const origen = `${olvidado?.origen ?? ''}`.trim();
             conocidos.push({ idConjuro: toInt(c.aprende), idClase: toInt(c.idClase), ...(origen ? { origen } : {}) });
         });
+    }
+    const motor = opciones.motor;
+    if (motor) {
+        aplicarModificadoresDelMotor(ficha, motor.antes, motor.despues);
+        CARACTERISTICAS_DEL_ALTA.forEach(([clave]) => {
+            const guardada = (ficha.caracteristicas as any)?.[clave];
+            const delta = toInt((motor.despues.caracteristicas as any)?.[clave]?.valor) - toInt((motor.antes.caracteristicas as any)?.[clave]?.valor);
+            if (guardada && !guardada.perdido && delta !== 0)
+                guardada.valor = toInt(guardada.valor) + delta;
+        });
+        const antes: any = motor.antes.colecciones?.habilidades ?? {};
+        const despues: any = motor.despues.colecciones?.habilidades ?? {};
+        col.habilidades = {
+            ...(col.habilidades ?? {}),
+            base: conLosRangosVariosDelMotor(col.habilidades?.base, antes.base, despues.base),
+            custom: conLosRangosVariosDelMotor(col.habilidades?.custom, antes.custom, despues.custom),
+        };
     }
     return ficha;
 }

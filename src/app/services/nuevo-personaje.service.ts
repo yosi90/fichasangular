@@ -11523,9 +11523,7 @@ export class NuevoPersonajeService {
         this.estadoFlujo.ventajas.baseCaracteristicas = { ...finales };
         this.estadoFlujo.ventajas.baseRaciales = this.reconstruirBaseRacialesDesdeBorrador();
         this.estadoFlujo.ventajas.baseIdiomas = this.reconstruirBaseIdiomasDesdeBorrador();
-        const ventajas = [...(pj.Ventajas ?? [])];
-        this.recalcularEfectosVentajas();
-        pj.Ventajas = ventajas;
+        this.recalcularEfectosConservandoVentajas();
         const base = this.estadoFlujo.ventajas.baseCaracteristicas!;
         CARACTERISTICAS.forEach((key) => {
             const suma = (pj.CaracteristicasVarios?.[key] ?? []).reduce((acc, mod) => acc + toNumber(mod?.valor), 0);
@@ -11647,9 +11645,17 @@ export class NuevoPersonajeService {
     corregirEdad(edad: number): void {
         const pj = this.personajeCreacion;
         pj.Edad = Math.max(0, Math.trunc(toNumber(edad)));
-        const ventajas = [...(pj.Ventajas ?? [])];
+        this.recalcularEfectosConservandoVentajas();
+    }
+
+    /**
+     * Vuelve a calcular lo que suman sus rasgos, sus dotes, sus plantillas y su edad (`recalcularEfectosVentajas`, el
+     * recálculo de la creación) sin tocar sus ventajas: un personaje guardado las trae en su ficha, no en la selección.
+     */
+    private recalcularEfectosConservandoVentajas(): void {
+        const ventajas = [...(this.personajeCreacion.Ventajas ?? [])];
         this.recalcularEfectosVentajas();
-        pj.Ventajas = ventajas;
+        this.personajeCreacion.Ventajas = ventajas;
     }
 
     /** Lo que se eligió en cada nivel, en su orden (una copia). */
@@ -11731,7 +11737,11 @@ export class NuevoPersonajeService {
         return this.huecoDeDote(origen) !== null;
     }
 
-    /** Quita del personaje una dote que tiene (la primera con ese id, extra y origen) y su elección. `false` si no la tiene. */
+    /**
+     * Quita del personaje una dote que tiene (la primera con ese id, extra y origen) y su elección, y lo que daba (sus
+     * modificadores a las características, las salvaciones, la iniciativa, la presa y las habilidades: el recálculo de la
+     * creación, que parte de las dotes que le quedan). `false` si no la tiene.
+     */
     quitarDoteDeLaFicha(idDote: number, idExtra: number, origen: string): boolean {
         const pj = this.personajeCreacion;
         const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(idDote)
@@ -11749,6 +11759,8 @@ export class NuevoPersonajeService {
             && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
         if (nivel && k >= 0)
             nivel.elecciones!.splice(k, 1);
+        this.recalcularEfectosConservandoVentajas();
+        this.recalcularDerivadasPorCombate();
         return true;
     }
 

@@ -13,6 +13,7 @@ import { toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
 import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
+import { fichaDeLaCorreccion } from './utils/correccion-ficha';
 import {
     aplicarReciclajeAlMotor, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dotesParaReciclar, fichaConElReciclaje,
     habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, PlanReciclaje, reciclajeDelPlan,
@@ -192,9 +193,11 @@ function guardar(svc: NuevoPersonajeService): { entrada: PersonajeCreateRequestD
     return { entrada, personaje: JSON.parse(JSON.stringify(pj)) };
 }
 
-function subir(guardado: { entrada: PersonajeCreateRequestDto; personaje: Personaje; }, raza: Raza, clases: Clase[] = CLASES): NuevoPersonajeService {
+function subir(guardado: { entrada: PersonajeCreateRequestDto; personaje: Personaje; }, raza: Raza, clases: Clase[] = CLASES,
+    dotes: any[] = DOTES): NuevoPersonajeService {
     const svc = catalogos(new NuevoPersonajeService());
     svc.setCatalogoClases(clases);
+    svc.setCatalogoDotes(dotes);
     svc.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza });
     return svc;
 }
@@ -949,5 +952,67 @@ describe('El reciclaje del Manual del jugador II con el motor de la creación (p
         expect(aprendibles.map((i) => i.nombre)).toEqual(['Élfico']);
         expect(aplicarReciclajeAlMotor(motor, { tipo: 'idioma', quita: { idIdioma: 1, nombre: 'Común' }, pone: { idIdioma: 2, nombre: 'Élfico' } })).toBeTrue();
         expect(motor.PersonajeCreacion.Idiomas.map((i) => [i.Nombre, i.Origen])).toEqual([['Druídico', 'Druida nivel 1'], ['Élfico', 'Humano']]);
+    });
+});
+
+describe('Lo que da una dote, al quitarla y al poner otra en su hueco (el reciclaje y la corrección; la API no lo recalcula)', () => {
+    const HUMANO = crearRaza('Humano');
+    // Esquiva no tiene modificadores en los datos (su +1 de esquiva es contra un oponente: no va a la CA), así que la de
+    // estas pruebas es una con un modificador que la creación aplica: la iniciativa.
+    const INICIATIVA_MEJORADA = { ...dote(50, 'Iniciativa mejorada'), Modificadores: { Iniciativa: 4 } };
+    const REFLEJOS_RAPIDOS = { ...dote(52, 'Reflejos rápidos'), Modificadores: { Reflejos: 2 } };
+    const CATALOGO = [INICIATIVA_MEJORADA, DOTES[1], REFLEJOS_RAPIDOS, ...DOTES.slice(3)];
+    const cuerpo = (motor: NuevoPersonajeService) => new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+        { ...motor.PersonajeCreacion, Nombre: 'Tordek', Campana: 'Sin campaña' } as Personaje, { idAlineamiento: 1, idGenero: 1, idDeidad: 0 } as any);
+    const deLaDote = (lista: any[] | undefined, nombre: string) => (lista ?? []).filter((m) => `${m?.origen ?? m?.Origen ?? ''}` === `Dote: ${nombre}`);
+
+    function guardado() {
+        const svc = crear(HUMANO, {});
+        svc.setCatalogoDotes(CATALOGO);
+        aplicarNivel(svc, GUERRERO);
+        const g = guardar(svc);
+        expect(deLaDote(g.entrada.modificadores?.iniciativa, 'Iniciativa mejorada').map((m) => m.valor)).toEqual([4]);
+        return g;
+    }
+
+    it('al reciclarla: el motor quita la iniciativa de la que se va y pone los Reflejos de la nueva, y la ficha que se manda también', () => {
+        const g = guardado();
+        const motor = subir(g, HUMANO, CLASES, CATALOGO);
+        expect(deLaDote(motor.PersonajeCreacion.Iniciativa_varios, 'Iniciativa mejorada').length).toBe(1);
+        const antes = cuerpo(motor);
+        const [quita] = dotesParaReciclar(motor);
+        expect(quita.idDote).toBe(50);
+        const plan: PlanReciclaje = { tipo: 'dote', quita, seleccion: { idDote: 52, idExtra: 0, extra: '' }, pone: { idDote: 52, idExtra: 0, nombre: 'Reflejos rápidos', extra: '' } };
+        expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+        expect(deLaDote(motor.PersonajeCreacion.Iniciativa_varios, 'Iniciativa mejorada')).toEqual([]);
+        expect(deLaDote(motor.PersonajeCreacion.Salvaciones.reflejos.modsVarios, 'Reflejos rápidos').map((m) => m.valor)).toEqual([2]);
+
+        const ficha = fichaConElReciclaje(g.entrada, reciclajeDelPlan(plan), { origenDote: quita.origen, motor: { antes, despues: cuerpo(motor) } });
+        expect(deLaDote(ficha.modificadores?.iniciativa, 'Iniciativa mejorada')).toEqual([]);
+        expect(deLaDote(ficha.modificadores?.salvaciones?.reflejos?.varios, 'Reflejos rápidos').map((m) => m.valor)).toEqual([2]);
+        expect(ficha.colecciones?.dotes?.map((d) => [d.idDote, d.origen])).toEqual([[52, quita.origen]]);
+        // Sin el cuerpo del motor, solo cambia la dote (como antes del arreglo): lo que daba se quedaba.
+        expect(deLaDote(fichaConElReciclaje(g.entrada, reciclajeDelPlan(plan)).modificadores?.iniciativa, 'Iniciativa mejorada').length).toBe(1);
+    });
+
+    it('en la corrección: quitar la dote quita su iniciativa, y la que entra en su hueco pone lo suyo', () => {
+        const g = guardado();
+        const motor = subir(g, HUMANO, CLASES, CATALOGO);
+        const antes = cuerpo(motor);
+        const [d] = motor.dotesDelPersonaje();
+        const origen = `${(d.Contexto as any).Origen}`;
+        expect(motor.quitarDoteDeLaFicha(50, 0, origen)).toBeTrue();
+        expect(deLaDote(motor.PersonajeCreacion.Iniciativa_varios, 'Iniciativa mejorada')).toEqual([]);
+        const hueco = motor.registrarDoteEnLugarDe({ idDote: 50, idExtra: 0, origen }, 0);
+        expect(motor.aplicarDotePendiente(hueco.id, { idDote: 52, idExtra: 0, extra: '' })).toBeTrue();
+
+        const ficha = fichaDeLaCorreccion(g.entrada, {
+            caracteristicas: {}, puntosGolpe: null, dotesQuitadas: [{ idDote: 50, idExtra: 0, origen }], dotesMantenidas: [],
+            dotesNuevas: [{ idDote: 52, idExtra: 0, origen, indiceNivel: 0 }], idiomasQuitados: [], conjurosQuitados: [],
+            motor: { antes, despues: cuerpo(motor) },
+        });
+        expect(deLaDote(ficha.modificadores?.iniciativa, 'Iniciativa mejorada')).toEqual([]);
+        expect(deLaDote(ficha.modificadores?.salvaciones?.reflejos?.varios, 'Reflejos rápidos').map((m) => m.valor)).toEqual([2]);
+        expect(ficha.colecciones?.dotes?.map((x) => x.idDote)).toEqual([52]);
     });
 });

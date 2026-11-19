@@ -2,7 +2,7 @@ import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristi
 import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { toInt } from './normalizacion';
 import { DecisionHomebrew } from './personaje-oficialidad';
-import { aplicarRangos } from './subida-nivel';
+import { aplicarModificadoresDelMotor, aplicarRangos, conLosRangosVariosDelMotor } from './subida-nivel';
 
 /*
  * La corrección de la ficha (roadmap de sesiones, fase 6; guía `docs/publica/SESIONES_FRONT.md`, «Modificar y corregir»):
@@ -52,6 +52,11 @@ export interface CambiosCorreccion {
      * `decisiones`): el alineamiento de una clase, la edad, la altura y el peso.
      */
     decisionesRecalculadas?: { tipos: string[]; decisiones: DecisionHomebrew[]; } | null;
+    /**
+     * El cuerpo del motor al cargar la ficha y con lo corregido: lo que cambian los modificadores y los rangos varios (lo
+     * que daba la dote quitada y lo que da la que entra en su hueco), que la API guarda tal cual.
+     */
+    motor?: { antes: PersonajeCreateRequestDto; despues: PersonajeCreateRequestDto; } | null;
 }
 
 /** Quita el primer elemento que cumple `es` (y devuelve si lo ha quitado). */
@@ -106,6 +111,19 @@ export function fichaDeLaCorreccion(entrada: PersonajeCreateRequestDto, cambios:
         if (nivel?.pg && !nivel.pg.maximo)
             nivel.pg = { ...nivel.pg, tirada: toInt(tirada) };
     });
+    if (cambios.motor) {
+        aplicarModificadoresDelMotor(ficha, cambios.motor.antes, cambios.motor.despues);
+        // Con los rangos repartidos otra vez, sus varios van con ellos (abajo).
+        if (!cambios.rangos) {
+            const antes: any = cambios.motor.antes.colecciones?.habilidades ?? {};
+            const despues: any = cambios.motor.despues.colecciones?.habilidades ?? {};
+            col.habilidades = {
+                ...(col.habilidades ?? {}),
+                base: conLosRangosVariosDelMotor(col.habilidades?.base, antes.base, despues.base),
+                custom: conLosRangosVariosDelMotor(col.habilidades?.custom, antes.custom, despues.custom),
+            };
+        }
+    }
     if (cambios.rangos) {
         const antes: any = cambios.rangos.antes.colecciones?.habilidades ?? {};
         const despues: any = cambios.rangos.despues.colecciones?.habilidades ?? {};

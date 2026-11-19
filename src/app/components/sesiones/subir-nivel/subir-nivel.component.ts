@@ -706,12 +706,15 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             }
             const destino = plan.tipo === 'rangos' ? this.destinosRangos.find((d) => d.idHabilidad === plan.pone.idHabilidad) ?? null : null;
             this.plan = plan;
+            const despues = this.cuerpoDelMotor();
             this.entradaReciclada = fichaConElReciclaje(this.entrada!, reciclajeDelPlan(plan), {
                 origenDote: plan.tipo === 'dote' ? plan.quita.origen : undefined,
                 claseaDestino: !!destino && destino.clases === null,
+                // Lo que daba lo antiguo y lo que da lo nuevo: la API guarda tal cual los modificadores que llegan.
+                motor: this.antes ? { antes: this.antes, despues } : null,
             });
             this.clasesDelReciclaje = destino?.clases ? destino.clases.map((c) => c.id) : null;
-            this.antes = this.cuerpoDelMotor();
+            this.antes = despues;
         }
         await this.siguiente();
     }
