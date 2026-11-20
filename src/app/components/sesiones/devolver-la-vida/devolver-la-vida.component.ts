@@ -34,7 +34,7 @@ import { daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
     caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, fichaConConstitucionPerdida,
-    FilaPerdida, filasDelNivelPerdido, indiceDelNivelQueSePierde, indiceDelUltimoNivelDeLaClase, marcarDotesSinPrerrequisitos, NombresDeLaFicha, nombresDeLaFicha, ordenPorConocer,
+    dotesQueVuelvenACumplir, FilaPerdida, filasDelNivelPerdido, indiceDelNivelQueSePierde, indiceDelUltimoNivelDeLaClase, marcarDotesSinPrerrequisitos, NombresDeLaFicha, nombresDeLaFicha, ordenPorConocer,
     perdidaDelNivel, quitarElNivelDelMotor, ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
@@ -521,10 +521,8 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const clave = (d: { idDote: unknown; idExtra: unknown; }) => `${toInt(d.idDote)}|${Math.max(0, toInt(d.idExtra))}`;
         const rotas = this.svc.dotesSinSusPrerrequisitos();
         const rotasAntesClaves = new Set(rotasAntes.map(clave));
-        const rotasClaves = new Set(rotas.map(clave));
         const marcar = rotas.filter((d) => !rotasAntesClaves.has(clave(d)));
-        const desmarcar = (this.entrada?.colecciones?.dotes ?? []).filter((d: any) => d?.sinPrerrequisitos && !rotasClaves.has(clave(d)))
-            .map((d: any) => ({ idDote: toInt(d.idDote), idExtra: toInt(d.idExtra), origen: `${d.origen ?? ''}` }));
+        const desmarcar = dotesQueVuelvenACumplir(this.entrada?.colecciones?.dotes, rotas);
         return { marcar, desmarcar, nombre: (d: { idDote: number; idExtra: number; }) => rotasAntes.find((r) => clave(r) === clave(d))?.nombre };
     }
 
