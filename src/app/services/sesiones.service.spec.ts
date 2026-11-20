@@ -232,6 +232,49 @@ describe('SesionesService', () => {
             expect(ETIQUETA_EVENTO['conversion_muerto_viviente']).toBe('Conversión');
         });
 
+        it('devolver la vida: la ruta, el cuerpo, la respuesta, su evento y los niveles perdidos con la causa `revivir`', async () => {
+            const venta = respuestaSesiones<any>('venta');
+            const texto = 'volvió a la vida (vuelve a ser enano): −1 nivel de engendro vampírico, −1 nivel de guerrero (queda en 3), NEP 5 → 3, '
+                + 'PX 8.000 → 4.500, Constitución de nuevo 14, PG 39 → 31, tipo muerto viviente → humanoide (resurrección en el templo de Moradin)';
+            const evento = { ...venta.sesion.eventos[venta.sesion.eventos.length - 1], id: 103, tipo: 'vuelta_a_la_vida', texto, px: -3500, idClase: 482, nivelClase: 1, deshacible: true };
+            http.request.and.returnValue(of({
+                ...venta, sesion: { ...venta.sesion, eventos: [...venta.sesion.eventos.map((e: any) => ({ ...e, deshacible: false })), evento] },
+                vuelta: {
+                    idEvento: 103, numeroSesion: 1, pierdeNivel: true, razaAntes: { id: 1009, nombre: 'Engendro vampírico' }, raza: { id: 2, nombre: 'Enano' },
+                    claseDeMonstruo: { id: 482, nombre: 'Engendro vampírico' }, nivelesQuitados: 1, perdida: { clase: { id: 7, nombre: 'Guerrero' }, nivelClase: 4 },
+                    constitucion: { antes: 14, despues: 14 }, nepAntes: 5, nepDespues: 3, pxAntes: 8000, pxDespues: 4500,
+                },
+                reglasIgnoradas: [],
+            }));
+            const cuerpo = { pierdeNivel: true, concepto: 'resurrección en el templo de Moradin', ficha: {} as any, version: sesion.version };
+            const respuesta = await servicio.devolverLaVida(129, cuerpo);
+            expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/vuelta-a-la-vida`, jasmine.objectContaining({ body: cuerpo })]);
+            expect(respuesta.vuelta).toEqual({
+                idEvento: 103, numeroSesion: 1, pierdeNivel: true, razaAntes: { id: 1009, nombre: 'Engendro vampírico' }, raza: { id: 2, nombre: 'Enano' },
+                claseDeMonstruo: { id: 482, nombre: 'Engendro vampírico' }, nivelesQuitados: 1, perdida: { clase: { id: 7, nombre: 'Guerrero' }, nivelClase: 4 },
+                constitucion: { antes: 14, despues: 14 }, nepAntes: 5, nepDespues: 3, pxAntes: 8000, pxDespues: 4500,
+            });
+            const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
+            expect([ultimo.tipo, ultimo.texto, ultimo.px, ultimo.idClase, ultimo.deshacible]).toEqual(['vuelta_a_la_vida', texto, -3500, 482, true]);
+            expect(ETIQUETA_EVENTO['vuelta_a_la_vida']).toBe('Vuelta a la vida');
+            await expectAsync(servicio.devolverLaVida(0, cuerpo)).toBeRejected();
+
+            // Sin el nivel de más (resurrección verdadera), `perdida` es null.
+            http.request.and.returnValue(of({ ...venta, reglasIgnoradas: [], vuelta: { idEvento: 104, pierdeNivel: false, perdida: null, nivelesQuitados: 1 } }));
+            expect((await servicio.devolverLaVida(129, { ...cuerpo, pierdeNivel: false })).vuelta.perdida).toBeNull();
+
+            // Lo que pierde va a `nivelesPerdidos` con la causa `revivir` y sin restablecimiento.
+            http.request.and.returnValue(of({
+                ...respuestaSesiones<any>('detalle_abierta'), ficha: crearDetalleApi(),
+                nivelesPerdidos: [
+                    { idClase: 482, nivelClase: 1, ordenConocido: true, clasesAnteriores: [7, 482], causa: 'revivir', restablecible: false },
+                    { idClase: 7, nivelClase: 4, ordenConocido: true, clasesAnteriores: [7], causa: 'revivir', restablecible: false },
+                ],
+            }));
+            const detalle = await servicio.sesion(129, 1);
+            expect(detalle.nivelesPerdidos!.map((n) => [n.idClase, n.causa, n.restablecible])).toEqual([[482, 'revivir', false], [7, 'revivir', false]]);
+        });
+
         it('la conversión del gnoll (sin niveles de clase): sin nivel perdido', async () => {
             http.request.and.returnValue(of({
                 ...respuestaSesiones<any>('venta'), reglasIgnoradas: [],

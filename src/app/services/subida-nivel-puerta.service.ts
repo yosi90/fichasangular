@@ -18,6 +18,7 @@ export class SubidaNivelPuertaService {
     private readonly plantillasSubject = new Subject<number>();
     private readonly perdidasSubject = new Subject<number>();
     private readonly mutacionesSubject = new Subject<number>();
+    private readonly vueltasSubject = new Subject<number>();
     private readonly subidasHechasSubject = new Subject<number>();
 
     /** Cada vez que alguien pulsa «Subir a nivel N»: el id del personaje. */
@@ -30,9 +31,11 @@ export class SubidaNivelPuertaService {
     readonly perdidas$: Observable<number> = this.perdidasSubject.asObservable();
     /** «Adquirir una raza mutada» (fase 7): el id del personaje; su pestaña se abre como la de la subida. */
     readonly mutaciones$: Observable<number> = this.mutacionesSubject.asObservable();
+    /** «Devolver la vida» a un muerto viviente de clase de monstruo (fase 7): el id del personaje; su pestaña, como la de la subida. */
+    readonly vueltas$: Observable<number> = this.vueltasSubject.asObservable();
     /**
      * Cada vez que la subida guarda un nivel, la corrección guarda la ficha, se cambian sus datos libres (fase 6) o se
-     * adquiere una plantilla o una raza mutada o se pierde un nivel (fase 7): el id del personaje, para volver a cargar su
+     * adquiere una plantilla o una raza mutada, se pierde un nivel o se le devuelve la vida (fase 7): el id del personaje, para volver a cargar su
      * ficha y su historial.
      */
     readonly subidasHechas$: Observable<number> = this.subidasHechasSubject.asObservable();
@@ -65,6 +68,12 @@ export class SubidaNivelPuertaService {
         const id = toInt(idPersonaje);
         if (id > 0)
             this.mutacionesSubject.next(id);
+    }
+
+    solicitarVuelta(idPersonaje: number): void {
+        const id = toInt(idPersonaje);
+        if (id > 0)
+            this.vueltasSubject.next(id);
     }
 
     subidaHecha(idPersonaje: number): void {

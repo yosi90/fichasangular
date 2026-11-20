@@ -6,6 +6,7 @@ import {
     AbrirSesionDto,
     AdquirirPlantillaDto,
     AdquirirRazaMutadaDto,
+    CAUSAS_NIVEL_PERDIDO,
     CausaNivelPerdido,
     ConversionMuertoViviente,
     CosteCobrado,
@@ -31,6 +32,8 @@ import {
     SesionPersonaje,
     SubidaNivelDto,
     TipoEventoSesion,
+    VueltaALaVidaDto,
+    RespuestaVuelta,
 } from 'src/app/interfaces/sesiones';
 import { environment } from 'src/environments/environment';
 import { AppToastService } from './app-toast.service';
@@ -52,7 +55,7 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
     'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'raza_mutada_adquirida',
-    'conversion_muerto_viviente', 'nivel_perdido',
+    'conversion_muerto_viviente', 'nivel_perdido', 'vuelta_a_la_vida',
     'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'nota',
 ]);
 
@@ -163,7 +166,7 @@ function leerIdNombre(valor: any): { id: number; nombre: string; } {
 }
 
 /** Las causas de un nivel perdido que da la API (`nivelesPerdidos[].causa`); otra, sin causa. */
-const CAUSAS_NIVEL_PERDIDO: ReadonlySet<string> = new Set<CausaNivelPerdido>(['revivir', 'nivel_negativo', 'plantilla', 'experiencia', 'otro', 'conversion']);
+const CAUSAS_CONOCIDAS: ReadonlySet<string> = new Set<string>(CAUSAS_NIVEL_PERDIDO);
 
 /**
  * Lo que dice la conversión en muerto viviente (`razaMutada.conversion`), o `null` si la raza no lleva clase de monstruo:
@@ -229,7 +232,7 @@ export class SesionesService {
                 nivelClase: toInt(n?.nivelClase),
                 ordenConocido: n?.ordenConocido !== false,
                 clasesAnteriores: (Array.isArray(n?.clasesAnteriores) ? n.clasesAnteriores : []).map((c: unknown) => toInt(c)),
-                causa: CAUSAS_NIVEL_PERDIDO.has(`${n?.causa ?? ''}`) ? n.causa as CausaNivelPerdido : null,
+                causa: CAUSAS_CONOCIDAS.has(`${n?.causa ?? ''}`) ? n.causa as CausaNivelPerdido : null,
                 restablecible: n?.restablecible === true,
             })),
         };
@@ -323,6 +326,38 @@ export class SesionesService {
                 pxAntes: toInt(p.pxAntes),
                 pxDespues: toInt(p.pxDespues),
                 constitucion: p.constitucion ? { antes: toInt(p.constitucion.antes), despues: toInt(p.constitucion.despues) } : null,
+            },
+        };
+    }
+
+    /**
+     * Devolver la vida a un muerto viviente de clase de monstruo (*Libris Mortis*, pág. 35): queda en la sesión de juego
+     * abierta, con los PX que le quedan, la raza de antes y lo que ha perdido.
+     */
+    async devolverLaVida(idPersonaje: number, cuerpo: VueltaALaVidaDto): Promise<RespuestaVuelta> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/vuelta-a-la-vida`, cuerpo,
+            'No se ha podido devolver la vida al personaje.');
+        const v = respuesta?.vuelta ?? {};
+        const perdida = v.perdida && typeof v.perdida === 'object' ? v.perdida : null;
+        return {
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
+            vuelta: {
+                idEvento: toInt(v.idEvento),
+                numeroSesion: toInt(v.numeroSesion),
+                pierdeNivel: v.pierdeNivel === true,
+                razaAntes: leerIdNombre(v.razaAntes),
+                raza: leerIdNombre(v.raza),
+                claseDeMonstruo: leerIdNombre(v.claseDeMonstruo),
+                nivelesQuitados: Math.max(0, toInt(v.nivelesQuitados)),
+                perdida: perdida ? { clase: leerIdNombre(perdida.clase), nivelClase: toInt(perdida.nivelClase) } : null,
+                constitucion: v.constitucion ? { antes: toInt(v.constitucion.antes), despues: toInt(v.constitucion.despues) } : null,
+                nepAntes: toIntOrNull(v.nepAntes),
+                nepDespues: toIntOrNull(v.nepDespues),
+                pxAntes: toInt(v.pxAntes),
+                pxDespues: toInt(v.pxDespues),
             },
         };
     }

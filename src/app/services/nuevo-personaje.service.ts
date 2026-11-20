@@ -18,7 +18,7 @@ import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaj
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
-import { ListaLanzamientoRaza, Raza, RazaPlantillaReferencia } from '../interfaces/raza';
+import { EspecialSustituido, ListaLanzamientoRaza, Raza, RazaPlantillaReferencia } from '../interfaces/raza';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { NivelPerdido } from '../interfaces/sesiones';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
@@ -46,7 +46,7 @@ import { evaluarGruposParaSelectorRacial } from './utils/racial-prerrequisitos';
 import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
 import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
-import { esRazaMutada, especialQueLaSustituye } from './utils/raza-mutacion';
+import { esRazaMutada, especialesDevueltos, especialQueLaSustituye } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, ContextoCompatibles, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
@@ -12115,6 +12115,110 @@ export class NuevoPersonajeService {
         this.recalcularEfectosConservandoVentajas();
         this.recalcularDerivadasPorCombate();
         return true;
+    }
+
+    /**
+     * Devolver la vida a un muerto viviente de clase de monstruo (*Libris Mortis*, pág. 35; contrato en `personajes.md`,
+     * «Devolver la vida a un muerto viviente»): lo contrario de `adquirirRazaMutada`. El personaje guardado (hidratado con
+     * su raza mutada y su base, y ya sin los niveles de la clase de monstruo: `perderNivelEnElMotor`) vuelve a su raza de
+     * antes, entera: los ajustes de característica de la de antes en lugar de los de la mutada (`actual`, la combinada que da
+     * la API sobre su base; sin ella, la del motor), sin los rasgos, las sortílegas, las dotes ni los idiomas que solo traía
+     * la mutada, con los rasgos de la base que no tenga, las aptitudes que la raza sustituía otra vez de la tabla de su clase
+     * (`especialesDevueltos`) y el tipo y los subtipos de la base con sus plantillas (sin el agrandado). La Constitución deja
+     * de estar perdida y vuelve con la puntuación `constitucion` (la guardada, o 2 menos), y su modificador vuelve a sumar.
+     * No se añade ninguna dote (el contrato no lo admite). `false` si no tiene una raza mutada sobre una base.
+     */
+    devolverLaRazaBase(actual: Raza | null, constitucion: number | null): boolean {
+        const mutada = this.razaSeleccionada;
+        const anterior = this.razaBaseSeleccionadaCompleta;
+        if (!mutada || !anterior || !esRazaMutada(mutada))
+            return false;
+        const ajustes = actual ?? mutada;
+        const nueva = this.copiarRaza(anterior);
+        const pj = this.personajeCreacion;
+        const nombresMutada = new Set([normalizarTexto(`${mutada.Nombre ?? ''}`), normalizarTexto(`${ajustes.Nombre ?? ''}`)]);
+        const deLaMutada = (origen: unknown) => nombresMutada.has(normalizarTexto(`${origen ?? ''}`));
+
+        // La base de sus puntuaciones lleva el ajuste de su raza: el de la de antes en lugar del de la mutada.
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        if (base)
+            CARACTERISTICAS.forEach((key) => {
+                if (!this.esCaracteristicaPerdida(key))
+                    base[key] = toNumber(base[key]) - toNumber(ajustes.Modificadores?.[key]) + toNumber(nueva.Modificadores?.[key]);
+            });
+
+        // Las dotes de la mutada se van, salvo las que da también la de antes (no se añade ninguna).
+        const deLaBase = this.resolverDotesDeRaza(nueva);
+        const mismaDote = (a: DoteDeRaza, b: DoteDeRaza) => toInt(a.dote?.Id) === toInt(b.dote?.Id) && Math.max(0, toInt(a.idExtra)) === Math.max(0, toInt(b.idExtra));
+        [...this.resolverDotesDeRaza(mutada), ...(actual ? this.resolverDotesDeRaza(actual) : [])]
+            .filter((d) => !deLaBase.some((b) => mismaDote(b, d)))
+            .forEach(({ dote, idExtra, origen }) => {
+                const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(dote?.Id)
+                    && toInt(d?.Contexto?.Id_extra) === Math.max(0, toInt(idExtra))
+                    && normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === normalizarTexto(origen));
+                if (i >= 0)
+                    pj.DotesContextuales.splice(i, 1);
+                const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(dote?.Nombre ?? '')
+                    && normalizarTexto(d?.Origen ?? '') === normalizarTexto(origen));
+                if (j >= 0)
+                    pj.Dotes.splice(j, 1);
+            });
+
+        this.racialesOpcionalesRaza = this.copiarRaciales(nueva.Raciales).filter((racial) => toInt(racial?.Opcional) > 0);
+        this.razaBaseSeleccionadaCompleta = null;
+        this.razaSeleccionada = nueva;
+        pj.Raza = nueva;
+        pj.RazaBase = null;
+        // Sus rasgos y sus sortílegas: los de la mutada se van y vuelven los de la de antes que no tenga (sin los opcionales,
+        // que ya eligió al crearlo).
+        const raciales = (this.estadoFlujo.ventajas.baseRaciales ?? []).filter((racial) => !deLaMutada(racial?.Origen));
+        const conRacial = new Set(raciales.map((racial) => normalizarTexto(racial?.Nombre ?? '')));
+        this.estadoFlujo.ventajas.baseRaciales = [
+            ...raciales,
+            ...this.asignarOrigenRaciales(this.copiarRaciales(nueva.Raciales)
+                .filter((racial) => toInt(racial?.Opcional) <= 0 && !conRacial.has(normalizarTexto(racial?.Nombre ?? ''))), nueva.Nombre),
+        ];
+        const sortilegas = (pj.Sortilegas ?? []).filter((sortilega) => !deLaMutada(sortilega?.Origen));
+        const conSortilega = new Set(sortilegas.map((s) => normalizarTexto(`${s?.Conjuro?.Nombre ?? ''}`)));
+        pj.Sortilegas = [
+            ...sortilegas,
+            ...this.asignarOrigenSortilegas(this.copiarSortilegas(nueva.Sortilegas)
+                .filter((s) => !conSortilega.has(normalizarTexto(`${s?.Conjuro?.Nombre ?? ''}`))), nueva.Nombre),
+        ];
+        // Los idiomas que solo traía la mutada.
+        const idiomasDeLaBase = new Set((nueva.Idiomas ?? []).map((i) => normalizarTexto(i?.Nombre ?? '')));
+        const seQueda = (idioma: { Nombre?: string; Origen?: string; } | null | undefined) =>
+            !deLaMutada(idioma?.Origen) || idiomasDeLaBase.has(normalizarTexto(idioma?.Nombre ?? ''));
+        pj.Idiomas = (pj.Idiomas ?? []).filter(seQueda);
+        this.estadoFlujo.ventajas.baseIdiomas = (this.estadoFlujo.ventajas.baseIdiomas ?? []).filter(seQueda);
+        // Las aptitudes que sustituía, otra vez de la tabla de su clase (el clérigo vuelve a expulsar).
+        this.devolverEspecialesSustituidos(ajustes.Especiales_sustituidos ?? mutada.Especiales_sustituidos ?? []);
+        this.recalcularTipoYSubtiposDerivados();
+        this.recalcularEfectosConservandoVentajas();
+        // La Constitución vuelve con su puntuación (sin ella, la que tenga la base del motor).
+        if (base && constitucion !== null && !this.esCaracteristicaPerdida('Constitucion')) {
+            const varios = (pj.CaracteristicasVarios?.Constitucion ?? []).reduce((acc, mod) => acc + toNumber(mod?.valor), 0);
+            base.Constitucion = Math.max(1, toInt(constitucion)) - varios;
+            this.aplicarCaracteristicasFinalesDesdeBase();
+        }
+        this.recalcularDerivadasPorCombate();
+        return true;
+    }
+
+    /** Las aptitudes que la raza sustituía (`sustituidos`), otra vez de las tablas de sus clases (`especialesDevueltos`). */
+    private devolverEspecialesSustituidos(sustituidos: ReadonlyArray<EspecialSustituido>): void {
+        const deLasTablas: Personaje['Claseas'] = [];
+        (this.personajeCreacion.desgloseClases ?? []).forEach((entrada) => {
+            const clase = this.obtenerClaseDeDesglose(entrada);
+            for (let nivel = 1; clase && nivel <= toInt(entrada?.Nivel); nivel++)
+                (this.obtenerDetalleNivelClase(clase, nivel)?.Especiales ?? []).forEach((e) => {
+                    const id = toInt((e?.Especial as Record<string, any>)?.['Id']);
+                    if (id > 0)
+                        deLasTablas.push({ Id: id, Id_extra: toNumber(e?.Id_extra), Nombre: `${(e?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim(), Extra: `${e?.Extra ?? ''}`.trim() });
+                });
+        });
+        this.personajeCreacion.Claseas = especialesDevueltos(this.personajeCreacion.Claseas ?? [], sustituidos, deLasTablas,
+            (e) => ({ id: toInt(e?.Id), extra: Math.max(0, toInt(e?.Id_extra)) }));
     }
 
     /** El modificador de Inteligencia al tomar el nivel `indice` de su orden (sin los incrementos de después); −1, antes del primero. */

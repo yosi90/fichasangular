@@ -45,6 +45,14 @@
                                     Adquirir una raza mutada
                                 </button>
                             }
+                            @if (puedeDevolverLaVida) {
+                                <!-- Fase 7: devolver la vida a un muerto viviente de clase de monstruo, en su pestaña -->
+                                <button type="button" mat-stroked-button class="historial__boton" (click)="devolverLaVida()"
+                                    matTooltip="Resurrección, resurrección verdadera, deseo o milagro: pierde los niveles de su clase de monstruo y vuelve a su raza de antes; queda en la sesión abierta">
+                                    <mat-icon aria-hidden="true">favorite</mat-icon>
+                                    Devolver la vida
+                                </button>
+                            }
                             <!-- Fase 7, segunda tanda: volver a la vida, un nivel negativo permanente… en su pestaña -->
                             <button type="button" mat-stroked-button class="historial__boton" (click)="perderNivel()"
                                 matTooltip="Volver a la vida, un nivel negativo permanente…: queda en la sesión abierta">

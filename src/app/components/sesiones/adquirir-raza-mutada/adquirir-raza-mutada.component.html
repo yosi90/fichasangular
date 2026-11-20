@@ -54,27 +54,11 @@
                 <p class="subida__nota">Pierde el último nivel de clase que ganó y lo que eligió en él, como si hubiese muerto y le hubieran revivido, y gana el 1.er nivel de {{elegida?.raza?.Clase_de_monstruo?.Nombre}}, que lo reemplaza (Libris Mortis, pág. 34). Este nivel no se puede restablecer.</p>
                 <ng-container *ngIf="sinOrden">
                     <h3 class="subida__seccion">Su ficha no sabe en qué orden ganó sus niveles</h3>
-                    <div class="subida__botones">
-                        <label class="subida__campo">
-                            Clase que pierde el nivel
-                            <select [value]="idClaseElegida ?? ''" (change)="elegirClasePerdida($any($event.target).value)">
-                                <option *ngFor="let c of clasesPropias" [value]="c.id">{{c.nombre}} {{c.nivel}}</option>
-                            </select>
-                        </label>
-                        <label class="subida__campo" *ngIf="pideIncremento">
-                            Incremento que pierde
-                            <select [value]="incrementoElegido ?? ''" (change)="elegirIncrementoPerdido($any($event.target).value)">
-                                <option *ngFor="let c of caracteristicasDelIncremento" [value]="c.id">{{c.nombre}} ({{c.valor}})</option>
-                            </select>
-                        </label>
-                        <label class="subida__campo" *ngIf="pideDote">
-                            Dote que pierde por su DG
-                            <select [value]="doteElegida" (change)="elegirDotePerdida($any($event.target).value)">
-                                <option value="">Elige una</option>
-                                <option *ngFor="let d of dotesSinRegistro" [value]="d.clave">{{d.nombre}}</option>
-                            </select>
-                        </label>
-                    </div>
+                    <app-nivel-que-pierde [clases]="clasesPropias" [caracteristicas]="caracteristicasDelIncremento" [dotes]="dotesSinRegistro"
+                        [idClase]="idClaseElegida" [incremento]="incrementoElegido" [dote]="doteElegida"
+                        [pideIncremento]="pideIncremento" [pideDote]="pideDote"
+                        (claseElegida)="elegirClasePerdida($event)" (incrementoElegido)="elegirIncrementoPerdido($event)" (doteElegida)="elegirDotePerdida($event)">
+                    </app-nivel-que-pierde>
                 </ng-container>
                 <table class="subida__tabla subida__tabla--resumen" *ngIf="filasPerdida.length > 0">
                     <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th></tr></thead>

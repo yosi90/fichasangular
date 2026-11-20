@@ -145,6 +145,51 @@ describe('NuevoPersonajeService (convertirse en muerto viviente)', () => {
         expect(aptitudes.find((a) => a.Nombre === REPRENDER.Nombre)?.Id).toBe(REPRENDER.Id);
     });
 
+    describe('devolverle la vida (Libris Mortis, pág. 35): `devolverLaRazaBase`', () => {
+        /** Quita del motor el nivel del engendro y le devuelve la raza de antes con su Constitución. */
+        function devolver(p: Personaje, base: 'gnoll' | 'humano' | 'enano', constitucion: number): void {
+            const svc = p.svc;
+            svc.perderNivelEnElMotor({ idClase: p.engendro.Id, indiceNivel: (svc.PersonajeCreacion.Orden_niveles ?? []).length - 1 });
+            expect(svc.devolverLaRazaBase(engendroSobre(base).raza, constitucion)).toBeTrue();
+        }
+
+        it('el clérigo 2 / engendro 1 vuelve a ser humano clérigo 2: tipo humanoide, sin agrandado, con su Constitución y expulsando', () => {
+            const p = crear('humano', clerigo(), 3);
+            convertir(p, 'humano', true);
+            devolver(p, 'humano', 13);
+            const pj = p.svc.PersonajeCreacion;
+
+            expect(p.svc.RazaSeleccionada?.Nombre).toBe('Humano');
+            expect(p.svc.RazaBaseSeleccionadaCompleta).toBeNull();
+            expect(pj.RazaBase).toBeNull();
+            expect((pj.desgloseClases ?? []).map((c) => [c.Nombre, c.Nivel])).toEqual([['Clérigo', 2]]);
+            expect(pj.Tipo_criatura?.Nombre).not.toBe('Muerto viviente');
+            expect(nombres(pj.Subtipos)).not.toContain('Agrandado');
+            expect(pj.Constitucion_perdida).toBeFalse();
+            expect(pj.Constitucion).toBe(13);
+            // Los ajustes del engendro (Fue +2, Car +2) se van.
+            expect([pj.Fuerza, pj.Carisma]).toEqual([CARACTERISTICAS.Fuerza, CARACTERISTICAS.Carisma]);
+            expect(nombres(pj.Claseas)).toContain(EXPULSAR.Nombre);
+            expect(nombres(pj.Claseas)).not.toContain(REPRENDER.Nombre);
+        });
+
+        it('el enano vuelve con la Constitución que se le da y los ajustes de su raza', () => {
+            const p = crear('enano', normalizeClase(guerreroApi()), 3);
+            convertir(p, 'enano', true);
+            devolver(p, 'enano', 13);
+            const pj = p.svc.PersonajeCreacion;
+
+            expect(pj.Constitucion).toBe(13);
+            expect(pj.Carisma).toBe(CARACTERISTICAS.Carisma - 2);
+            expect(pj.NEP).toBe(2);
+        });
+
+        it('sin una raza mutada sobre una base, no hace nada', () => {
+            const p = crear('humano', normalizeClase(guerreroApi()), 1);
+            expect(p.svc.devolverLaRazaBase(null, 12)).toBeFalse();
+        });
+    });
+
     describe('de paso, en la creación', () => {
         it('una raza mutada que sustituye una aptitud la cambia en el nivel de clase que la da', () => {
             const svc = new NuevoPersonajeService();
