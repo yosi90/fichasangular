@@ -139,10 +139,11 @@ export function estadoDeLaVuelta(d: {
 
 /**
  * Si la clase vale para el 1.er nivel que gana sin ningún DG: una básica, ni de prestigio (`Prestigio`) ni de monstruo (la
- * que lleva una raza mutada, `Mutacion`). Las demás no se ofrecen (`400 vuelta_clase_nueva_no_valida`).
+ * que lleva una raza mutada, `Mutacion`, o de progresión obligatoria), como la API (`vuelta_a_la_vida.clase_nueva_de_la_ficha`).
+ * Las demás no se ofrecen (`400 vuelta_clase_nueva_no_valida`).
  */
-export function esClaseParaVolverSinDg(clase: Pick<Clase, 'Prestigio' | 'Mutacion'> | null | undefined): boolean {
-    return !!clase && clase.Prestigio !== true && toInt(clase.Mutacion?.Id) < 1;
+export function esClaseParaVolverSinDg(clase: Pick<Clase, 'Prestigio' | 'Mutacion' | 'Progresion_obligatoria'> | null | undefined): boolean {
+    return !!clase && clase.Prestigio !== true && toInt(clase.Mutacion?.Id) < 1 && clase.Progresion_obligatoria !== true;
 }
 
 /**

@@ -256,6 +256,8 @@ describe('vuelta-a-la-vida', () => {
             expect(esClaseParaVolverSinDg(claseGuerrero)).toBeTrue();
             expect(esClaseParaVolverSinDg({ ...claseGuerrero, Prestigio: true })).toBeFalse();
             expect(esClaseParaVolverSinDg({ ...claseEngendro, Mutacion: { Id: 1009, Nombre: 'Engendro vampírico' } })).toBeFalse();
+            // De progresión obligatoria, aunque no la lleve una raza mutada: también de monstruo, como en la API.
+            expect(esClaseParaVolverSinDg({ ...claseGuerrero, Progresion_obligatoria: true })).toBeFalse();
             expect(esClaseParaVolverSinDg(null)).toBeFalse();
         });
 
