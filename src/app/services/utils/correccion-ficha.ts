@@ -91,6 +91,15 @@ export function sacarDoteDeLaFicha(dotes: any[] | undefined, idDote: number, idE
         ?? (opciones.cualquierExtra ? sacarPrimero(dotes, (x) => toInt(x?.idDote) === toInt(idDote)) : undefined);
 }
 
+/**
+ * Las decisiones homebrew sin las de mantener una dote sin sus prerrequisitos (`requisitos_dote`) que ya no tiene
+ * (`dotes`, las `colecciones.dotes` de la ficha): fuera, o la API las rechaza por no ser del personaje. Lo usan la
+ * corrección, la raza mutada y la vuelta a la vida.
+ */
+export function sinDecisionesDeDotesQueNoTiene(decisiones: DecisionHomebrew[], dotes: any[] | undefined): DecisionHomebrew[] {
+    return decisiones.filter((d) => d.tipo !== 'requisitos_dote' || (dotes ?? []).some((x: any) => toInt(x?.idDote) === toInt(d.idElemento)));
+}
+
 /** Las elecciones de los niveles guardados sin la de ese tipo y ese elemento (la primera, de abajo arriba). */
 function quitarEleccion(ficha: PersonajeCreateRequestDto, tipo: string, idElemento: number, idExtra: number | null): void {
     for (const nivel of [...(ficha.niveles ?? [])].reverse()) {
@@ -164,9 +173,8 @@ export function fichaDeLaCorreccion(entrada: PersonajeCreateRequestDto, cambios:
         if (!decisiones.some((d) => d.tipo === 'requisitos_dote' && toInt(d.idElemento) === toInt(id)))
             decisiones.push({ tipo: 'requisitos_dote', idElemento: toInt(id) });
     });
-    // Las que mantenía y ya no tiene (se ha quitado la dote): fuera, o la API las rechaza por no ser del personaje.
-    const vigentes = decisiones.filter((d) => d.tipo !== 'requisitos_dote'
-        || col.dotes.some((x: any) => toInt(x?.idDote) === toInt(d.idElemento)));
+    // Las que mantenía y ya no tiene (se ha quitado la dote).
+    const vigentes = sinDecisionesDeDotesQueNoTiene(decisiones, col.dotes);
     if (vigentes.length > 0 || ficha.decisionesHomebrew !== undefined)
         ficha.decisionesHomebrew = vigentes;
     return ficha;

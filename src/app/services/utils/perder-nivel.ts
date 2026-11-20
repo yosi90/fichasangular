@@ -72,6 +72,20 @@ export function marcarDotesSinPrerrequisitos(
     return { ...ficha, colecciones: { ...(ficha.colecciones ?? {}), dotes } } as PersonajeCreateRequestDto;
 }
 
+/**
+ * Las dotes de la ficha (`dotes`, sus `colecciones.dotes`) que conservaba sin sus prerrequisitos (`sinPrerrequisitos`) y
+ * vuelven a cumplirlos: no están entre las que el motor da sin ellos (`siguenSin`, `dotesSinSusPrerrequisitos`), con -1 y 0
+ * de extra como el mismo. Vuelven a valer (*Manual del jugador*, pág. 87): son el `quitar` de `marcarDotesSinPrerrequisitos`.
+ * La subida de nivel y la vuelta a la vida.
+ */
+export function dotesQueVuelvenACumplir(dotes: any[] | undefined, siguenSin: ReadonlyArray<{ idDote: unknown; idExtra: unknown; }>)
+    : Array<{ idDote: number; idExtra: number; origen: string; }> {
+    const clave = (d: { idDote: unknown; idExtra: unknown; }) => `${toInt(d.idDote)}|${Math.max(0, toInt(d.idExtra))}`;
+    const siguen = new Set(siguenSin.map(clave));
+    return (dotes ?? []).filter((d: any) => d?.sinPrerrequisitos && !siguen.has(clave(d)))
+        .map((d: any) => ({ idDote: toInt(d.idDote), idExtra: toInt(d.idExtra), origen: `${d.origen ?? ''}` }));
+}
+
 /** Los puntos de Constitución que pierde, con un solo DG, al volver a la vida (*Manual del jugador*, pág. 171). */
 export const CONSTITUCION_PERDIDA = 2;
 
@@ -93,6 +107,16 @@ export function indiceDelNivelQueSePierde(niveles: PersonajeCreateNivelDto[] | u
         return null;
     if (ordenConocido(lista[lista.length - 1]))
         return lista.length - 1;
+    return indiceDelUltimoNivelDeLaClase(lista, toInt(idClase));
+}
+
+/**
+ * El índice en `niveles` del último nivel de `idClase`: el de más nivel de clase (con el orden por conocer, el que se
+ * guardó así); `null` si no tiene ninguno. Lo usan la pérdida con el orden por conocer (`indiceDelNivelQueSePierde`) y la
+ * vuelta a la vida, que quita así uno a uno los niveles de la clase de monstruo, del último al 1.º.
+ */
+export function indiceDelUltimoNivelDeLaClase(niveles: PersonajeCreateNivelDto[] | undefined, idClase: number): number | null {
+    const lista = niveles ?? [];
     let indice: number | null = null;
     lista.forEach((n, i) => {
         if (toInt(n?.idClase) === toInt(idClase) && (indice === null || toInt(n.nivelClase) >= toInt(lista[indice].nivelClase)))

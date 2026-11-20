@@ -12075,25 +12075,10 @@ export class NuevoPersonajeService {
         const deLaAnterior = (origen: unknown) => normalizarTexto(`${origen ?? ''}`) === normalizarTexto(`${anterior.Nombre ?? ''}`);
 
         // La base de sus puntuaciones lleva el ajuste de su raza (`getBaseCaracteristicas`): el de la combinada en su lugar.
-        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
-        if (base)
-            CARACTERISTICAS.forEach((key) => {
-                if (!this.esCaracteristicaPerdida(key))
-                    base[key] = toNumber(base[key]) - toNumber(anterior.Modificadores?.[key]) + toNumber(nueva.Modificadores?.[key]);
-            });
+        this.cambiarAjusteDeRaza(anterior, nueva);
 
         // Las dotes de su raza de antes (las suyas y las de sus rasgos) se van; las de la combinada llegan con ella.
-        this.resolverDotesDeRaza(anterior).forEach(({ dote, idExtra, origen }) => {
-            const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(dote?.Id)
-                && toInt(d?.Contexto?.Id_extra) === Math.max(0, toInt(idExtra))
-                && normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === normalizarTexto(origen));
-            if (i >= 0)
-                pj.DotesContextuales.splice(i, 1);
-            const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(dote?.Nombre ?? '')
-                && normalizarTexto(d?.Origen ?? '') === normalizarTexto(origen));
-            if (j >= 0)
-                pj.Dotes.splice(j, 1);
-        });
+        this.resolverDotesDeRaza(anterior).forEach((d) => this.quitarDoteDeRaza(d));
 
         this.racialesOpcionalesRaza = opcionales;
         this.razaBaseSeleccionadaCompleta = this.copiarRaza(anterior);
@@ -12143,28 +12128,14 @@ export class NuevoPersonajeService {
 
         // La base de sus puntuaciones lleva el ajuste de su raza: el de la de antes en lugar del de la mutada.
         const base = this.estadoFlujo.ventajas.baseCaracteristicas;
-        if (base)
-            CARACTERISTICAS.forEach((key) => {
-                if (!this.esCaracteristicaPerdida(key))
-                    base[key] = toNumber(base[key]) - toNumber(ajustes.Modificadores?.[key]) + toNumber(nueva.Modificadores?.[key]);
-            });
+        this.cambiarAjusteDeRaza(ajustes, nueva);
 
         // Las dotes de la mutada se van, salvo las que da también la de antes (no se añade ninguna).
         const deLaBase = this.resolverDotesDeRaza(nueva);
         const mismaDote = (a: DoteDeRaza, b: DoteDeRaza) => toInt(a.dote?.Id) === toInt(b.dote?.Id) && Math.max(0, toInt(a.idExtra)) === Math.max(0, toInt(b.idExtra));
         [...this.resolverDotesDeRaza(mutada), ...(actual ? this.resolverDotesDeRaza(actual) : [])]
             .filter((d) => !deLaBase.some((b) => mismaDote(b, d)))
-            .forEach(({ dote, idExtra, origen }) => {
-                const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(dote?.Id)
-                    && toInt(d?.Contexto?.Id_extra) === Math.max(0, toInt(idExtra))
-                    && normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === normalizarTexto(origen));
-                if (i >= 0)
-                    pj.DotesContextuales.splice(i, 1);
-                const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(dote?.Nombre ?? '')
-                    && normalizarTexto(d?.Origen ?? '') === normalizarTexto(origen));
-                if (j >= 0)
-                    pj.Dotes.splice(j, 1);
-            });
+            .forEach((d) => this.quitarDoteDeRaza(d));
 
         this.racialesOpcionalesRaza = this.copiarRaciales(nueva.Raciales).filter((racial) => toInt(racial?.Opcional) > 0);
         this.razaBaseSeleccionadaCompleta = null;
@@ -12205,6 +12176,37 @@ export class NuevoPersonajeService {
         }
         this.recalcularDerivadasPorCombate();
         return true;
+    }
+
+    /**
+     * La base de sus puntuaciones (`getBaseCaracteristicas`, que lleva el ajuste de su raza) con los ajustes de `a` en lugar
+     * de los de `de`, salvo en las características perdidas: al adquirir una raza mutada y al devolverle la de antes.
+     */
+    private cambiarAjusteDeRaza(de: Raza, a: Raza): void {
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        if (base)
+            CARACTERISTICAS.forEach((key) => {
+                if (!this.esCaracteristicaPerdida(key))
+                    base[key] = toNumber(base[key]) - toNumber(de.Modificadores?.[key]) + toNumber(a.Modificadores?.[key]);
+            });
+    }
+
+    /**
+     * Quita del personaje una dote de su raza (`resolverDotesDeRaza`): la de las contextuales con su id, su extra y su origen,
+     * y la de la lista con su nombre y su origen. Al adquirir una raza mutada (las de la de antes) y al devolverle la de antes
+     * (las que solo traía la mutada).
+     */
+    private quitarDoteDeRaza({ dote, idExtra, origen }: DoteDeRaza): void {
+        const pj = this.personajeCreacion;
+        const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(dote?.Id)
+            && toInt(d?.Contexto?.Id_extra) === Math.max(0, toInt(idExtra))
+            && normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === normalizarTexto(origen));
+        if (i >= 0)
+            pj.DotesContextuales.splice(i, 1);
+        const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(dote?.Nombre ?? '')
+            && normalizarTexto(d?.Origen ?? '') === normalizarTexto(origen));
+        if (j >= 0)
+            pj.Dotes.splice(j, 1);
     }
 
     /** Las aptitudes que la raza sustituía (`sustituidos`), otra vez de las tablas de sus clases (`especialesDevueltos`). */

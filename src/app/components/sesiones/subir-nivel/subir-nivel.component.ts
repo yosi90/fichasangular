@@ -31,7 +31,7 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { toInt } from 'src/app/services/utils/normalizacion';
-import { marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
+import { dotesQueVuelvenACumplir, marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
 import {
     aplicarReciclajeAlMotor,
@@ -695,10 +695,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const elecciones: PersonajeCreateNivelEleccionDto[] = this.svc.getEleccionesDelNivelEnCurso();
         // Las dotes que conservaba sin sus prerrequisitos (tras perder un nivel) y que con este nivel vuelve a cumplir
         // vuelven a valer (Manual del jugador, pág. 87).
-        const siguenSin = this.svc.dotesSinSusPrerrequisitos();
-        const yaCumple = (this.entradaDelNivel.colecciones?.dotes ?? []).filter((d: any) => d?.sinPrerrequisitos
-            && !siguenSin.some((f) => f.idDote === toInt(d.idDote) && f.idExtra === toInt(d.idExtra)))
-            .map((d: any) => ({ idDote: toInt(d.idDote), idExtra: toInt(d.idExtra) }));
+        const yaCumple = dotesQueVuelvenACumplir(this.entradaDelNivel.colecciones?.dotes, this.svc.dotesSinSusPrerrequisitos());
         return marcarDotesSinPrerrequisitos(this.fichaDeLaSubidaSinMarcas(elecciones), [], yaCumple);
     }
 

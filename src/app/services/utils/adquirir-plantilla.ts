@@ -207,6 +207,36 @@ export function nombresNuevos(antes: string[], despues: string[]): string[] {
 }
 
 /**
+ * La fila del tipo de criatura de «Lo que cambia», si cambia (sin distinguir mayúsculas ni tildes); ninguna si no. Al
+ * adquirir una plantilla o una raza mutada y al devolverle la vida a un muerto viviente.
+ */
+export function filasDelTipo(antes: Personaje, despues: Personaje, porque: string): CambioPlantilla[] {
+    const a = `${antes?.Tipo_criatura?.Nombre ?? ''}`;
+    const d = `${despues?.Tipo_criatura?.Nombre ?? ''}`;
+    return normalizarTexto(a) !== normalizarTexto(d) ? [{ que: 'Tipo', antes: a || '—', ahora: d || '—', porque }] : [];
+}
+
+/** La fila de los rasgos raciales que pierde y los que gana, si cambian. Al adquirir una raza mutada y al devolverle la vida. */
+export function filasDeRasgosRaciales(antes: Personaje, despues: Personaje, porque: string): CambioPlantilla[] {
+    const nombres = (pj: Personaje) => (pj?.Raciales ?? []).map((r) => `${r?.Nombre ?? ''}`.trim()).filter((n) => n.length > 0);
+    const pierde = nombresNuevos(nombres(despues), nombres(antes));
+    const gana = nombresNuevos(nombres(antes), nombres(despues));
+    return pierde.length || gana.length
+        ? [{ que: 'Rasgos raciales', antes: pierde.join(', ') || '—', ahora: gana.join(', ') || '—', porque }] : [];
+}
+
+/**
+ * «Sin poder usar»: las dotes (`dotes`, sus nombres) que dejan de cumplir un prerrequisito y conserva (*Manual del jugador*,
+ * pág. 87); ninguna fila sin ellas. Al convertirse en muerto viviente y al devolverle la vida.
+ */
+export function filasSinPoderUsar(dotes: string[]): CambioPlantilla[] {
+    return dotes.length > 0 ? [{
+        que: 'Sin poder usar', antes: dotes.join(', '), ahora: 'Las conserva',
+        porque: 'Dejan de cumplir un prerrequisito: vuelven a valer cuando lo cumpla (Manual del jugador, pág. 87)',
+    }] : [];
+}
+
+/**
  * La fila de los PX de «Lo que cambia» al adquirir una plantilla o una raza mutada: no cambian (*Especies salvajes*, pág.
  * 145), con el nivel al que sube con el NEP nuevo; si el NEP baja, puede subir antes. Sin experiencia, ninguna.
  */
@@ -249,7 +279,7 @@ export function cambiosDeLaPlantilla(e: EntradaCambiosPlantilla): CambioPlantill
         if (normalizarTexto(a) !== normalizarTexto(d))
             filas.push({ que, antes: a || '—', ahora: d || '—', porque });
     };
-    texto(`${e.antes?.Tipo_criatura?.Nombre ?? ''}`, `${e.despues?.Tipo_criatura?.Nombre ?? ''}`, 'Tipo');
+    filas.push(...filasDelTipo(e.antes, e.despues, porPlantilla));
     texto(`${e.antes?.Alineamiento ?? ''}`, `${e.despues?.Alineamiento ?? ''}`, 'Alineamiento', `${nombre} fija su alineamiento`);
     filas.push(...filasDeCaracteristicas(e.antes, e.despues, porPlantilla));
     if (e.pg) {

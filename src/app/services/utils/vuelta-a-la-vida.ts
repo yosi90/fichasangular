@@ -3,13 +3,13 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { NivelPerdido } from 'src/app/interfaces/sesiones';
 import { EspecialSustituido } from 'src/app/interfaces/raza';
-import { CambioPlantilla, filasDeCaracteristicas, nombresNuevos } from './adquirir-plantilla';
+import { CambioPlantilla, filasDeCaracteristicas, filasDeRasgosRaciales, filasDelTipo, filasSinPoderUsar } from './adquirir-plantilla';
 import { LISTAS_DE_LA_RAZA, nepTrasLaMutacion, RazaDelNep, SE_CONSERVAN_EN_MUTACION } from './adquirir-raza-mutada';
 import { modificadorCaracteristica } from './caracteristicas';
 import { ContextoCompatibles, esClaseCompatibleConRestringida } from './clase-elegibilidad';
 import { dgsDeClase, filaDeNivel } from './clase-niveles';
-import { sacarDoteDeLaFicha } from './correccion-ficha';
-import { normalizarTexto, toInt } from './normalizacion';
+import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
+import { toInt } from './normalizacion';
 import {
     CONSTITUCION_PERDIDA, FilaPerdida, marcarDotesSinPrerrequisitos, ordenConocido, ordenPorConocer, pxTrasPerder, quitadoVacio, ResultadoPerdida,
 } from './perder-nivel';
@@ -65,19 +65,6 @@ export function motivoSinConstitucionParaVolver(constitucion: number | null): st
     return constitucion === null
         ? 'No tiene una puntuación de Constitución guardada: no se le puede devolver la vida (Manual del jugador, pág. 285).'
         : `Con Constitución ${toInt(constitucion)} no se le puede devolver la vida: los 2 puntos que pierde la dejarían en 0 (Manual del jugador, pág. 285).`;
-}
-
-/**
- * El índice en `niveles` del último nivel de `idClase`: el de más nivel de clase (con el orden por conocer, el que se
- * guardó así); `null` si no tiene ninguno. Así se quitan uno a uno los niveles de la clase de monstruo, del último al 1.º.
- */
-export function indiceDelUltimoNivelDeLaClase(niveles: PersonajeCreateNivelDto[] | undefined, idClase: number): number | null {
-    let indice: number | null = null;
-    (niveles ?? []).forEach((n, i) => {
-        if (toInt(n?.idClase) === toInt(idClase) && (indice === null || toInt(n.nivelClase) >= toInt((niveles ?? [])[indice].nivelClase)))
-            indice = i;
-    });
-    return indice;
 }
 
 /**
@@ -152,10 +139,11 @@ export function estadoDeLaVuelta(d: {
 
 /**
  * Si la clase vale para el 1.er nivel que gana sin ningún DG: una básica, ni de prestigio (`Prestigio`) ni de monstruo (la
- * que lleva una raza mutada, `Mutacion`). Las demás no se ofrecen (`400 vuelta_clase_nueva_no_valida`).
+ * que lleva una raza mutada, `Mutacion`, o de progresión obligatoria), como la API (`vuelta_a_la_vida.clase_nueva_de_la_ficha`).
+ * Las demás no se ofrecen (`400 vuelta_clase_nueva_no_valida`).
  */
-export function esClaseParaVolverSinDg(clase: Pick<Clase, 'Prestigio' | 'Mutacion'> | null | undefined): boolean {
-    return !!clase && clase.Prestigio !== true && toInt(clase.Mutacion?.Id) < 1;
+export function esClaseParaVolverSinDg(clase: Pick<Clase, 'Prestigio' | 'Mutacion' | 'Progresion_obligatoria'> | null | undefined): boolean {
+    return !!clase && clase.Prestigio !== true && toInt(clase.Mutacion?.Id) < 1 && clase.Progresion_obligatoria !== true;
 }
 
 /**
@@ -369,19 +357,14 @@ export function fichaDeLaVuelta(d: EntradaFichaVuelta): PersonajeCreateRequestDt
     // Los idiomas: los que le quedan, sin los que solo traía la raza mutada.
     const idiomasQuitados = diferencia(colA.idiomas ?? [], colD.idiomas ?? []).quitados.map((i) => toInt(i['idIdioma']));
     const idiomas = [...(colSin.idiomas ?? [])];
-    idiomasQuitados.forEach((id) => {
-        const i = idiomas.findIndex((x: any) => toInt(x?.idIdioma) === id);
-        if (i >= 0)
-            idiomas.splice(i, 1);
-    });
+    idiomasQuitados.forEach((id) => sacarPrimero(idiomas, (x: any) => toInt(x?.idIdioma) === id));
     col.idiomas = idiomas;
     col.dominios = [...(colSin.dominios ?? [])];
     col.conjurosConocidos = [...(colSin.conjurosConocidos ?? [])];
     col.especiales = especialesDevueltos(colSin.especiales ?? [], d.sustituidos, d.deLasTablas,
         (e: any) => ({ id: toInt(e?.idEspecial), extra: Math.max(0, toInt(e?.idExtra)) }));
     if (ficha.decisionesHomebrew)
-        ficha.decisionesHomebrew = ficha.decisionesHomebrew.filter((x) =>
-            !(x.tipo === 'requisitos_dote' && !dotes.some((dote) => toInt(dote?.idDote) === toInt(x.idElemento))));
+        ficha.decisionesHomebrew = sinDecisionesDeDotesQueNoTiene(ficha.decisionesHomebrew, dotes);
     return marcarDotesSinPrerrequisitos(ficha, d.marcar, d.desmarcar);
 }
 
@@ -456,10 +439,7 @@ export function cambiosDeLaVuelta(e: EntradaCambiosVuelta): CambioPlantilla[] {
                     ? `La mitad de su nivel sin la clase de monstruo (${formatoPx(e.px.enMedio)}) y otra vez sin el nivel de más (Manual del jugador, pág. 171)`
                     : 'La mitad entre el mínimo de su nivel sin la clase de monstruo y el del siguiente (Manual del jugador, pág. 171)',
     });
-    const tipoA = `${e.antes?.Tipo_criatura?.Nombre ?? ''}`;
-    const tipoD = `${e.despues?.Tipo_criatura?.Nombre ?? ''}`;
-    if (normalizarTexto(tipoA) !== normalizarTexto(tipoD))
-        filas.push({ que: 'Tipo', antes: tipoA || '—', ahora: tipoD || '—', porque: 'El de su raza de antes, con sus plantillas' });
+    filas.push(...filasDelTipo(e.antes, e.despues, 'El de su raza de antes, con sus plantillas'));
     filas.push({
         que: 'Constitución', antes: 'Sin ella', ahora: `${e.constitucion}`,
         porque: e.pierdeConstitucion
@@ -478,22 +458,14 @@ export function cambiosDeLaVuelta(e: EntradaCambiosVuelta): CambioPlantilla[] {
             que: 'Puntos de golpe', antes: `${e.pg.antes}`, ahora: `${e.pg.despues}`,
             porque: `Sin los DG que pierde y con la Constitución en los que le quedan${e.pg.exacto ? '' : ' (aproximado: faltan tiradas de antes)'}`,
         });
-    const nombres = (pj: Personaje) => (pj?.Raciales ?? []).map((r) => `${r?.Nombre ?? ''}`.trim()).filter((n) => n.length > 0);
-    const pierde = nombresNuevos(nombres(e.despues), nombres(e.antes));
-    const gana = nombresNuevos(nombres(e.antes), nombres(e.despues));
-    if (pierde.length || gana.length)
-        filas.push({ que: 'Rasgos raciales', antes: pierde.join(', ') || '—', ahora: gana.join(', ') || '—', porque: porLaRaza });
+    filas.push(...filasDeRasgosRaciales(e.antes, e.despues, porLaRaza));
     e.aptitudes.forEach((a) => filas.push({ que: 'Aptitud', antes: a.antes, ahora: a.ahora, porque: 'Vuelve la de la tabla de su clase (Libris Mortis, pág. 35)' }));
     if (e.vuelvenAValer.length)
         filas.push({
             que: 'Vuelven a valer', antes: e.vuelvenAValer.join(', '), ahora: 'Las puede usar',
             porque: 'Vuelve a cumplir sus prerrequisitos (Manual del jugador, pág. 87)',
         });
-    if (e.sinPoderUsar.length)
-        filas.push({
-            que: 'Sin poder usar', antes: e.sinPoderUsar.join(', '), ahora: 'Las conserva',
-            porque: 'Dejan de cumplir un prerrequisito: vuelven a valer cuando lo cumpla (Manual del jugador, pág. 87)',
-        });
+    filas.push(...filasSinPoderUsar(e.sinPoderUsar));
     return filas;
 }
 

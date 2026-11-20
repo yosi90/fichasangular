@@ -1,8 +1,8 @@
-import { fichaConConstitucionPerdida, fichaSinElNivel, filasDelNivelPerdido } from './perder-nivel';
+import { fichaConConstitucionPerdida, fichaSinElNivel, filasDelNivelPerdido, indiceDelUltimoNivelDeLaClase } from './perder-nivel';
 import { especialesDevueltos } from './raza-mutacion';
 import {
     apartarLoDelPrimerNivel, cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
-    fichaDeLaVuelta, indiceDelUltimoNivelDeLaClase, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
+    fichaDeLaVuelta, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
     MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES, MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO, nepTrasLaVuelta, NO_SIRVEN_PARA_LA_VUELTA,
     pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas, tomoNivelesDespues,
 } from './vuelta-a-la-vida';
@@ -256,6 +256,8 @@ describe('vuelta-a-la-vida', () => {
             expect(esClaseParaVolverSinDg(claseGuerrero)).toBeTrue();
             expect(esClaseParaVolverSinDg({ ...claseGuerrero, Prestigio: true })).toBeFalse();
             expect(esClaseParaVolverSinDg({ ...claseEngendro, Mutacion: { Id: 1009, Nombre: 'Engendro vampírico' } })).toBeFalse();
+            // De progresión obligatoria, aunque no la lleve una raza mutada: también de monstruo, como en la API.
+            expect(esClaseParaVolverSinDg({ ...claseGuerrero, Progresion_obligatoria: true })).toBeFalse();
             expect(esClaseParaVolverSinDg(null)).toBeFalse();
         });
 

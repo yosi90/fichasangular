@@ -3,9 +3,11 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { PrerrequisitoMutacion, Raza } from 'src/app/interfaces/raza';
 import { TipoPrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
 import { ExperienciaPersonaje } from 'src/app/interfaces/sesiones';
-import { CambioPlantilla, filaDeLosPx, filasDeCaracteristicas, nombresDeDotes, nombresNuevos } from './adquirir-plantilla';
+import {
+    CambioPlantilla, filaDeLosPx, filasDeCaracteristicas, filasDeRasgosRaciales, filasDelTipo, filasSinPoderUsar, nombresDeDotes, nombresNuevos,
+} from './adquirir-plantilla';
 import { nombreExClase } from './alineamiento-clase';
-import { sacarDoteDeLaFicha } from './correccion-ficha';
+import { sacarDoteDeLaFicha, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
 import { etapaEdad } from './edad-personaje';
 import { dgsRacialesQueCuentan } from './nivel-personaje';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
@@ -208,8 +210,7 @@ export function fichaDeLaMutacion(datos: EntradaFichaMutacion): PersonajeCreateR
     const { quitados } = diferencia(datos.antes.colecciones?.dotes ?? [], datos.despues.colecciones?.dotes ?? []);
     quitados.forEach((d) => sacarDoteDeLaFicha(dotes, toInt(d['idDote']), toInt(d['idExtra']), `${d['origen'] ?? ''}`.trim() || null));
     if (ficha.decisionesHomebrew)
-        ficha.decisionesHomebrew = ficha.decisionesHomebrew.filter((d) =>
-            !(d.tipo === 'requisitos_dote' && !dotes.some((x) => toInt(x?.idDote) === toInt(d.idElemento))));
+        ficha.decisionesHomebrew = sinDecisionesDeDotesQueNoTiene(ficha.decisionesHomebrew, dotes);
     return ficha;
 }
 
@@ -314,10 +315,7 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
     const px = conversion ? filaDeLosPxDeLaConversion(conversion) : filaDeLosPx(e.experiencia, e.nepDespues);
     if (px)
         filas.push(px);
-    const tipoA = `${e.antes?.Tipo_criatura?.Nombre ?? ''}`;
-    const tipoD = `${e.despues?.Tipo_criatura?.Nombre ?? ''}`;
-    if (normalizarTexto(tipoA) !== normalizarTexto(tipoD))
-        filas.push({ que: 'Tipo', antes: tipoA || '—', ahora: tipoD || '—', porque: porLaRaza });
+    filas.push(...filasDelTipo(e.antes, e.despues, porLaRaza));
     filas.push(...filasDeCaracteristicas(e.antes, e.despues, porLaRaza));
     if (e.pg && e.pg.total !== toInt(e.antes?.Vida))
         filas.push({
@@ -326,12 +324,7 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
                 ? `Sin Constitución en ningún DG, sin el DG del nivel que pierde y con el de ${conversion.claseDeMonstruo.toLowerCase()}${e.pg.exacto ? '' : ' (aproximado: faltan tiradas de antes)'}`
                 : `La Constitución nueva en todos sus DG${e.pg.exacto ? '' : ' (aproximado: faltan tiradas de antes)'}`,
         });
-    const racialesA = nombres(e.antes?.Raciales);
-    const racialesD = nombres(e.despues?.Raciales);
-    const pierde = nombresNuevos(racialesD, racialesA);
-    const gana = nombresNuevos(racialesA, racialesD);
-    if (pierde.length || gana.length)
-        filas.push({ que: 'Rasgos raciales', antes: pierde.join(', ') || '—', ahora: gana.join(', ') || '—', porque: porLaRaza });
+    filas.push(...filasDeRasgosRaciales(e.antes, e.despues, porLaRaza));
     const idiomas = nombresNuevos(nombres(e.antes?.Idiomas), nombres(e.despues?.Idiomas));
     if (idiomas.length)
         filas.push({ que: 'Idiomas', antes: '—', ahora: idiomas.join(', '), porque: porLaRaza });
@@ -358,11 +351,7 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
             que: 'Categoría de edad', antes: etapaA.nombre, ahora: etapaD.nombre,
             porque: `Con las edades de ${nombre}: ${etapaD.id === 'adulto' ? 'pierde los efectos de la edad que tenía' : 'cambian los efectos de la edad'}`,
         });
-    if (conversion && conversion.sinPoderUsar.length > 0)
-        filas.push({
-            que: 'Sin poder usar', antes: conversion.sinPoderUsar.join(', '), ahora: 'Las conserva',
-            porque: 'Dejan de cumplir un prerrequisito: vuelven a valer cuando lo cumpla (Manual del jugador, pág. 87)',
-        });
+    filas.push(...filasSinPoderUsar(conversion?.sinPoderUsar ?? []));
     (conversion?.sustituidas ?? []).forEach((a) => filas.push({
         que: 'Aptitud', antes: a.antes, ahora: a.ahora, porque: `La sustituye ${nombre.toLowerCase()} en todas sus clases (Libris Mortis, pág. 35)`,
     }));

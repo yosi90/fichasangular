@@ -1,6 +1,6 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import {
-    caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, doteDeLaClave, dotesQuePuedePerder, fichaConConstitucionPerdida,
+    caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, doteDeLaClave, dotesQuePuedePerder, dotesQueVuelvenACumplir, fichaConConstitucionPerdida,
     fichaSinElNivel, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos, ordenPorConocer, puntoMedioDelNivel, pxTrasPerder,
     pxTrasPerderExperiencia, sinLoQueDabanLasDotes,
 } from './perder-nivel';
@@ -196,6 +196,17 @@ describe('perder-nivel: perder PX y las dotes sin sus prerrequisitos', () => {
         ]);
         // La ficha de partida no cambia.
         expect((ficha.colecciones as any).dotes[1].sinPrerrequisitos).toBeTrue();
+    });
+
+    it('las que conservaba sin sus prerrequisitos y vuelve a cumplir: las que el motor ya no da sin ellos, con -1 y 0 de extra como el mismo', () => {
+        const dotes = [
+            { idDote: 5, idExtra: 0, origen: 'Guerrero nivel 2' },
+            { idDote: 9, idExtra: 3, origen: 'Nivel 3', sinPrerrequisitos: true },
+            { idDote: 11, idExtra: -1, origen: 'Nivel 6', sinPrerrequisitos: true },
+        ];
+        // La 11 sigue sin ellos (el motor la da con extra 0); la 9 vuelve a valer.
+        expect(dotesQueVuelvenACumplir(dotes, [{ idDote: 11, idExtra: 0 }])).toEqual([{ idDote: 9, idExtra: 3, origen: 'Nivel 3' }]);
+        expect(dotesQueVuelvenACumplir(undefined, [])).toEqual([]);
     });
 });
 
