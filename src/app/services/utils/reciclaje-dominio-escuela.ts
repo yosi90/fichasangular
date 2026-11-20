@@ -115,14 +115,9 @@ function clasesConDominios(motor: NuevoPersonajeService): Clase[] {
         .filter((c): c is Clase => !!c && toInt(c.Conjuros?.Dominio_cantidad) > 0);
 }
 
-/** El id de un dominio del personaje: el suyo o, sin él, el del catálogo con su nombre. */
-function idDelDominio(motor: NuevoPersonajeService, dominio: { Id?: number; Nombre?: string; }): number {
-    return toInt(dominio?.Id) || toInt(motor.resolverIdDominioPorNombre(`${dominio?.Nombre ?? ''}`));
-}
-
 /**
  * Los dominios del personaje en cada clase que los da (el motor recién hidratado), con los que puede poner en su lugar
- * (`dominiosQuePuedeElegir` de la creación; sin `conHomebrew`, solo los oficiales). De qué clase es cada uno: su elección
+ * (`dominiosQuePuedeElegir`, como al crear; sin `conHomebrew`, solo los oficiales). De qué clase es cada uno: su elección
  * en el registro, el `origen` de la ficha o, si no, la primera clase con dominios. Cada opción, con su motivo si los
  * rangos comprados como de clase por el dominio quedarían por encima del tope de una transclásea (`nivelPersonaje`, el
  * de antes de subir, + 3, entre 2). Lo que depende de lo que sale lo pone `dominiosParaReciclar` (`reciclaje.ts`).
@@ -143,7 +138,7 @@ export function huecosDeDominio(motor: NuevoPersonajeService, entrada: Personaje
     };
     const deidad = motor.deidadDelPersonaje();
     const tope = limiteRangosHabilidad(nivelPersonaje, false);
-    return (pj.Dominios ?? []).map((d) => ({ id: idDelDominio(motor, d), nombre: `${d?.Nombre ?? ''}`.trim() }))
+    return (pj.Dominios ?? []).map((d) => ({ id: motor.idDelDominio(d), nombre: `${d?.Nombre ?? ''}`.trim() }))
         .filter((d) => d.id > 0)
         .map((tiene) => {
             const clase = deLaClase(tiene.id);

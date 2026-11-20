@@ -501,9 +501,7 @@ export function dominiosParaReciclar(motor: NuevoPersonajeService, entrada: Pers
             return hueco;
         const da = loQueDaElDominio(motor, hueco.tiene);
         // Sus aptitudes, si no las da también otro dominio que le quede.
-        const deOtros = new Set((motor.PersonajeCreacion.Dominios ?? []).filter((d) => normalizarTexto(d?.Nombre ?? '') !== normalizarTexto(hueco.tiene.nombre))
-            .flatMap((d) => motor.dominioDelCatalogo(toInt(d?.Id) || toInt(motor.resolverIdDominioPorNombre(`${d?.Nombre ?? ''}`)))?.Especiales ?? [])
-            .map((e) => normalizarTexto(e?.Nombre ?? '')));
+        const deOtros = new Set(motor.dominiosQueLeQuedan(hueco.tiene.id, null).flatMap((d) => d.Especiales ?? []).map((e) => normalizarTexto(e?.Nombre ?? '')));
         const rotas = loQueDejariaDeCumplir(motor, {
             dominios: [hueco.tiene.nombre],
             dotes: da.dotes.map(({ idDote, idExtra, origen }) => ({ idDote, idExtra, origen })),

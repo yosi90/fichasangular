@@ -2435,7 +2435,7 @@ export class NuevoPersonajeService {
         if (cantidad < 1)
             return null;
 
-        const opciones = this.resolverDominiosDisponiblesClase(clase);
+        const opciones = this.dominiosQuePuedeElegir(clase);
         return {
             cantidad,
             opciones,
@@ -7942,9 +7942,10 @@ export class NuevoPersonajeService {
 
     /**
      * Los dominios que puede elegir: los de su deidad (sin deidad, todos) y, de los de alineamiento, solo los que
-     * coinciden con el suyo (MJ cap. 3, Clérigo: un clérigo neutral maligno no puede elegir Bien).
+     * coinciden con el suyo (MJ cap. 3, Clérigo: un clérigo neutral maligno no puede elegir Bien), sin los que ya tiene y,
+     * si la ficha es oficial, sin los homebrew. Al crear y en el reciclaje de un dominio (`reciclaje-dominio-escuela.ts`).
      */
-    private resolverDominiosDisponiblesClase(_clase: Clase): ClaseDominioPendiente[] {
+    dominiosQuePuedeElegir(_clase: Clase): ClaseDominioPendiente[] {
         const dominiosPropiosDeidad = this.obtenerDominiosDeidadSeleccionada();
         const fuente = dominiosPropiosDeidad.length > 0
             ? dominiosPropiosDeidad
@@ -8030,7 +8031,7 @@ export class NuevoPersonajeService {
                 return;
             this.personajeCreacion.Dominios.push({ Nombre: nombre });
             nombresActuales.add(nombreNorm);
-            const idDominio = toInt(dominio?.id) || toInt(this.resolverIdDominioPorNombre(nombre));
+            const idDominio = this.idDelDominio({ Id: dominio?.id, Nombre: nombre });
             if (idDominio > 0)
                 this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'dominio', idElemento: idDominio, origen: `${clase?.Nombre ?? ''}`.trim() || undefined });
             this.aplicarPoderConcedidoDominio(this.dominioDelCatalogo(dominio.id) ?? null, nombre, clase);
@@ -9598,7 +9599,7 @@ export class NuevoPersonajeService {
     }
 
     /** El id de un dominio del catálogo por su nombre (los dominios de una ficha de la creación no lo llevan), o `null`. */
-    resolverIdDominioPorNombre(nombreDominio: string): number | null {
+    private resolverIdDominioPorNombre(nombreDominio: string): number | null {
         const nombreNorm = normalizarTexto(nombreDominio);
         if (nombreNorm.length < 1)
             return null;
@@ -12255,12 +12256,23 @@ export class NuevoPersonajeService {
         return true;
     }
 
+    /** El id de un dominio del personaje: el suyo o, sin él (los de una ficha de la creación), el del catálogo con su nombre; 0 si no. */
+    idDelDominio(dominio: { Id?: number; Nombre?: string; } | null | undefined): number {
+        return toInt(dominio?.Id) || toInt(this.resolverIdDominioPorNombre(`${dominio?.Nombre ?? ''}`));
+    }
+
     /**
-     * Los dominios que puede elegir con `clase`, como al crear (`resolverDominiosDisponiblesClase`): los de su deidad (sin
-     * deidad, todos), de alineamiento solo los del suyo, sin los que ya tiene y, si la ficha es oficial, sin los homebrew.
+     * Los dominios del catálogo que le quedarían sin `idQuita` (por su id o su nombre) y con `idPone` (`null`: sin poner
+     * otro). Lo que da otro dominio que le queda no sale con el que se quita (`habilidadesQueDejanDeSerDeClase`,
+     * `cambiarDominio` y el reciclaje de un dominio).
      */
-    dominiosQuePuedeElegir(clase: Clase): ClaseDominioPendiente[] {
-        return this.resolverDominiosDisponiblesClase(clase);
+    dominiosQueLeQuedan(idQuita: number, idPone: number | null): DominioDetalle[] {
+        const nombreQuita = normalizarTexto(this.dominioDelCatalogo(idQuita)?.Nombre ?? '');
+        return [
+            ...(this.personajeCreacion.Dominios ?? []).filter((d) => toInt(d?.Id) !== toInt(idQuita) && normalizarTexto(d?.Nombre ?? '') !== nombreQuita)
+                .map((d) => this.dominioDelCatalogo(this.idDelDominio(d))),
+            ...(idPone ? [this.dominioDelCatalogo(idPone)] : []),
+        ].filter((d): d is DominioDetalle => !!d);
     }
 
     /**
@@ -12274,12 +12286,7 @@ export class NuevoPersonajeService {
         const quita = this.dominioDelCatalogo(idQuita);
         if (!quita)
             return [];
-        const nombreQuita = normalizarTexto(quita.Nombre);
-        const quedan = [
-            ...(pj.Dominios ?? []).filter((d) => toInt(d?.Id) !== toInt(idQuita) && normalizarTexto(d?.Nombre ?? '') !== nombreQuita)
-                .map((d) => this.dominioDelCatalogo(toInt(d?.Id) || toInt(this.resolverIdDominioPorNombre(`${d?.Nombre ?? ''}`)))),
-            ...(idPone ? [this.dominioDelCatalogo(idPone)] : []),
-        ].filter((d): d is DominioDetalle => !!d);
+        const quedan = this.dominiosQueLeQuedan(idQuita, idPone);
         const deLaReferencia = (ref: Record<string, any>) => {
             const id = toInt(ref?.['Id_habilidad'] ?? ref?.['id_habilidad'] ?? ref?.['Id']);
             const idExtra = toInt(ref?.['Id_extra'] ?? ref?.['id_extra']);
@@ -12313,12 +12320,11 @@ export class NuevoPersonajeService {
         if (!clase || !quita || !pone || i < 0)
             return false;
         const sinClase = this.habilidadesQueDejanDeSerDeClase(idQuita, idPone);
+        const deOtro = new Set(this.dominiosQueLeQuedan(idQuita, idPone).flatMap((d) => d.Especiales ?? []).map((e) => normalizarTexto(e?.Nombre ?? '')));
         const [quitado] = pj.Dominios.splice(i, 1);
         const origen = normalizarTexto(`Dominio: ${quitado?.Nombre ?? quita.Nombre}`);
         (pj.DotesContextuales ?? []).filter((d) => normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === origen)
             .forEach((d) => this.quitarDoteDeLaFicha(toInt(d.Dote?.Id), toInt(d.Contexto?.Id_extra), `${(d.Contexto as any)?.Origen ?? ''}`));
-        const deOtro = new Set([...(pj.Dominios ?? []).map((d) => this.dominioDelCatalogo(toInt(d?.Id) || toInt(this.resolverIdDominioPorNombre(`${d?.Nombre ?? ''}`)))), pone]
-            .flatMap((d) => d?.Especiales ?? []).map((e) => normalizarTexto(e?.Nombre ?? '')));
         (quita.Especiales ?? []).filter((e) => !deOtro.has(normalizarTexto(e?.Nombre ?? ''))).forEach((e) => {
             const j = (pj.Claseas ?? []).findIndex((x) => (toInt(e?.Id) > 0 && toInt(x?.Id) === toInt(e.Id)) || normalizarTexto(x?.Nombre ?? '') === normalizarTexto(e?.Nombre ?? ''));
             if (j >= 0)
