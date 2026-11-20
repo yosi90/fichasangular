@@ -1,15 +1,17 @@
+import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { Clase } from 'src/app/interfaces/clase';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import type { EspecialidadArcanaSeleccion, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
-import { esConjuroDeLaClase, nivelesDeDominioDelConjuro } from 'src/app/services/nuevo-personaje.service';
+import { esConjuroDeLaClase, nivelesDeDominioDelConjuro, origenDeDominio } from 'src/app/services/nuevo-personaje.service';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
 import { nombreDeHabilidadConExtra } from './habilidad-extra-visible';
+import { coincideClaveEntidad } from './identidad-prerrequisitos';
 import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
 import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
-import { esEspecializable, prohibidasAlEspecializarse } from './reglas-magia';
-import { unirConY } from './sesiones-texto';
+import { nombreConExtra } from './reciclaje-rasgos';
+import { escuelasProhibibles, esEspecializable, prohibidasAlEspecializarse } from './reglas-magia';
 import { diferencia } from './subida-nivel';
 
 /*
@@ -95,7 +97,7 @@ export interface PlanEscuela {
     tipo: 'escuela';
     hueco: HuecoDeEscuela;
     pone: EspecializacionDelMago;
-    /** Lo elegido en el selector de la creación, para volver a aplicarlo en el motor (`aplicarEspecialidadMagicaClase`). */
+    /** Lo elegido en el selector de la creación, para volver a aplicarlo en el motor (`aplicarEspecializacion`). */
     seleccion: EspecialidadArcanaSeleccion;
     /** Las escuelas del catálogo que intervienen (la nueva y sus prohibidas), para el motor. */
     escuelas: EscuelaConjuros[];
@@ -115,14 +117,9 @@ function clasesConDominios(motor: NuevoPersonajeService): Clase[] {
         .filter((c): c is Clase => !!c && toInt(c.Conjuros?.Dominio_cantidad) > 0);
 }
 
-/** El id de un dominio del personaje: el suyo o, sin él, el del catálogo con su nombre. */
-function idDelDominio(motor: NuevoPersonajeService, dominio: { Id?: number; Nombre?: string; }): number {
-    return toInt(dominio?.Id) || toInt(motor.resolverIdDominioPorNombre(`${dominio?.Nombre ?? ''}`));
-}
-
 /**
  * Los dominios del personaje en cada clase que los da (el motor recién hidratado), con los que puede poner en su lugar
- * (`dominiosQuePuedeElegir` de la creación; sin `conHomebrew`, solo los oficiales). De qué clase es cada uno: su elección
+ * (`dominiosQuePuedeElegir`, como al crear; sin `conHomebrew`, solo los oficiales). De qué clase es cada uno: su elección
  * en el registro, el `origen` de la ficha o, si no, la primera clase con dominios. Cada opción, con su motivo si los
  * rangos comprados como de clase por el dominio quedarían por encima del tope de una transclásea (`nivelPersonaje`, el
  * de antes de subir, + 3, entre 2). Lo que depende de lo que sale lo pone `dominiosParaReciclar` (`reciclaje.ts`).
@@ -143,7 +140,7 @@ export function huecosDeDominio(motor: NuevoPersonajeService, entrada: Personaje
     };
     const deidad = motor.deidadDelPersonaje();
     const tope = limiteRangosHabilidad(nivelPersonaje, false);
-    return (pj.Dominios ?? []).map((d) => ({ id: idDelDominio(motor, d), nombre: `${d?.Nombre ?? ''}`.trim() }))
+    return (pj.Dominios ?? []).map((d) => ({ id: motor.idDelDominio(d), nombre: `${d?.Nombre ?? ''}`.trim() }))
         .filter((d) => d.id > 0)
         .map((tiene) => {
             const clase = deLaClase(tiene.id);
@@ -155,7 +152,7 @@ export function huecosDeDominio(motor: NuevoPersonajeService, entrada: Personaje
                     return {
                         id: o.id, nombre: o.nombre, oficial: o.oficial,
                         motivo: pasan.length > 0
-                            ? `Con ${o.nombre}, ${unirConY(nombres)} ${pasan.length > 1 ? 'dejarían' : 'dejaría'} de ser de clase y tiene más de ${tope} rangos, el tope de una transclásea a su nivel (${toInt(nivelPersonaje)}).`
+                            ? `Con ${o.nombre}, ${unirLista(nombres, 'y')} ${pasan.length > 1 ? 'dejarían' : 'dejaría'} de ser de clase y tiene más de ${tope} rangos, el tope de una transclásea a su nivel (${toInt(nivelPersonaje)}).`
                             : null,
                     };
                 });
@@ -169,11 +166,6 @@ export function huecosDeDominio(motor: NuevoPersonajeService, entrada: Personaje
         });
 }
 
-/** El origen de las dotes de un dominio, como lo pone la creación («Dominio: Guerra»). */
-function origenDelDominio(nombre: string): string {
-    return `Dominio: ${nombre}`;
-}
-
 /**
  * Lo que da el dominio en el motor: sus dotes (las del personaje con su origen), sus aptitudes (las de sus datos que tiene)
  * y, de sus datos, sus habilidades de clase y sus conjuros de dominio (por nivel). Para ver qué deja de cumplir lo que
@@ -182,16 +174,15 @@ function origenDelDominio(nombre: string): string {
 export function loQueDaElDominio(motor: NuevoPersonajeService, dominio: DominioDelRasgo) {
     const pj = motor.PersonajeCreacion;
     const datos = motor.dominioDelCatalogo(dominio.id);
-    const origen = normalizarTexto(origenDelDominio(dominio.nombre));
-    const dotes = (pj.DotesContextuales ?? []).filter((d) => normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === origen)
+    const dotes = motor.dotesDelDominio(dominio.nombre)
         .map((d) => ({
             idDote: toInt(d.Dote?.Id), idExtra: toInt(d.Contexto?.Id_extra), origen: `${(d.Contexto as any)?.Origen ?? ''}`,
-            nombre: `${d.Dote?.Nombre ?? ''}${toInt(d.Contexto?.Id_extra) > 0 && `${d.Contexto?.Extra ?? ''}`.trim() ? ` (${d.Contexto?.Extra})` : ''}`,
+            nombre: nombreConExtra({ nombre: `${d.Dote?.Nombre ?? ''}`, idExtra: toInt(d.Contexto?.Id_extra), extra: `${d.Contexto?.Extra ?? ''}` }),
         }));
     const aptitudes = (datos?.Especiales ?? []).flatMap((e) => (pj.Claseas ?? [])
-        .filter((x) => (toInt(e?.Id) > 0 && toInt(x?.Id) === toInt(e.Id)) || normalizarTexto(x?.Nombre ?? '') === normalizarTexto(e?.Nombre ?? ''))
+        .filter((x) => coincideClaveEntidad({ id: toInt(x?.Id), nombre: `${x?.Nombre ?? ''}` }, e?.Id, e?.Nombre))
         .slice(0, 1).map((x) => ({ id: toInt(x.Id), idExtra: Math.max(0, toInt(x.Id_extra)), nombre: `${x.Nombre ?? ''}`, extra: `${x.Extra ?? ''}` })));
-    const habilidades = (datos?.Habilidades_claseas ?? []).map((h) => `${h.Habilidad}${toInt(h.Id_extra) > 0 && `${h.Extra ?? ''}`.trim() ? ` (${h.Extra})` : ''}`);
+    const habilidades = (datos?.Habilidades_claseas ?? []).map((h) => nombreConExtra({ nombre: `${h.Habilidad ?? ''}`, idExtra: toInt(h.Id_extra), extra: `${h.Extra ?? ''}` }));
     const conjuros = motor.CatalogoConjuros.flatMap((c) => nivelesDeDominioDelConjuro(c)
         .filter((n) => (n.id > 0 ? n.id === dominio.id : n.nombre === normalizarTexto(dominio.nombre)) && n.nivel >= 0)
         .slice(0, 1).map((n) => ({ nombre: `${c.Nombre}`, nivel: n.nivel })))
@@ -254,7 +245,7 @@ export function fichaConElDominio(entrada: PersonajeCreateRequestDto, plan: Plan
 
     const colA: any = motor?.antes.colecciones ?? {};
     const colD: any = motor?.despues.colecciones ?? {};
-    const origenes = new Set([origenDelDominio(hueco.tiene.nombre), origenDelDominio(pone.nombre)].map((n) => normalizarTexto(n)));
+    const origenes = new Set([origenDeDominio(hueco.tiene.nombre), origenDeDominio(pone.nombre)].map((n) => normalizarTexto(n)));
     const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
     const deDotes = diferencia((colA.dotes ?? []).filter((d: any) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`))),
         (colD.dotes ?? []).filter((d: any) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`))));
@@ -347,7 +338,7 @@ export function huecoDeEscuela(motor: NuevoPersonajeService, escuelas: readonly 
         return null;
     const { clase, pendiente } = deLaClase;
     const escuelaFija = motor.escuelaFijaEnCatalogo(pendiente, [...escuelas]);
-    const prohibibles = escuelas.filter((e) => esEspecializable(e) && !!e.Prohibible && toInt(e.Id) !== toInt(escuelaFija?.Id));
+    const prohibibles = escuelasProhibibles(escuelas, escuelaFija?.Id);
     return {
         tipo: 'escuela', clave: `${toInt(clase.Id)}:escuela`, idClase: toInt(clase.Id), clase: `${clase.Nombre}`,
         tiene: especializacionDelMotor(motor, escuelas), escuelaFija,
@@ -374,12 +365,15 @@ export function mismaEspecializacion(a: EspecializacionDelMago, b: Especializaci
     return toInt(a.especialista?.id) === toInt(b.especialista?.id) && ids(a) === ids(b);
 }
 
-/** La especialización en una frase: «Nigromancia (prohibidas: evocación e ilusión)» o «Generalista». */
+/**
+ * La especialización en una frase, como la de la API: «Nigromancia (prohibidas: evocación e ilusión)», «Adivinación
+ * (prohibida: evocación)» o «Generalista».
+ */
 export function nombreDeLaEspecializacion(e: EspecializacionDelMago): string {
     if (!e.especialista)
         return 'Generalista';
     const nombres = e.prohibidas.map((p) => p.nombre.toLowerCase());
-    return nombres.length > 0 ? `${e.especialista.nombre} (prohibidas: ${unirConY(nombres)})` : e.especialista.nombre;
+    return nombres.length > 0 ? `${e.especialista.nombre} (${nombres.length === 1 ? 'prohibida' : 'prohibidas'}: ${unirLista(nombres, 'y')})` : e.especialista.nombre;
 }
 
 /**
@@ -394,7 +388,8 @@ function motivoDeLegalidad(e: EspecializacionDelMago, hueco: HuecoDeEscuela, esc
     if (!especialista || !esEspecializable(especialista) || (hueco.escuelaFija && toInt(hueco.escuelaFija.Id) !== e.especialista.id))
         return `No se puede especializar en ${e.especialista.nombre}.`;
     const requeridas = prohibidasAlEspecializarse(especialista);
-    const validas = e.prohibidas.filter((p) => p.id !== e.especialista!.id && !!escuelaDelCatalogo(escuelas, { Id: p.id })?.Prohibible);
+    const permitidas = new Set(escuelasProhibibles(escuelas, e.especialista.id).map((x) => toInt(x.Id)));
+    const validas = e.prohibidas.filter((p) => permitidas.has(p.id));
     if (new Set(validas.map((p) => p.id)).size !== e.prohibidas.length || e.prohibidas.length !== requeridas)
         return requeridas === 1 ? 'Tiene que prohibir 1 escuela que se pueda prohibir.' : `Tiene que prohibir ${requeridas} escuelas que se puedan prohibir.`;
     return null;
@@ -413,14 +408,13 @@ export function planDeLaEscuela(motor: NuevoPersonajeService, hueco: HuecoDeEscu
     const ilegal = motivoDeLegalidad(pone, hueco, escuelas);
     if (ilegal)
         return { plan: null, motivo: ilegal };
-    const clase = motor.claseDelCatalogo(hueco.idClase);
     const pj = motor.PersonajeCreacion;
     const guardado = { especialista: pj.Escuela_especialista, prohibidas: pj.Escuelas_prohibidas };
     const intervienen = [pone.especialista, ...pone.prohibidas].filter((e): e is EscuelaDelRasgo => !!e)
         .map((e) => escuelaDelCatalogo(escuelas, { Id: e.id })).filter((e): e is EscuelaConjuros => !!e);
     let idEspArcana = toInt(pone.especialista?.id);
     try {
-        if (!clase || !motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: seleccion }, intervienen, []).aplicado)
+        if (!aplicarEspecializacion(motor, { idClase: hueco.idClase, seleccion, escuelas: intervienen }))
             return { plan: null, motivo: 'No se ha podido aplicar esa especialización.' };
         if (!pone.especialista)
             idEspArcana = toInt(escuelaDelCatalogo(escuelas, pj.Escuela_especialista)?.Id);
@@ -454,10 +448,25 @@ export function fichaConLaEscuela(entrada: PersonajeCreateRequestDto, plan: Plan
     return ficha;
 }
 
-/** En el motor (antes del nivel): la especialización nueva, con el selector de la creación ya resuelto. */
-export function aplicarEscuelaAlMotor(motor: NuevoPersonajeService, plan: PlanEscuela): boolean {
-    const clase = motor.claseDelCatalogo(plan.hueco.idClase);
-    return !!clase && motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: plan.seleccion }, plan.escuelas, []).aplicado;
+/** Lo elegido en el selector de la creación para la clase que da la especialización, con las escuelas que intervienen. */
+export interface EspecializacionElegida {
+    idClase: number;
+    seleccion: EspecialidadArcanaSeleccion;
+    escuelas: EscuelaConjuros[];
+}
+
+/**
+ * En el motor: la especialización elegida, como al crear (`aplicarEspecialidadMagicaClase` del 1.er nivel de su clase).
+ * La usan el plan, lo que dejaría de cumplir (`loQueDejariaDeCumplir`) y el reciclaje antes del nivel. `false` si no se aplica.
+ */
+export function aplicarEspecializacion(motor: NuevoPersonajeService, { idClase, seleccion, escuelas }: EspecializacionElegida): boolean {
+    const clase = motor.claseDelCatalogo(idClase);
+    return !!clase && motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: seleccion }, escuelas, []).aplicado;
+}
+
+/** Lo elegido en el plan de la escuela, para el motor (`aplicarEspecializacion`). */
+export function especializacionDelPlan(plan: PlanEscuela): EspecializacionElegida {
+    return { idClase: plan.hueco.idClase, seleccion: plan.seleccion, escuelas: plan.escuelas };
 }
 
 /** El cuerpo `reciclaje` de un dominio o de la escuela (contrato, «Un dominio» y «La escuela del mago»). */

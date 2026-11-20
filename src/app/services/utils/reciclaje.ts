@@ -3,10 +3,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
-import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
-import type {
-    DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, EspecialidadArcanaSeleccion, NuevoPersonajeService,
-} from 'src/app/services/nuevo-personaje.service';
+import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
 import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
@@ -19,7 +16,7 @@ import {
 import { aplicarLoQueDanLasDotes } from './subida-nivel';
 import { CambioSubida } from './subida-nivel-vista';
 import {
-    aplicarEscuelaAlMotor, fichaConElDominio, fichaConLaEscuela, HuecoDeDominio, huecosDeDominio, loQueDaElDominio,
+    aplicarEspecializacion, EspecializacionElegida, especializacionDelPlan, fichaConElDominio, fichaConLaEscuela, HuecoDeDominio, huecosDeDominio, loQueDaElDominio,
     nombreDeLaEspecializacion, PlanDominio, PlanEscuela, reciclajeDelDominioOLaEscuela,
 } from './reciclaje-dominio-escuela';
 
@@ -317,7 +314,7 @@ export interface LoQueQuita {
      * Otra especialización (la escuela del mago que se recicla), con lo elegido en el selector y sus escuelas: lo que pide
      * especializarse en una escuela o lanzar conjuros de una que pasa a estar prohibida.
      */
-    escuela?: { idClase: number; seleccion: EspecialidadArcanaSeleccion; escuelas: EscuelaConjuros[]; };
+    escuela?: EspecializacionElegida;
 }
 
 /** Las clases que tiene, del catálogo del motor. */
@@ -396,9 +393,8 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         }
         (quita.conjuros ?? []).forEach((c) => sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.idConjuro && esConjuroDeLaClase(x, normalizarTexto(c.clase))));
         (quita.dominios ?? []).forEach((nombre) => sacarPrimero(pj.Dominios ?? [], (x) => normalizarTexto(x?.Nombre ?? '') === normalizarTexto(nombre)));
-        const clase = quita.escuela ? motor.claseDelCatalogo(quita.escuela.idClase) : null;
-        if (quita.escuela && clase)
-            motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: quita.escuela.seleccion }, quita.escuela.escuelas, []);
+        if (quita.escuela)
+            aplicarEspecializacion(motor, quita.escuela);
 
         const sinDote = (d: DoteDeLaFicha) => !quitadas.some((q) => claveDoteDeLaFicha(d) === claveDoteDeLaFicha(q));
         const motivos = motor.dotesSinSusPrerrequisitos()
@@ -417,6 +413,11 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         pj.Escuela_especialista = guardado.especialista;
         pj.Escuelas_prohibidas = guardado.prohibidas;
     }
+}
+
+/** Por qué no se recicla lo que necesita lo que tiene (`loQueDejariaDeCumplir`): «Lo necesita lo que tiene: …»; `null` si nada. */
+function motivoDeLoQueLoNecesita(rotas: readonly string[], articulo: 'Lo' | 'La' = 'Lo'): string | null {
+    return rotas.length > 0 ? `${articulo} necesita lo que tiene: ${rotas.join('; ')}.` : null;
 }
 
 /**
@@ -442,7 +443,7 @@ export function dotesParaReciclar(motor: NuevoPersonajeService, rasgos: HuecoDeR
         if (!motor.esDoteElegida(origen))
             return { ...fila, motivo: origen.trim() ? `No se eligió: la da ${origen.trim()}.` : 'No se eligió en ningún nivel.' };
         const rotas = loQueDejariaDeCumplir(motor, { dote: { idDote, idExtra, origen } });
-        return { ...fila, motivo: rotas.length > 0 ? `La necesita lo que tiene: ${rotas.join('; ')}.` : null };
+        return { ...fila, motivo: motivoDeLoQueLoNecesita(rotas, 'La') };
     }).filter((d) => d.idDote > 0);
 }
 
@@ -485,7 +486,8 @@ export function rasgosParaReciclar(motor: NuevoPersonajeService, aptitudes: Read
                 ...derivadas.filter((c) => c.tipo === 'especial' && !c.conservar).map((c) => ({ id: c.quita!.id, idExtra: c.quita!.idExtra })),
             ],
         });
-        return rotas.length > 0 ? { ...hueco, motivo: `Lo necesita lo que tiene: ${rotas.join('; ')}.` } : hueco;
+        const motivo = motivoDeLoQueLoNecesita(rotas);
+        return motivo ? { ...hueco, motivo } : hueco;
     });
 }
 
@@ -501,15 +503,14 @@ export function dominiosParaReciclar(motor: NuevoPersonajeService, entrada: Pers
             return hueco;
         const da = loQueDaElDominio(motor, hueco.tiene);
         // Sus aptitudes, si no las da también otro dominio que le quede.
-        const deOtros = new Set((motor.PersonajeCreacion.Dominios ?? []).filter((d) => normalizarTexto(d?.Nombre ?? '') !== normalizarTexto(hueco.tiene.nombre))
-            .flatMap((d) => motor.dominioDelCatalogo(toInt(d?.Id) || toInt(motor.resolverIdDominioPorNombre(`${d?.Nombre ?? ''}`)))?.Especiales ?? [])
-            .map((e) => normalizarTexto(e?.Nombre ?? '')));
+        const deOtros = new Set(motor.dominiosQueLeQuedan(hueco.tiene.id, null).flatMap((d) => d.Especiales ?? []).map((e) => normalizarTexto(e?.Nombre ?? '')));
         const rotas = loQueDejariaDeCumplir(motor, {
             dominios: [hueco.tiene.nombre],
             dotes: da.dotes.map(({ idDote, idExtra, origen }) => ({ idDote, idExtra, origen })),
             aptitudes: da.aptitudes.filter((a) => !deOtros.has(normalizarTexto(a.nombre))).map(({ id, idExtra }) => ({ id, idExtra })),
         });
-        return rotas.length > 0 ? { ...hueco, motivo: `Lo necesita lo que tiene: ${rotas.join('; ')}.` } : hueco;
+        const motivo = motivoDeLoQueLoNecesita(rotas);
+        return motivo ? { ...hueco, motivo } : hueco;
     });
 }
 
@@ -519,8 +520,7 @@ export function dominiosParaReciclar(motor: NuevoPersonajeService, entrada: Pers
  * quita en cascada; el motor se queda como estaba. `null` si no rompe nada.
  */
 export function motivoDeLaEscuela(motor: NuevoPersonajeService, plan: PlanEscuela): string | null {
-    const rotas = loQueDejariaDeCumplir(motor, { escuela: { idClase: plan.hueco.idClase, seleccion: plan.seleccion, escuelas: plan.escuelas } });
-    return rotas.length > 0 ? `Lo necesita lo que tiene: ${rotas.join('; ')}.` : null;
+    return motivoDeLoQueLoNecesita(loQueDejariaDeCumplir(motor, { escuela: especializacionDelPlan(plan) }));
 }
 
 /**
@@ -537,7 +537,7 @@ export function idiomasParaReciclar(motor: NuevoPersonajeService, entrada: Perso
         if (idioma?.Secreto)
             return { idIdioma: toInt(i.idIdioma), nombre, motivo: 'Es un idioma secreto: no se recicla.' };
         const rotas = loQueDejariaDeCumplir(motor, { idioma: nombre });
-        return { idIdioma: toInt(i.idIdioma), nombre, motivo: rotas.length > 0 ? `Lo necesita lo que tiene: ${rotas.join('; ')}.` : null };
+        return { idIdioma: toInt(i.idIdioma), nombre, motivo: motivoDeLoQueLoNecesita(rotas) };
     });
     const aprendibles = catalogo
         .filter((c) => toInt(c?.Id) > 0 && !c.Secreto && !conoce.has(toInt(c.Id)) && (conHomebrew || c.Oficial !== false))
@@ -625,7 +625,7 @@ export function conocidosParaReciclar(motor: NuevoPersonajeService, entrada: Per
                     if (nivel < 0)
                         return { idConjuro: toInt(x.idConjuro), nombre, nivel, motivo: `No está en la lista de ${clase.nombre.toLowerCase()}.` };
                     const rotas = loQueDejariaDeCumplir(motor, { conjuros: [{ idConjuro: toInt(x.idConjuro), clase: clase.nombre }] });
-                    return { idConjuro: toInt(x.idConjuro), nombre, nivel, motivo: rotas.length > 0 ? `Lo necesita lo que tiene: ${rotas.join('; ')}.` : null };
+                    return { idConjuro: toInt(x.idConjuro), nombre, nivel, motivo: motivoDeLoQueLoNecesita(rotas) };
                 })
                 .sort((a, b) => a.nivel - b.nivel || a.nombre.localeCompare(b.nombre, 'es'));
             return { ...clase, conocidos };
@@ -657,7 +657,7 @@ export function aplicarReciclajeAlMotor(motor: NuevoPersonajeService, plan: Plan
     if (plan.tipo === 'dominio')
         return motor.cambiarDominio(plan.hueco.idClase, plan.hueco.tiene.id, plan.pone.id);
     if (plan.tipo === 'escuela')
-        return aplicarEscuelaAlMotor(motor, plan);
+        return aplicarEspecializacion(motor, especializacionDelPlan(plan));
     if (plan.tipo === 'dote') {
         const hueco = huecoDeLaDoteReciclada(motor, plan.quita, true);
         return !!hueco && motor.aplicarDotePendiente(hueco.pendiente.id, plan.seleccion);

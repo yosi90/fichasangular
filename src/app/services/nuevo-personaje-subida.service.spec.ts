@@ -1923,6 +1923,8 @@ describe('El reciclaje de un dominio y de la escuela del mago (R3, segunda tanda
             expect(planDeLaEscuela(motor, hueco, especialista(2, [5]), ESCUELAS).plan?.pone).toEqual({
                 especialista: { id: 2, nombre: 'Adivinación' }, prohibidas: [{ id: 5, nombre: 'Evocación' }],
             });
+            // En singular, como la frase de la API (`_nombre_de_escuela`).
+            expect(nombreDeLaEspecializacion(planDeLaEscuela(motor, hueco, especialista(2, [5]), ESCUELAS).plan!.pone)).toBe('Adivinación (prohibida: evocación)');
             expect(planDeLaEscuela(motor, hueco, especialista(2, [5, 6]), ESCUELAS).motivo).toBe('Tiene que prohibir 1 escuela que se pueda prohibir.');
             expect(planDeLaEscuela(motor, hueco, especialista(5, [2, 6]), ESCUELAS).motivo).toBe('Tiene que prohibir 2 escuelas que se puedan prohibir.');
             expect(planDeLaEscuela(motor, hueco, especialista(9, []), ESCUELAS).motivo).toBe('No se puede especializar en Universal.');

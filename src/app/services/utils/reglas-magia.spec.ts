@@ -2,6 +2,7 @@ import { normalizeClase } from '../clase.service';
 import {
     conjurosAdicionales,
     conjurosDiariosPorNivel,
+    escuelasProhibibles,
     nivelDeClaveConjuro,
     nivelLanzadorDeClase,
     prohibidasAlEspecializarse,
@@ -50,6 +51,14 @@ describe('reglas-magia', () => {
         expect(prohibidasAlEspecializarse({ Prohibidas_al_especializarse: 1 })).toBe(1);
         expect(prohibidasAlEspecializarse({ Prohibidas_al_especializarse: -1 })).toBe(0);
         expect(prohibidasAlEspecializarse(null)).toBe(0);
+    });
+
+    it('el especialista prohíbe las escuelas especializables que se pueden prohibir, menos la suya', () => {
+        const escuelas = [{ Id: 1, Especializable: true, Prohibible: true }, { Id: 2, Especializable: true, Prohibible: true },
+            { Id: 3, Especializable: true, Prohibible: false }, { Id: 4, Especializable: false, Prohibible: true }];
+        expect(escuelasProhibibles(escuelas, 1).map((e) => e.Id)).toEqual([2]);
+        expect(escuelasProhibibles(escuelas, null).map((e) => e.Id)).toEqual([1, 2]);
+        expect(escuelasProhibibles(null, 1)).toEqual([]);
     });
 
     it('lee el nivel de las claves de la tabla de la clase («Nivel_3» o «3») y descarta las que no nombran uno', () => {

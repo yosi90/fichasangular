@@ -37,6 +37,18 @@ export function esEspecializable(escuelaODisciplina: { Id?: number; Especializab
 }
 
 /**
+ * Las escuelas que puede prohibir el especialista en `idEspecialista`: en las que se puede especializar
+ * (`esEspecializable`), que sus datos dejan prohibir (`Prohibible`) y distintas de la suya (MJ cap. 3). Las usan la
+ * creación (el motor y el selector de la especialización) y el reciclaje de la escuela.
+ */
+export function escuelasProhibibles<T extends { Id?: number; Especializable?: boolean; Prohibible?: boolean; }>(
+    escuelas: readonly T[] | null | undefined, idEspecialista: number | null | undefined
+): T[] {
+    const id = toNumber(idEspecialista);
+    return (escuelas ?? []).filter((escuela) => esEspecializable(escuela) && toBoolean(escuela?.Prohibible) && toNumber(escuela?.Id) !== id);
+}
+
+/**
  * Cuántas escuelas prohíbe el mago que se especializa en esa escuela, o cuántas disciplinas el psiónico de esa disciplina:
  * lo dicen sus datos, no su nombre (2; la adivinación, 1, MJ cap. 3; ninguna en el Manual de psiónica expandido).
  */
