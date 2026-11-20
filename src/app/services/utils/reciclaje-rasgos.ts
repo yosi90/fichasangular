@@ -1,6 +1,8 @@
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import type { CambioDeRasgoEnElMotor, DoteSeleccionConfirmada, FilaDeTablaDeClase, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import type {
+    CambioDeRasgoEnElMotor, DoteSeleccionConfirmada, DoteSelectorCandidato, FilaDeTablaDeClase, NuevoPersonajeService,
+} from 'src/app/services/nuevo-personaje.service';
 import { extrasElegiblesEspecial } from './aptitudes-clase';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
 import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
@@ -455,6 +457,17 @@ export function origenDeLaDoteNueva(motor: NuevoPersonajeService, hueco: HuecoDe
 }
 
 /**
+ * Las candidatas del selector en el hueco de una dote que se va (`quitada`; la dote reciclada, `huecoDeLaDoteReciclada`, o
+ * la que se eligió con la aptitud de un rasgo): sin ella, si no tiene extra (con extra, otra especialidad suya sí vale), y
+ * sin `conHomebrew`, solo las oficiales.
+ */
+export function candidatasEnLugarDe(candidatos: DoteSelectorCandidato[], quitada: { id: number; idExtra: number; } | null,
+    conHomebrew: boolean = true): DoteSelectorCandidato[] {
+    return candidatos.filter((c) => !(quitada && toInt(c.dote?.Id) === quitada.id && quitada.idExtra <= 0)
+        && (conHomebrew || c.dote?.Oficial !== false));
+}
+
+/**
  * La dote pendiente del hueco para el selector de dotes de la creación, con la opción nueva ya puesta (sin la antigua ni
  * lo derivado de ella): de su tipo, en el nivel del hueco y juzgada con el personaje de ese nivel. Cambia el motor: quien
  * llama lo deja como estaba. `null` si la opción no da dote o no se puede poner.
@@ -467,9 +480,7 @@ export function huecoDeLaDoteDelRasgo(motor: NuevoPersonajeService, hueco: Hueco
         origen: `${hueco.clase} nivel ${hueco.nivelClase}`, tipoPermitido: pone.daDote.tipo,
         nivel: { idClase: hueco.idClase, nivelClase: hueco.nivelClase }, alNivel: hueco.indiceNivel, origenFijo: origenDeLaDoteNueva(motor, hueco),
     });
-    const quitada = hueco.tiene.daDote ? hueco.doteQueTiene : null;
-    const candidatos = motor.obtenerCandidatosDotePendiente(pendiente.id)
-        .filter((c) => !(quitada && toInt(c.dote?.Id) === quitada.id && quitada.idExtra <= 0));
+    const candidatos = candidatasEnLugarDe(motor.obtenerCandidatosDotePendiente(pendiente.id), hueco.tiene.daDote ? hueco.doteQueTiene : null);
     return { pendiente, candidatos };
 }
 

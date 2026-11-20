@@ -10,7 +10,7 @@ import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habili
 import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import {
-    aplicarRasgoAlMotor, derivadasDelCambio, fichaConElRasgo, HuecoDeRasgo, huecoDelCuerpo, huecosDeRasgo, nombreDeLoQueTiene,
+    aplicarRasgoAlMotor, candidatasEnLugarDe, derivadasDelCambio, fichaConElRasgo, HuecoDeRasgo, huecoDelCuerpo, huecosDeRasgo, nombreDeLoQueTiene,
     nombreDeOpcion, opcionesDelCuerpo, PlanRasgo,
 } from './reciclaje-rasgos';
 import { aplicarLoQueDanLasDotes } from './subida-nivel';
@@ -388,9 +388,7 @@ export function huecoDeLaDoteReciclada(motor: NuevoPersonajeService, dote: DoteR
     if (!motor.quitarDoteDeLaFicha(dote.idDote, dote.idExtra, dote.origen))
         return null;
     const pendiente = motor.registrarDoteEnLugarDe(dote, dote.indiceNivel ?? 0);
-    const candidatos = motor.obtenerCandidatosDotePendiente(pendiente.id)
-        .filter((c) => !(toInt(c.dote?.Id) === dote.idDote && dote.idExtra <= 0))
-        .filter((c) => conHomebrew || c.dote?.Oficial !== false);
+    const candidatos = candidatasEnLugarDe(motor.obtenerCandidatosDotePendiente(pendiente.id), { id: dote.idDote, idExtra: dote.idExtra }, conHomebrew);
     return { pendiente, candidatos };
 }
 

@@ -63,7 +63,7 @@ import {
     reciclajeDelPlan,
 } from 'src/app/services/utils/reciclaje';
 import {
-    aptitudesConElegir, cambiosDelRasgo, HuecoDeRasgo, huecoDeLaDoteDelRasgo, mismaFila, nombreConExtra, nombreDeLoQueTiene, nombreDeOpcion, OpcionDeRasgo,
+    aptitudesConElegir, candidatasEnLugarDe, cambiosDelRasgo, HuecoDeRasgo, huecoDeLaDoteDelRasgo, mismaFila, nombreConExtra, nombreDeLoQueTiene, nombreDeOpcion, OpcionDeRasgo,
     PlanRasgo,
 } from 'src/app/services/utils/reciclaje-rasgos';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
@@ -489,7 +489,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const estado = this.svc.exportarEstadoSubida();
         try {
             const delHueco = huecoDeLaDoteDelRasgo(this.svc, hueco, opcion, cambios);
-            const candidatos = (delHueco?.candidatos ?? []).filter((c) => this.conHomebrew || c.dote?.Oficial !== false);
+            const candidatos = candidatasEnLugarDe(delHueco?.candidatos ?? [], null, this.conHomebrew);
             if (!delHueco || !candidatos.some((c) => c.evaluacion?.estado === 'eligible' && c.repeticionValida && !c.restringidaPorTipo)) {
                 await avisarPaso('No hay ninguna dote que elegir', `Con ${nombreDeOpcion(opcion)} no puede elegir ninguna dote: no cumple los prerrequisitos de ninguna en ese nivel.`);
                 return;
