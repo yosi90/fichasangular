@@ -8,6 +8,7 @@ import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nue
 import { CosteAlAdquirirComponent } from 'src/app/components/sesiones/coste-al-adquirir/coste-al-adquirir.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
+import { NivelQuePierdeComponent } from 'src/app/components/sesiones/nivel-que-pierde/nivel-que-pierde.component';
 import {
     catalogosDelNivel, politicaDeCreacionDe, resolverDotesPendientes, resolverIncrementoPendiente, tiradasDeLaPolitica, tomarNivelDeClase,
 } from 'src/app/components/sesiones/pasos-con-selectores';
@@ -43,14 +44,14 @@ import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-home
 import {
     esConversion, fichaDeLaConversion, MOTIVO_SIN_CONSTITUCION, nepTrasLaConversion, pgDeLaConversion, pxTrasLaConversion, tieneConstitucion,
 } from 'src/app/services/utils/conversion-muerto-viviente';
-import { CARACTERISTICAS_DEL_ALTA, claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
+import { claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
 import { tirarDado } from 'src/app/services/utils/dados';
 import { nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import {
     caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, FilaPerdida,
-    filasDelNivelPerdido, indiceDelNivelQueSePierde, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel, ResultadoPerdida,
+    filasDelNivelPerdido, indiceDelNivelQueSePierde, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel, quitarElNivelDelMotor, ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
@@ -119,7 +120,7 @@ export interface FilaRangos {
 @Component({
     selector: 'app-adquirir-raza-mutada',
     standalone: true,
-    imports: [CommonModule, CosteAlAdquirirComponent, MatButtonModule, MatIconModule, PasosSesionComponent, RepartoRangosComponent],
+    imports: [CommonModule, CosteAlAdquirirComponent, MatButtonModule, MatIconModule, NivelQuePierdeComponent, PasosSesionComponent, RepartoRangosComponent],
     templateUrl: './adquirir-raza-mutada.component.html',
     styleUrls: ['../subir-nivel/subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -608,19 +609,8 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             return;
         const perdida = this.perdida;
         const indice = this.indicePerdido;
-        if (perdida && indice !== null) {
-            const nivel = this.entrada.niveles![indice];
-            const incremento = perdida.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[perdida.quitado.incremento - 1]?.[1] ?? null : null;
-            this.svc.perderNivelEnElMotor({
-                idClase: nivel.idClase,
-                ataqueBase: perdida.ataqueBase.despues,
-                caracteristica: incremento ? { clave: incremento, menos: 1 } : null,
-                rangos: perdida.quitado.rangos,
-                dotesQuitadas: perdida.quitado.dotes,
-                especialesQuitados: perdida.quitado.especiales,
-                indiceNivel: indice,
-            });
-        }
+        if (perdida && indice !== null)
+            quitarElNivelDelMotor(this.svc, perdida, this.entrada.niveles![indice].idClase, indice);
         this.antesConversion = this.motor.cuerpoDelMotor(this.svc, this.entrada);
         if (!this.svc.adquirirRazaMutada(combinada, this.seleccionMutacion)) {
             this.error = `No se ha podido aplicar ${this.elegida?.raza.Nombre ?? 'la raza'} sobre ${this.anterior?.Nombre ?? 'su raza'}.`;

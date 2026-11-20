@@ -4,7 +4,7 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import type { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { CausaPerdidaDto } from 'src/app/interfaces/sesiones';
+import { CAUSAS_DE_PERDIDA, CausaPerdidaDto } from 'src/app/interfaces/sesiones';
 import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
@@ -25,14 +25,18 @@ import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 
 export type CausaPerdida = CausaPerdidaDto;
 
-/** Las causas que ofrece la web, con su texto (la API las valida: `causa`). */
-export const CAUSAS_PERDIDA: ReadonlyArray<{ valor: CausaPerdida; texto: string; }> = [
-    { valor: 'revivir', texto: 'Volver a la vida (revivir a los muertos, resurrección, reencarnar)' },
-    { valor: 'nivel_negativo', texto: 'Un nivel negativo que se hace permanente' },
-    { valor: 'plantilla', texto: 'El coste de una plantilla (el necropolita)' },
-    { valor: 'experiencia', texto: 'Pierde PX que le bajan de nivel (la muerte de su familiar)' },
-    { valor: 'otro', texto: 'Otra causa' },
-];
+/** El texto de cada causa en la web. */
+const TEXTO_CAUSA: Readonly<Record<CausaPerdida, string>> = {
+    revivir: 'Volver a la vida (revivir a los muertos, resurrección, reencarnar)',
+    nivel_negativo: 'Un nivel negativo que se hace permanente',
+    plantilla: 'El coste de una plantilla (el necropolita)',
+    experiencia: 'Pierde PX que le bajan de nivel (la muerte de su familiar)',
+    otro: 'Otra causa',
+};
+
+/** Las causas que ofrece la web (las de la API, `CAUSAS_DE_PERDIDA`, que las valida: `causa`), con su texto. */
+export const CAUSAS_PERDIDA: ReadonlyArray<{ valor: CausaPerdida; texto: string; }> =
+    CAUSAS_DE_PERDIDA.map((valor) => ({ valor, texto: TEXTO_CAUSA[valor] }));
 
 /**
  * Los PX tras perder `perdidos` (la causa `experiencia`: el familiar muerto, MJ pág. 45): los que le quedan, sin bajar de 0
@@ -500,6 +504,26 @@ export function dotesQuePuedePerder(pj: Personaje | null | undefined): Array<{ c
 export function doteDeLaClave(clave: string): { idDote: number; idExtra: number; origen: string; } | null {
     const [idDote, idExtra, ...origen] = `${clave ?? ''}`.split('|');
     return toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null;
+}
+
+/**
+ * Quita del motor, para siempre, el nivel perdido (`perdida`, la de `perdidaDelNivel`; `idClase` su clase e `indice` su
+ * lugar en su registro): un nivel menos de su clase, el ataque base de después, la característica del incremento, los
+ * rangos, las dotes y las aptitudes de ese nivel (`NuevoPersonajeService.perderNivelEnElMotor`). Lo usan la conversión en
+ * muerto viviente (antes del nivel de su clase de monstruo) y la vuelta a la vida (cada nivel de la clase de monstruo y el
+ * de más), para seguir con lo que le queda.
+ */
+export function quitarElNivelDelMotor(svc: NuevoPersonajeService, perdida: ResultadoPerdida, idClase: number, indice: number): void {
+    const incremento = perdida.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[perdida.quitado.incremento - 1]?.[1] ?? null : null;
+    svc.perderNivelEnElMotor({
+        idClase,
+        ataqueBase: perdida.ataqueBase.despues,
+        caracteristica: incremento ? { clave: incremento, menos: 1 } : null,
+        rangos: perdida.quitado.rangos,
+        dotesQuitadas: perdida.quitado.dotes,
+        especialesQuitados: perdida.quitado.especiales,
+        indiceNivel: indice,
+    });
 }
 
 /**

@@ -116,6 +116,7 @@ export const ETIQUETA_EVENTO: Record<TipoEventoSesion, string> = {
     raza_mutada_adquirida: 'Raza mutada',
     conversion_muerto_viviente: 'Conversión',
     nivel_perdido: 'Nivel perdido',
+    vuelta_a_la_vida: 'Vuelta a la vida',
     nivel_restablecido: 'Nivel restablecido',
     cambio_alineamiento: 'Alineamiento',
     caida: 'Caída',

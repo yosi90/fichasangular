@@ -68,9 +68,9 @@ type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
 
 /**
  * Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección, la plantilla, la raza
- * mutada y la pérdida.
+ * mutada, la pérdida y la vuelta a la vida.
  */
-export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida';
+export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida' | 'vuelta';
 
 /** Lo que enseña la pestaña de cada modo y cómo se carga su componente (carga diferida: el bundle inicial va al tope). */
 export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; corta: string; icono: string; cargar: () => Promise<Type<unknown>>; }> = {
@@ -93,6 +93,10 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
     perdida: {
         titulo: 'Perder un nivel', corta: 'Perder', icono: 'trending_down',
         cargar: async () => (await import('src/app/components/sesiones/perder-nivel/perder-nivel.component')).PerderNivelComponent,
+    },
+    vuelta: {
+        titulo: 'Devolver la vida', corta: 'Vuelta', icono: 'favorite',
+        cargar: async () => (await import('src/app/components/sesiones/devolver-la-vida/devolver-la-vida.component')).DevolverLaVidaComponent,
     },
 };
 
@@ -158,7 +162,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     /**
      * Las subidas de nivel (roadmap de sesiones, fase 4), las correcciones de la ficha (fase 6) y las plantillas que se
      * adquieren (fase 7) abiertas: una pestaña por personaje y modo, `subida:<id>`, `correccion:<id>`, `plantilla:<id>`,
-     * `mutacion:<id>` o `perdida:<id>`.
+     * `mutacion:<id>`, `perdida:<id>` o `vuelta:<id>`.
      */
     public subidasNivelAbiertas: SesionAbierta[] = [];
     /** Lo que enseña la pestaña de cada modo. */
@@ -270,6 +274,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.puertaSubida?.perdidas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'perdida'));
+        this.puertaSubida?.vueltas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'vuelta'));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));

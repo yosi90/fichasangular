@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
+import { NivelQuePierdeComponent } from 'src/app/components/sesiones/nivel-que-pierde/nivel-que-pierde.component';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ExperienciaPersonaje, SesionPersonaje } from 'src/app/interfaces/sesiones';
@@ -22,6 +23,8 @@ import {
     ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import { esConversion } from 'src/app/services/utils/conversion-muerto-viviente';
+import { motivoRevivirSinConstitucion } from 'src/app/services/utils/vuelta-a-la-vida';
 
 /**
  * Perder un nivel con el personaje ya creado (roadmap de sesiones, fase 7, segunda tanda): la causa (volver a la vida,
@@ -34,7 +37,7 @@ import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 @Component({
     selector: 'app-perder-nivel',
     standalone: true,
-    imports: [CommonModule, MatButtonModule, MatIconModule],
+    imports: [CommonModule, MatButtonModule, MatIconModule, NivelQuePierdeComponent],
     templateUrl: './perder-nivel.component.html',
     styleUrls: ['../subir-nivel/subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -205,6 +208,10 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         const nep = toInt(this.experiencia?.nivel);
         if (this.causa === 'nivel_negativo' && this.sinConstitucion) {
             this.impedimento = 'No tiene Constitución: es inmune a la consunción de energía y un nivel negativo no le quita un nivel (Manual de monstruos, pág. 306).';
+            return;
+        }
+        if (this.causa === 'revivir' && this.sinConstitucion) {
+            this.impedimento = motivoRevivirSinConstitucion(esConversion(this.svc.RazaSeleccionada));
             return;
         }
         const porExperiencia = this.causa === 'experiencia' ? pxTrasPerderExperiencia(px, this.pxPerdidos) : null;

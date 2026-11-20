@@ -43,6 +43,8 @@ export type TipoEventoSesion =
     | 'conversion_muerto_viviente'
     /** Un nivel perdido con el personaje ya creado (fase 7, segunda tanda, `POST /personajes/{id}/niveles/perdida`). */
     | 'nivel_perdido'
+    /** Devolver la vida a un muerto viviente de clase de monstruo (*Libris Mortis*, pág. 35; `POST /personajes/{id}/vuelta-a-la-vida`). */
+    | 'vuelta_a_la_vida'
     /** Un nivel consumido que devuelve un restablecimiento (`POST /personajes/{id}/niveles/restablecimiento`). */
     | 'nivel_restablecido'
     /** El alineamiento o la deidad cambian en juego, una clase cae por su conducta o la recupera con una expiación (solo el máster). */
@@ -284,11 +286,19 @@ export interface RespuestaRazaMutada extends RespuestaSesion {
     };
 }
 
-/** El cuerpo de `POST /personajes/{id}/niveles/perdida`: la ficha sin lo del nivel que pierde (fase 7, segunda tanda). */
-export type CausaPerdidaDto = 'revivir' | 'nivel_negativo' | 'plantilla' | 'experiencia' | 'otro';
+/** Las causas de `POST /personajes/{id}/niveles/perdida` (fase 7, segunda tanda), las que valida la API. */
+export const CAUSAS_DE_PERDIDA = ['revivir', 'nivel_negativo', 'plantilla', 'experiencia', 'otro'] as const;
 
-/** La causa de un nivel perdido: las de la pérdida y la conversión en muerto viviente (que no se pide en esa ruta). */
-export type CausaNivelPerdido = CausaPerdidaDto | 'conversion';
+/** El cuerpo de `POST /personajes/{id}/niveles/perdida`: la ficha sin lo del nivel que pierde (fase 7, segunda tanda). */
+export type CausaPerdidaDto = typeof CAUSAS_DE_PERDIDA[number];
+
+/**
+ * Las causas de un nivel perdido (`nivelesPerdidos[].causa`): las de la pérdida y la conversión en muerto viviente (que no
+ * se pide en esa ruta). Lo que se pierde al devolver la vida a un muerto viviente va con `revivir`.
+ */
+export const CAUSAS_NIVEL_PERDIDO = [...CAUSAS_DE_PERDIDA, 'conversion'] as const;
+
+export type CausaNivelPerdido = typeof CAUSAS_NIVEL_PERDIDO[number];
 
 export interface PerderNivelDto {
     causa: CausaPerdidaDto;
@@ -314,6 +324,41 @@ export interface RespuestaPerdida extends RespuestaSesion {
         pxAntes: number;
         pxDespues: number;
         constitucion: { antes: number; despues: number; } | null;
+    };
+}
+
+/**
+ * El cuerpo de `POST /personajes/{id}/vuelta-a-la-vida` (devolver la vida a un muerto viviente de clase de monstruo,
+ * *Libris Mortis*, pág. 35): la ficha completa con la raza de antes y sin los niveles de la clase de monstruo.
+ */
+export interface VueltaALaVidaDto {
+    /** `true` con *resurrección*, *deseo* o *milagro* (pierde además un nivel); `false` con *resurrección verdadera*. */
+    pierdeNivel: boolean;
+    /** El conjuro y lo demás, al final de la frase (como mucho `MAXIMO_CONCEPTO_EVENTO`). */
+    concepto?: string;
+    /** Solo con el orden de sus niveles por conocer y `pierdeNivel`: la clase que pierde el nivel de más. */
+    idClase?: number;
+    ficha: PersonajeCreateRequestDto;
+    version: string;
+}
+
+/** Lo que responde devolver la vida: la sesión, los PX de ahora y lo que ha cambiado. */
+export interface RespuestaVuelta extends RespuestaSesion {
+    vuelta: {
+        idEvento: number;
+        numeroSesion: number;
+        pierdeNivel: boolean;
+        razaAntes: { id: number; nombre: string; };
+        raza: { id: number; nombre: string; };
+        claseDeMonstruo: { id: number; nombre: string; };
+        nivelesQuitados: number;
+        /** El nivel de más (*resurrección*), o `null` (sin él o con un solo DG, que pierde Constitución). */
+        perdida: { clase: { id: number; nombre: string; }; nivelClase: number; } | null;
+        constitucion: { antes: number; despues: number; } | null;
+        nepAntes: number | null;
+        nepDespues: number | null;
+        pxAntes: number;
+        pxDespues: number;
     };
 }
 

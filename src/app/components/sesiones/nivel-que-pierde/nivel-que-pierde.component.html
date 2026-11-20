@@ -1,0 +1,22 @@
+<!-- El nivel que pierde con el orden por conocer: las piezas de la subida (subir-nivel.component.sass) -->
+<div class="subida__botones">
+    <label class="subida__campo">
+        Clase que pierde el nivel
+        <select [value]="idClase ?? ''" (change)="claseElegida.emit($any($event.target).value)">
+            <option *ngFor="let c of clases" [value]="c.id">{{c.nombre}} {{c.nivel}}</option>
+        </select>
+    </label>
+    <label class="subida__campo" *ngIf="pideIncremento">
+        Incremento que pierde
+        <select [value]="incremento ?? ''" (change)="incrementoElegido.emit($any($event.target).value)">
+            <option *ngFor="let c of caracteristicas" [value]="c.id">{{c.nombre}} ({{c.valor}})</option>
+        </select>
+    </label>
+    <label class="subida__campo" *ngIf="pideDote">
+        Dote que pierde por su DG
+        <select [value]="dote" (change)="doteElegida.emit($any($event.target).value)">
+            <option value="">Elige una</option>
+            <option *ngFor="let d of dotes" [value]="d.clave">{{d.nombre}}</option>
+        </select>
+    </label>
+</div>

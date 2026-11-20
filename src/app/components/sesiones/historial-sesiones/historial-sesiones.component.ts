@@ -13,6 +13,7 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { DatosLibresComponent } from '../datos-libres/datos-libres.component';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { cambiosSesion, fechaSesion, tituloSesion } from 'src/app/services/utils/sesiones-texto';
+import { claseDeLaRaza } from 'src/app/services/utils/clases-de-monstruo';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 
 /** Lo que recibe el panel de la sesión abierta (con carga diferida): ver `SesionPanelComponent`. */
@@ -151,6 +152,20 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
 
     adquirirRazaMutada(): void {
         this.puertaSubida.solicitarMutacion(this.idPersonaje);
+    }
+
+    /**
+     * «Devolver la vida» a un muerto viviente de clase de monstruo (*Libris Mortis*, pág. 35): como la plantilla, y solo si
+     * su raza es una mutada que lleva una clase de monstruo (la clase del catálogo que la tiene como `Mutacion`, la misma
+     * unión que `RazaDetalle.Clase_de_monstruo`). Si no se puede (niveles de otra clase después, ningún DG sin ella), lo
+     * dice su pantalla, con la frase de la API.
+     */
+    get puedeDevolverLaVida(): boolean {
+        return this.puedeAdquirirPlantilla && !!this.pj?.RazaBase && !!claseDeLaRaza(this.clases, toNumber(this.pj?.Raza?.Id));
+    }
+
+    devolverLaVida(): void {
+        this.puertaSubida.solicitarVuelta(this.idPersonaje);
     }
 
     /** «Perder un nivel» (fase 7, segunda tanda): quien apunta, con una sesión de juego abierta, como la plantilla. */

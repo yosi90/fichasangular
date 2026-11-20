@@ -152,6 +152,23 @@ describe('HistorialSesionesComponent', () => {
         expect(boton('Adquirir una plantilla')).toBeTruthy();
     });
 
+    it('«Devolver la vida»: solo si su raza es una mutada con clase de monstruo (la clase que la tiene como `Mutacion`); abre su pestaña', async () => {
+        await crear('historial_con_abierta');
+        expect(boton('Devolver la vida')).withContext('sin raza mutada').toBeUndefined();
+
+        // Una mutada sin clase de monstruo (la prole de Bahamut): no.
+        component.pj = { ...component.pj, Raza: { ...component.pj.Raza, Id: 1009 }, RazaBase: { Id: 2, Nombre: 'Enano' } } as Personaje;
+        fixture.detectChanges();
+        expect(boton('Devolver la vida')).toBeUndefined();
+
+        component.clases = [{ Id: 482, Nombre: 'Engendro vampírico', Mutacion: { Id: 1009, Nombre: 'Engendro vampírico' } } as any];
+        fixture.detectChanges();
+        const pedidas: number[] = [];
+        puerta.vueltas$.subscribe((id) => pedidas.push(id));
+        boton('Devolver la vida')!.click();
+        expect(pedidas).toEqual([129]);
+    });
+
     it('una subida hecha de este personaje vuelve a leer el historial', async () => {
         await crear('historial');
         sesiones.historial.calls.reset();
