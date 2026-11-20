@@ -30,7 +30,7 @@ function toStrictArray<T = any>(value: any): T[] {
  * que hasta la 36 no lo trae, también el objeto de la RTDB (sin el campo, ninguna). Las que no tienen las dos, fuera.
  */
 export function leerEspecialesSustituidos(raw: any, estricto: boolean): EspecialSustituido[] {
-    const ref = (valor: any) => ({ Id: toNumber(valor?.Id), Nombre: toText(valor?.Nombre).trim() });
+    const ref = (valor: any) => idNombre(valor) ?? { Id: 0, Nombre: '' };
     return (estricto ? toStrictArray(raw) : toArray(raw))
         .map((item: any) => ({ Especial: ref(item?.Especial), Especial_nuevo: ref(item?.Especial_nuevo) }))
         .filter((s) => s.Especial.Id > 0 && s.Especial_nuevo.Id > 0 && s.Especial.Id !== s.Especial_nuevo.Id);
