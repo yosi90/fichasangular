@@ -321,6 +321,15 @@ function tieneIdInterno(claves: Set<string>, nombreClase: string | null | undefi
     return claves.has(claveIdInterno(nombreClase, id)) || claves.has(`*|${toInt(id)}`);
 }
 
+/**
+ * El tipo de dote que admite la dote de una aptitud que la da (`Otorga_dote`): el extra de su fila en la tabla de la clase
+ * («Metamágica»); con el comodín «Cualquiera» o sin extra, cualquiera (`null`).
+ */
+function tipoDeDoteDeLaAptitud(fila: { Extra?: string | null; Extra_comodin?: unknown; } | null | undefined): string | null {
+    const extra = `${fila?.Extra ?? ''}`.trim();
+    return fila?.Extra_comodin === 'cualquiera' || extra.length < 1 ? null : extra;
+}
+
 /** Los `id_interno` de un borrador: las claves tal cual y los números de antes, sin clase (`*|id`). */
 function clavesIdInternoGuardadas(guardados: readonly (string | number)[] | null | undefined): Set<string> {
     return new Set((guardados ?? [])
@@ -919,6 +928,44 @@ export interface ClaseEspecialExtraPendiente {
 export interface SeleccionExtraEspecial {
     idExtra: number;
     extra: string;
+}
+
+/**
+ * Una fila de la tabla de una clase en un nivel (una dote o una aptitud), con su grupo opcional (0, obligatoria) y sus
+ * requisitos internos (`id_interno` de otra fila de la tabla): lo que lee el reciclaje de un rasgo de clase.
+ */
+export interface FilaDeTablaDeClase {
+    tipo: 'dote' | 'especial';
+    grupo: number;
+    /** El id de la dote o de la aptitud. */
+    id: number;
+    nombre: string;
+    /** 0 sin extra. */
+    idExtra: number;
+    extra: string;
+    /** Si su extra se elige al tomarla («Elegir»). */
+    elegir: boolean;
+    /** Una aptitud que da a elegir una dote (`Otorga_dote`), y de qué tipo (`null`, de cualquiera). */
+    otorgaDote: boolean;
+    tipoDeDote: string | null;
+    idInterno: number;
+    idEspecialRequerido: number;
+    idDoteRequerida: number;
+    /** Por qué no la permite su alineamiento (los prerrequisitos de actitud de una aptitud); `null` si la permite. */
+    motivoActitud: string | null;
+}
+
+/**
+ * Lo que cambia en el motor al reciclar un rasgo de clase, fila a fila: una aptitud o una dote de un nivel de la clase que
+ * sale (`quita`) o entra (`pone`), con su `id_interno` de la tabla (0 si no es de una fila: la dote elegida con la aptitud).
+ */
+export interface CambioDeRasgoEnElMotor {
+    nivelClase: number;
+    tipo: 'especial' | 'dote';
+    quita: { id: number; idExtra: number; origen?: string; idInterno: number; } | null;
+    pone: { id: number; idExtra: number; nombre: string; extra: string; origen?: string; idInterno: number; } | null;
+    /** La aptitud que sale la sigue dando otro nivel (la dote adicional del mago a 5 y a 10): se queda en su lista. */
+    conservar?: boolean;
 }
 
 /** El extra elegido para cada aptitud de `ClaseEspecialExtraPendiente`, por su `clave`. */
@@ -3422,8 +3469,7 @@ export class NuevoPersonajeService {
             if (!toBoolean(especial?.['Otorga_dote']))
                 return;
 
-            const extra = `${especialNivel?.Extra ?? ''}`.trim();
-            creadas.push(this.crearDotePendiente('adicional', origenNormalizado, extra.length > 0 ? extra : null));
+            creadas.push(this.crearDotePendiente('adicional', origenNormalizado, tipoDeDoteDeLaAptitud(especialNivel)));
         });
 
         if (creadas.length < 1)
@@ -8335,16 +8381,16 @@ export class NuevoPersonajeService {
                 normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombre)
                 && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
             );
-            if (!duplicado) {
+            if (!duplicado)
                 this.personajeCreacion.Claseas.push({
                     Id: idEspecial > 0 ? idEspecial : undefined,
                     Id_extra: idExtra,
                     Nombre: nombre,
                     Extra: extra,
                 });
-                if (idEspecial > 0)
-                    this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'especial', idElemento: idEspecial, idExtra });
-            }
+            // En su nivel, aunque ya la tuviera de otro (la «Dote adicional» metamágica del mago a 5 y a 10): la da este también.
+            if (idEspecial > 0)
+                this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'especial', idElemento: idEspecial, idExtra });
             this.registrarIdInternoEspecial(clase, toNumber(especialNivel?.Id_interno));
         });
     }
@@ -12051,7 +12097,7 @@ export class NuevoPersonajeService {
                 for (let n = 1; clase && n <= toInt(entrada?.Nivel); n++)
                     (this.obtenerDetalleNivelClase(clase, n)?.Especiales ?? [])
                         .filter((e) => toBoolean((e?.Especial as Record<string, any>)?.['Otorga_dote']))
-                        .forEach((e) => huecos.push(this.crearDotePendiente('adicional', `${clase.Nombre} nivel ${n}`, `${e?.Extra ?? ''}`.trim() || null)));
+                        .forEach((e) => huecos.push(this.crearDotePendiente('adicional', `${clase.Nombre} nivel ${n}`, tipoDeDoteDeLaAptitud(e))));
             });
             for (let n = 0; n < toNumber(this.razaSeleccionada?.Dotes_adicionales); n++)
                 huecos.push(this.crearDotePendiente('raza', raza, null));
@@ -12083,6 +12129,131 @@ export class NuevoPersonajeService {
         };
         this.dotesPendientes = [...this.dotesPendientes, pendiente];
         return { ...pendiente };
+    }
+
+    // --- El reciclaje de un rasgo de clase (R3; Manual del jugador II, págs. 194-195) ----------------------------------
+    // Qué es reciclable, qué eligió en cada hueco y lo que cambia sale de los datos de la tabla de la clase
+    // (`reciclaje-rasgos.ts`); aquí, las filas de la tabla y el cambio en el motor.
+
+    /** Las filas de la tabla de `clase` en su nivel `nivel` (sus dotes y sus aptitudes), en su orden. */
+    filasDeLaTablaDeClase(clase: Clase, nivel: number): FilaDeTablaDeClase[] {
+        const detalle = this.obtenerDetalleNivelClase(clase, nivel);
+        if (!detalle || toInt(detalle.Nivel) !== toInt(nivel))
+            return [];
+        return this.extraerOpcionesNivelClase(detalle).map((opcion) => {
+            const fila = opcion.doteNivel ?? opcion.especialNivel;
+            const elemento = ((opcion.doteNivel?.Dote ?? opcion.especialNivel?.Especial) ?? {}) as Record<string, any>;
+            const otorgaDote = opcion.tipo === 'especial' && toBoolean(elemento?.['Otorga_dote']);
+            const actitud = this.evaluarActitudOpcion(opcion);
+            return {
+                tipo: opcion.tipo,
+                grupo: opcion.grupoOpcional,
+                id: toInt(elemento?.['Id']),
+                nombre: opcion.nombre,
+                idExtra: Math.max(0, toInt(fila?.Id_extra)),
+                extra: opcion.extra,
+                elegir: fila?.Extra_comodin === 'elegir',
+                otorgaDote,
+                tipoDeDote: otorgaDote ? tipoDeDoteDeLaAptitud(fila) : null,
+                idInterno: toInt(opcion.idInterno),
+                idEspecialRequerido: toInt(opcion.idEspecialRequerido),
+                idDoteRequerida: toInt(opcion.idDoteRequerida),
+                motivoActitud: actitud.cumple ? null : actitud.motivos.join(' · '),
+            };
+        });
+    }
+
+    /** El origen que pone la creación a la dote que da una aptitud del nivel `origen` («Dote adicional: Mago nivel 5»). */
+    origenDeLaDoteDeAptitud(origen: string): string {
+        return this.construirOrigenDoteDesdePendiente({ id: -1, fuente: 'adicional', origen, tipoPermitido: null, estado: 'pendiente' });
+    }
+
+    /**
+     * Una dote pendiente de una aptitud que da a elegir una dote (la «Dote adicional» del mago), en su nivel de clase
+     * (`nivel`, donde se apunta) y con el tipo que admite: la del hueco de un rasgo reciclado, con el selector de dotes de
+     * la creación. Sus candidatas se evalúan con el personaje del nivel `alNivel` de su registro (`null`, con el de ahora).
+     * Con `origenFijo`, la nueva va con ese origen (el de la que sustituye). Se resuelve con `aplicarDotePendiente`.
+     */
+    registrarDotePendienteDeAptitud(datos: {
+        origen: string; tipoPermitido: string | null; nivel: RefNivelTomado | null; alNivel: number | null; origenFijo?: string | null;
+    }): DotePendienteState {
+        const pendiente: DotePendienteState = {
+            ...this.crearDotePendiente('adicional', datos.origen, datos.tipoPermitido),
+            nivel: datos.nivel ? { idClase: toInt(datos.nivel.idClase), nivelClase: toInt(datos.nivel.nivelClase) } : null,
+            origenFijo: `${datos.origenFijo ?? ''}`.trim() || null,
+            alNivel: datos.alNivel,
+        };
+        this.dotesPendientes = [...this.dotesPendientes, pendiente];
+        return { ...pendiente };
+    }
+
+    /**
+     * Cambia en el motor un rasgo de clase de `idClase` (el reciclaje R3), fila a fila: primero sale lo que se va (la
+     * aptitud de `Claseas`, salvo si la sigue dando otro nivel; la dote, con lo que da) con su elección y su `id_interno`, y
+     * después entra lo nuevo, apuntado en su nivel, como en la creación. `false` si algo no está (el motor puede quedar a
+     * medias: quien llama lo deja como estaba).
+     */
+    aplicarCambiosDeRasgo(idClase: number, cambios: CambioDeRasgoEnElMotor[]): boolean {
+        const clase = this.claseDelCatalogo(idClase);
+        if (!clase)
+            return false;
+        const pj = this.personajeCreacion;
+        const ref = (nivelClase: number): RefNivelTomado => ({ idClase: toInt(clase.Id), nivelClase: toInt(nivelClase) });
+        const mismo = (e: PersonajeCreateNivelEleccionDto, tipo: string, id: number, idExtra: number) =>
+            e.tipo === tipo && toInt(e.idElemento) === toInt(id) && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra));
+        const quitarEleccion = (nivelClase: number, tipo: string, id: number, idExtra: number) => {
+            const nivel = nivelDelOrden(pj.Orden_niveles, ref(nivelClase));
+            const k = (nivel?.elecciones ?? []).findIndex((e) => mismo(e, tipo, id, idExtra));
+            if (nivel && k >= 0)
+                nivel.elecciones!.splice(k, 1);
+        };
+        const ids = (tipo: 'especial' | 'dote') => tipo === 'dote' ? this.idsDotesInternosActivos : this.idsEspecialesInternosActivos;
+
+        for (const cambio of cambios.filter((c) => !!c.quita)) {
+            const quita = cambio.quita!;
+            if (cambio.tipo === 'dote') {
+                const dote = (pj.DotesContextuales ?? []).find((d) => toInt(d?.Dote?.Id) === toInt(quita.id)
+                    && Math.max(0, toInt(d?.Contexto?.Id_extra)) === Math.max(0, toInt(quita.idExtra))
+                    && (quita.origen === undefined || `${(d?.Contexto as any)?.Origen ?? ''}` === quita.origen));
+                if (!dote || !this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`))
+                    return false;
+            } else if (!cambio.conservar) {
+                const i = (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(quita.id) && Math.max(0, toInt(e?.Id_extra)) === Math.max(0, toInt(quita.idExtra)));
+                if (i < 0)
+                    return false;
+                pj.Claseas.splice(i, 1);
+            }
+            quitarEleccion(cambio.nivelClase, cambio.tipo, quita.id, quita.idExtra);
+            if (toInt(quita.idInterno) > 0)
+                ids(cambio.tipo).delete(claveIdInterno(clase.Nombre, quita.idInterno));
+        }
+        this.recalcularEfectosConservandoVentajas();
+
+        for (const cambio of cambios.filter((c) => !!c.pone)) {
+            const pone = cambio.pone!;
+            const idExtra = Math.max(0, toInt(pone.idExtra));
+            if (cambio.tipo === 'especial') {
+                if (!(pj.Claseas ?? []).some((e) => toInt(e?.Id) === toInt(pone.id) && Math.max(0, toInt(e?.Id_extra)) === idExtra))
+                    pj.Claseas.push({ Id: toInt(pone.id), Id_extra: idExtra, Nombre: pone.nombre, Extra: pone.extra });
+                this.apuntarEnNivel(ref(cambio.nivelClase), { tipo: 'especial', idElemento: toInt(pone.id), idExtra });
+            } else {
+                const dote = this.doteDelCatalogo(toInt(pone.id));
+                if (!dote)
+                    return false;
+                const origen = `${pone.origen ?? ''}`.trim() || `${clase.Nombre} nivel ${toInt(cambio.nivelClase)}`;
+                const extra = idExtra > 0 ? this.resolverExtraTextoDote(dote, idExtra, pone.extra) : `${pone.extra ?? ''}`.trim() || 'No aplica';
+                // Lo que da (sus modificadores), con el recálculo de abajo, que parte de todas sus dotes.
+                if (!this.agregarDoteAlPersonaje(dote, origen, idExtra, extra))
+                    return false;
+                this.apuntarEnNivel(ref(cambio.nivelClase), { tipo: 'dote', idElemento: toInt(pone.id), idExtra, origen });
+            }
+            if (toInt(pone.idInterno) > 0)
+                ids(cambio.tipo).add(claveIdInterno(clase.Nombre, pone.idInterno));
+        }
+        this.recalcularEfectosConservandoVentajas();
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasPorCombate();
+        return true;
     }
 
     // --- Adquirir una raza mutada (roadmap de sesiones, fase 7) --------------------------------------------------------

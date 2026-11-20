@@ -25,6 +25,8 @@ import { CampanaService } from 'src/app/services/campana.service';
 import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
+import { EspecialService } from 'src/app/services/especial.service';
+import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
@@ -35,6 +37,7 @@ import { dotesQueVuelvenACumplir, marcarDotesSinPrerrequisitos } from 'src/app/s
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
 import {
     aplicarReciclajeAlMotor,
+    aptitudesDelReciclaje,
     ClaseConConocidos,
     conjurosParaAprender,
     conocidosParaReciclar,
@@ -44,6 +47,7 @@ import {
     dotesParaReciclar,
     fichaConElReciclaje,
     filaDelReciclaje,
+    filasDelReciclaje,
     HabilidadConRangos,
     habilidadesConRangos,
     huecoDeLaDoteReciclada,
@@ -53,8 +57,13 @@ import {
     MAXIMO_CONJUROS_RECICLADOS,
     MAXIMO_RANGOS_RECICLADOS,
     PlanReciclaje,
+    rasgosParaReciclar,
     reciclajeDelPlan,
 } from 'src/app/services/utils/reciclaje';
+import {
+    aptitudesConElegir, cambiosDelRasgo, HuecoDeRasgo, huecoDeLaDoteDelRasgo, mismaFila, nombreConExtra, nombreDeLoQueTiene, nombreDeOpcion, OpcionDeRasgo,
+    PlanRasgo,
+} from 'src/app/services/utils/reciclaje-rasgos';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
@@ -77,7 +86,7 @@ interface BorradorSubida {
     reciclaje?: { plan: PlanReciclaje; entrada: PersonajeCreateRequestDto; clases: number[] | null; } | null;
 }
 
-/** Lo que se puede elegir en el paso «Reciclar» (MJ II, tabla 8-1; esta tanda, sin rasgos de clase ni niveles de sustitución). */
+/** Lo que se puede elegir en el paso «Reciclar» (MJ II, tablas 8-1 y 8-2; aún sin niveles de sustitución). */
 type TipoDeReciclaje = 'ninguno' | PlanReciclaje['tipo'];
 
 /** Un cambio de conjuros a medio elegir: la clase, el que olvida y el que aprende en su lugar. */
@@ -164,6 +173,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     bloqueoRangos = '';
     clasesConConocidos: ClaseConConocidos[] = [];
     cambiosConjuros: CambioDeConjuro[] = [{ idClase: null, olvida: null, aprende: null }];
+    /** Los huecos de rasgo de clase (los grupos de la tabla de sus clases y las aptitudes con «Elegir»), con su motivo si no. */
+    rasgosReciclables: HuecoDeRasgo[] = [];
+    /** El hueco cuyas otras opciones se enseñan, y la que entra en su lugar (con la dote elegida, si la da). */
+    rasgoElegido: HuecoDeRasgo | null = null;
+    planRasgo: PlanRasgo | null = null;
+    readonly nombreDeLoQueTiene = nombreDeLoQueTiene;
+    readonly nombreDeOpcion = nombreDeOpcion;
     /** Lo reciclado, ya hecho en el motor: va en el cuerpo de la subida y en la primera fila del resumen. */
     plan: PlanReciclaje | null = null;
     /** La `entrada` con el reciclaje hecho: la ficha sobre la que va el nivel. */
@@ -185,6 +201,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         private escuelaSvc: EscuelaConjurosService,
         private disciplinaSvc: DisciplinaConjurosService,
         private enemigoSvc: EnemigoPredilectoService,
+        private especialSvc: EspecialService,
     ) {
         this.cuenta = new MismaCuenta(auth);
     }
@@ -271,7 +288,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         await this.motor.hidratar(this.svc, this.pj!, this.entrada!, this.nivelesPerdidos);
         this.antes = this.cuerpoDelMotor();
         this.recalcularClases();
-        this.prepararReciclaje();
+        await this.prepararReciclaje();
     }
 
     /** Los pasos antes de elegir la clase: «Reciclar», si la campaña lo deja, la clase y el resumen. */
@@ -339,9 +356,12 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     // --- El reciclaje (Manual del jugador II, págs. 194-196) ------------------------------------------------------------
 
     /** Lo que ofrece cada tipo, con el personaje de antes de subir (el motor recién hidratado). */
-    private prepararReciclaje(): void {
+    private async prepararReciclaje(): Promise<void> {
         this.tipoReciclaje = 'ninguno';
         this.planDote = null;
+        this.rasgosReciclables = [];
+        this.rasgoElegido = null;
+        this.planRasgo = null;
         this.idiomaQuita = this.idiomaPone = null;
         this.rangosOrigen = this.rangosDestino = null;
         this.rangosCantidad = 1;
@@ -355,7 +375,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.cambiosConjuros = [{ idClase: null, olvida: null, aprende: null }];
         if (!this.permiteReciclar || !this.entrada)
             return;
-        this.dotesReciclables = dotesParaReciclar(this.svc);
+        this.rasgosReciclables = rasgosParaReciclar(this.svc, await this.aptitudesConElegir());
+        this.dotesReciclables = dotesParaReciclar(this.svc, this.rasgosReciclables);
         const idiomas = idiomasParaReciclar(this.svc, this.entrada, this.conHomebrew);
         this.idiomasReciclables = idiomas.quitables;
         this.idiomasAprendibles = idiomas.aprendibles;
@@ -363,6 +384,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.clasesConConocidos = conocidosParaReciclar(this.svc, this.entrada);
         this.cambiosConjuros = [this.cambioDeConjuroVacio()];
         this.opcionesReciclaje = this.opcionesDeReciclaje();
+    }
+
+    /** El detalle de las aptitudes con «Elegir» de sus clases (sus extras), o `null` si no se puede leer. */
+    private async aptitudesConElegir(): Promise<Map<number, EspecialClaseDetalle | null>> {
+        const ids = aptitudesConElegir(this.svc);
+        const detalles = await Promise.all(ids.map((id) => this.motor.primero(this.especialSvc.getEspecial(id))));
+        return new Map(ids.map((id, i) => [id, detalles[i]]));
     }
 
     private cambioDeConjuroVacio(): CambioDeConjuro {
@@ -382,6 +410,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             { tipo: 'idioma', etiqueta: 'Reciclar un idioma', motivo: this.idiomasReciclables.length ? '' : 'No conoce ningún idioma.' },
             { tipo: 'rangos', etiqueta: 'Reciclar habilidades', motivo: this.habilidadesReciclables.length ? '' : 'No tiene rangos comprados.' },
             { tipo: 'conjuros', etiqueta: 'Reciclar conjuros', motivo: this.clasesConConocidos.length ? '' : 'Ninguna de sus clases tiene conocidos limitados (una tabla de conocidos).' },
+            { tipo: 'rasgo', etiqueta: 'Reciclar un rasgo de clase', motivo: this.rasgosReciclables.length ? '' : 'Ninguna de sus clases le ha dado a elegir entre opciones de su tabla.' },
         ];
     }
 
@@ -417,6 +446,81 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 return;
             }
             this.planDote = { tipo: 'dote', quita: dote, seleccion, pone: doteElegidaEnElHueco(this.svc, hueco.pendiente, seleccion) };
+        } finally {
+            this.svc.restaurarEstadoSubida(estado);
+        }
+    }
+
+    /** Enseña las otras opciones del hueco (el de la tabla de su clase, en ese nivel). */
+    elegirRasgo(hueco: HuecoDeRasgo): void {
+        if (hueco.motivo || this.empezada)
+            return;
+        if (this.rasgoElegido !== hueco)
+            this.planRasgo = null;
+        this.rasgoElegido = hueco;
+    }
+
+    /** El texto de una opción del hueco: la aptitud que da una dote, también la que se elija con ella. */
+    textoDeOpcion(hueco: HuecoDeRasgo, opcion: OpcionDeRasgo): string {
+        const elegida = this.planRasgo?.hueco === hueco && this.planRasgo.pone === opcion ? this.planRasgo.doteElegida?.dote : null;
+        if (elegida)
+            return nombreDeOpcion(opcion, elegida);
+        if (!opcion.daDote)
+            return nombreDeOpcion(opcion);
+        return mismaFila(hueco.tiene, opcion)
+            ? `${nombreDeOpcion(opcion)}: otra dote en lugar de ${nombreConExtra(hueco.doteQueTiene)}`
+            : `${nombreDeOpcion(opcion)}: eliges la dote`;
+    }
+
+    /** Lo que cambia solo con la opción elegida («Disparo rápido en lugar de Combate con dos armas»). */
+    get derivadosDelRasgo(): string {
+        return (this.planRasgo?.cambios ?? []).filter((c) => c.derivado)
+            .map((c) => c.nombrePone && c.nombreQuita ? `${c.nombrePone} en lugar de ${c.nombreQuita}` : c.nombrePone ? `gana ${c.nombrePone}` : `pierde ${c.nombreQuita}`)
+            .join('; ');
+    }
+
+    /**
+     * Otra opción en el hueco del rasgo. La que da a elegir una dote (la «Dote adicional» del mago) abre el selector de dotes
+     * de la creación con las de su tipo, juzgadas con el personaje de antes de subir, sin lo que se va y en el nivel del hueco
+     * (`huecoDeLaDoteDelRasgo`). El motor se deja como estaba: el cambio se hace al continuar.
+     */
+    async elegirOpcionRasgo(opcion: OpcionDeRasgo): Promise<void> {
+        const hueco = this.rasgoElegido;
+        if (!hueco || opcion.motivo || this.empezada)
+            return;
+        const cambios = cambiosDelRasgo(this.svc, hueco, opcion);
+        if (!opcion.daDote) {
+            this.planRasgo = { tipo: 'rasgo', hueco, pone: opcion, doteElegida: null, cambios };
+            return;
+        }
+        this.planRasgo = null;
+        const estado = this.svc.exportarEstadoSubida();
+        try {
+            const delHueco = huecoDeLaDoteDelRasgo(this.svc, hueco, opcion, cambios);
+            const candidatos = (delHueco?.candidatos ?? []).filter((c) => this.conHomebrew || c.dote?.Oficial !== false);
+            if (!delHueco || !candidatos.some((c) => c.evaluacion?.estado === 'eligible' && c.repeticionValida && !c.restringidaPorTipo)) {
+                await avisarPaso('No hay ninguna dote que elegir', `Con ${nombreDeOpcion(opcion)} no puede elegir ninguna dote: no cumple los prerrequisitos de ninguna en ese nivel.`);
+                return;
+            }
+            const seleccion = await this.abrirModal<DoteSeleccionConfirmada>(SelectorDotesModalComponent, {
+                titulo: `${hueco.clase}, nivel ${hueco.nivelClase}: ${nombreDeOpcion(opcion)}`, pendiente: delHueco.pendiente, candidatos, pendientesRestantes: 1,
+            }, ['confirmar'], ['omitir']);
+            if (!seleccion)
+                return;
+            const quitada = hueco.tiene.daDote ? hueco.doteQueTiene : null;
+            if (quitada && toInt(seleccion.idDote) === quitada.id && Math.max(0, toInt(seleccion.idExtra)) === quitada.idExtra) {
+                await avisarPaso('La misma dote', `Para reciclar ${quitada.nombre} hay que elegir otra que no tenga.`);
+                return;
+            }
+            if (!this.svc.aplicarDotePendiente(delHueco.pendiente.id, seleccion)) {
+                await avisarPaso('No se puede elegir esa dote', 'Con el personaje de antes de subir, en el nivel del hueco y sin lo que se recicla, no la cumple. Elige otra.');
+                return;
+            }
+            const elegida = doteElegidaEnElHueco(this.svc, delHueco.pendiente, seleccion);
+            this.planRasgo = {
+                tipo: 'rasgo', hueco, pone: opcion, cambios,
+                doteElegida: { seleccion, dote: { id: elegida.idDote, idExtra: elegida.idExtra, nombre: elegida.nombre, extra: elegida.extra, origen: `${delHueco.pendiente.origenFijo ?? ''}` } },
+            };
         } finally {
             this.svc.restaurarEstadoSubida(estado);
         }
@@ -495,6 +599,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     private planElegido(): PlanReciclaje | null {
         if (this.tipoReciclaje === 'dote')
             return this.planDote;
+        if (this.tipoReciclaje === 'rasgo')
+            return this.planRasgo;
         if (this.tipoReciclaje === 'idioma') {
             const quita = this.idiomasReciclables.find((i) => i.idIdioma === toInt(this.idiomaQuita) && !i.motivo);
             const pone = this.idiomasAprendibles.find((i) => i.idIdioma === toInt(this.idiomaPone));
@@ -556,6 +662,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.entradaReciclada = fichaConElReciclaje(this.entrada!, reciclajeDelPlan(plan), {
                 origenDote: plan.tipo === 'dote' ? plan.quita.origen : undefined,
                 claseaDestino: !!destino && destino.clases === null,
+                rasgo: plan.tipo === 'rasgo' ? plan : undefined,
                 // Lo que daba lo antiguo y lo que da lo nuevo: la API guarda tal cual los modificadores que llegan.
                 motor: this.antes ? { antes: this.antes, despues } : null,
             });
@@ -686,7 +793,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             elecciones: this.svc.getEleccionesDelNivelEnCurso(),
             nombreConjuro: (id) => this.nombreConjuro(id),
             reciclado: this.plan
-                ? { fila: filaDelReciclaje(this.plan), idiomaNuevo: this.plan.tipo === 'idioma' ? this.plan.pone.nombre : undefined }
+                ? {
+                    filas: filasDelReciclaje(this.plan), idiomaNuevo: this.plan.tipo === 'idioma' ? this.plan.pone.nombre : undefined,
+                    aptitudesNuevas: aptitudesDelReciclaje(this.plan),
+                }
                 : null,
         });
     }

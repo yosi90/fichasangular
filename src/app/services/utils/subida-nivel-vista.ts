@@ -51,8 +51,11 @@ export interface EntradaCambiosSubida {
     caras: number;
     elecciones: PersonajeCreateNivelEleccionDto[];
     nombreConjuro: (id: number) => string;
-    /** Lo reciclado antes del nivel (su fila va la primera) y el idioma que aprende con ello, que no es del nivel. */
-    reciclado?: { fila: CambioSubida; idiomaNuevo?: string; } | null;
+    /**
+     * Lo reciclado antes del nivel (sus filas van las primeras) y lo que entra con ello, que no es del nivel: el idioma que
+     * aprende y las aptitudes de un rasgo de clase.
+     */
+    reciclado?: { filas: CambioSubida[]; idiomaNuevo?: string; aptitudesNuevas?: Array<{ nombre: string; extra: string; }>; } | null;
 }
 
 /**
@@ -61,7 +64,7 @@ export interface EntradaCambiosSubida {
  * rangos, las dotes, los conjuros (y el intercambio), los idiomas y las aptitudes del nivel.
  */
 export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
-    const filas: CambioSubida[] = e.reciclado ? [{ ...e.reciclado.fila }] : [];
+    const filas: CambioSubida[] = (e.reciclado?.filas ?? []).map((f) => ({ ...f }));
     const nombreClase = e.clase?.Nombre ?? '';
     filas.push({ que: 'Clase', antes: clasesTexto(e.antes), ahora: clasesTexto(e.despues), porque: `Nivel ${e.nivelNuevo} del personaje` });
 
@@ -121,8 +124,10 @@ export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
         });
 
     const nuevos = (tipo: string) => e.elecciones.filter((x) => x.tipo === tipo).length;
-    const especialesNuevos = (e.despues?.Claseas ?? []).filter((x) => !(e.antes?.Claseas ?? [])
-        .some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? '') && normalizarTexto(y?.Extra ?? '') === normalizarTexto(x?.Extra ?? '')));
+    const mismaAptitud = (x: { Nombre?: string; Extra?: string; }, y: { Nombre?: string; Extra?: string; }) =>
+        normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? '') && normalizarTexto(y?.Extra ?? '') === normalizarTexto(x?.Extra ?? '');
+    const delReciclaje = (e.reciclado?.aptitudesNuevas ?? []).map((a) => ({ Nombre: a.nombre, Extra: a.extra }));
+    const especialesNuevos = (e.despues?.Claseas ?? []).filter((x) => ![...(e.antes?.Claseas ?? []), ...delReciclaje].some((y) => mismaAptitud(x, y)));
     if (especialesNuevos.length || nuevos('especial'))
         filas.push({ que: 'Aptitudes', antes: '—', ahora: especialesNuevos.map((x) => x.Extra && x.Extra !== 'No aplica' ? `${x.Nombre} (${x.Extra})` : x.Nombre).join(', '), porque: `${nombreClase} ${e.nivelClase}` });
     const idiomasNuevos = (e.despues?.Idiomas ?? []).filter((x) => !(e.antes?.Idiomas ?? []).some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? ''))
