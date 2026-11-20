@@ -1194,7 +1194,7 @@ const NUEVO_PERSONAJE_DRAFT_AUTOSAVE_MS = 1200;
 const NUEVO_PERSONAJE_DRAFT_DEBOUNCE_MS = 300;
 
 /** Un nivel de un conjuro en la lista de una clase o de un dominio: su id, su nombre normalizado y el nivel. */
-interface NivelListaConjuro {
+export interface NivelListaConjuro {
     id: number;
     nombre: string;
     nivel: number;
@@ -1226,7 +1226,7 @@ export function esConjuroDeLaClase(conjuro: Conjuro, claseNorm: string): boolean
 }
 
 /** Los niveles del conjuro en las listas de dominio (`Nivel_dominio`), leídos igual de la API y de la caché. */
-function nivelesDeDominioDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
+export function nivelesDeDominioDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
     return toArray<Record<string, any>>(conjuro?.Nivel_dominio).map((nivel) => ({
         id: toNumber(nivel?.['Id_dominio'] ?? nivel?.['id_dominio']),
         nombre: normalizarTexto(nivel?.['Dominio'] ?? nivel?.['dominio'] ?? ''),
@@ -8083,7 +8083,8 @@ export class NuevoPersonajeService {
         return existeCoincidenciaClaveEntidad(this.resolverCompetenciasArmasActuales(), idArma, nombreArma);
     }
 
-    private dominioDelCatalogo(idDominio: number): DominioDetalle | null {
+    /** Un dominio del catálogo (`GET /dominios`: su poder, sus dotes, sus habilidades y sus alineamientos), o `null`. */
+    dominioDelCatalogo(idDominio: number): DominioDetalle | null {
         const id = toInt(idDominio);
         return id > 0 ? (this.catalogoDominios ?? []).find((dominio) => toInt(dominio?.Id) === id) ?? null : null;
     }
@@ -9596,7 +9597,8 @@ export class NuevoPersonajeService {
         return id > 0 ? id : null;
     }
 
-    private resolverIdDominioPorNombre(nombreDominio: string): number | null {
+    /** El id de un dominio del catálogo por su nombre (los dominios de una ficha de la creación no lo llevan), o `null`. */
+    resolverIdDominioPorNombre(nombreDominio: string): number | null {
         const nombreNorm = normalizarTexto(nombreDominio);
         if (nombreNorm.length < 1)
             return null;
@@ -12247,6 +12249,91 @@ export class NuevoPersonajeService {
             if (toInt(pone.idInterno) > 0)
                 ids(cambio.tipo).add(claveIdInterno(clase.Nombre, pone.idInterno));
         }
+        this.recalcularEfectosConservandoVentajas();
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasPorCombate();
+        return true;
+    }
+
+    /**
+     * Los dominios que puede elegir con `clase`, como al crear (`resolverDominiosDisponiblesClase`): los de su deidad (sin
+     * deidad, todos), de alineamiento solo los del suyo, sin los que ya tiene y, si la ficha es oficial, sin los homebrew.
+     */
+    dominiosQuePuedeElegir(clase: Clase): ClaseDominioPendiente[] {
+        return this.resolverDominiosDisponiblesClase(clase);
+    }
+
+    /**
+     * Las habilidades del personaje que el dominio `idQuita` hacía de clase y que dejarían de serlo si lo cambiara por
+     * `idPone` (`null`: sin poner otro): las que no lo son por una de sus clases, por otro dominio que le quede ni por lo
+     * que las hace siempre de clase (los raciales, los DG de la raza o de una plantilla). Lo usan el reciclaje de un
+     * dominio (el tope de los rangos de una transclásea) y `cambiarDominio`.
+     */
+    habilidadesQueDejanDeSerDeClase(idQuita: number, idPone: number | null): Personaje['Habilidades'][number][] {
+        const pj = this.personajeCreacion;
+        const quita = this.dominioDelCatalogo(idQuita);
+        if (!quita)
+            return [];
+        const nombreQuita = normalizarTexto(quita.Nombre);
+        const quedan = [
+            ...(pj.Dominios ?? []).filter((d) => toInt(d?.Id) !== toInt(idQuita) && normalizarTexto(d?.Nombre ?? '') !== nombreQuita)
+                .map((d) => this.dominioDelCatalogo(toInt(d?.Id) || toInt(this.resolverIdDominioPorNombre(`${d?.Nombre ?? ''}`)))),
+            ...(idPone ? [this.dominioDelCatalogo(idPone)] : []),
+        ].filter((d): d is DominioDetalle => !!d);
+        const deLaReferencia = (ref: Record<string, any>) => {
+            const id = toInt(ref?.['Id_habilidad'] ?? ref?.['id_habilidad'] ?? ref?.['Id']);
+            const idExtra = toInt(ref?.['Id_extra'] ?? ref?.['id_extra']);
+            return (pj.Habilidades ?? []).filter((h) => !h?.Custom && toInt(h?.Id) === id
+                && (idExtra <= 0 || mismoExtra(idExtraHabilidadParaGuardar(h), idExtra)));
+        };
+        const siguenDeClase = new Set([
+            ...Object.entries(this.habilidadesDeClasePorOrigen).filter(([origen]) => !origen.startsWith(origenDeClase(''))).flatMap(([, claves]) => claves),
+            ...(pj.desgloseClases ?? []).map((c) => this.obtenerClaseDeDesglose(c)).filter((c): c is Clase => !!c)
+                .flatMap((c) => this.habilidadesDeClaseDeLaClase(c)).flatMap((ref) => deLaReferencia(ref)).map((h) => claveHabilidad(h)),
+            ...quedan.flatMap((d) => d.Habilidades_claseas ?? []).flatMap((ref) => deLaReferencia(ref as Record<string, any>)).map((h) => claveHabilidad(h)),
+        ]);
+        return Array.from(new Set((quita.Habilidades_claseas ?? []).flatMap((ref) => deLaReferencia(ref as Record<string, any>))))
+            .filter((h) => !siguenDeClase.has(claveHabilidad(h)));
+    }
+
+    /**
+     * Cambia el dominio `idQuita` de `idClase` por `idPone` (el reciclaje de un rasgo de clase, R3; *Manual del jugador II*,
+     * pág. 195). Sale con lo que da su poder (las dotes con su origen, «Dominio: Agua», sus aptitudes si no las da otro
+     * dominio que le quede y sus habilidades de clase, `habilidadesQueDejanDeSerDeClase`; los rangos se quedan) y su
+     * elección del 1.er nivel de la clase; entra el nuevo en su lugar, como al crear (`aplicarPoderConcedidoDominio`),
+     * apuntado en ese nivel. Sus conjuros de dominio salen de sus datos (`Nivel_dominio`). `false` si no tiene el que sale
+     * o falta alguno en el catálogo (el motor puede quedar a medias: quien llama lo deja como estaba).
+     */
+    cambiarDominio(idClase: number, idQuita: number, idPone: number): boolean {
+        const clase = this.claseDelCatalogo(idClase);
+        const quita = this.dominioDelCatalogo(idQuita);
+        const pone = this.dominioDelCatalogo(idPone);
+        const pj = this.personajeCreacion;
+        const i = (pj.Dominios ?? []).findIndex((d) => toInt(d?.Id) === toInt(idQuita) || normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quita?.Nombre ?? ''));
+        if (!clase || !quita || !pone || i < 0)
+            return false;
+        const sinClase = this.habilidadesQueDejanDeSerDeClase(idQuita, idPone);
+        const [quitado] = pj.Dominios.splice(i, 1);
+        const origen = normalizarTexto(`Dominio: ${quitado?.Nombre ?? quita.Nombre}`);
+        (pj.DotesContextuales ?? []).filter((d) => normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === origen)
+            .forEach((d) => this.quitarDoteDeLaFicha(toInt(d.Dote?.Id), toInt(d.Contexto?.Id_extra), `${(d.Contexto as any)?.Origen ?? ''}`));
+        const deOtro = new Set([...(pj.Dominios ?? []).map((d) => this.dominioDelCatalogo(toInt(d?.Id) || toInt(this.resolverIdDominioPorNombre(`${d?.Nombre ?? ''}`)))), pone]
+            .flatMap((d) => d?.Especiales ?? []).map((e) => normalizarTexto(e?.Nombre ?? '')));
+        (quita.Especiales ?? []).filter((e) => !deOtro.has(normalizarTexto(e?.Nombre ?? ''))).forEach((e) => {
+            const j = (pj.Claseas ?? []).findIndex((x) => (toInt(e?.Id) > 0 && toInt(x?.Id) === toInt(e.Id)) || normalizarTexto(x?.Nombre ?? '') === normalizarTexto(e?.Nombre ?? ''));
+            if (j >= 0)
+                pj.Claseas.splice(j, 1);
+        });
+        sinClase.forEach((h) => h.Clasea = false);
+        const primero: RefNivelTomado = { idClase: toInt(clase.Id), nivelClase: 1 };
+        const nivel = nivelDelOrden(pj.Orden_niveles, primero);
+        const k = (nivel?.elecciones ?? []).findIndex((e) => esLaEleccion(e, 'dominio', idQuita, 0));
+        if (nivel && k >= 0)
+            nivel.elecciones!.splice(k, 1);
+
+        pj.Dominios.splice(i, 0, { Id: toInt(pone.Id), Nombre: `${pone.Nombre ?? ''}`.trim() });
+        this.apuntarEnNivel(primero, { tipo: 'dominio', idElemento: toInt(pone.Id), origen: `${clase.Nombre ?? ''}`.trim() || undefined });
+        this.aplicarPoderConcedidoDominio(pone, `${pone.Nombre ?? ''}`.trim(), clase);
         this.recalcularEfectosConservandoVentajas();
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();

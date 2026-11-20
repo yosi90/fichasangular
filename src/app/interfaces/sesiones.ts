@@ -165,7 +165,17 @@ export type ReciclajeSubidaDto =
         hueco: { idClase: number; nivelClase: number; grupo: number; } | { idClase: number; nivelClase: number; idEspecial: number; };
         quita: OpcionRasgoDto;
         pone: OpcionRasgoDto;
-    };
+    }
+    /** Un dominio de una clase que los da (R3, segunda tanda): uno que tiene por otro que puede elegir. */
+    | { tipo: 'rasgo'; hueco: { idClase: number; dominio: true; }; quita: { dominio: number; }; pone: { dominio: number; }; }
+    /** La escuela del mago (R3, segunda tanda): la especialización y las prohibidas juntas; `especialista: null`, generalista. */
+    | { tipo: 'rasgo'; hueco: { idClase: number; escuela: true; }; quita: { escuela: EscuelaRasgoDto; }; pone: { escuela: EscuelaRasgoDto; }; };
+
+/** La especialización del mago en el reciclaje: la escuela especialista (`null`, generalista) y sus prohibidas. */
+export interface EscuelaRasgoDto {
+    especialista: number | null;
+    prohibidas: number[];
+}
 
 /** Una opción de un hueco de rasgo de clase: su aptitud, su dote o las dos (la aptitud que da a elegir una dote). */
 export interface OpcionRasgoDto {

@@ -20,10 +20,11 @@ import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import {
-    aplicarReciclajeAlMotor, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dotesParaReciclar, fichaConElReciclaje,
-    filasDelReciclaje, habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, PlanReciclaje, rasgosParaReciclar,
-    reciclajeDelPlan,
+    aplicarReciclajeAlMotor, aptitudesDelReciclaje, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dominiosParaReciclar, dotesParaReciclar,
+    fichaConElReciclaje, filasDelReciclaje, habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, motivoDeLaEscuela,
+    PlanReciclaje, rasgosParaReciclar, reciclajeDelPlan,
 } from './utils/reciclaje';
+import { huecoDeEscuela, nombreDeLaEspecializacion, planDelDominio, planDeLaEscuela } from './utils/reciclaje-dominio-escuela';
 import {
     aptitudesConElegir, cambiosDelRasgo, huecoDeLaDoteDelRasgo, nombreDeLoQueTiene, nombreDeOpcion, PlanRasgo,
 } from './utils/reciclaje-rasgos';
@@ -153,12 +154,12 @@ function crear(raza: Raza, caracteristicas: Partial<Record<Car, number>>): Nuevo
 
 /**
  * Un nivel como lo hace la creación (y la subida): la clase, el incremento, los rangos, las dotes y los conjuros. Con
- * `opciones`: lo elegido en los grupos opcionales de la tabla y en sus aptitudes con «Elegir», y las dotes entre las que
+ * `opciones`: lo elegido en los grupos opcionales de la tabla y en sus aptitudes con «Elegir», sus dominios y las dotes entre las que
  * elegir las pendientes (la primera que se pueda; sin ellas, la primera de `DOTES` que no tenga, o ninguna).
  */
 function aplicarNivel(svc: NuevoPersonajeService, c: Clase, incremento: Car = 'Fuerza', antesDeLosRangos?: () => void,
-    opciones: { grupos?: Record<number, string>; extras?: Record<string, { idExtra: number; extra: string; }>; dotes?: any[]; } = {}): void {
-    const r = svc.aplicarSiguienteNivelClase(c, opciones.grupos ?? null, null, false, null, opciones.extras ?? null);
+    opciones: { grupos?: Record<number, string>; extras?: Record<string, { idExtra: number; extra: string; }>; dotes?: any[]; dominios?: number[]; } = {}): void {
+    const r = svc.aplicarSiguienteNivelClase(c, opciones.grupos ?? null, opciones.dominios ?? null, false, null, opciones.extras ?? null);
     expect(r.aplicado).withContext(`${c.Nombre}: ${r.razon}`).toBeTrue();
     const contexto = `${c.Nombre} nivel ${r.nivelAplicado}`;
     svc.registrarDotesPendientesPorEspeciales(r.especialesAplicados ?? [], contexto);
@@ -200,15 +201,19 @@ function aplicarNivel(svc: NuevoPersonajeService, c: Clase, incremento: Car = 'F
     }
 }
 
-/** Lo que guardaría el alta: el cuerpo del motor con sus niveles (en el orden y con lo elegido en cada uno). */
-function guardar(svc: NuevoPersonajeService): { entrada: PersonajeCreateRequestDto; personaje: Personaje; } {
+/**
+ * Lo que guardaría el alta: el cuerpo del motor con sus niveles (en el orden y con lo elegido en cada uno). `catalogos`: los
+ * de más con los que la creación da los ids (los dominios, las escuelas).
+ */
+function guardar(svc: NuevoPersonajeService, catalogos: Record<string, Array<{ id: number; nombre: string; }>> = {}, idDeidad = 0)
+    : { entrada: PersonajeCreateRequestDto; personaje: Personaje; } {
     const pj = svc.PersonajeCreacion;
     pj.Nombre = 'Tordek';
     pj.Campana = 'Sin campaña';
     const vida = svc.calcularVidaFinalAleatoria();
     pj.Vida = vida.total;
     const entrada = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(pj,
-        { idAlineamiento: 1, idGenero: 1, idDeidad: 0, catalogos: { clases: CLASES.map((c) => ({ id: c.Id, nombre: c.Nombre })) } } as any,
+        { idAlineamiento: 1, idGenero: 1, idDeidad, catalogos: { clases: CLASES.map((c) => ({ id: c.Id, nombre: c.Nombre })), ...catalogos } } as any,
         null, svc.getProgresionLanzadorPersistible());
     entrada.niveles = (svc.getNivelesParaGuardar(entrada.progresionLanzador, vida.detalle?.dados) ?? [])
         .map((n) => ({ ...n, ordenConocido: true } as any));
@@ -1658,6 +1663,269 @@ describe('El reciclaje de un rasgo de clase (R3; Manual del jugador II, págs. 1
             expect(ficha.colecciones?.especiales).toEqual(jasmine.arrayWithExactContents([{ idEspecial: 107, idExtra: 202 }, { idEspecial: 107, idExtra: 203 }]));
             expect(ficha.niveles?.[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'especial', idElemento: 107, idExtra: 203 }));
             expect(ficha.niveles?.[0].elecciones).not.toContain(jasmine.objectContaining({ tipo: 'especial', idElemento: 107, idExtra: 201 }));
+        });
+    });
+});
+
+describe('El reciclaje de un dominio y de la escuela del mago (R3, segunda tanda; Manual del jugador II, pág. 195)', () => {
+    const HUMANO = crearRaza('Humano');
+    const pide = (id: number, nombre: string) => ({ dote: [{ Id_dote_prerrequisito: id, Dote_prerrequisito: nombre, Opcional: 0, Frase: nombre }] });
+    const cuerpo = (motor: NuevoPersonajeService, catalogos: Record<string, Array<{ id: number; nombre: string; }>> = {}) =>
+        new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+            { ...motor.PersonajeCreacion, Nombre: 'Tordek', Campana: 'Sin campaña' } as Personaje,
+            { idAlineamiento: 1, idGenero: 1, idDeidad: KORD.Id, catalogos: { clases: [...CLASES, CLERIGO].map((c) => ({ id: c.Id, nombre: c.Nombre })), ...catalogos } } as any);
+
+    // Los dominios, como los da `GET /dominios`: su poder, sus dotes, sus habilidades de clase, sus aptitudes y los
+    // alineamientos que los pueden elegir (los de alineamiento; MJ, págs. 32-33).
+    const NADAR = { Id_habilidad: 4, Nombre: 'Nadar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] };
+    const COMPETENCIA = dote(60, 'Competencia con arma marcial');
+    const SOLDADO = { ...dote(61, 'Dote de soldado'), Prerrequisitos: pide(60, 'Competencia con arma marcial') };
+    const dominio = (id: number, nombre: string, datos: Record<string, any> = {}) => ({
+        Id: id, Nombre: nombre, Oficial: true, Poder: `El poder de ${nombre.toLowerCase()}`, Alineamientos: [], Dotes: [], Habilidades_claseas: [],
+        Especiales: [], ...datos,
+    });
+    const AGUA = dominio(1, 'Agua', { Habilidades_claseas: [{ Id_habilidad: 4, Habilidad: 'Nadar', Id_extra: -1, Extra: null }] });
+    const FUEGO = dominio(2, 'Fuego', { Especiales: [{ Id: 300, Nombre: 'Expulsar criaturas de agua' }] });
+    const GUERRA = dominio(3, 'Guerra', {
+        Dotes: [{ Id: 60, Nombre: 'Competencia con arma marcial', Id_extra: null, Extra: null, Extra_arma_deidad: false, Solo_sin_competencia: false }],
+    });
+    const BIEN = dominio(4, 'Bien', { Alineamientos: [{ Id: 1, Nombre: 'Legal bueno' }, { Id: 2, Nombre: 'Neutral bueno' }] });
+    const MAL = dominio(5, 'Mal', { Alineamientos: [{ Id: 7, Nombre: 'Legal maligno' }] });
+    const SOL = dominio(6, 'Sol');
+    const DOMINIOS = [AGUA, FUEGO, GUERRA, BIEN, MAL, SOL];
+    // Los de su deidad (`deidades_dominios`): Sol no es de los suyos.
+    const KORD = { Id: 20, Nombre: 'Kord', Oficial: true, Arma: { Id: 0, Nombre: '' }, Dominios: [AGUA, FUEGO, GUERRA, BIEN, MAL].map((d) => ({ Id: d.Id, Nombre: d.Nombre, Oficial: true })) };
+    const deDominio = (id: number, nombre: string, d: { Id: number; Nombre: string; }, nivelConjuro: number) => ({
+        ...conjuro(id, nombre, 99, 'Ninguna', nivelConjuro), Arcano: false, Divino: true, Nivel_clase: [],
+        Nivel_dominio: [{ Id_dominio: d.Id, Dominio: d.Nombre, Nivel: nivelConjuro, Espontaneo: false }],
+    } as unknown as Conjuro);
+    const CONJUROS_DE_DOMINIO = [deDominio(401, 'Nube brumosa', AGUA, 1), deDominio(402, 'Manos ardientes', FUEGO, 1), deDominio(403, 'Arma mágica', GUERRA, 1)];
+    const CLERIGO = clase({
+        Id: 2, Nombre: 'Clérigo', Tipo_dado: { Id: 3, Nombre: 'd8' }, Puntos_habilidad: { Id: 1, Valor: 2 },
+        Conjuros: { Divinos: true, Dominio: true, Dominio_cantidad: 2 },
+        Habilidades: { Base: [ref(3, 'Concentración')], Custom: [] }, Desglose_niveles: [1, 2, 3].map((n) => nivel(n)),
+    });
+    const CATALOGOS = { dominios: DOMINIOS.map((d) => ({ id: d.Id, nombre: d.Nombre })) };
+
+    function preparar(svc: NuevoPersonajeService): NuevoPersonajeService {
+        svc.setCatalogoHabilidades([...HABILIDADES, NADAR] as any);
+        svc.setCatalogoClases([...CLASES, CLERIGO]);
+        svc.setCatalogoDotes([...DOTES, COMPETENCIA, SOLDADO]);
+        svc.setCatalogoConjuros([...CONJUROS, ...CONJUROS_DE_DOMINIO]);
+        svc.setCatalogoDominios(DOMINIOS as any);
+        svc.setCatalogoDeidades([KORD] as any);
+        return svc;
+    }
+
+    /** Un clérigo humano legal bueno con esos dominios a 1.er nivel, creado nivel a nivel y preparado para subir. */
+    function clerigo(niveles: number, dominios: number[], deidad = 'Kord') {
+        const svc = preparar(crear(HUMANO, { Sabiduria: 15 }));
+        svc.PersonajeCreacion.Deidad = deidad;
+        svc.PersonajeCreacion.Alineamiento = 'Legal bueno';
+        for (let n = 1; n <= niveles; n++)
+            aplicarNivel(svc, CLERIGO, 'Sabiduria', undefined, n === 1 ? { dominios } : {});
+        const guardado = guardar(svc, CATALOGOS, deidad ? KORD.Id : 0);
+        const motor = preparar(catalogos(new NuevoPersonajeService()));
+        motor.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza: HUMANO });
+        return { guardado, motor };
+    }
+
+    describe('un dominio del clérigo (MJ, págs. 32-33)', () => {
+        it('el clérigo de Kord cambia Guerra por Fuego: sus opciones son las de su deidad que no tiene, y lo que da cada uno cambia solo', () => {
+            const { guardado, motor } = clerigo(2, [1, 3]);
+            expect(guardado.entrada.colecciones?.dominios?.map((d) => d.idDominio)).toEqual([1, 3]);
+            const huecos = dominiosParaReciclar(motor, guardado.entrada, 2, true);
+            expect(huecos.map((h) => [h.idClase, h.tiene.nombre, h.deidad])).toEqual([[2, 'Agua', 'Kord'], [2, 'Guerra', 'Kord']]);
+            const guerra = huecos[1];
+            // Ni Sol (no es de Kord) ni Mal (de alineamiento, y no es el suyo); Agua ya la tiene.
+            expect(guerra.opciones.map((o) => [o.nombre, o.motivo])).toEqual([['Bien', null], ['Fuego', null]]);
+            expect(guerra.motivo).toBeNull();
+
+            const plan = planDelDominio(motor, guerra, guerra.opciones[1])!;
+            expect(plan.derivados).toEqual([
+                { que: 'Poder concedido', antes: 'El poder de guerra', ahora: 'El poder de fuego' },
+                { que: 'Dotes del dominio', antes: 'Competencia con arma marcial', ahora: '—' },
+                { que: 'Aptitudes del dominio', antes: '—', ahora: 'Expulsar criaturas de agua' },
+                { que: 'Conjuros de dominio', antes: 'Arma mágica (1)', ahora: 'Manos ardientes (1)' },
+            ]);
+            // El plan se hace en el motor y lo deja como estaba.
+            expect(motor.PersonajeCreacion.Dominios.map((d) => d.Nombre)).toEqual(['Agua', 'Guerra']);
+            expect(reciclajeDelPlan(plan)).toEqual({ tipo: 'rasgo', hueco: { idClase: 2, dominio: true }, quita: { dominio: 3 }, pone: { dominio: 2 } });
+            expect(filasDelReciclaje(plan)[0]).toEqual(jasmine.objectContaining({ que: 'Reciclaje: dominio', antes: 'Guerra', ahora: 'Fuego' }));
+            expect(filasDelReciclaje(plan).map((f) => f.que)).toContain('Reciclaje: conjuros de dominio');
+            expect(aptitudesDelReciclaje(plan)).toEqual([{ nombre: 'Expulsar criaturas de agua', extra: '' }]);
+
+            const antes = cuerpo(motor, CATALOGOS);
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            const pj = motor.PersonajeCreacion;
+            expect(pj.Dominios.map((d) => d.Nombre)).toEqual(['Agua', 'Fuego']);
+            expect(pj.DotesContextuales.some((d) => toInt(d.Dote?.Id) === 60)).toBeFalse();
+            expect(pj.Claseas.map((e) => toInt(e.Id))).toContain(300);
+            expect(motor.getOrdenNiveles()[0].elecciones.filter((e) => e.tipo === 'dominio').map((e) => toInt(e.idElemento))).toEqual([1, 2]);
+
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan, motor: { antes, despues: cuerpo(motor, CATALOGOS) } });
+            expect(ficha.colecciones?.dominios?.map((d) => d.idDominio)).toEqual([1, 2]);
+            expect(ficha.colecciones?.dotes?.some((d) => d.idDote === 60)).toBeFalse();
+            expect(ficha.colecciones?.especiales?.map((e) => e.idEspecial)).toContain(300);
+            expect(ficha.niveles?.[0].elecciones?.filter((e) => e.tipo === 'dominio').map((e) => e.idElemento)).toEqual([1, 2]);
+            expect(ficha.niveles?.length).toBe(guardado.entrada.niveles?.length);
+        });
+
+        it('sin deidad, cualquier dominio que no tenga (también Sol), y uno de alineamiento solo si es el suyo', () => {
+            const { guardado, motor } = clerigo(1, [1, 3], '');
+            const [agua] = dominiosParaReciclar(motor, guardado.entrada, 1, true);
+            expect(agua.deidad).toBeNull();
+            expect(agua.opciones.map((o) => o.nombre)).toEqual(['Bien', 'Fuego', 'Sol']);
+        });
+
+        it('los rangos comprados como de clase por Agua: si pasan del tope de una transclásea, no cambia de dominio', () => {
+            const { guardado, motor } = clerigo(2, [1, 3]);
+            const nadar = motor.PersonajeCreacion.Habilidades.find((h) => toInt(h.Id) === 4)!;
+            expect(nadar.Clasea).toBeTrue();
+            expect(toNumber(nadar.Rangos)).toBe(5);
+            const [agua] = dominiosParaReciclar(motor, guardado.entrada, 2, true);
+            expect(agua.opciones.map((o) => o.motivo)).toEqual([
+                'Con Bien, Nadar dejaría de ser de clase y tiene más de 2 rangos, el tope de una transclásea a su nivel (2).',
+                'Con Fuego, Nadar dejaría de ser de clase y tiene más de 2 rangos, el tope de una transclásea a su nivel (2).',
+            ]);
+            expect(agua.motivo).toBe(agua.opciones[0].motivo);
+            // Con 2 rangos, sí: se quedan, ya como transcláseos.
+            motor.PersonajeCreacion.Habilidades.find((h) => toInt(h.Id) === 4)!.Rangos = 2;
+            const [otra] = dominiosParaReciclar(motor, guardado.entrada, 2, true);
+            expect(otra.motivo).toBeNull();
+            const plan = planDelDominio(motor, otra, otra.opciones[1])!;
+            const antes = cuerpo(motor, CATALOGOS);
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(motor.PersonajeCreacion.Habilidades.find((h) => toInt(h.Id) === 4)?.Clasea).toBeFalse();
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan, motor: { antes, despues: cuerpo(motor, CATALOGOS) } });
+            const enLaFicha = ficha.colecciones?.habilidades?.base?.find((h) => h.idHabilidad === 4);
+            expect(enLaFicha?.clasea).toBeFalse();
+            expect(enLaFicha?.rangos).toBe(guardado.entrada.colecciones?.habilidades?.base?.find((h) => h.idHabilidad === 4)?.rangos);
+        });
+
+        it('si lo que eligió después pide una dote de su poder, no lo cambia; el motor se queda como estaba', () => {
+            const { guardado, motor } = clerigo(2, [1, 3]);
+            motor.PersonajeCreacion.DotesContextuales.push({
+                Dote: SOLDADO, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel 1' },
+            } as any);
+            const guerra = dominiosParaReciclar(motor, guardado.entrada, 2, true)[1];
+            expect(guerra.motivo).toBe('Lo necesita lo que tiene: Dote de soldado (No cumple: Competencia con arma marcial).');
+            expect(motor.PersonajeCreacion.Dominios.map((d) => d.Nombre)).toEqual(['Agua', 'Guerra']);
+            expect(motor.PersonajeCreacion.DotesContextuales.some((d) => toInt(d.Dote?.Id) === 60)).toBeTrue();
+        });
+    });
+
+    describe('la escuela del mago: la especialización y las prohibidas, como un solo rasgo (MJ, pág. 48)', () => {
+        const escuela = (id: number, nombre: string, datos: Record<string, any> = {}) => ({
+            Id: id, Nombre: nombre, Nombre_especial: `${nombre} (especialista)`, Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2,
+            Oficial: true, ...datos,
+        });
+        // Como `escuelas_conjuros`: la adivinación prohíbe una y no se puede prohibir; la universal no se elige.
+        const ESCUELAS = [
+            escuela(1, 'Abjuración'), escuela(2, 'Adivinación', { Prohibible: false, Prohibidas_al_especializarse: 1 }), escuela(3, 'Conjuración'),
+            escuela(4, 'Encantamiento'), escuela(5, 'Evocación'), escuela(6, 'Ilusión'), escuela(7, 'Nigromancia'), escuela(8, 'Transmutación'),
+            escuela(9, 'Universal', { Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 }),
+            escuela(10, 'Cualquiera', { Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 }),
+        ] as any[];
+        const TOQUE = { ...conjuro(131, 'Toque helado', 9, 'Mago', 1), Escuela: { Id: 7, Nombre: 'Nigromancia' } } as unknown as Conjuro;
+        const NIGROMANTE = { ...dote(95, 'Dote nigromante'), Prerrequisitos: { conjuros_escuela: [{ Id_escuela: 7, Escuela: 'Nigromancia', Cantidad: 1, Opcional: 0 }] } };
+        const especialista = (id: number, prohibidas: number[]) => ({ especializar: true, escuelaEspecialistaId: id, escuelasProhibidasIds: prohibidas });
+        const generalista = { especializar: false, escuelaEspecialistaId: null, escuelasProhibidasIds: [] };
+
+        /** Un mago humano 2 con esa especialización a 1.er nivel, preparado para subir, con Toque helado en su libro. */
+        function mago(seleccion: { especializar: boolean; escuelaEspecialistaId: number | null; escuelasProhibidasIds: number[]; }) {
+            const svc = crear(HUMANO, { Inteligencia: 15 });
+            svc.setCatalogoDotes([...DOTES, NIGROMANTE]);
+            aplicarNivel(svc, MAGO, 'Inteligencia');
+            expect(svc.aplicarEspecialidadMagicaClase(MAGO, 1, { arcana: seleccion }, ESCUELAS, []).aplicado).toBeTrue();
+            aplicarNivel(svc, MAGO, 'Inteligencia');
+            const guardado = guardar(svc, { escuelas: ESCUELAS.map((e) => ({ id: e.Id, nombre: e.Nombre })) });
+            const motor = subir(guardado, HUMANO, CLASES, [...DOTES, NIGROMANTE]);
+            motor.setCatalogoConjuros([...CONJUROS, TOQUE]);
+            motor.PersonajeCreacion.Conjuros.push({ ...JSON.parse(JSON.stringify(TOQUE)), Clase_origen: 'Mago', Origen_clase: 'Mago' });
+            return { guardado, motor };
+        }
+
+        it('el nigromante pasa a evocador: cambian las prohibidas y los bonos; Toque helado se queda en el libro sin poder prepararse', () => {
+            const { guardado, motor } = mago(especialista(7, [5, 6]));
+            expect(guardado.entrada.personaje.idEspArcana).toBe(7);
+            const hueco = huecoDeEscuela(motor, ESCUELAS)!;
+            expect(hueco).toEqual(jasmine.objectContaining({ idClase: 9, clase: 'Mago', escuelaFija: null, motivo: null }));
+            expect(nombreDeLaEspecializacion(hueco.tiene)).toBe('Nigromancia (prohibidas: evocación e ilusión)');
+
+            const { plan } = planDeLaEscuela(motor, hueco, especialista(5, [4, 7]), ESCUELAS);
+            expect(plan).not.toBeNull();
+            expect(motivoDeLaEscuela(motor, plan!)).toBeNull();
+            expect(plan!.libroSinPreparar).toEqual(['Toque helado']);
+            expect(plan!.derivados).toEqual([{ que: 'Bonos del especialista', antes: 'Los de especialista en nigromancia', ahora: 'Los de especialista en evocación' }]);
+            expect(reciclajeDelPlan(plan!)).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 9, escuela: true },
+                quita: { escuela: { especialista: 7, prohibidas: [5, 6] } }, pone: { escuela: { especialista: 5, prohibidas: [4, 7] } },
+            });
+            expect(filasDelReciclaje(plan!).map((f) => [f.que, f.antes, f.ahora])).toEqual([
+                ['Reciclaje: especialización', 'Nigromancia (prohibidas: evocación e ilusión)', 'Evocación (prohibidas: encantamiento y nigromancia)'],
+                ['Reciclaje: bonos del especialista', 'Los de especialista en nigromancia', 'Los de especialista en evocación'],
+                ['Reciclaje: el libro', 'Toque helado', 'Se quedan en el libro: no se pueden preparar'],
+            ]);
+            expect(motor.PersonajeCreacion.Escuela_especialista.Nombre).toBe('Nigromancia');
+
+            expect(aplicarReciclajeAlMotor(motor, plan!)).toBeTrue();
+            expect(motor.PersonajeCreacion.Escuela_especialista.Nombre).toBe('Evocación');
+            expect(motor.PersonajeCreacion.Conjuros.some((c) => toInt(c.Id) === 131)).toBeTrue();
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan!), { rasgo: plan! });
+            expect(ficha.personaje.idEspArcana).toBe(5);
+            expect(ficha.colecciones?.escuelasProhibidas).toEqual([{ idEscuela: 4 }, { idEscuela: 7 }]);
+            expect(ficha.colecciones?.conjurosConocidos).toEqual(guardado.entrada.colecciones?.conjurosConocidos);
+            expect(ficha.niveles).toEqual(guardado.entrada.niveles);
+        });
+
+        it('con una dote que pide lanzar conjuros de nigromancia, no la prohíbe; el motor se queda como estaba', () => {
+            const { motor } = mago(especialista(7, [5, 6]));
+            motor.PersonajeCreacion.DotesContextuales.push({
+                Dote: NIGROMANTE, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel 1' },
+            } as any);
+            expect(motor.dotesSinSusPrerrequisitos()).toEqual([]);
+            const hueco = huecoDeEscuela(motor, ESCUELAS)!;
+            const { plan } = planDeLaEscuela(motor, hueco, especialista(5, [4, 7]), ESCUELAS);
+            expect(motivoDeLaEscuela(motor, plan!)).toMatch(/^Lo necesita lo que tiene: Dote nigromante/);
+            // Si la nigromancia sigue permitida (otra especialista que no la prohíbe), sí.
+            const { plan: otro } = planDeLaEscuela(motor, hueco, especialista(5, [4, 6]), ESCUELAS);
+            expect(motivoDeLaEscuela(motor, otro!)).toBeNull();
+            expect(motor.PersonajeCreacion.Escuela_especialista.Nombre).toBe('Nigromancia');
+            expect((motor.PersonajeCreacion.Escuelas_prohibidas as any[]).map((e) => e.Nombre ?? e)).toEqual(['Evocación', 'Ilusión']);
+        });
+
+        it('el especialista pasa a generalista, y el generalista a especialista; la misma no vale', () => {
+            const nigromante = mago(especialista(7, [5, 6]));
+            const hueco = huecoDeEscuela(nigromante.motor, ESCUELAS)!;
+            const { plan } = planDeLaEscuela(nigromante.motor, hueco, generalista, ESCUELAS);
+            expect(nombreDeLaEspecializacion(plan!.pone)).toBe('Generalista');
+            // La ficha guarda la escuela de «no especializado» de la creación.
+            expect(plan!.idEspArcana).toBe(10);
+            expect(plan!.libroSinPreparar).toEqual([]);
+            expect(reciclajeDelPlan(plan!)).toEqual(jasmine.objectContaining({ pone: { escuela: { especialista: null, prohibidas: [] } } }));
+            expect(fichaConElReciclaje(nigromante.guardado.entrada, reciclajeDelPlan(plan!), { rasgo: plan! }).colecciones?.escuelasProhibidas).toEqual([]);
+            expect(planDeLaEscuela(nigromante.motor, hueco, especialista(7, [6, 5]), ESCUELAS).motivo).toBe('Es la que ya tiene: elige otra especialización o generalista.');
+
+            const sinEscuela = mago(generalista);
+            const deGeneralista = huecoDeEscuela(sinEscuela.motor, ESCUELAS)!;
+            expect(deGeneralista.tiene).toEqual({ especialista: null, prohibidas: [] });
+            expect(planDeLaEscuela(sinEscuela.motor, deGeneralista, generalista, ESCUELAS).motivo).toBe('Es la que ya tiene: elige otra especialización o generalista.');
+            const { plan: encantador } = planDeLaEscuela(sinEscuela.motor, deGeneralista, especialista(4, [5, 6]), ESCUELAS);
+            expect(filasDelReciclaje(encantador!)[0]).toEqual(jasmine.objectContaining({ antes: 'Generalista', ahora: 'Encantamiento (prohibidas: evocación e ilusión)' }));
+            expect(aplicarReciclajeAlMotor(sinEscuela.motor, encantador!)).toBeTrue();
+            expect(sinEscuela.motor.PersonajeCreacion.Escuela_especialista.Nombre).toBe('Encantamiento');
+        });
+
+        it('el adivinador prohíbe una sola escuela, y la adivinación no se puede prohibir', () => {
+            const { motor } = mago(generalista);
+            const hueco = huecoDeEscuela(motor, ESCUELAS)!;
+            expect(planDeLaEscuela(motor, hueco, especialista(2, [5]), ESCUELAS).plan?.pone).toEqual({
+                especialista: { id: 2, nombre: 'Adivinación' }, prohibidas: [{ id: 5, nombre: 'Evocación' }],
+            });
+            expect(planDeLaEscuela(motor, hueco, especialista(2, [5, 6]), ESCUELAS).motivo).toBe('Tiene que prohibir 1 escuela que se pueda prohibir.');
+            expect(planDeLaEscuela(motor, hueco, especialista(5, [2, 6]), ESCUELAS).motivo).toBe('Tiene que prohibir 2 escuelas que se puedan prohibir.');
+            expect(planDeLaEscuela(motor, hueco, especialista(9, []), ESCUELAS).motivo).toBe('No se puede especializar en Universal.');
         });
     });
 });

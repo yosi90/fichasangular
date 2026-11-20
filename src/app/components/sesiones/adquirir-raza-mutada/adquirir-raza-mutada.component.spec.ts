@@ -22,6 +22,7 @@ import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
+import { DeidadService } from 'src/app/services/deidad.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
@@ -64,7 +65,7 @@ describe('AdquirirRazaMutadaComponent (adquirir una raza mutada, fase 7)', () =>
                 ...(motor ? [{ provide: MotorDesdeFichaService, useValue: motor }] : []),
                 ...[CampanaService, ClaseService, DoteService, ConjuroService, HabilidadService, IdiomaService, DominioService,
                     PlantillaService, EscuelaConjurosService, DisciplinaConjurosService, EnemigoPredilectoService, ArmaService, ArmaduraService,
-                    GrupoArmaService, GrupoArmaduraService, SubtipoService].map((provide) => ({ provide, useValue: {} })),
+                    GrupoArmaService, GrupoArmaduraService, SubtipoService, DeidadService].map((provide) => ({ provide, useValue: {} })),
             ],
         }).compileComponents();
         fixture = TestBed.createComponent(AdquirirRazaMutadaComponent);

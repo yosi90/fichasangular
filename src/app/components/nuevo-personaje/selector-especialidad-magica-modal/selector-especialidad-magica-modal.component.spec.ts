@@ -22,6 +22,16 @@ describe('SelectorEspecialidadMagicaModalComponent', () => {
         ];
     });
 
+    it('al crear no se puede cerrar sin elegir; en el reciclaje de la subida (cancelable), sí', () => {
+        const cancelada = jasmine.createSpy('cancelar');
+        component.cancelar.subscribe(cancelada);
+        component.onCancelar();
+        expect(cancelada).not.toHaveBeenCalled();
+        component.cancelable = true;
+        component.onCancelar();
+        expect(cancelada).toHaveBeenCalledTimes(1);
+    });
+
     it('arcano permite continuar sin especializarse', () => {
         component.mostrarArcano = true;
         component.arcanoEspecializar = false;

@@ -3,7 +3,10 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
-import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
+import type {
+    DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, EspecialidadArcanaSeleccion, NuevoPersonajeService,
+} from 'src/app/services/nuevo-personaje.service';
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
 import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
@@ -15,12 +18,17 @@ import {
 } from './reciclaje-rasgos';
 import { aplicarLoQueDanLasDotes } from './subida-nivel';
 import { CambioSubida } from './subida-nivel-vista';
+import {
+    aplicarEscuelaAlMotor, fichaConElDominio, fichaConLaEscuela, HuecoDeDominio, huecosDeDominio, loQueDaElDominio,
+    nombreDeLaEspecializacion, PlanDominio, PlanEscuela, reciclajeDelDominioOLaEscuela,
+} from './reciclaje-dominio-escuela';
 
 /*
  * El reciclaje de la subida de nivel (*Manual del jugador II*, cap. 8, págs. 194-196; contrato en
  * `docs/publica/endpoints/personajes.md`, «Subida de nivel», «El reciclaje»; guía `docs/publica/SESIONES_FRONT.md`): al
  * subir, antes de añadir nada del nivel nuevo, el personaje cambia una sola cosa que eligió antes (una dote, un idioma,
- * rangos de una habilidad, conjuros conocidos o la opción de un rasgo de clase, `reciclaje-rasgos.ts`) por otra legal. Todo se juzga con el personaje de antes de subir; lo que
+ * rangos de una habilidad, conjuros conocidos o la opción de un rasgo de clase: de su tabla, `reciclaje-rasgos.ts`; un
+ * dominio o la escuela del mago, `reciclaje-dominio-escuela.ts`) por otra legal. Todo se juzga con el personaje de antes de subir; lo que
  * depende de lo reciclado (una dote, una clase) bloquea el cambio, no se quita en cascada. Después, el motor sigue con el
  * nivel ya con el cambio hecho. Lo usa solo la subida (`components/sesiones/subir-nivel`, con carga diferida).
  */
@@ -50,7 +58,17 @@ export type PlanReciclaje =
         tipo: 'conjuros';
         cambios: Array<{ idClase: number; clase: string; olvida: { id: number; nombre: string; }; aprende: { id: number; nombre: string; }; }>;
     }
-    | PlanRasgo;
+    | PlanRasgo
+    | PlanDominio
+    | PlanEscuela;
+
+/** Los planes de un rasgo de clase (en el cuerpo, todos `tipo: "rasgo"`): de su tabla, un dominio o la escuela del mago. */
+export type PlanDeRasgoDeClase = PlanRasgo | PlanDominio | PlanEscuela;
+
+/** Si el plan es de un rasgo de clase. */
+export function esPlanDeRasgo(plan: PlanReciclaje | null | undefined): plan is PlanDeRasgoDeClase {
+    return plan?.tipo === 'rasgo' || plan?.tipo === 'dominio' || plan?.tipo === 'escuela';
+}
 
 /** Una dote del personaje en el paso «Reciclar»: si se puede reciclar y, si no, por qué. */
 export interface DoteReciclable {
@@ -120,6 +138,8 @@ export function reciclajeDelPlan(plan: PlanReciclaje): ReciclajeSubidaDto {
         };
     if (plan.tipo === 'rasgo')
         return { tipo: 'rasgo', hueco: huecoDelCuerpo(plan.hueco), ...opcionesDelCuerpo(plan) };
+    if (plan.tipo === 'dominio' || plan.tipo === 'escuela')
+        return reciclajeDelDominioOLaEscuela(plan);
     return { tipo: 'conjuros', cambios: plan.cambios.map((c) => ({ idClase: c.idClase, olvida: c.olvida.id, aprende: c.aprende.id })) };
 }
 
@@ -150,6 +170,18 @@ export function filaDelReciclaje(plan: PlanReciclaje): CambioSubida {
             porque: `${donde}, otra opción del mismo hueco; Manual del jugador II, pág. 195`,
         };
     }
+    if (plan.tipo === 'dominio') {
+        const { hueco } = plan;
+        return {
+            que: 'Reciclaje: dominio', antes: hueco.tiene.nombre, ahora: plan.pone.nombre,
+            porque: `${hueco.clase}, nivel 1: otro dominio ${hueco.deidad ? `de ${hueco.deidad}` : 'que puede elegir sin deidad'}; Manual del jugador II, pág. 195`,
+        };
+    }
+    if (plan.tipo === 'escuela')
+        return {
+            que: 'Reciclaje: especialización', antes: nombreDeLaEspecializacion(plan.hueco.tiene), ahora: nombreDeLaEspecializacion(plan.pone),
+            porque: `${plan.hueco.clase}, nivel 1: la especialización y las prohibidas, como un solo rasgo; Manual del jugador II, pág. 195`,
+        };
     const clases = Array.from(new Set(plan.cambios.map((c) => c.clase.toLowerCase())));
     return {
         que: 'Reciclaje: conjuros',
@@ -165,6 +197,19 @@ export function filaDelReciclaje(plan: PlanReciclaje): CambioSubida {
  */
 export function filasDelReciclaje(plan: PlanReciclaje): CambioSubida[] {
     const filas = [filaDelReciclaje(plan)];
+    // Un dominio o la escuela: lo que da cada uno (su poder, sus dotes…, los bonos del especialista) y el libro.
+    if (plan.tipo === 'dominio' || plan.tipo === 'escuela') {
+        plan.derivados.forEach((d) => filas.push({
+            que: `Reciclaje: ${d.que.toLowerCase()}`, antes: d.antes, ahora: d.ahora,
+            porque: plan.tipo === 'dominio' ? 'Lo da el dominio: cambia solo; Manual del jugador II, pág. 194' : 'Lo da la especialización: cambia solo; Manual del jugador, pág. 48',
+        }));
+        if (plan.tipo === 'escuela' && plan.libroSinPreparar.length > 0)
+            filas.push({
+                que: 'Reciclaje: el libro', antes: plan.libroSinPreparar.join(', '), ahora: 'Se quedan en el libro: no se pueden preparar',
+                porque: 'Son de una escuela que pasa a estar prohibida; Manual del jugador II, pág. 195',
+            });
+        return filas;
+    }
     const derivados = plan.tipo === 'rasgo' ? plan.cambios.filter((c) => c.derivado) : [];
     if (derivados.length > 0)
         filas.push({
@@ -178,6 +223,8 @@ export function filasDelReciclaje(plan: PlanReciclaje): CambioSubida[] {
 
 /** Las aptitudes que entran con lo reciclado (un rasgo de clase): no son del nivel nuevo. */
 export function aptitudesDelReciclaje(plan: PlanReciclaje | null): Array<{ nombre: string; extra: string; }> {
+    if (plan?.tipo === 'dominio')
+        return plan.aptitudesNuevas.map((a) => ({ ...a }));
     if (plan?.tipo !== 'rasgo')
         return [];
     return plan.cambios.filter((c) => c.tipo === 'especial' && c.pone).map((c) => ({ nombre: c.pone!.nombre, extra: c.pone!.extra }));
@@ -194,16 +241,21 @@ export function aptitudesDelReciclaje(plan: PlanReciclaje | null): Array<{ nombr
 export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaje: ReciclajeSubidaDto,
     opciones: {
         origenDote?: string; claseaDestino?: boolean; motor?: { antes: PersonajeCreateRequestDto; despues: PersonajeCreateRequestDto; } | null;
-        /** El plan de un rasgo de clase: lo que cambia, con sus orígenes y lo derivado (`fichaConElRasgo`). */
-        rasgo?: PlanRasgo;
+        /**
+         * El plan de un rasgo de clase: lo que cambia, con sus orígenes y lo derivado (`fichaConElRasgo`); un dominio, con lo
+         * que cambia el motor (`fichaConElDominio`), o la escuela (`fichaConLaEscuela`).
+         */
+        rasgo?: PlanDeRasgoDeClase;
     } = {})
     : PersonajeCreateRequestDto {
-    const ficha: PersonajeCreateRequestDto = reciclaje.tipo === 'rasgo' && opciones.rasgo
-        ? fichaConElRasgo(entrada, opciones.rasgo)
-        : JSON.parse(JSON.stringify(entrada));
+    const rasgo = reciclaje.tipo === 'rasgo' ? opciones.rasgo : undefined;
+    const ficha: PersonajeCreateRequestDto = rasgo?.tipo === 'rasgo' ? fichaConElRasgo(entrada, rasgo)
+        : rasgo?.tipo === 'dominio' ? fichaConElDominio(entrada, rasgo, opciones.motor)
+            : rasgo?.tipo === 'escuela' ? fichaConLaEscuela(entrada, rasgo)
+                : JSON.parse(JSON.stringify(entrada));
     const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) };
     if (reciclaje.tipo === 'rasgo') {
-        // Ya hecho: `fichaConElRasgo`, con lo de la opción y lo derivado.
+        // Ya hecho: `fichaConElRasgo`, `fichaConElDominio` o `fichaConLaEscuela`, con lo de la opción y lo derivado.
     } else if (reciclaje.tipo === 'dote') {
         const { quita, pone } = reciclaje;
         const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
@@ -259,6 +311,13 @@ export interface LoQueQuita {
     idioma?: string;
     rangos?: { idHabilidad: number; idExtra: number; rangos: number; };
     conjuros?: Array<{ idConjuro: number; clase: string; }>;
+    /** Dominios, por su nombre (el de un dominio que se recicla: una clase de prestigio que lo pide). */
+    dominios?: string[];
+    /**
+     * Otra especialización (la escuela del mago que se recicla), con lo elegido en el selector y sus escuelas: lo que pide
+     * especializarse en una escuela o lanzar conjuros de una que pasa a estar prohibida.
+     */
+    escuela?: { idClase: number; seleccion: EspecialidadArcanaSeleccion; escuelas: EscuelaConjuros[]; };
 }
 
 /** Las clases que tiene, del catálogo del motor. */
@@ -308,6 +367,9 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         habilidades: (pj.Habilidades ?? []).map((h) => ({ ...h })),
         idiomas: [...(pj.Idiomas ?? [])],
         conjuros: [...(pj.Conjuros ?? [])],
+        dominios: [...(pj.Dominios ?? [])],
+        especialista: pj.Escuela_especialista,
+        prohibidas: pj.Escuelas_prohibidas,
     };
     const quitadas = [...(quita.dote ? [quita.dote] : []), ...(quita.dotes ?? [])];
     try {
@@ -333,6 +395,10 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
                 h.Rangos = Math.max(0, toNumber(h.Rangos) - r.rangos);
         }
         (quita.conjuros ?? []).forEach((c) => sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.idConjuro && esConjuroDeLaClase(x, normalizarTexto(c.clase))));
+        (quita.dominios ?? []).forEach((nombre) => sacarPrimero(pj.Dominios ?? [], (x) => normalizarTexto(x?.Nombre ?? '') === normalizarTexto(nombre)));
+        const clase = quita.escuela ? motor.claseDelCatalogo(quita.escuela.idClase) : null;
+        if (quita.escuela && clase)
+            motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: quita.escuela.seleccion }, quita.escuela.escuelas, []);
 
         const sinDote = (d: DoteDeLaFicha) => !quitadas.some((q) => claveDoteDeLaFicha(d) === claveDoteDeLaFicha(q));
         const motivos = motor.dotesSinSusPrerrequisitos()
@@ -347,6 +413,9 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         pj.Habilidades = guardado.habilidades;
         pj.Idiomas = guardado.idiomas;
         pj.Conjuros = guardado.conjuros;
+        pj.Dominios = guardado.dominios;
+        pj.Escuela_especialista = guardado.especialista;
+        pj.Escuelas_prohibidas = guardado.prohibidas;
     }
 }
 
@@ -418,6 +487,40 @@ export function rasgosParaReciclar(motor: NuevoPersonajeService, aptitudes: Read
         });
         return rotas.length > 0 ? { ...hueco, motivo: `Lo necesita lo que tiene: ${rotas.join('; ')}.` } : hueco;
     });
+}
+
+/**
+ * Los dominios que puede reciclar (`huecosDeDominio`) y, si no, por qué: lo que depende del que tiene y se eligió después lo
+ * bloquea (una dote o una clase de prestigio que lo pide, o que pide una dote o una aptitud de su poder). Se mira sin él y
+ * sin lo que da (sus dotes y sus aptitudes, que cambian solas); el motor se queda como estaba.
+ */
+export function dominiosParaReciclar(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto, nivelPersonaje: number,
+    conHomebrew: boolean): HuecoDeDominio[] {
+    return huecosDeDominio(motor, entrada, nivelPersonaje, conHomebrew).map((hueco) => {
+        if (hueco.motivo)
+            return hueco;
+        const da = loQueDaElDominio(motor, hueco.tiene);
+        // Sus aptitudes, si no las da también otro dominio que le quede.
+        const deOtros = new Set((motor.PersonajeCreacion.Dominios ?? []).filter((d) => normalizarTexto(d?.Nombre ?? '') !== normalizarTexto(hueco.tiene.nombre))
+            .flatMap((d) => motor.dominioDelCatalogo(toInt(d?.Id) || toInt(motor.resolverIdDominioPorNombre(`${d?.Nombre ?? ''}`)))?.Especiales ?? [])
+            .map((e) => normalizarTexto(e?.Nombre ?? '')));
+        const rotas = loQueDejariaDeCumplir(motor, {
+            dominios: [hueco.tiene.nombre],
+            dotes: da.dotes.map(({ idDote, idExtra, origen }) => ({ idDote, idExtra, origen })),
+            aptitudes: da.aptitudes.filter((a) => !deOtros.has(normalizarTexto(a.nombre))).map(({ id, idExtra }) => ({ id, idExtra })),
+        });
+        return rotas.length > 0 ? { ...hueco, motivo: `Lo necesita lo que tiene: ${rotas.join('; ')}.` } : hueco;
+    });
+}
+
+/**
+ * Lo que dejaría de cumplir con otra especialización (`plan`, la escuela que se recicla): una dote o una clase de prestigio
+ * que pide especializarse en la que tiene o lanzar conjuros de una escuela que pasa a estar prohibida. Se bloquea, no se
+ * quita en cascada; el motor se queda como estaba. `null` si no rompe nada.
+ */
+export function motivoDeLaEscuela(motor: NuevoPersonajeService, plan: PlanEscuela): string | null {
+    const rotas = loQueDejariaDeCumplir(motor, { escuela: { idClase: plan.hueco.idClase, seleccion: plan.seleccion, escuelas: plan.escuelas } });
+    return rotas.length > 0 ? `Lo necesita lo que tiene: ${rotas.join('; ')}.` : null;
 }
 
 /**
@@ -551,6 +654,10 @@ export function aplicarReciclajeAlMotor(motor: NuevoPersonajeService, plan: Plan
     const pj = motor.PersonajeCreacion;
     if (plan.tipo === 'rasgo')
         return aplicarRasgoAlMotor(motor, plan);
+    if (plan.tipo === 'dominio')
+        return motor.cambiarDominio(plan.hueco.idClase, plan.hueco.tiene.id, plan.pone.id);
+    if (plan.tipo === 'escuela')
+        return aplicarEscuelaAlMotor(motor, plan);
     if (plan.tipo === 'dote') {
         const hueco = huecoDeLaDoteReciclada(motor, plan.quita, true);
         return !!hueco && motor.aplicarDotePendiente(hueco.pendiente.id, plan.seleccion);

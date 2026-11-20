@@ -52,7 +52,14 @@ export class SelectorEspecialidadMagicaModalComponent {
     }
     private escuelaFijaActual: EscuelaConjuros | null = null;
 
+    /**
+     * Si se puede cerrar sin elegir (el reciclaje de la escuela en la subida de nivel; al crear, la especialización es
+     * obligatoria): con «Cancelar», la cruz y el fondo, que emiten `cancelar`.
+     */
+    @Input() cancelable = false;
+
     @Output() confirmar = new EventEmitter<SelectorEspecialidadMagicaConfirmacion>();
+    @Output() cancelar = new EventEmitter<void>();
 
     arcanoEspecializar = false;
     arcanoEscuelaEspecialistaId: number | null = null;
@@ -240,6 +247,11 @@ export class SelectorEspecialidadMagicaModalComponent {
     onChangeDisciplinaProhibida(value: number | string | null): void {
         const id = this.toPositiveId(value);
         this.psionicoDisciplinaProhibidaId = id > 0 ? id : null;
+    }
+
+    onCancelar(): void {
+        if (this.cancelable)
+            this.cancelar.emit();
     }
 
     onConfirmar(): void {

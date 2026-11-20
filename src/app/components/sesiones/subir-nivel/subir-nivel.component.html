@@ -131,7 +131,7 @@
 
                     <!-- Un rasgo de clase (MJ II, págs. 194-195): otra opción del mismo hueco de su tabla -->
                     <ng-container *ngIf="tipoReciclaje === 'rasgo'">
-                        <p class="subida__nota">Cambia lo que elegiste en un rasgo de clase por otra opción del mismo hueco (la misma clase y el mismo nivel). Lo que su tabla da por esa opción cambia solo; lo que elegiste después y la necesita no deja cambiarla.</p>
+                        <p class="subida__nota">Cambia lo que elegiste en un rasgo de clase por otra opción del mismo hueco (la misma clase y el mismo nivel): una de su tabla, un dominio o la especialización del mago con sus prohibidas. Lo que da esa opción cambia solo; lo que elegiste después y la necesita no deja cambiarla.</p>
                         <ul class="subida__lista">
                             <li *ngFor="let h of rasgosReciclables" class="subida__fila" [class.subida__fila--bloqueada]="!!h.motivo">
                                 <div class="subida__fila-texto">
@@ -142,6 +142,27 @@
                                     <span *ngIf="h.motivo" class="subida__fila-motivo">{{h.motivo}}</span>
                                 </div>
                                 <button *ngIf="!h.motivo" mat-stroked-button type="button" [attr.aria-expanded]="rasgoElegido === h" (click)="elegirRasgo(h)">{{rasgoElegido === h ? 'Eligiendo' : 'Cambiar'}}</button>
+                            </li>
+                            <!-- Un dominio (de una clase que los da) y la escuela del mago: del 1.er nivel de su clase -->
+                            <li *ngFor="let d of dominiosReciclables" class="subida__fila" [class.subida__fila--bloqueada]="!!d.motivo">
+                                <div class="subida__fila-texto">
+                                    <span class="subida__fila-nombre">Dominio {{d.tiene.nombre}}
+                                        <ng-container *ngIf="planDominio?.hueco === d"> → <strong>{{planDominio!.pone.nombre}}</strong></ng-container>
+                                    </span>
+                                    <span class="subida__etiqueta">{{d.clase}}, nivel 1</span>
+                                    <span *ngIf="d.motivo" class="subida__fila-motivo">{{d.motivo}}</span>
+                                </div>
+                                <button *ngIf="!d.motivo" mat-stroked-button type="button" [attr.aria-expanded]="dominioElegido === d" (click)="elegirDominio(d)">{{dominioElegido === d ? 'Eligiendo' : 'Cambiar'}}</button>
+                            </li>
+                            <li *ngIf="escuelaReciclable as e" class="subida__fila" [class.subida__fila--bloqueada]="!!e.motivo">
+                                <div class="subida__fila-texto">
+                                    <span class="subida__fila-nombre">Especialización: {{nombreDeLaEspecializacion(e.tiene)}}
+                                        <ng-container *ngIf="planEscuela"> → <strong>{{nombreDeLaEspecializacion(planEscuela.pone)}}</strong></ng-container>
+                                    </span>
+                                    <span class="subida__etiqueta">{{e.clase}}, nivel 1</span>
+                                    <span *ngIf="e.motivo" class="subida__fila-motivo">{{e.motivo}}</span>
+                                </div>
+                                <button *ngIf="!e.motivo" mat-stroked-button type="button" (click)="cambiarEscuela()">{{planEscuela ? 'Elegir otra' : 'Cambiar'}}</button>
                             </li>
                         </ul>
                         <ng-container *ngIf="rasgoElegido as h">
@@ -155,6 +176,20 @@
                             </div>
                             <p *ngIf="derivadosDelRasgo" class="subida__nota">Cambia solo: {{derivadosDelRasgo}}.</p>
                         </ng-container>
+                        <ng-container *ngIf="dominioElegido as d">
+                            <h3 class="subida__seccion">En lugar de {{d.tiene.nombre}} ({{d.clase.toLowerCase()}}, nivel 1)</h3>
+                            <p class="subida__nota">{{d.deidad ? 'Uno de los dominios de ' + d.deidad + ' que no tenga' : 'Sin deidad, cualquier dominio que no tenga'}}; uno de alineamiento, solo si es el suyo. Los rangos que compró como de clase gracias al dominio se quedan.</p>
+                            <div class="subida__opciones" role="radiogroup" [attr.aria-label]="'Otro dominio en lugar de ' + d.tiene.nombre">
+                                <label *ngFor="let o of d.opciones" class="subida__opcion" [class.subida__opcion--bloqueada]="!!o.motivo">
+                                    <input type="radio" name="opcionDominio" [checked]="planDominio?.pone?.id === o.id" [disabled]="!!o.motivo" (change)="elegirOpcionDominio(o)">
+                                    <span class="subida__opcion-texto">{{o.nombre}}</span>
+                                    <span *ngIf="!o.oficial" class="subida__etiqueta">Homebrew</span>
+                                    <span *ngIf="o.motivo" class="subida__fila-motivo">{{o.motivo}}</span>
+                                </label>
+                            </div>
+                        </ng-container>
+                        <p *ngIf="derivadosDelDominioOLaEscuela" class="subida__nota">Cambia solo: {{derivadosDelDominioOLaEscuela}}.</p>
+                        <p *ngIf="planEscuela?.libroSinPreparar?.length" class="subida__nota">Se quedan en su libro, pero no se pueden preparar: {{planEscuela!.libroSinPreparar.join(', ')}}.</p>
                     </ng-container>
                 </ng-container>
             </ng-container>
