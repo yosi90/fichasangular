@@ -123,3 +123,15 @@ export const ETIQUETA_EVENTO: Record<TipoEventoSesion, string> = {
     expiacion: 'Expiación',
     nota: 'Nota',
 };
+
+/**
+ * Una lista en una frase, con «y» antes del último («evocación, ilusión y nigromancia») o «e» si empieza por el sonido
+ * i («evocación e ilusión»; no «hie», como «hierro»).
+ */
+export function unirConY(nombres: readonly string[]): string {
+    if (nombres.length < 2)
+        return nombres.join('');
+    const ultimo = nombres[nombres.length - 1];
+    const conE = /^h?[iíIÍ]/.test(ultimo) && !/^h?[iI][eaoEAO]/.test(ultimo);
+    return `${nombres.slice(0, -1).join(', ')} ${conE ? 'e' : 'y'} ${ultimo}`;
+}

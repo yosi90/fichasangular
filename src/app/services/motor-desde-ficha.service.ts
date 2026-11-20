@@ -7,6 +7,7 @@ import { ArmaService } from './arma.service';
 import { ArmaduraService } from './armadura.service';
 import { ClaseService } from './clase.service';
 import { ConjuroService } from './conjuro.service';
+import { DeidadService } from './deidad.service';
 import { DominioService } from './dominio.service';
 import { DoteService } from './dote.service';
 import { EscuelaConjurosService } from './escuela-conjuros.service';
@@ -58,6 +59,7 @@ export class MotorDesdeFichaService {
         private sesionesSvc: SesionesService,
         private personajeSvc: PersonajeService,
         private subtipoSvc: SubtipoService,
+        private deidadSvc: DeidadService,
     ) { }
 
     /** El primer valor de un catálogo, o `null` si falla. */
@@ -119,7 +121,7 @@ export class MotorDesdeFichaService {
 
     /** Los catálogos que usa el motor, como en la creación. */
     async cargarCatalogos(motor: NuevoPersonajeService): Promise<void> {
-        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos] = await Promise.all([
+        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos, deidades] = await Promise.all([
             this.primero(this.claseSvc.getClases()), this.primero(this.doteSvc.getDotes()), this.primero(this.conjuroSvc.getConjuros()),
             this.primero(this.habilidadSvc.getHabilidades()), this.primero(this.habilidadSvc.getHabilidadesCustom()),
             this.primero(this.idiomaSvc.getIdiomas()), this.primero(this.dominioSvc.getDominios()), this.primero(this.escuelaSvc.getEscuelas()),
@@ -127,6 +129,8 @@ export class MotorDesdeFichaService {
             this.primero(this.grupoArmaSvc.getGruposArmas()), this.primero(this.grupoArmaduraSvc.getGruposArmaduras()),
             // Los subtipos: su ajuste de nivel (el NEP) y el que da cambiar de tipo (el agrandado, al adquirir una plantilla).
             this.primero(this.subtipoSvc.getSubtipos()),
+            // Las deidades: los dominios de la suya (el reciclaje de un dominio) y la deidad que piden sus clases.
+            this.primero(this.deidadSvc.getDeidades()),
         ]);
         motor.setCatalogoClases(clases ?? []);
         motor.setCatalogoDotes(dotes ?? []);
@@ -141,6 +145,7 @@ export class MotorDesdeFichaService {
         motor.setCatalogoGruposArmasDotes((gruposArmas ?? []).map((g) => extraConTipoArma(g)));
         motor.setCatalogoGruposArmadurasDotes((gruposArmaduras ?? []).map((g) => extraDeDote(g)));
         motor.setCatalogoSubtipos(subtipos ?? []);
+        motor.setCatalogoDeidades(deidades ?? []);
     }
 
     /**

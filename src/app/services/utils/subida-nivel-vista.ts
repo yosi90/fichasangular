@@ -53,9 +53,11 @@ export interface EntradaCambiosSubida {
     nombreConjuro: (id: number) => string;
     /**
      * Lo reciclado antes del nivel (sus filas van las primeras) y lo que entra con ello, que no es del nivel: el idioma que
-     * aprende y las aptitudes de un rasgo de clase.
+     * aprende, las aptitudes de un rasgo de clase y el dominio que pone.
      */
-    reciclado?: { filas: CambioSubida[]; idiomaNuevo?: string; aptitudesNuevas?: Array<{ nombre: string; extra: string; }>; } | null;
+    reciclado?: {
+        filas: CambioSubida[]; idiomaNuevo?: string; aptitudesNuevas?: Array<{ nombre: string; extra: string; }>; dominioNuevo?: string;
+    } | null;
 }
 
 /**
@@ -134,7 +136,8 @@ export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
         && normalizarTexto(x?.Nombre ?? '') !== normalizarTexto(e.reciclado?.idiomaNuevo ?? ''));
     if (idiomasNuevos.length)
         filas.push({ que: 'Idiomas', antes: '—', ahora: idiomasNuevos.map((x) => x.Nombre).join(', '), porque: `${nombreClase} ${e.nivelClase}` });
-    const dominiosNuevos = (e.despues?.Dominios ?? []).filter((x) => !(e.antes?.Dominios ?? []).some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? '')));
+    const dominiosNuevos = (e.despues?.Dominios ?? []).filter((x) => !(e.antes?.Dominios ?? []).some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? ''))
+        && normalizarTexto(x?.Nombre ?? '') !== normalizarTexto(e.reciclado?.dominioNuevo ?? ''));
     if (dominiosNuevos.length)
         filas.push({ que: 'Dominios', antes: '—', ahora: dominiosNuevos.map((x) => x.Nombre).join(', '), porque: `${nombreClase} ${e.nivelClase}` });
     return filas;
