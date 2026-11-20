@@ -181,3 +181,30 @@ export function razaDeMonstruoSobreApi(
         ...cambios,
     };
 }
+
+/**
+ * Una clase de PJ sin tabla de monstruo (d10, 2 puntos, ataque base bueno), con la forma de `GET /clases`: el guerrero del
+ * *Manual del jugador* por defecto. `id`, `nombre` y `especiales` (las aptitudes de cada nivel, `Desglose_niveles[].Especiales`)
+ * para otra (el clérigo que expulsa muertos vivientes).
+ */
+export function guerreroApi(id = 9, nombre = 'Guerrero', especiales: Record<number, any[]> = {}): Record<string, any> {
+    const base = claseDeMonstruoApi({ ...ENGENDRO_VAMPIRICO, id, nombre, mutacion: { Id: 0, Nombre: '' } });
+    return {
+        ...base,
+        Tipo_dado: { Id: 4, Nombre: 'd10' },
+        Puntos_habilidad: { Id: 1, Valor: 2 },
+        Nivel_max_claseo: 20,
+        Progresion_obligatoria: false,
+        Sin_penalizacion_multiclase: false,
+        Mutacion: null,
+        Desglose_niveles: Array.from({ length: 20 }, (_, i) => ({
+            ...base['Desglose_niveles'][0],
+            Nivel: i + 1,
+            Ataque_base: `+${i + 1}`,
+            Dg: true,
+            Dote: null,
+            Armadura_natural: 0,
+            Especiales: JSON.parse(JSON.stringify(especiales[i + 1] ?? [])),
+        })),
+    };
+}

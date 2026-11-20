@@ -249,15 +249,21 @@ export function aplicarModificadoresDelMotor(ficha: PersonajeCreateRequestDto, a
 
 /**
  * Las características de `ficha` con lo que cambia el motor entre `antes` y `despues`, como diferencia sobre lo guardado,
- * salvo las perdidas (`perdido`: la Constitución de un no muerto), que no tienen valor. Lo usan la subida, la adquisición
- * de una plantilla y el reciclaje.
+ * salvo las perdidas (`perdido`: la Constitución de un no muerto), que no tienen valor. Una que el motor pierde ahora (el
+ * tipo nuevo no la tiene: una plantilla o una raza mutada que lo hacen muerto viviente) queda perdida con la puntuación
+ * guardada, para cuando vuelva a la vida (*Libris Mortis*, pág. 34). Lo usan la subida, la adquisición de una plantilla o
+ * de una raza mutada y el reciclaje.
  */
 export function aplicarCaracteristicasDelMotor(ficha: PersonajeCreateRequestDto, antes: PersonajeCreateRequestDto,
     despues: PersonajeCreateRequestDto): void {
     Object.entries(despues.caracteristicas ?? {}).forEach(([k, valor]) => {
         const previa = (antes.caracteristicas as any)?.[k];
         const guardada = (ficha.caracteristicas as any)?.[k];
-        if (guardada && !guardada.perdido && toInt(valor?.valor) !== toInt(previa?.valor))
+        if (!guardada || guardada.perdido)
+            return;
+        if (valor?.perdido && !previa?.perdido)
+            guardada.perdido = true;
+        else if (toInt(valor?.valor) !== toInt(previa?.valor))
             guardada.valor = toInt(guardada.valor) + toInt(valor?.valor) - toInt(previa?.valor);
     });
 }
@@ -323,22 +329,29 @@ export interface EntradaFichaSubida extends EntradaFichaDelMotor {
 /** La ficha completa de la subida: la `entrada` con lo que ha cambiado el motor y el nivel nuevo al final. */
 export function fichaDeLaSubida(datos: EntradaFichaSubida): PersonajeCreateRequestDto {
     const ficha = fichaConLoDelMotor(datos);
-    const col: any = ficha.colecciones;
-    // Las clases: las guardadas con un nivel más en la que sube.
+    conElNivelNuevo(ficha, datos.entrada.niveles, datos.idClase, datos.nivel);
+    return ficha;
+}
+
+/**
+ * La `ficha` con un nivel más en `idClase` (o la clase nueva a nivel 1) y sus niveles: los `guardados` tal cual (la API los
+ * conserva) y el nuevo al final, con sus elecciones. Lo usan la subida y la conversión en muerto viviente (el 1.er nivel
+ * de su clase de monstruo, tras los guardados sin el que pierde).
+ */
+export function conElNivelNuevo(ficha: PersonajeCreateRequestDto, guardados: PersonajeCreateNivelDto[] | undefined, idClase: number,
+    nivel: PersonajeCreateNivelDto): void {
+    const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) } as PersonajeCreateRequestDto['colecciones'];
     const clases = (col.clases ?? []).map((c: any) => ({ ...c }));
-    const deLaClase = clases.find((c: any) => toInt(c.idClase) === toInt(datos.idClase));
+    const deLaClase = clases.find((c: any) => toInt(c.idClase) === toInt(idClase));
     if (deLaClase)
         deLaClase.nivel = toInt(deLaClase.nivel) + 1;
     else
-        clases.push({ idClase: toInt(datos.idClase), nivel: 1 });
+        clases.push({ idClase: toInt(idClase), nivel: 1 });
     col.clases = clases;
-
-    // Los niveles guardados tal cual (la API los conserva) y el nuevo al final, con sus elecciones.
     ficha.niveles = [
-        ...(datos.entrada.niveles ?? []).map((n) => ({ ...n })),
-        { idClase: toInt(datos.nivel.idClase), nivelClase: toInt(datos.nivel.nivelClase), elecciones: [...(datos.nivel.elecciones ?? [])] },
+        ...(guardados ?? []).map((n) => ({ ...n })),
+        { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase), elecciones: [...(nivel.elecciones ?? [])] },
     ];
-    return ficha;
 }
 
 /**

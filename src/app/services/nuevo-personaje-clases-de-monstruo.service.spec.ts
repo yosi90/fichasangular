@@ -7,6 +7,7 @@ import { normalizeRazaApi } from './utils/raza-mapper';
 import {
     baseApi,
     claseDeMonstruoApi,
+    guerreroApi,
     ENGENDRO_VAMPIRICO,
     MOMIA,
     NECROFAGO,
@@ -23,28 +24,6 @@ import { textoClasePersonaje } from '../components/detalles/ficha/personaje';
  * dotes y la armadura natural por la tabla de la clase; los PX. Con los datos del contrato simulados
  * (`src/testing/clases-de-monstruo-api.ts`): aún no hay datos de las cinco clases en `rol_dev`.
  */
-
-/** Un guerrero del Manual del jugador (d10, 2 puntos, dote a 1.º y cada 2), con la forma de `GET /clases`. */
-function guerreroApi(): Record<string, any> {
-    const base = claseDeMonstruoApi({ ...ENGENDRO_VAMPIRICO, id: 9, nombre: 'Guerrero', mutacion: { Id: 0, Nombre: '' } });
-    return {
-        ...base,
-        Tipo_dado: { Id: 4, Nombre: 'd10' },
-        Puntos_habilidad: { Id: 1, Valor: 2 },
-        Nivel_max_claseo: 20,
-        Progresion_obligatoria: false,
-        Sin_penalizacion_multiclase: false,
-        Mutacion: null,
-        Desglose_niveles: Array.from({ length: 20 }, (_, i) => ({
-            ...base['Desglose_niveles'][0],
-            Nivel: i + 1,
-            Ataque_base: `+${i + 1}`,
-            Dg: true,
-            Dote: null,
-            Armadura_natural: 0,
-        })),
-    };
-}
 
 const CARACTERISTICAS = { Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 };
 
