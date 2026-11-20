@@ -5,7 +5,8 @@ import { CampanaService } from 'src/app/services/campana.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { MAX_TIRADAS_PUNTOS_GOLPE } from 'src/app/services/utils/puntos-golpe';
 import { HuecoDeSelectores } from './hueco-selectores';
-import { resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from './pasos-con-selectores';
+import { SelectorClaseOpcionalModalComponent } from 'src/app/components/nuevo-personaje/selector-clase-opcional-modal/selector-clase-opcional-modal.component';
+import { CatalogosDelNivel, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe, tomarNivelDeClase } from './pasos-con-selectores';
 
 describe('pasos-con-selectores (la subida y la adquisición de una plantilla)', () => {
     const entrada = (personaje: Record<string, unknown>) => ({ personaje } as any);
@@ -73,6 +74,46 @@ describe('pasos-con-selectores (la subida y la adquisición de una plantilla)', 
             const hueco = { abrir: jasmine.createSpy('abrir').and.resolveTo(null) } as unknown as HuecoDeSelectores;
             expect(await resolverDotesPendientes(svc, hueco)).toBeFalse();
             expect(svc.aplicarDotePendiente).not.toHaveBeenCalled();
+        });
+    });
+    describe('tomarNivelDeClase, con una aptitud con «Elegir» (el Gran arcano del archimago)', () => {
+        const clase: any = { Id: 70, Nombre: 'Archimago' };
+        function motor() {
+            const svc = jasmine.createSpyObj<NuevoPersonajeService>('NuevoPersonajeService', [
+                'obtenerOpcionalesSiguienteNivelClase', 'obtenerEspecialesExtraPendientesSiguienteNivelClase', 'idsExtraDeAptitud',
+                'obtenerDominiosPendientesSiguienteNivelClase', 'aplicarSiguienteNivelClase',
+            ], { PersonajeCreacion: { desgloseClases: [{ Nombre: 'Archimago', Nivel: 1 }] } as any });
+            svc.obtenerOpcionalesSiguienteNivelClase.and.returnValue([]);
+            svc.obtenerEspecialesExtraPendientesSiguienteNivelClase.and.returnValue([{ clave: 'especial:0', idEspecial: 5, nombre: 'Gran arcano' }]);
+            svc.idsExtraDeAptitud.and.returnValue([11]);
+            svc.obtenerDominiosPendientesSiguienteNivelClase.and.returnValue(null as any);
+            svc.aplicarSiguienteNivelClase.and.returnValue({ aplicado: false, razon: 'parada de la prueba' } as any);
+            return svc;
+        }
+        const catalogos = (especial?: any): CatalogosDelNivel => ({
+            escuelas: async () => [], disciplinas: async () => [], enemigos: async () => [],
+            ...(especial ? { especial: async () => especial } : {}),
+        });
+
+        it('ofrece sus extras sin los que ya tiene y manda el elegido al motor, como al crear', async () => {
+            const svc = motor();
+            const hueco = { abrir: jasmine.createSpy('abrir').and.resolveTo('12') } as unknown as HuecoDeSelectores;
+            spyOn(Swal, 'fire').and.resolveTo({} as any);
+            const especial = { Extras: [{ Id_extra: 11, Extra: 'Alta arcana', Orden: 1 }, { Id_extra: 12, Extra: 'Dominio de los elementos', Orden: 2 }] };
+            await tomarNivelDeClase(svc, hueco, clase, catalogos(especial));
+            const [componente, datos] = (hueco.abrir as jasmine.Spy).calls.argsFor(0);
+            expect(componente).toBe(SelectorClaseOpcionalModalComponent);
+            expect(datos.opciones.map((o: any) => o.nombre)).toEqual(['Dominio de los elementos']);
+            expect(svc.aplicarSiguienteNivelClase.calls.mostRecent().args[5]).toEqual({ 'especial:0': { idExtra: 12, extra: 'Dominio de los elementos' } });
+        });
+
+        it('sin el catálogo de aptitudes (las pantallas que no lo piden) avisa y no toma el nivel', async () => {
+            const svc = motor();
+            const hueco = { abrir: jasmine.createSpy('abrir') } as unknown as HuecoDeSelectores;
+            const aviso = spyOn(Swal, 'fire').and.resolveTo({} as any);
+            expect(await tomarNivelDeClase(svc, hueco, clase, catalogos())).toEqual({ estado: 'cancelado' });
+            expect(aviso).toHaveBeenCalledTimes(1);
+            expect(svc.aplicarSiguienteNivelClase).not.toHaveBeenCalled();
         });
     });
 });

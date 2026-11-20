@@ -327,7 +327,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         if (this.claseElegida || this.guardando)
             return;
         const nivel = await tomarNivelDeClase(this.svc, this.selectores, clase,
-            catalogosDelNivel(this.motor, this.escuelaSvc, this.disciplinaSvc, this.enemigoSvc));
+            catalogosDelNivel(this.motor, this.escuelaSvc, this.disciplinaSvc, this.enemigoSvc, this.especialSvc));
         if (nivel.estado === 'cancelado')
             return;
         if (nivel.estado === 'deshacer') {

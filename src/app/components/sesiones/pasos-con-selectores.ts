@@ -16,8 +16,11 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import {
     DotePendienteState, DoteSeleccionConfirmada, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase,
-    SeleccionOpcionalesClase,
+    SeleccionExtrasEspecialesClase, SeleccionOpcionalesClase,
 } from 'src/app/services/nuevo-personaje.service';
+import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
+import { EspecialService } from 'src/app/services/especial.service';
+import { extrasElegiblesEspecial } from 'src/app/services/utils/aptitudes-clase';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
@@ -173,21 +176,63 @@ export function clasesParaElNivel(svc: NuevoPersonajeService, oficial: boolean |
         .sort((a, b) => Number(b.tiene) - Number(a.tiene) || a.clase.Nombre.localeCompare(b.clase.Nombre, 'es'));
 }
 
-/** Los catálogos que pide tomar un nivel de clase, solo si hacen falta (la especialización mágica y el enemigo predilecto). */
+/**
+ * Los catálogos que pide tomar un nivel de clase, solo si hacen falta (la especialización mágica, el enemigo predilecto y,
+ * con `especial`, los extras de una aptitud con «Elegir», de `GET /clases/habilidades/{id}`). Sin `especial`, un nivel que
+ * pide elegir un extra no se puede tomar (las pantallas cuyas clases no lo piden en ese nivel no lo pasan).
+ */
 export interface CatalogosDelNivel {
     escuelas: () => Promise<any[]>;
     disciplinas: () => Promise<any[]>;
     enemigos: () => Promise<any[]>;
+    especial?: (idEspecial: number) => Promise<EspecialClaseDetalle | null>;
 }
 
 /** Los catálogos del nivel de las pantallas de sesión: el primer valor de cada uno, o ninguno si falla. */
 export function catalogosDelNivel(motor: MotorDesdeFichaService, escuelas: EscuelaConjurosService, disciplinas: DisciplinaConjurosService,
-    enemigos: EnemigoPredilectoService): CatalogosDelNivel {
+    enemigos: EnemigoPredilectoService, especiales?: EspecialService): CatalogosDelNivel {
     return {
         escuelas: async () => (await motor.primero(escuelas.getEscuelas())) ?? [],
         disciplinas: async () => (await motor.primero(disciplinas.getDisciplinas())) ?? [],
         enemigos: async () => (await motor.primero(enemigos.getEnemigosPredilectos())) ?? [],
+        ...(especiales ? { especial: async (id: number) => (await motor.primero(especiales.getEspecial(id))) ?? null } : {}),
     };
+}
+
+/**
+ * El extra de cada aptitud del nivel con «Elegir» (el Gran arcano del archimago), como al crear: sus extras elegibles
+ * (`extrasElegiblesEspecial`, sin los que ya tiene en esa aptitud ni los elegidos en este mismo nivel), con el selector de
+ * los grupos opcionales. `null` si se cierra, no hay nada que elegir o falta el catálogo (`catalogos.especial`).
+ */
+async function elegirExtrasDelNivel(svc: NuevoPersonajeService, selectores: HuecoDeSelectores, clase: Clase, siguienteNivel: number,
+    pendientes: ReturnType<NuevoPersonajeService['obtenerEspecialesExtraPendientesSiguienteNivelClase']>,
+    catalogos: CatalogosDelNivel): Promise<SeleccionExtrasEspecialesClase | null> {
+    if (!catalogos.especial) {
+        await avisarPaso('Aún no disponible', `El nivel ${siguienteNivel} de ${clase.Nombre} pide elegir el extra de una aptitud: esta pantalla todavía no lo ofrece.`);
+        return null;
+    }
+    const selecciones: SeleccionExtrasEspecialesClase = {};
+    for (const pendiente of pendientes) {
+        const elegidosEnEsteNivel = Object.entries(selecciones)
+            .filter(([clave]) => pendientes.find((p) => p.clave === clave)?.idEspecial === pendiente.idEspecial)
+            .map(([, elegido]) => elegido.idExtra);
+        const extras = extrasElegiblesEspecial(await catalogos.especial(pendiente.idEspecial),
+            [...svc.idsExtraDeAptitud(pendiente.idEspecial), ...elegidosEnEsteNivel]);
+        if (extras.length < 1) {
+            await avisarPaso('No se puede subir en esta clase', `No hay ningún extra que elegir para ${pendiente.nombre}.`);
+            return null;
+        }
+        const clave = await selectores.abrir<string>(SelectorClaseOpcionalModalComponent, {
+            titulo: pendiente.nombre,
+            descripcion: `Elige el extra de ${pendiente.nombre} para continuar con el nivel ${siguienteNivel} de ${clase.Nombre}.`,
+            opciones: extras.map((e) => ({ clave: `${e.id}`, tipo: 'especial', nombre: e.nombre, extra: '' })),
+        }, ['confirmar'], ['cerrar']);
+        const elegido = extras.find((e) => `${e.id}` === `${clave ?? ''}`);
+        if (!elegido)
+            return null;
+        selecciones[pendiente.clave] = { idExtra: elegido.id, extra: elegido.nombre };
+    }
+    return selecciones;
 }
 
 /**
@@ -204,7 +249,7 @@ export type ResultadoNivelDeClase =
  * Toma el siguiente nivel de `clase` en el motor con los selectores de la creación, como en la subida de nivel: los grupos
  * opcionales de la clase, los dominios, los aumentos de una clase lanzadora, la especialización mágica, el enemigo
  * predilecto y las elecciones de la progresión de sus rasgos; después apunta lo que queda pendiente del nivel (los
- * incrementos y las dotes). El extra «Elegir» de una aptitud aún no se ofrece. `permitirBloqueoSoloAlineamiento`: la
+ * incrementos y las dotes). El extra «Elegir» de una aptitud, con `catalogos.especial` (`elegirExtrasDelNivel`). `permitirBloqueoSoloAlineamiento`: la
  * conversión en muerto viviente, cuyo alineamiento no se fuerza (*Libris Mortis*, págs. 35-40).
  */
 export async function tomarNivelDeClase(svc: NuevoPersonajeService, selectores: HuecoDeSelectores, clase: Clase,
@@ -225,9 +270,12 @@ export async function tomarNivelDeClase(svc: NuevoPersonajeService, selectores: 
             return { estado: 'cancelado' };
         seleccionesOpcionales = { ...(seleccionesOpcionales ?? {}), [grupo.grupo]: clave };
     }
-    if (svc.obtenerEspecialesExtraPendientesSiguienteNivelClase(clase, seleccionesOpcionales).length > 0) {
-        await avisarPaso('Aún no disponible', `El nivel ${siguienteNivel} de ${clase.Nombre} pide elegir el extra de una aptitud: la subida todavía no lo ofrece.`);
-        return { estado: 'cancelado' };
+    let seleccionesExtras: SeleccionExtrasEspecialesClase | null = null;
+    const extrasPendientes = svc.obtenerEspecialesExtraPendientesSiguienteNivelClase(clase, seleccionesOpcionales);
+    if (extrasPendientes.length > 0) {
+        seleccionesExtras = await elegirExtrasDelNivel(svc, selectores, clase, siguienteNivel, extrasPendientes, catalogos);
+        if (!seleccionesExtras)
+            return { estado: 'cancelado' };
     }
     let seleccionesDominios: SeleccionDominiosClase | null = null;
     const dominios = svc.obtenerDominiosPendientesSiguienteNivelClase(clase);
@@ -241,7 +289,7 @@ export async function tomarNivelDeClase(svc: NuevoPersonajeService, selectores: 
     }
     const porAlineamiento = opciones.permitirBloqueoSoloAlineamiento === true;
     let aumentos: SeleccionAumentosClaseLanzadora | null = null;
-    let resultado = svc.aplicarSiguienteNivelClase(clase, seleccionesOpcionales, seleccionesDominios, porAlineamiento, aumentos, null);
+    let resultado = svc.aplicarSiguienteNivelClase(clase, seleccionesOpcionales, seleccionesDominios, porAlineamiento, aumentos, seleccionesExtras);
     if (!resultado.aplicado && (resultado.aumentosClaseLanzadoraPendientes ?? []).length > 0) {
         aumentos = [];
         for (const pendiente of resultado.aumentosClaseLanzadoraPendientes ?? []) {
@@ -257,7 +305,7 @@ export async function tomarNivelDeClase(svc: NuevoPersonajeService, selectores: 
                 return { estado: 'cancelado' };
             aumentos[Math.max(0, toInt(pendiente.indice) - 1)] = toInt(r.value);
         }
-        resultado = svc.aplicarSiguienteNivelClase(clase, seleccionesOpcionales, seleccionesDominios, porAlineamiento, aumentos, null);
+        resultado = svc.aplicarSiguienteNivelClase(clase, seleccionesOpcionales, seleccionesDominios, porAlineamiento, aumentos, seleccionesExtras);
     }
     if (!resultado.aplicado) {
         await avisarPaso('No se puede subir en esta clase', resultado.evaluacion?.razones?.join(' · ') || resultado.razon || 'No se puede aplicar el nivel.');
