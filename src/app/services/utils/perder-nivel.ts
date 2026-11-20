@@ -1,4 +1,5 @@
 import { Clase } from 'src/app/interfaces/clase';
+import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Personaje } from 'src/app/interfaces/personaje';
 import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import type { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
@@ -115,6 +116,18 @@ export interface DatosPerdida {
     incrementoSinRegistro?: number | null;
     /** Sin su registro: la dote que pierde por el DG, si lo daba (la elige el jugador). */
     doteSinRegistro?: { idDote: number; idExtra: number; origen: string; } | null;
+}
+
+/**
+ * La dote de `dotes` (las `DotesContextuales` del personaje) con ese id y ese extra o, si no la tiene, la primera con ese
+ * id. La usan los nombres de «Lo que pierde» (`nombresDeLaFicha`) y el motor al quitar las dotes del nivel perdido
+ * (`NuevoPersonajeService.quitarDotePorId`).
+ */
+export function doteContextualPorId(dotes: ReadonlyArray<DoteContextual> | null | undefined, idDote: number, idExtra: number)
+    : DoteContextual | undefined {
+    const lista = dotes ?? [];
+    return lista.find((d) => toInt(d?.Dote?.Id) === toInt(idDote) && toInt(d?.Contexto?.Id_extra) === toInt(idExtra))
+        ?? lista.find((d) => toInt(d?.Dote?.Id) === toInt(idDote));
 }
 
 /** Una fila de «Lo que pierde»: qué, antes, ahora. */
@@ -427,8 +440,7 @@ export function fichaConConstitucionPerdida(entrada: PersonajeCreateRequestDto, 
 export function nombresDeLaFicha(svc: NuevoPersonajeService, pj: Personaje | null, entrada: PersonajeCreateRequestDto): NombresDeLaFicha {
     return {
         dote: (idDote, idExtra) => {
-            const d = (pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote && toInt(x?.Contexto?.Id_extra) === idExtra)
-                ?? (pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote);
+            const d = doteContextualPorId(pj?.DotesContextuales, idDote, idExtra);
             return d ? nombreDoteConExtra(d) : `Dote ${idDote}`;
         },
         aptitud: (id) => pj?.Claseas?.find((x) => toInt(x?.Id) === id)?.Nombre ?? `Aptitud ${id}`,

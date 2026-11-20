@@ -106,6 +106,7 @@ import { apuntarEleccion, construirNivelesCreacion, nivelDelOrden, RefNivelTomad
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claveDoteDeLaFicha } from './utils/correccion-ficha';
+import { doteContextualPorId } from './utils/perder-nivel';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
@@ -11815,10 +11816,7 @@ export class NuevoPersonajeService {
             return false;
         const indiceNivel = this.indiceNivelDeLaDote(idDote, idExtra);
         const [quitada] = pj.DotesContextuales.splice(i, 1);
-        const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quitada?.Dote?.Nombre ?? '')
-            && `${d?.Origen ?? ''}` === `${(quitada?.Contexto as any)?.Origen ?? ''}`);
-        if (j >= 0)
-            pj.Dotes.splice(j, 1);
+        this.quitarDeLaListaDeDotes(quitada);
         const nivel = indiceNivel !== null ? pj.Orden_niveles?.[indiceNivel] : undefined;
         const k = (nivel?.elecciones ?? []).findIndex((e) => e.tipo === 'dote' && toInt(e.idElemento) === toInt(idDote)
             && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
@@ -11827,6 +11825,15 @@ export class NuevoPersonajeService {
         this.recalcularEfectosConservandoVentajas();
         this.recalcularDerivadasPorCombate();
         return true;
+    }
+
+    /** Quita de `Dotes` (la lista por nombre) la de una dote contextual que se quita, por su nombre y su origen. */
+    private quitarDeLaListaDeDotes(quitada: DoteContextual | undefined): void {
+        const pj = this.personajeCreacion;
+        const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quitada?.Dote?.Nombre ?? '')
+            && `${d?.Origen ?? ''}` === `${(quitada?.Contexto as any)?.Origen ?? ''}`);
+        if (j >= 0)
+            pj.Dotes.splice(j, 1);
     }
 
     /**
@@ -11845,9 +11852,7 @@ export class NuevoPersonajeService {
      * (`quitarDoteDeLaFicha`). `false` si no la tiene.
      */
     quitarDotePorId(idDote: number, idExtra: number): boolean {
-        const dotes = this.personajeCreacion.DotesContextuales ?? [];
-        const dote = dotes.find((d) => toInt(d?.Dote?.Id) === toInt(idDote) && toInt(d?.Contexto?.Id_extra) === toInt(idExtra))
-            ?? dotes.find((d) => toInt(d?.Dote?.Id) === toInt(idDote));
+        const dote = doteContextualPorId(this.personajeCreacion.DotesContextuales, idDote, idExtra);
         return !!dote && this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`);
     }
 
@@ -11912,12 +11917,7 @@ export class NuevoPersonajeService {
             .find((d) => toInt(d?.Dote?.Id) === toInt(q.idDote) && toInt(d?.Contexto?.Id_extra) === toInt(q.idExtra)))
             .filter((d): d is DoteContextual => !!d);
         this.quitarLoDelNivelPerdido(cambios, this.caracteristicaQueBajaLaPerdida(cambios));
-        dotes.forEach((quitada) => {
-            const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quitada?.Dote?.Nombre ?? '')
-                && `${d?.Origen ?? ''}` === `${(quitada?.Contexto as any)?.Origen ?? ''}`);
-            if (j >= 0)
-                pj.Dotes.splice(j, 1);
-        });
+        dotes.forEach((quitada) => this.quitarDeLaListaDeDotes(quitada));
         (cambios.especialesQuitados ?? []).forEach((q) => {
             const i = (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(q.idEspecial) && toInt(e?.Id_extra) === toInt(q.idExtra));
             const j = i >= 0 ? i : (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(q.idEspecial));
