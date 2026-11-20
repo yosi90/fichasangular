@@ -4,6 +4,7 @@ import { EspecialSustituido, Raza } from 'src/app/interfaces/raza';
 import { EntradaFichaMutacion, fichaDeLaMutacion, nepTrasLaMutacion, RazaDelNep } from './adquirir-raza-mutada';
 import { toInt } from './normalizacion';
 import { marcarDotesSinPrerrequisitos, pxTrasPerder } from './perder-nivel';
+import { especialQueLaSustituye } from './raza-mutacion';
 import { conElNivelNuevo, PgSubida, pgTrasCambioDeCon } from './subida-nivel';
 
 /*
@@ -73,11 +74,10 @@ export function pgDeLaConversion(sinElNivel: PersonajeCreateRequestDto, dgsTrasP
  */
 export function especialesSustituidos(lista: ReadonlyArray<Record<string, any>> | undefined,
     sustituidos: ReadonlyArray<EspecialSustituido> | undefined): Array<Record<string, any>> {
-    const porId = new Map((sustituidos ?? []).map((s) => [toInt(s?.Especial?.Id), toInt(s?.Especial_nuevo?.Id)]));
     const resultado: Array<Record<string, any>> = [];
     (lista ?? []).forEach((e) => {
-        const nuevo = porId.get(toInt(e?.['idEspecial']));
-        const especial: Record<string, any> = nuevo ? { ...e, idEspecial: nuevo } : { ...e };
+        const nuevo = especialQueLaSustituye(sustituidos, toInt(e?.['idEspecial']));
+        const especial: Record<string, any> = nuevo ? { ...e, idEspecial: nuevo.Id } : { ...e };
         if (!resultado.some((r) => toInt(r['idEspecial']) === toInt(especial['idEspecial']) && toInt(r['idExtra']) === toInt(especial['idExtra'])))
             resultado.push(especial);
     });

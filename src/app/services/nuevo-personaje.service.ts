@@ -46,7 +46,7 @@ import { evaluarGruposParaSelectorRacial } from './utils/racial-prerrequisitos';
 import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
 import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
-import { esRazaMutada } from './utils/raza-mutacion';
+import { esRazaMutada, especialQueLaSustituye } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, ContextoCompatibles, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
@@ -8328,17 +8328,9 @@ export class NuevoPersonajeService {
         });
     }
 
-    /**
-     * La aptitud que su raza pone en lugar de la de `idEspecial` en todas sus clases (`Especiales_sustituidos` de una raza
-     * mutada: *Libris Mortis*, pág. 35, el clérigo que se convierte en muerto viviente reprende en lugar de expulsar), o
-     * `null` si no la sustituye. Sale de los datos de la raza.
-     */
+    /** La aptitud que su raza de ahora pone en lugar de la de `idEspecial` (`especialQueLaSustituye`), o `null`. */
     private especialSustituto(idEspecial: number): { Id: number; Nombre: string; } | null {
-        const id = toInt(idEspecial);
-        const sustitucion = id > 0 ? (this.razaSeleccionada?.Especiales_sustituidos ?? []).find((s) => toInt(s?.Especial?.Id) === id) : null;
-        return sustitucion && toInt(sustitucion.Especial_nuevo?.Id) > 0
-            ? { Id: toInt(sustitucion.Especial_nuevo.Id), Nombre: `${sustitucion.Especial_nuevo.Nombre ?? ''}`.trim() }
-            : null;
+        return especialQueLaSustituye(this.razaSeleccionada?.Especiales_sustituidos, idEspecial);
     }
 
     /** Las aptitudes de sus clases que sustituye su raza (`especialSustituto`), ya cambiadas y sin repetir. */
