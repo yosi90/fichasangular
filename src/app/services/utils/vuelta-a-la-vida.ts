@@ -1,19 +1,22 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { NivelPerdido } from 'src/app/interfaces/sesiones';
 import { EspecialSustituido } from 'src/app/interfaces/raza';
 import { CambioPlantilla, filasDeCaracteristicas, nombresNuevos } from './adquirir-plantilla';
 import { LISTAS_DE_LA_RAZA, nepTrasLaMutacion, RazaDelNep, SE_CONSERVAN_EN_MUTACION } from './adquirir-raza-mutada';
 import { modificadorCaracteristica } from './caracteristicas';
+import { ContextoCompatibles, esClaseCompatibleConRestringida } from './clase-elegibilidad';
 import { dgsDeClase, filaDeNivel } from './clase-niveles';
 import { sacarDoteDeLaFicha } from './correccion-ficha';
 import { normalizarTexto, toInt } from './normalizacion';
 import {
     CONSTITUCION_PERDIDA, FilaPerdida, marcarDotesSinPrerrequisitos, ordenConocido, ordenPorConocer, pxTrasPerder, quitadoVacio, ResultadoPerdida,
 } from './perder-nivel';
+import { esDelPrimerNivelDelPersonaje } from './niveles-creacion';
 import { especialesDevueltos } from './raza-mutacion';
 import { formatoPx } from './sesiones-texto';
-import { diferencia, fichaConLoDelMotor, pgTrasCambioDeCon, PgSubida } from './subida-nivel';
+import { diferencia, fichaConLoDelMotor, pgTrasCambioDeCon, PgSubida, puntosGolpeTrasSubida } from './subida-nivel';
 
 /*
  * Devolver la vida a un muerto viviente de clase de monstruo (*Libris Mortis*, pág. 35; contrato en
@@ -21,7 +24,9 @@ import { diferencia, fichaConLoDelMotor, pgTrasCambioDeCon, PgSubida } from './s
  * del 2026-11-20, en el roadmap de sesiones): lo contrario de la conversión (`conversion-muerto-viviente.ts`). Pierde todos
  * los niveles de la clase de monstruo con lo que dieron, vuelve a la raza de antes (la base) con su Constitución guardada y,
  * con *resurrección*, *deseo* o *milagro*, pierde además el último nivel de clase que le queda, como en «Perder un nivel»
- * (`perder-nivel.ts`). Todo sale de los datos de la raza y de sus clases, nunca de su nombre. Lo usa
+ * (`perder-nivel.ts`). Si sin la clase de monstruo no le queda ningún DG, gana el 1.er nivel de una clase básica, como al
+ * crear (decisión del propietario del 2026-11-20; «Sin ningún DG» del contrato), y con *resurrección* paga con 2 puntos de
+ * Constitución. Todo sale de los datos de la raza y de sus clases, nunca de su nombre. Lo usa
  * `components/sesiones/devolver-la-vida`.
  */
 
@@ -37,7 +42,7 @@ export const MEDIOS_DE_LA_VUELTA: ReadonlyArray<MedioDeLaVuelta> = [
     {
         pierdeNivel: true,
         titulo: 'Resurrección, deseo o milagro: pierde además un nivel',
-        porque: 'No pueden impedir que un personaje devuelto a la vida pierda un nivel (Manual del jugador, págs. 228, 262 y 285). Con un solo DG, pierde 2 puntos de Constitución en su lugar.',
+        porque: 'No pueden impedir que un personaje devuelto a la vida pierda un nivel (Manual del jugador, págs. 228, 262 y 285). Con un solo DG, o si vuelve con su 1.er nivel, pierde 2 puntos de Constitución en su lugar.',
     },
     {
         pierdeNivel: false,
@@ -52,7 +57,6 @@ export const NO_SIRVEN_PARA_LA_VUELTA = 'Revivir a los muertos y reencarnar no s
 /** Las frases de los `409` del contrato (`docs/publica/ERRORES.md`), para enseñarlo deshabilitado antes de mandarlo. */
 export const MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO = 'Solo se devuelve así la vida a quien se convirtió en muerto viviente con una clase de monstruo.';
 export const MOTIVO_VUELTA_NIVELES_DESPUES = 'Después de la clase de monstruo tomó niveles de otra clase: por ahora, eso lo corrige el máster.';
-export const MOTIVO_VUELTA_SIN_NIVELES = 'Sin la clase de monstruo no le queda ningún nivel: por ahora, eso lo corrige el máster.';
 /** `409 perdida_sin_niveles_de_clase`, con resurrección: el nivel de más sería un DG racial. */
 export const MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL = 'Sin la clase de monstruo no tiene niveles de clase: con resurrección, deseo o milagro perdería un DG racial, y eso aún no se puede apuntar. Con resurrección verdadera, sí.';
 
@@ -104,13 +108,15 @@ export interface EstadoDeLaVuelta {
     dgsSinLaClase: number;
     /** Si sin la clase de monstruo le quedan niveles de otra clase. */
     conOtrasClases: boolean;
+    /** Si sin la clase de monstruo no le queda ningún DG: gana el 1.er nivel de una clase básica (contrato, «Sin ningún DG»). */
+    ganaNivel: boolean;
 }
 
 /**
  * Cuándo se puede devolver la vida (los `409` del contrato), con los datos: su raza lleva una clase de monstruo
- * (`claseDeMonstruo`), sus niveles son los últimos, le queda algún DG y tiene una Constitución guardada; y con *resurrección*, que el nivel de más no sea un DG
- * racial y que, con un solo DG, los 2 puntos de Constitución no la dejen en 0 (`constitucion`, la guardada). `dgs`, sus DG
- * de ahora.
+ * (`claseDeMonstruo`), sus niveles son los últimos y tiene una Constitución guardada; y con *resurrección*, que el nivel de
+ * más no sea un DG racial y que, con un solo DG o con el 1.er nivel que gana sin ninguno (`ganaNivel`), los 2 puntos de
+ * Constitución no la dejen en 0 (`constitucion`, la guardada). `dgs`, sus DG de ahora.
  */
 export function estadoDeLaVuelta(d: {
     claseDeMonstruo: Clase | null;
@@ -119,7 +125,9 @@ export function estadoDeLaVuelta(d: {
     dgs: number;
     constitucion: number | null;
 }): EstadoDeLaVuelta {
-    const vacio: EstadoDeLaVuelta = { motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 0, dgsSinLaClase: Math.max(0, toInt(d.dgs)), conOtrasClases: false };
+    const vacio: EstadoDeLaVuelta = {
+        motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 0, dgsSinLaClase: Math.max(0, toInt(d.dgs)), conOtrasClases: false, ganaNivel: false,
+    };
     const clase = d.claseDeMonstruo;
     if (!clase || toInt(clase.Id) < 1)
         return { ...vacio, motivo: MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO };
@@ -127,20 +135,88 @@ export function estadoDeLaVuelta(d: {
     const nivelesDeLaClase = toInt(d.clases.find((c) => toInt(c.idClase) === id)?.nivel);
     const conOtrasClases = d.clases.some((c) => toInt(c.idClase) !== id && toInt(c.nivel) > 0);
     const dgsSinLaClase = Math.max(0, toInt(d.dgs) - dgsDeClase(clase, nivelesDeLaClase));
-    const estado: EstadoDeLaVuelta = { ...vacio, nivelesDeLaClase, dgsSinLaClase, conOtrasClases };
+    const estado: EstadoDeLaVuelta = { ...vacio, nivelesDeLaClase, dgsSinLaClase, conOtrasClases, ganaNivel: dgsSinLaClase < 1 };
     if (tomoNivelesDespues(d.niveles, id, clase, d.clases))
         return { ...estado, motivo: MOTIVO_VUELTA_NIVELES_DESPUES };
-    if (dgsSinLaClase < 1)
-        return { ...estado, motivo: MOTIVO_VUELTA_SIN_NIVELES };
     // Sin una puntuación guardada no vuelve con ninguna (`409 perdida_sin_constitucion`).
     if (d.constitucion === null)
         return { ...estado, motivo: motivoSinConstitucionParaVolver(null) };
-    if (dgsSinLaClase === 1) {
+    // Con un solo DG, o con el 1.er nivel que gana, es de 1.er nivel: paga con 2 puntos de Constitución.
+    if (dgsSinLaClase <= 1) {
         if (toInt(d.constitucion) - CONSTITUCION_PERDIDA < 1)
             return { ...estado, motivoConResurreccion: motivoSinConstitucionParaVolver(d.constitucion) };
     } else if (!conOtrasClases)
         return { ...estado, motivoConResurreccion: MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL };
     return estado;
+}
+
+/**
+ * Si la clase vale para el 1.er nivel que gana sin ningún DG: una básica, ni de prestigio (`Prestigio`) ni de monstruo (la
+ * que lleva una raza mutada, `Mutacion`). Las demás no se ofrecen (`400 vuelta_clase_nueva_no_valida`).
+ */
+export function esClaseParaVolverSinDg(clase: Pick<Clase, 'Prestigio' | 'Mutacion'> | null | undefined): boolean {
+    return !!clase && clase.Prestigio !== true && toInt(clase.Mutacion?.Id) < 1;
+}
+
+/**
+ * Las clases restringidas (`Multiclase_restringida`: el paladín, el monje) que tuvo antes de la clase de monstruo y que
+ * siguen cerradas para el 1.er nivel que gana sin ningún DG (*Manual del jugador*, págs. 52 y 55), con su motivo: las de un
+ * nivel perdido (`nivelesPerdidos`, también el que perdió al convertirse) que no es posterior a la clase de monstruo (no la
+ * tiene en sus `clasesAnteriores`), porque sus niveles fueron de otra clase aunque ahora los pierda. No la cierra si su raza
+ * la deja dejar y retomar (`libres`, `Clases_multiclase_libre`) ni si la clase de monstruo es de sus compatibles. Quien
+ * nunca la tuvo puede empezarla. El motor solo cierra las que siguen en sus niveles, y aquí no le queda ninguno.
+ */
+export function restringidasCerradasAlVolver(d: {
+    nivelesPerdidos: ReadonlyArray<Pick<NivelPerdido, 'idClase' | 'ordenConocido' | 'clasesAnteriores'>>;
+    claseDeMonstruo: Pick<Clase, 'Id' | 'Nombre'>;
+    clase: (id: number) => Clase | null | undefined;
+    libres?: ReadonlyArray<number>;
+}): Map<number, string> {
+    const idMonstruo = toInt(d.claseDeMonstruo.Id);
+    const libres = new Set((d.libres ?? []).map((id) => toInt(id)));
+    const contexto: ContextoCompatibles = { tiene: [idMonstruo], clase: (id) => d.clase(id) ?? undefined };
+    const cerradas = new Map<number, string>();
+    (d.nivelesPerdidos ?? []).forEach((p) => {
+        const id = toInt(p.idClase);
+        const clase = d.clase(id);
+        if (!clase?.Multiclase_restringida || id === idMonstruo || libres.has(id) || p.ordenConocido === false
+            || (p.clasesAnteriores ?? []).some((c) => toInt(c) === idMonstruo) || esClaseCompatibleConRestringida(clase, idMonstruo, contexto))
+            return;
+        cerradas.set(id, `Tras ganar niveles de ${`${d.claseDeMonstruo.Nombre ?? ''}`.trim().toLowerCase()} ya no puede volver a subir de `
+            + `${`${clase.Nombre ?? ''}`.trim().toLowerCase()}, aunque los pierda (Manual del jugador, págs. 52 y 55).`);
+    });
+    return cerradas;
+}
+
+/**
+ * La `entrada` sin lo que, en los niveles de la clase de monstruo, es del 1.er nivel del personaje y no de esos niveles
+ * (`esDelPrimerNivelDelPersonaje`: la dote adicional del humano y los idiomas por Inteligencia), y lo apartado. Al volver
+ * sin ningún DG no se va con ellos: se conserva y pasa al 1.er nivel nuevo con el mismo origen (contrato, «Sin ningún DG»).
+ */
+export function apartarLoDelPrimerNivel(entrada: PersonajeCreateRequestDto, idClaseDeMonstruo: number)
+    : { entrada: PersonajeCreateRequestDto; delPrimerNivel: PersonajeCreateNivelEleccionDto[]; } {
+    const delPrimerNivel: PersonajeCreateNivelEleccionDto[] = [];
+    const niveles = (entrada.niveles ?? []).map((n) => {
+        if (toInt(n?.idClase) !== toInt(idClaseDeMonstruo))
+            return n;
+        const elecciones = (n.elecciones ?? []).filter((e) => {
+            const aparte = esDelPrimerNivelDelPersonaje(e);
+            if (aparte)
+                delPrimerNivel.push({ ...e });
+            return !aparte;
+        });
+        return { ...n, elecciones };
+    });
+    return { entrada: { ...entrada, niveles }, delPrimerNivel };
+}
+
+/**
+ * Los PG del 1.er nivel que gana sin ningún DG: el máximo del dado de su clase (`caras`) con el modificador de su
+ * Constitución (`constitucion`, ya con los 2 puntos que paga con *resurrección*), al menos 1 (*Manual del jugador*, pág. 23).
+ */
+export function pgDelPrimerNivel(caras: number, constitucion: number): PgSubida {
+    const mod = modificadorCaracteristica(toInt(constitucion));
+    return puntosGolpeTrasSubida({ pgAntes: 0, modConAntes: mod, modConDespues: mod, tiradasAnteriores: [], dgsSinTirada: 0, tirada: Math.max(1, toInt(caras)) });
 }
 
 /**
@@ -333,11 +409,16 @@ export interface EntradaCambiosVuelta {
     aptitudes: Array<{ antes: string; ahora: string; }>;
     vuelvenAValer: string[];
     sinPoderUsar: string[];
+    /**
+     * Sin ningún DG, el 1.er nivel que gana: su clase, el dado (al máximo) y lo que le da (las filas de `cambiosDeLaSubida`,
+     * sin la de la clase); `null` (o sin él) si no.
+     */
+    nivelNuevo?: { clase: string; caras: number; filas: CambioPlantilla[]; } | null;
 }
 
 /**
  * «Lo que cambia» al devolverle la vida, antes de confirmar: la raza, los niveles de la clase de monstruo y lo que daban, el
- * nivel de más (o la Constitución), el NEP, los PX, el tipo, la Constitución de vuelta, las características, los PG, los
+ * nivel de más (o la Constitución), sin ningún DG el 1.er nivel que gana y lo que le da, el NEP, los PX, el tipo, la Constitución de vuelta, las características, los PG, los
  * rasgos, las aptitudes que vuelven y las dotes que vuelven a valer o se quedan sin poder usar.
  */
 export function cambiosDeLaVuelta(e: EntradaCambiosVuelta): CambioPlantilla[] {
@@ -354,16 +435,26 @@ export function cambiosDeLaVuelta(e: EntradaCambiosVuelta): CambioPlantilla[] {
         filas.push({ ...e.nivelDeMas.fila, que: 'Nivel de más', porque: 'Con resurrección, deseo o milagro pierde además el último nivel de clase que le queda (Manual del jugador, pág. 285)' });
         e.nivelDeMas.loQueDaba.forEach((f) => filas.push({ ...f, porque: 'Lo daba el nivel de más' }));
     }
+    const nuevo = e.nivelNuevo ?? null;
+    if (nuevo) {
+        filas.push({
+            que: 'Nivel ganado', antes: '—', ahora: `${nuevo.clase} 1`,
+            porque: 'Sin la clase de monstruo no le queda ningún DG: gana el 1.er nivel de una clase, como al crear',
+        });
+        filas.push(...nuevo.filas);
+    }
     filas.push({
         que: 'NEP', antes: `${e.nep.antes}`, ahora: `${e.nep.despues}`,
-        porque: e.nivelDeMas ? 'Sin la clase de monstruo y sin el nivel de más' : 'Sin la clase de monstruo',
+        porque: nuevo ? `Sin la clase de monstruo y con su 1.er nivel de ${nuevo.clase.toLowerCase()}`
+            : e.nivelDeMas ? 'Sin la clase de monstruo y sin el nivel de más' : 'Sin la clase de monstruo',
     });
     filas.push({
         que: 'PX', antes: formatoPx(e.px.antes), ahora: formatoPx(e.px.despues),
         porque: e.px.antes === e.px.despues ? 'No cambian: ya tenía menos de la mitad de su nivel'
-            : e.nivelDeMas && e.px.enMedio !== e.px.despues
-                ? `La mitad de su nivel sin la clase de monstruo (${formatoPx(e.px.enMedio)}) y otra vez sin el nivel de más (Manual del jugador, pág. 171)`
-                : 'La mitad entre el mínimo de su nivel sin la clase de monstruo y el del siguiente (Manual del jugador, pág. 171)',
+            : nuevo ? 'La mitad entre el mínimo de su nivel, ya con el 1.er nivel nuevo, y el del siguiente (Manual del jugador, pág. 171)'
+                : e.nivelDeMas && e.px.enMedio !== e.px.despues
+                    ? `La mitad de su nivel sin la clase de monstruo (${formatoPx(e.px.enMedio)}) y otra vez sin el nivel de más (Manual del jugador, pág. 171)`
+                    : 'La mitad entre el mínimo de su nivel sin la clase de monstruo y el del siguiente (Manual del jugador, pág. 171)',
     });
     const tipoA = `${e.antes?.Tipo_criatura?.Nombre ?? ''}`;
     const tipoD = `${e.despues?.Tipo_criatura?.Nombre ?? ''}`;
@@ -372,11 +463,17 @@ export function cambiosDeLaVuelta(e: EntradaCambiosVuelta): CambioPlantilla[] {
     filas.push({
         que: 'Constitución', antes: 'Sin ella', ahora: `${e.constitucion}`,
         porque: e.pierdeConstitucion
-            ? 'Recupera su puntuación y pierde 2 puntos en lugar del nivel: le queda un solo DG (Manual del jugador, pág. 285)'
+            ? `Recupera su puntuación y pierde 2 puntos en lugar del nivel: ${nuevo ? 'es de 1.er nivel' : 'le queda un solo DG'} (Manual del jugador, pág. 285)`
             : 'Recupera su puntuación: vuelve a sumar en todos sus DG',
     });
     filas.push(...filasDeCaracteristicas(e.antes, e.despues, porLaRaza).filter((f) => f.que !== 'Constitución'));
-    if (e.pg.antes !== e.pg.despues)
+    if (nuevo) {
+        const mod = modificadorCaracteristica(toInt(e.constitucion));
+        filas.push({
+            que: 'Puntos de golpe', antes: `${e.pg.antes}`, ahora: `${e.pg.despues}`,
+            porque: `Sin los DG que pierde y con el de su 1.er nivel de ${nuevo.clase.toLowerCase()} al máximo: ${nuevo.caras} ${mod < 0 ? '−' : '+'} ${Math.abs(mod)} Con (Manual del jugador, pág. 23)`,
+        });
+    } else if (e.pg.antes !== e.pg.despues)
         filas.push({
             que: 'Puntos de golpe', antes: `${e.pg.antes}`, ahora: `${e.pg.despues}`,
             porque: `Sin los DG que pierde y con la Constitución en los que le quedan${e.pg.exacto ? '' : ' (aproximado: faltan tiradas de antes)'}`,

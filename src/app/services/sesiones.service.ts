@@ -342,6 +342,7 @@ export class SesionesService {
             'No se ha podido devolver la vida al personaje.');
         const v = respuesta?.vuelta ?? {};
         const perdida = v.perdida && typeof v.perdida === 'object' ? v.perdida : null;
+        const nivelNuevo = v.nivelNuevo && typeof v.nivelNuevo === 'object' ? v.nivelNuevo : null;
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             vuelta: {
@@ -354,6 +355,7 @@ export class SesionesService {
                 nivelesQuitados: Math.max(0, toInt(v.nivelesQuitados)),
                 perdida: perdida ? { clase: leerIdNombre(perdida.clase), nivelClase: toInt(perdida.nivelClase) } : null,
                 constitucion: v.constitucion ? { antes: toInt(v.constitucion.antes), despues: toInt(v.constitucion.despues) } : null,
+                nivelNuevo: nivelNuevo ? { clase: leerIdNombre(nivelNuevo.clase) } : null,
                 nepAntes: toIntOrNull(v.nepAntes),
                 nepDespues: toIntOrNull(v.nepDespues),
                 pxAntes: toInt(v.pxAntes),

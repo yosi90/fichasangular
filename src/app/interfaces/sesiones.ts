@@ -329,7 +329,8 @@ export interface RespuestaPerdida extends RespuestaSesion {
 
 /**
  * El cuerpo de `POST /personajes/{id}/vuelta-a-la-vida` (devolver la vida a un muerto viviente de clase de monstruo,
- * *Libris Mortis*, pág. 35): la ficha completa con la raza de antes y sin los niveles de la clase de monstruo.
+ * *Libris Mortis*, pág. 35): la ficha completa con la raza de antes y sin los niveles de la clase de monstruo (sin ningún
+ * DG, con el 1.er nivel de una clase básica al final de `ficha.niveles`, sin `pg`: va al máximo).
  */
 export interface VueltaALaVidaDto {
     /** `true` con *resurrección*, *deseo* o *milagro* (pierde además un nivel); `false` con *resurrección verdadera*. */
@@ -355,6 +356,8 @@ export interface RespuestaVuelta extends RespuestaSesion {
         /** El nivel de más (*resurrección*), o `null` (sin él o con un solo DG, que pierde Constitución). */
         perdida: { clase: { id: number; nombre: string; }; nivelClase: number; } | null;
         constitucion: { antes: number; despues: number; } | null;
+        /** Sin ningún DG, el 1.er nivel que gana (su clase); `null` si no. */
+        nivelNuevo: { clase: { id: number; nombre: string; }; } | null;
         nepAntes: number | null;
         nepDespues: number | null;
         pxAntes: number;
