@@ -9,7 +9,7 @@ import { CosteAlAdquirirComponent } from 'src/app/components/sesiones/coste-al-a
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import {
-    catalogosDelNivel, politicaDeCreacionDe, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe, tomarNivelDeClase,
+    catalogosDelNivel, politicaDeCreacionDe, resolverDotesPendientes, resolverIncrementoPendiente, tiradasDeLaPolitica, tomarNivelDeClase,
 } from 'src/app/components/sesiones/pasos-con-selectores';
 import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
@@ -377,12 +377,11 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             if (!this.cuenta.sigue())
                 return;
             this.tiposPrerrequisito = modelo?.Tipos_de_prerrequisito ?? [];
-            const [politica, tiradas] = await Promise.all([
-                politicaDeCreacionDe(this.entrada, this.campanaSvc), tiradasPermitidasDe(this.entrada, this.campanaSvc),
-            ]);
+            // Una sola lectura de su campaña: las tiradas de PG y si permite las clases de monstruo.
+            const politica = await politicaDeCreacionDe(this.entrada, this.campanaSvc);
             if (!this.cuenta.sigue())
                 return;
-            this.tiradasPermitidas = tiradas;
+            this.tiradasPermitidas = tiradasDeLaPolitica(this.entrada, politica);
             this.sinClasesDeMonstruo = politica?.permitirClasesDeMonstruo === false && this.rolActor !== 'master';
             await this.evaluarOpciones(catalogo ?? []);
         } catch (error: any) {

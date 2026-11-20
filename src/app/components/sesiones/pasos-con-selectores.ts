@@ -42,9 +42,13 @@ export async function avisarPaso(titulo: string, texto: string): Promise<void> {
  * leer, una.
  */
 export async function tiradasPermitidasDe(entrada: PersonajeCreateRequestDto, campanaSvc: CampanaService): Promise<number> {
+    return tiradasDeLaPolitica(entrada, await politicaDeCreacionDe(entrada, campanaSvc));
+}
+
+/** Las tiradas de PG (`tiradasPermitidasDe`) con la política de su campaña ya leída (`politicaDeCreacionDe`). */
+export function tiradasDeLaPolitica(entrada: PersonajeCreateRequestDto, politica: Partial<CampaignCreationPolicy> | null): number {
     if (entrada.personaje?.tipo === 'pnj')
         return MAX_TIRADAS_PUNTOS_GOLPE;
-    const politica = await politicaDeCreacionDe(entrada, campanaSvc);
     return politica ? tiradasPuntosGolpe(politica.maxTiradasPuntosGolpe) : 1;
 }
 
