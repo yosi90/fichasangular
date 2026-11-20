@@ -1,8 +1,7 @@
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
 import { PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { EspecialSustituido, Raza } from 'src/app/interfaces/raza';
-import { EntradaFichaMutacion, fichaDeLaMutacion } from './adquirir-raza-mutada';
-import { dgsRacialesQueCuentan } from './nivel-personaje';
+import { EntradaFichaMutacion, fichaDeLaMutacion, nepTrasLaMutacion, RazaDelNep } from './adquirir-raza-mutada';
 import { toInt } from './normalizacion';
 import { marcarDotesSinPrerrequisitos, pxTrasPerder } from './perder-nivel';
 import { conElNivelNuevo, PgSubida, pgTrasCambioDeCon } from './subida-nivel';
@@ -45,22 +44,18 @@ export function pxTrasLaConversion(px: number, nepTrasPerder: number, pierdeNive
     return toInt(nepTrasPerder) < 1 ? 0 : pxTrasPerder(actuales, nepTrasPerder);
 }
 
-type RazaDelNep = Pick<Raza, 'Ajuste_nivel' | 'Dgs_adicionales'>;
-
 /**
  * El NEP de justo después de perder el nivel y el de después de la conversión: el de ahora con un nivel menos (si lo
  * pierde) y uno más de la clase de monstruo, y con el ajuste y los DG raciales que cuentan de la raza combinada en lugar de
- * los de su raza de antes. El guerrero enano 5 queda en 5; el gnoll (sin niveles de clase), de 3 a 4; el drow mago 1, en 3.
+ * los de su raza de antes (`nepTrasLaMutacion`). El guerrero enano 5 queda en 5; el gnoll (sin niveles de clase), de 3 a
+ * 4; el drow mago 1, en 3.
  */
 export function nepTrasLaConversion(nepAntes: number, anterior: RazaDelNep, combinada: RazaDelNep, nivelesClaseAntes: number,
     pierdeNivel: boolean): { trasPerder: number; despues: number; } {
     const perdidos = pierdeNivel ? 1 : 0;
     const trasPerder = Math.max(0, toInt(nepAntes) - perdidos);
     const nivelesDespues = Math.max(0, toInt(nivelesClaseAntes) - perdidos) + 1;
-    const dgs = (raza: RazaDelNep) => Math.max(0, toInt(raza?.Dgs_adicionales?.Cantidad));
-    const despues = trasPerder + 1 - toInt(anterior?.Ajuste_nivel) + toInt(combinada?.Ajuste_nivel)
-        - dgsRacialesQueCuentan(dgs(anterior), nivelesClaseAntes) + dgsRacialesQueCuentan(dgs(combinada), nivelesDespues);
-    return { trasPerder, despues: Math.max(0, despues) };
+    return { trasPerder, despues: nepTrasLaMutacion(trasPerder + 1, anterior, combinada, nivelesClaseAntes, nivelesDespues) };
 }
 
 /**

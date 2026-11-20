@@ -100,7 +100,7 @@ export function edadNoAdulta(edad: number, anterior: EdadesDeRaza | null | undef
     return etapa && etapa.id !== 'adulto' ? etapa.nombre : null;
 }
 
-type RazaDelNep = Pick<Raza, 'Ajuste_nivel' | 'Dgs_adicionales'>;
+export type RazaDelNep = Pick<Raza, 'Ajuste_nivel' | 'Dgs_adicionales'>;
 
 /** Los DG raciales de una raza (`Dgs_adicionales.Cantidad`). */
 function dgsRaciales(raza: RazaDelNep | null | undefined): number {
@@ -118,11 +118,13 @@ export function quitaDgRaciales(anterior: RazaDelNep | null | undefined, combina
 /**
  * El NEP tras la mutación: el de ahora con el ajuste y los DG raciales que cuentan de la combinada en lugar de los de su
  * raza de antes. Los PX no cambian: si baja (el nacido del Infierno pierde el ajuste de la base), puede subir antes
- * (*Especies salvajes*, pág. 145).
+ * (*Especies salvajes*, pág. 145). `nivelesClaseDespues`, sus niveles de clase con la combinada si cambian (la conversión
+ * en muerto viviente, `nepTrasLaConversion`); si no, los mismos.
  */
-export function nepTrasLaMutacion(nepAntes: number, anterior: RazaDelNep, combinada: RazaDelNep, nivelesClase: number): number {
+export function nepTrasLaMutacion(nepAntes: number, anterior: RazaDelNep, combinada: RazaDelNep, nivelesClase: number,
+    nivelesClaseDespues = nivelesClase): number {
     return Math.max(0, toInt(nepAntes) - toInt(anterior?.Ajuste_nivel) + toInt(combinada?.Ajuste_nivel)
-        - dgsRacialesQueCuentan(dgsRaciales(anterior), nivelesClase) + dgsRacialesQueCuentan(dgsRaciales(combinada), nivelesClase));
+        - dgsRacialesQueCuentan(dgsRaciales(anterior), nivelesClase) + dgsRacialesQueCuentan(dgsRaciales(combinada), nivelesClaseDespues));
 }
 
 /**
