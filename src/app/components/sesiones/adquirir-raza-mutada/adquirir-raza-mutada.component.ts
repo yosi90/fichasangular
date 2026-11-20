@@ -16,7 +16,7 @@ import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/p
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { Raza } from 'src/app/interfaces/raza';
 import { TipoPrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
 import { ExperienciaPersonaje, MAXIMO_CONCEPTO_RAZA_MUTADA, SesionPersonaje } from 'src/app/interfaces/sesiones';
@@ -48,6 +48,7 @@ import { claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
 import { tirarDado } from 'src/app/services/utils/dados';
 import { nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
+import { apartarLoDelPrimerNivel } from 'src/app/services/utils/niveles-creacion';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import {
     caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, FilaPerdida,
@@ -176,6 +177,11 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     /** Lo que quita el nivel que pierde (`fichaSinElNivel`) y sus filas; `null` sin niveles de clase. */
     perdida: ResultadoPerdida | null = null;
     filasPerdida: FilaPerdida[] = [];
+    /**
+     * Lo que el registro tenía en el nivel que pierde y es del 1.er nivel del personaje (la dote adicional del humano, los
+     * idiomas por Inteligencia: `apartarLoDelPrimerNivel`): no se va con él y pasa al 1.er nivel de la clase de monstruo.
+     */
+    delPrimerNivel: PersonajeCreateNivelEleccionDto[] = [];
     claseDeMonstruo: Clase | null = null;
     nivelMonstruoAplicado = false;
     daDg = true;
@@ -578,10 +584,13 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     recalcularPerdida(): void {
         this.perdida = null;
         this.filasPerdida = [];
-        const entrada = this.entrada;
-        const indice = entrada ? indiceDelNivelQueSePierde(entrada.niveles, this.idClaseElegida) : null;
-        if (!entrada || indice === null)
+        this.delPrimerNivel = [];
+        const indice = this.entrada ? indiceDelNivelQueSePierde(this.entrada.niveles, this.idClaseElegida) : null;
+        if (!this.entrada || indice === null)
             return;
+        // Con su único nivel de clase, la dote del humano y sus idiomas por Inteligencia no se van con él.
+        const { entrada, delPrimerNivel } = apartarLoDelPrimerNivel(this.entrada, (_, i) => i === indice);
+        this.delPrimerNivel = delPrimerNivel;
         const { resultado, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
             entrada, indice, dgs: this.dgs, incremento: this.incrementoElegido, dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
         });
@@ -867,7 +876,10 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
                 idRazaBase: toInt(this.anterior?.Id),
                 puntosGolpe: this.pg?.total ?? toInt(this.entrada?.personaje.puntosGolpe),
                 idClaseDeMonstruo: toInt(this.claseDeMonstruo?.Id),
-                nivel: { idClase: toInt(this.claseDeMonstruo?.Id), nivelClase: 1, elecciones: this.svc.getEleccionesDelNivelEnCurso() },
+                nivel: {
+                    idClase: toInt(this.claseDeMonstruo?.Id), nivelClase: 1,
+                    elecciones: [...this.delPrimerNivel, ...this.svc.getEleccionesDelNivelEnCurso()],
+                },
                 sustituidos: this.combinada?.Especiales_sustituidos ?? [],
                 sinPrerrequisitos: this.sinPrerrequisitos,
             });
@@ -968,6 +980,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         this.doteElegida = '';
         this.perdida = null;
         this.filasPerdida = [];
+        this.delPrimerNivel = [];
         this.claseDeMonstruo = null;
         this.nivelMonstruoAplicado = false;
         this.daDg = true;

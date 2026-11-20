@@ -1,7 +1,8 @@
+import { apartarLoDelPrimerNivel } from './niveles-creacion';
 import { fichaConConstitucionPerdida, fichaSinElNivel, filasDelNivelPerdido, indiceDelUltimoNivelDeLaClase } from './perder-nivel';
 import { especialesDevueltos } from './raza-mutacion';
 import {
-    apartarLoDelPrimerNivel, cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
+    cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
     fichaDeLaVuelta, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
     MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES, MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO, nepTrasLaVuelta, NO_SIRVEN_PARA_LA_VUELTA,
     pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas, tomoNivelesDespues,
@@ -288,7 +289,7 @@ describe('vuelta-a-la-vida', () => {
                 { tipo: 'rangos', idElemento: 40, idExtra: 0, valor: 4 },
             ]);
             const entrada: any = { personaje: {}, colecciones: { clases: [{ idClase: ENGENDRO, nivel: 1 }] }, niveles: [nivel] };
-            const { entrada: sin, delPrimerNivel } = apartarLoDelPrimerNivel(entrada, ENGENDRO);
+            const { entrada: sin, delPrimerNivel } = apartarLoDelPrimerNivel(entrada, (n) => n.idClase === ENGENDRO);
             expect(delPrimerNivel.map((e) => [e.tipo, e.idElemento])).toEqual([['dote', 30], ['idioma', 6]]);
             expect(sin.niveles![0].elecciones!.map((e) => [e.tipo, e.idElemento])).toEqual([['dote', 77], ['rangos', 40]]);
             // La entrada no cambia.

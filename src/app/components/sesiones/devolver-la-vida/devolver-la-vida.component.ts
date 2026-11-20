@@ -43,9 +43,10 @@ import { fichaDeLaSubida } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida } from 'src/app/services/utils/subida-nivel-vista';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
+import { apartarLoDelPrimerNivel } from 'src/app/services/utils/niveles-creacion';
 import { campanaDejaSaltarAlineamiento } from 'src/app/services/utils/politica-campana';
 import {
-    apartarLoDelPrimerNivel, cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, EstadoDeLaVuelta, especialesDeLasTablas,
+    cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, EstadoDeLaVuelta, especialesDeLasTablas,
     estadoDeLaVuelta, fichaDeLaVuelta, MedioDeLaVuelta, MEDIOS_DE_LA_VUELTA, nepTrasLaVuelta,
     NO_SIRVEN_PARA_LA_VUELTA, pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas,
 } from 'src/app/services/utils/vuelta-a-la-vida';
@@ -479,7 +480,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const pjAntes: Personaje = JSON.parse(JSON.stringify(svc.PersonajeCreacion));
         const rotasAntes = svc.dotesSinSusPrerrequisitos();
         const nombres = nombresDeLaFicha(svc, this.pj, entrada);
-        const apartado = estado.ganaNivel ? apartarLoDelPrimerNivel(entrada, clase.Id) : { entrada, delPrimerNivel: [] };
+        const apartado = estado.ganaNivel ? apartarLoDelPrimerNivel(entrada, (n) => toInt(n?.idClase) === toInt(clase.Id)) : { entrada, delPrimerNivel: [] };
 
         let ficha = apartado.entrada;
         let dgs = this.dgs;

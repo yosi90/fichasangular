@@ -1,6 +1,6 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { NivelPerdido } from 'src/app/interfaces/sesiones';
 import { EspecialSustituido } from 'src/app/interfaces/raza';
 import { CambioPlantilla, filasDeCaracteristicas, filasDeRasgosRaciales, filasDelTipo, filasSinPoderUsar } from './adquirir-plantilla';
@@ -13,7 +13,6 @@ import { toInt } from './normalizacion';
 import {
     CONSTITUCION_PERDIDA, FilaPerdida, marcarDotesSinPrerrequisitos, ordenConocido, ordenPorConocer, pxTrasPerder, quitadoVacio, ResultadoPerdida,
 } from './perder-nivel';
-import { esDelPrimerNivelDelPersonaje } from './niveles-creacion';
 import { especialesDevueltos } from './raza-mutacion';
 import { formatoPx } from './sesiones-texto';
 import { diferencia, fichaConLoDelMotor, pgTrasCambioDeCon, PgSubida, puntosGolpeTrasSubida } from './subida-nivel';
@@ -174,28 +173,6 @@ export function restringidasCerradasAlVolver(d: {
             + `${`${clase.Nombre ?? ''}`.trim().toLowerCase()}, aunque los pierda (Manual del jugador, págs. 52 y 55).`);
     });
     return cerradas;
-}
-
-/**
- * La `entrada` sin lo que, en los niveles de la clase de monstruo, es del 1.er nivel del personaje y no de esos niveles
- * (`esDelPrimerNivelDelPersonaje`: la dote adicional del humano y los idiomas por Inteligencia), y lo apartado. Al volver
- * sin ningún DG no se va con ellos: se conserva y pasa al 1.er nivel nuevo con el mismo origen (contrato, «Sin ningún DG»).
- */
-export function apartarLoDelPrimerNivel(entrada: PersonajeCreateRequestDto, idClaseDeMonstruo: number)
-    : { entrada: PersonajeCreateRequestDto; delPrimerNivel: PersonajeCreateNivelEleccionDto[]; } {
-    const delPrimerNivel: PersonajeCreateNivelEleccionDto[] = [];
-    const niveles = (entrada.niveles ?? []).map((n) => {
-        if (toInt(n?.idClase) !== toInt(idClaseDeMonstruo))
-            return n;
-        const elecciones = (n.elecciones ?? []).filter((e) => {
-            const aparte = esDelPrimerNivelDelPersonaje(e);
-            if (aparte)
-                delPrimerNivel.push({ ...e });
-            return !aparte;
-        });
-        return { ...n, elecciones };
-    });
-    return { entrada: { ...entrada, niveles }, delPrimerNivel };
 }
 
 /**

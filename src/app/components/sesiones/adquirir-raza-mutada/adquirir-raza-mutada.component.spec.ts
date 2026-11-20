@@ -286,6 +286,48 @@ describe('AdquirirRazaMutadaComponent (adquirir una raza mutada, fase 7)', () =>
             expect(cuerpo.ficha.personaje.puntosGolpe).toBe(12);
         });
 
+        it('el humano guerrero 1 conserva su dote adicional y sus idiomas por Inteligencia: pasan al 1.er nivel del engendro', async () => {
+            const HUMANO = { idDote: 30, idExtra: 0, origen: 'Dote adicional de raza: Humano' };
+            const entrada: any = enanoGuerrero([nivel(1, 10, [
+                { tipo: 'dote', idElemento: 1, idExtra: 0, origen: 'Nivel 1' },
+                { tipo: 'dote', idElemento: 30, idExtra: 0, origen: HUMANO.origen },
+                { tipo: 'idioma', idElemento: 6, origen: 'Idiomas iniciales' },
+            ])], 12);
+            entrada.colecciones.dotes = [{ idDote: 1, idExtra: 0, origen: 'Nivel 1' }, HUMANO];
+            entrada.colecciones.idiomas = [{ idIdioma: 1 }, { idIdioma: 6 }];
+            const { antes, despues } = cuerpos();
+            [antes, despues].forEach((c: any) => {
+                c.colecciones.dotes = c.colecciones.dotes.filter((d: any) => d.idDote !== 5).concat(HUMANO);
+                c.colecciones.idiomas.push({ idIdioma: 6 });
+            });
+            const componente = await preparada(entrada, despues);
+            componente.motor.loQueDabanLasDotes = () => null;
+            componente.svc.claseDelCatalogo = () => claseGuerrero;
+            componente.svc.carasDadoGolpeDeClase = () => 10;
+            componente.pj = { Nivel_personaje: 1 };
+
+            componente.recalcularPerdida();
+
+            // Pierde la dote de su nivel, no la de su raza ni sus idiomas.
+            expect(componente.perdida.quitado.dotes).toEqual([{ idDote: 1, idExtra: 0 }]);
+            expect(componente.perdida.quitado.idiomas).toEqual([]);
+            expect(componente.perdida.ficha.colecciones.dotes).toEqual([HUMANO]);
+            expect(componente.filasPerdida.map((f: any) => f.que)).not.toContain('Idiomas');
+
+            componente.antesConversion = antes;
+            componente.primerDg = true;
+            componente.pg = { total: 12, delNivel: 12, retroactivo: 0, exacto: true };
+            componente.idClaseElegida = GUERRERO;
+            await componente.guardar();
+
+            const [, cuerpo]: [number, any] = sesiones.adquirirRazaMutada.calls.mostRecent().args;
+            expect(cuerpo.ficha.colecciones.dotes).toContain(jasmine.objectContaining({ idDote: 30, origen: HUMANO.origen }));
+            expect(cuerpo.ficha.niveles.length).toBe(1);
+            expect(cuerpo.ficha.niveles[0].idClase).toBe(ENGENDRO);
+            expect(cuerpo.ficha.niveles[0].elecciones.slice(0, 2).map((e: any) => [e.tipo, e.idElemento, e.origen]))
+                .toEqual([['dote', 30, HUMANO.origen], ['idioma', 6, 'Idiomas iniciales']]);
+        });
+
         it('la cabecera y el botón dicen que se convierte en muerto viviente', async () => {
             const componente = await preparada(enanoGuerrero([nivel(1, 10)], 12), {});
             componente.pj = { Nombre: 'Tordek', Nivel_personaje: 1 };

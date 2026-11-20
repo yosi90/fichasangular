@@ -1,6 +1,7 @@
 import {
     PersonajeCreateNivelDto,
     PersonajeCreateNivelEleccionDto,
+    PersonajeCreateRequestDto,
     PersonajeProgresionLanzadorSeleccionDto,
 } from 'src/app/interfaces/personajes-api';
 import { toInt } from 'src/app/services/utils/normalizacion';
@@ -33,6 +34,30 @@ export function esDelPrimerNivelDelPersonaje(eleccion: Pick<PersonajeCreateNivel
     const origen = `${eleccion?.origen ?? ''}`.trim();
     return (eleccion?.tipo === 'dote' && origen.startsWith(ORIGEN_DOTE_ADICIONAL_DE_RAZA))
         || (eleccion?.tipo === 'idioma' && origen === ORIGEN_IDIOMAS_INICIALES);
+}
+
+/**
+ * La `entrada` sin lo que, en los niveles que se van a quitar (`seQuita`), es del 1.er nivel del personaje y no de esos
+ * niveles (`esDelPrimerNivelDelPersonaje`: la dote adicional del humano y los idiomas por Inteligencia), y lo apartado. No
+ * se va con ellos: se conserva y pasa al 1.er nivel nuevo con el mismo origen. Lo usan la vuelta a la vida sin ningún DG
+ * (los niveles de la clase de monstruo) y la conversión en muerto viviente que pierde su único nivel de clase (contrato,
+ * «Devolver la vida a un muerto viviente» y «Convertirse en muerto viviente»).
+ */
+export function apartarLoDelPrimerNivel(entrada: PersonajeCreateRequestDto, seQuita: (nivel: PersonajeCreateNivelDto, indice: number) => boolean)
+    : { entrada: PersonajeCreateRequestDto; delPrimerNivel: PersonajeCreateNivelEleccionDto[]; } {
+    const delPrimerNivel: PersonajeCreateNivelEleccionDto[] = [];
+    const niveles = (entrada.niveles ?? []).map((n, i) => {
+        if (!seQuita(n, i))
+            return n;
+        const elecciones = (n.elecciones ?? []).filter((e) => {
+            const aparte = esDelPrimerNivelDelPersonaje(e);
+            if (aparte)
+                delPrimerNivel.push({ ...e });
+            return !aparte;
+        });
+        return { ...n, elecciones };
+    });
+    return { entrada: { ...entrada, niveles }, delPrimerNivel };
 }
 
 /** Un nivel tomado: el n-ésimo de su clase, con lo que se eligió en él. */
