@@ -24,9 +24,11 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { CategoriaEdadService } from 'src/app/services/categoria-edad.service';
+import { EspecialService } from 'src/app/services/especial.service';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { NuevaRazaComponent } from './nueva-raza.component';
+import { campoDeErrorApi } from '../insercion-marco/errores-de-formulario';
 import { ModeloMutacion } from 'src/app/interfaces/razas-api';
 
 function tipoMutacion(Clave: string, Nombre: string, Sujeto: 'raza_base' | 'personaje' | 'creacion', Catalogo: string | null,
@@ -88,6 +90,9 @@ const CATEGORIAS_EDAD = [
     { Id: 12, Nombre: 'Gran sierpe', Orden_tipico: 12, Oficial: true, Manual: { Id: 1, Nombre: 'Manual base', Pagina: 74 } },
 ];
 
+/** Las aptitudes de `GET /especiales` que usa el paso «Mutación» (las que sustituye una raza mutada). */
+const ESPECIALES_DE_PRUEBA = [{ Id: 31, Nombre: 'Expulsar muertos vivientes' }, { Id: 32, Nombre: 'Reprender muertos vivientes' }] as any[];
+
 describe('NuevaRazaComponent', () => {
     let fixture: ComponentFixture<NuevaRazaComponent>;
     let component: NuevaRazaComponent;
@@ -126,6 +131,7 @@ describe('NuevaRazaComponent', () => {
             providers: [
                 { provide: RazaService, useValue: razaSvc },
                 { provide: PrerrequisitosTiposService, useValue: { cargar: () => Promise.resolve() } },
+                { provide: EspecialService, useValue: { getEspeciales: () => of(ESPECIALES_DE_PRUEBA) } },
                 { provide: CategoriaEdadService, useValue: { getCategoriasEdad: () => of(CATEGORIAS_EDAD) } },
                 { provide: UserService, useValue: {
                     acl$: acl$.asObservable(),
@@ -531,6 +537,30 @@ describe('NuevaRazaComponent', () => {
         expect(component.buildPayload().raza.coste_al_adquirir).toEqual({ px: 0, po: 12.35 });
         component.form.patchValue({ mutada: false, coste_px: 300, coste_po: 100 });
         expect(component.buildPayload().raza.coste_al_adquirir).toBeUndefined();
+    });
+
+    it('las aptitudes que sustituye una raza mutada van en raza.especiales_sustituidos; sin la nueva, no deja guardar; sin mutar, no se manda', () => {
+        component.form.patchValue({ mutada: true });
+        expect(component.buildPayload().raza.especiales_sustituidos).toEqual([]);
+        component.anadirSustitucion(31);
+        expect(component.especialesSustituidos.map((f) => [f.id, f.nombre, f.idNuevo])).toEqual([[31, 'Expulsar muertos vivientes', null]]);
+        // La nueva no puede ser la misma.
+        expect(component.opcionesEspecialNuevo(component.especialesSustituidos[0]).map((o) => o.id)).toEqual([32]);
+        expect((component as any).validarReglasDominio()).toBe('Elige la aptitud que pasa a dar en lugar de «Expulsar muertos vivientes».');
+        component.elegirEspecialNuevo(component.especialesSustituidos[0], 32);
+        expect((component as any).validarReglasDominio()).toBeNull();
+        expect(component.buildPayload().raza.especiales_sustituidos).toEqual([{ id_especial: 31, id_especial_nuevo: 32 }]);
+        component.quitarSustitucion(component.especialesSustituidos[0]);
+        expect(component.buildPayload().raza.especiales_sustituidos).toEqual([]);
+        component.anadirSustitucion(31);
+        component.form.patchValue({ mutada: false });
+        expect(component.buildPayload().raza.especiales_sustituidos).toBeUndefined();
+    });
+
+    it('el error de la API en una aptitud sustituida se enseña en el paso «Mutación»', () => {
+        const campos = (component as any).errores.opciones.campos;
+        expect(campoDeErrorApi('raza.especiales_sustituidos[0].id_especial_nuevo', campos, 'raza')).toBe('especiales_sustituidos');
+        expect(campos['especiales_sustituidos'].paso).toBe(5);
     });
 
     it('no envia prerrequisitos ni cambios de mutación cuando no es mutada', () => {
@@ -1376,6 +1406,15 @@ describe('NuevaRazaComponent', () => {
             expect(component.form.controls.fortaleza.enabled).toBeTrue();
             component.form.patchValue({ fortaleza: 3 });
             expect(component.buildPayload().raza.fortaleza).toBe(3);
+        });
+
+        it('al modificar una raza mutada, las aptitudes que sustituye salen de la API y se vuelven a mandar', async () => {
+            await crearEnModificar(razaDeLaApi({
+                Mutada: true,
+                Especiales_sustituidos: [{ Especial: { Id: 31, Nombre: 'Expulsar muertos vivientes' }, Especial_nuevo: { Id: 32, Nombre: 'Reprender muertos vivientes' } }],
+            }));
+            expect(component.especialesSustituidos.map((f) => [f.id, f.idNuevo])).toEqual([[31, 32]]);
+            expect(component.buildPayload().raza.especiales_sustituidos).toEqual([{ id_especial: 31, id_especial_nuevo: 32 }]);
         });
 
         it('al modificar una raza mutada, su coste al adquirir sale de la API y se vuelve a mandar', async () => {

@@ -63,6 +63,7 @@ import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-ma
 import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { FilaDeLista, anadirALista, filasDeIds } from '../lista-de-catalogo/lista-de-catalogo.component';
+import { EspecialService } from 'src/app/services/especial.service';
 import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
 import { buildManiobrabilidadInfoSecciones } from 'src/app/services/utils/maniobrabilidad-info';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
@@ -358,7 +359,16 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     prerrequisitos_mutacion: { etiqueta: 'Prerrequisitos de mutación', paso: 5 },
     cambios_mutacion: { etiqueta: 'Cambios sobre la raza base', paso: 5 },
     coste_al_adquirir: { etiqueta: 'Lo que cuesta adquirirla', paso: 5 },
+    especiales_sustituidos: { etiqueta: 'Las aptitudes que sustituye', paso: 5 },
 };
+
+/**
+ * Una aptitud de clase que sustituye una raza mutada (`especiales_sustituidos`): la de antes (`id`, la fila de la lista) y
+ * la que la reemplaza (`idNuevo`, vacía hasta elegirla).
+ */
+export interface FilaSustitucion extends FilaDeLista {
+    idNuevo: number | null;
+}
 
 
 @Component({
@@ -439,6 +449,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     dominios: DominioDetalle[] = [];
     opcionesManuales: OpcionCatalogo[] = [];
     opcionesClasesLanzamiento: OpcionCatalogo[] = [];
+    /** Las aptitudes de clase del catálogo (`GET /especiales`): las que sustituye una raza mutada. */
+    opcionesEspeciales: OpcionCatalogo[] = [];
     opcionesClasesAsociadas: OpcionCatalogo[] = [];
     /** Las demás clases predilectas: cualquier clase de verdad (ni «Cualquiera» ni «Ninguna»). */
     opcionesClasesPredilectasExtra: OpcionCatalogo[] = [];
@@ -602,6 +614,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         // Lo que cuesta adquirir la raza mutada con el personaje ya creado (van en `coste_al_adquirir`).
         coste_px: [0, [Validators.min(0)]],
         coste_po: [0, [Validators.min(0)]],
+        // Las aptitudes de clase que sustituye (van en `especiales_sustituidos`; Libris Mortis, pág. 35).
+        especiales_sustituidos: [[] as FilaSustitucion[]],
         id_alineamiento: [0, [this.alineamientoResueltoValidator()]],
         alineamiento_modo: ['basico' as AlineamientoModo],
         id_alineamiento_basico: [0],
@@ -643,6 +657,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         private grupoArmaduraSvc: GrupoArmaduraService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
         private categoriaEdadSvc: CategoriaEdadService,
+        private especialSvc: EspecialService,
     ) { }
 
     ngOnInit(): void {
@@ -859,6 +874,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 // él, el alta lo deja en 0 y la edición conserva el que tiene (una que no es mutada lee 0).
                 ...(esMutada ? {
                     coste_al_adquirir: costeAlAdquirirParaGuardar(raw.coste_px, raw.coste_po),
+                    // Las aptitudes que sustituye, siempre en una mutada: modificar sin tocarlas manda las que llegaron.
+                    especiales_sustituidos: this.especialesSustituidos
+                        .filter((fila) => fila.id > 0 && this.numero(fila.idNuevo) > 0)
+                        .map((fila) => ({ id_especial: fila.id, id_especial_nuevo: this.numero(fila.idNuevo) })),
                 } : {}),
                 id_alineamiento: this.numero(raw.id_alineamiento),
                 oficial: raw.oficial === true,
@@ -1353,6 +1372,39 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     get clasesAsociadas(): FilaDeLista[] {
         return this.form.controls.clases_asociadas.value ?? [];
+    }
+
+    /** Las aptitudes de clase que sustituye una raza mutada (el engendro vampírico: reprender en lugar de expulsar). */
+    get especialesSustituidos(): FilaSustitucion[] {
+        return this.form.controls.especiales_sustituidos.value ?? [];
+    }
+
+    /** Las aptitudes que puede poner en lugar de la de `fila`: todas menos ella. */
+    opcionesEspecialNuevo(fila: FilaDeLista): OpcionCatalogo[] {
+        return this.opcionesEspeciales.filter((opcion) => opcion.id !== fila.id);
+    }
+
+    /** La fila con su aptitud nueva (`FilaSustitucion`), desde la de `<app-lista-de-catalogo>`. */
+    comoSustitucion(fila: FilaDeLista): FilaSustitucion {
+        return fila as FilaSustitucion;
+    }
+
+    anadirSustitucion(id: number): void {
+        this.cambiarSustituciones(anadirALista(this.especialesSustituidos, this.opcionesEspeciales, id,
+            (opcion) => ({ id: opcion.id, nombre: opcion.nombre, idNuevo: null })));
+    }
+
+    quitarSustitucion(fila: FilaDeLista): void {
+        this.cambiarSustituciones(this.especialesSustituidos.filter((actual) => actual !== fila));
+    }
+
+    elegirEspecialNuevo(fila: FilaDeLista, id: number): void {
+        this.cambiarSustituciones(this.especialesSustituidos.map((actual) => actual === fila ? { ...actual, idNuevo: id > 0 ? id : null } : actual));
+    }
+
+    private cambiarSustituciones(filas: FilaSustitucion[]): void {
+        this.form.controls.especiales_sustituidos.setValue(filas);
+        this.form.controls.especiales_sustituidos.markAsDirty();
     }
 
     /** Las clases predilectas además de la principal (no cuentan para la penalización de PX por multiclase). */
@@ -2194,6 +2246,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.opcionesDominios = opcionesDeCatalogo(this.dominios);
             }, error: () => this.dominios = [] });
 
+        this.especialSvc.getEspeciales()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({ next: (especiales) => this.opcionesEspeciales = opcionesDeCatalogo(this.ordenar(especiales ?? [])), error: () => this.opcionesEspeciales = [] });
+
         this.tamanoSvc.getTamanos()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (tamanos) => {
@@ -2654,6 +2710,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             if (this.operacionConElementos(row.operacion) && idsUnicosOrdenados(row.elementos).length < 1)
                 return 'Elige qué elementos de la raza base se quitan o se conservan.';
         }
+        const sinNueva = this.especialesSustituidos.find((fila) => this.numero(fila.idNuevo) <= 0);
+        if (sinNueva)
+            return `Elige la aptitud que pasa a dar en lugar de «${sinNueva.nombre || nombreDeOpcion(this.opcionesEspeciales, sinNueva.id)}».`;
         return null;
     }
 
@@ -2880,6 +2939,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             mutada: false,
             coste_px: 0,
             coste_po: 0,
+            especiales_sustituidos: [],
             id_alineamiento: 0,
             alineamiento_modo: 'basico',
             id_alineamiento_basico: 0,
@@ -3016,6 +3076,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             mutada: raza.Mutada === true,
             coste_px: this.numero(raza.Coste_al_adquirir?.Px),
             coste_po: toNumberOrNull(raza.Coste_al_adquirir?.Po) ?? 0,
+            especiales_sustituidos: (raza.Especiales_sustituidos ?? []).map((s) => ({
+                id: this.numero(s.Especial?.Id), nombre: `${s.Especial?.Nombre ?? ''}`, idNuevo: this.numero(s.Especial_nuevo?.Id),
+            })),
             ...alineamiento,
             oficial: raza.Oficial === true,
             id_clase_lanzamiento: this.numero(raza.Lanzamiento?.Clase?.Id),
