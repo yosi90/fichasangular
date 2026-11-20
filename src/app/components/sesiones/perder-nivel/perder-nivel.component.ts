@@ -14,7 +14,7 @@ import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service'
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
-import { CARACTERISTICAS_DEL_ALTA } from 'src/app/services/utils/correccion-ficha';
+import { caracteristicaDelAlta } from 'src/app/services/utils/correccion-ficha';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
     CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave,
@@ -254,7 +254,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         const { resultado, nivel, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
             entrada, indice, dgs: this.dgs, incremento: this.incrementoElegido, dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
         });
-        const caracteristicaQueBaja = resultado.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[resultado.quitado.incremento - 1]?.[1] : null;
+        const caracteristicaQueBaja = resultado.quitado.incremento !== null ? caracteristicaDelAlta(resultado.quitado.incremento)?.[1] : null;
         this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({
             idClase: nivel.idClase,
             ataqueBase: resultado.ataqueBase.despues,

@@ -32,8 +32,8 @@ import { CambioPlantilla } from 'src/app/services/utils/adquirir-plantilla';
 import { MOMENTO_DESPUES, puntosDevueltos } from 'src/app/services/utils/adquirir-raza-mutada';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje, dgsDeClase } from 'src/app/services/utils/clase-niveles';
-import { CARACTERISTICAS_DEL_ALTA } from 'src/app/services/utils/correccion-ficha';
-import { idExtraHabilidadParaGuardar, mismoExtraDeHabilidad, nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
+import { caracteristicaDelAlta } from 'src/app/services/utils/correccion-ficha';
+import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import { limiteRangosHabilidad } from 'src/app/services/utils/puntos-habilidad';
 import { clasesQueDejanDeCumplir, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
@@ -53,7 +53,7 @@ import { campanaDejaSaltarAlineamiento } from 'src/app/services/utils/politica-c
 import {
     cambiosDeLaVuelta, claveDelNivel, conLaConstitucionDeVuelta, dgsAntesDeSusNiveles, eleccionesApuntadas, esClaseParaVolverSinDg,
     EstadoDeLaVuelta, especialesDeLasTablas, estadoDeLaVuelta, fichaDeLaVuelta, MedioDeLaVuelta, MEDIOS_DE_LA_VUELTA, nepTrasLaVuelta,
-    NivelDePersonaje, nivelesDePersonaje, NO_SIRVEN_PARA_LA_VUELTA, pgDelPrimerDg, pgDelPrimerNivel, primerDgTrasRenumerar, puntosDelPrimerDg, pxTrasLaVuelta,
+    NivelDePersonaje, nivelesDeOtraClaseDespues, nivelesDePersonaje, NO_SIRVEN_PARA_LA_VUELTA, pgDelPrimerDg, pgDelPrimerNivel, primerDgTrasRenumerar, puntosDelPrimerDg, pxTrasLaVuelta,
     rangosQueSobran, recuentoPorNivelDePersonaje, restringidasCerradasAlVolver, ResumenRenumerado, sumarPerdidas,
 } from 'src/app/services/utils/vuelta-a-la-vida';
 
@@ -619,11 +619,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
     get quedanNivelesDespues(): boolean {
         if (!this.estado?.conNivelesDespues)
             return false;
-        const id = toInt(this.claseDeMonstruo?.Id);
-        const niveles = this.entrada?.niveles ?? [];
-        const primera = niveles.findIndex((n) => toInt(n?.idClase) === id);
-        const despues = niveles.slice(primera + 1).filter((n) => toInt(n?.idClase) !== id).length;
-        return despues > (this.pierdeOtroNivel ? 1 : 0);
+        return nivelesDeOtraClaseDespues(this.entrada?.niveles, toInt(this.claseDeMonstruo?.Id)).length > (this.pierdeOtroNivel ? 1 : 0);
     }
 
     /** Sus niveles de clase de ahora (con los de la clase de monstruo). */
@@ -689,9 +685,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const nombres = tras.sin.nombres;
 
         // Los de después (los que se quedan detrás del primero de la clase de monstruo), con su nivel de personaje.
-        const idMonstruo = toInt(this.claseDeMonstruo!.Id);
-        const primera = (entrada.niveles ?? []).findIndex((n) => toInt(n?.idClase) === idMonstruo);
-        const deDespues = new Set((entrada.niveles ?? []).slice(primera + 1).filter((n) => toInt(n?.idClase) !== idMonstruo).map(claveDelNivel));
+        const deDespues = new Set(nivelesDeOtraClaseDespues(entrada.niveles, toInt(this.claseDeMonstruo!.Id)).map(claveDelNivel));
         const despues = ahora.filter((n) => deDespues.has(claveDelNivel(n)));
         const tramo = (n: NivelDePersonaje) => ({ antes: toInt(antes.get(claveDelNivel(n))?.nivelPersonaje), ahora: n.nivelPersonaje });
         const resumen: ResumenRenumerado = {
@@ -720,7 +714,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         if (sobraIncremento) {
             const e = sobraIncremento.eleccion;
             const valor = Math.max(1, toInt(e.valor));
-            const [clave, caracteristica] = CARACTERISTICAS_DEL_ALTA[toInt(e.idElemento) - 1] ?? [];
+            const [clave, caracteristica] = caracteristicaDelAlta(e.idElemento) ?? [];
             if (clave && caracteristica) {
                 const actual = toInt((svc.PersonajeCreacion as any)[caracteristica]);
                 resumen.incrementoPerdido = {
@@ -760,9 +754,8 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         // Los rangos que pasan del máximo con el nivel nuevo, desde los últimos niveles hacia atrás: sus puntos vuelven a ese nivel.
         const habilidades = (svc.PersonajeCreacion.Habilidades ?? []).filter((h) => toInt(h?.Id) > 0 && !h?.Custom && toInt(h?.Rangos) > 0);
         const extraDe = (h: (typeof habilidades)[number]) => Math.max(0, idExtraHabilidadParaGuardar(h));
-        const habilidadDe = (id: number, idExtra: number) => habilidades.find((h) => toInt(h.Id) === id && mismoExtraDeHabilidad(extraDe(h), idExtra));
         const coste = (indice: number, id: number, idExtra: number) => {
-            const h = habilidadDe(id, idExtra);
+            const h = svc.habilidadDeLaEleccion(id, idExtra);
             const clase = claseDe(toInt(ficha.niveles?.[indice]?.idClase));
             return h && clase && svc.esHabilidadDeClaseDe(h, clase) ? 1 : 2;
         };
@@ -774,7 +767,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         ficha.niveles = enLaFicha.niveles;
         new Set(enElMotor.quitados.map((q) => q.indice)).forEach((i) => svc.fijarEleccionesDelNivel(i, enElMotor.niveles[i].elecciones ?? []));
         enLaFicha.quitados.forEach((q) => {
-            const h = habilidadDe(q.idHabilidad, q.idExtra);
+            const h = svc.habilidadDeLaEleccion(q.idHabilidad, q.idExtra);
             if (h)
                 h.Rangos = Math.max(0, toInt(h.Rangos) - q.rangos);
             resumen.rangosQuitados.push({ nombre: h ? nombreDeHabilidadConExtra(h) : `Habilidad ${q.idHabilidad}`, rangos: q.rangos, nivel: this.etiquetaDelNivel(ficha, q.indice) });
@@ -861,8 +854,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         this.apuntarEnLaFicha(nuevas);
         const reparto = r.repartos[r.reparto];
         (nuevas[reparto.indice] ?? []).filter((e) => e.tipo === 'rangos').forEach((e) => {
-            const h = (svc.PersonajeCreacion.Habilidades ?? []).find((x) => toInt(x?.Id) === toInt(e.idElemento) && !x?.Custom
-                && mismoExtraDeHabilidad(idExtraHabilidadParaGuardar(x), e.idExtra));
+            const h = svc.habilidadDeLaEleccion(e.idElemento, e.idExtra);
             r.resumen.rangosRepartidos.push({ nombre: h ? nombreDeHabilidadConExtra(h) : `Habilidad ${toInt(e.idElemento)}`, rangos: toInt(e.valor), nivel: reparto.etiqueta });
         });
         r.empezado = true;
@@ -887,7 +879,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const nuevas = eleccionesApuntadas(antes, svc.getOrdenNiveles());
         this.apuntarEnLaFicha(nuevas);
         const e = (nuevas[r.incremento.indice] ?? []).find((x) => x.tipo === 'incremento');
-        const [clave, caracteristica] = CARACTERISTICAS_DEL_ALTA[toInt(e?.idElemento) - 1] ?? [];
+        const [clave, caracteristica] = caracteristicaDelAlta(e?.idElemento) ?? [];
         if (e && caracteristica) {
             r.resumen.incrementoElegido = { nombre: NOMBRES_CARACTERISTICAS[caracteristica], nivelPersonaje: r.incremento.nivelPersonaje };
             if (clave === 'constitucion')
