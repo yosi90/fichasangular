@@ -25,6 +25,9 @@ import { PlantillaService } from 'src/app/services/plantilla.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
+import { MOTIVO_SIN_CONSTITUCION } from 'src/app/services/utils/conversion-muerto-viviente';
+import { fichaSinElNivel } from 'src/app/services/utils/perder-nivel';
+import { claseGuerrero, cuerpos, enanoGuerrero, ENGENDRO, GUERRERO, nivel, SUSTITUIDOS } from 'src/testing/conversion-muerto-viviente';
 import { NACIDO_DEL_INFIERNO_SOBRE_HUMANO_API, PROLE_SOBRE_API, RAZAS_API } from 'src/testing/razas-mutadas-api';
 import { AdquirirRazaMutadaComponent } from './adquirir-raza-mutada.component';
 
@@ -154,6 +157,30 @@ describe('AdquirirRazaMutadaComponent (adquirir una raza mutada, fase 7)', () =>
             expect((await componente.evaluar(PROLE, MEDIANO, false)).estado).toBe('elegible');
         });
 
+        it('convertirse en muerto viviente: sin Constitución (su tipo o su ficha), no disponible; con ella, sí', async () => {
+            const componente = await preparado();
+            componente.svc.PersonajeCreacion.Tipo_criatura = { Id: HUMANOIDE, Nombre: 'Humanoide' };
+            const engendro = { ...PROLE, Id: 1009, Nombre: 'Engendro vampírico', Clase_de_monstruo: { Id: ENGENDRO, Nombre: 'Engendro vampírico' } };
+            componente.entrada.caracteristicas = { constitucion: { valor: 14, minimo: 0, perdido: false } };
+            expect((await componente.evaluar(engendro, MEDIANO, false)).estado).toBe('elegible');
+            componente.entrada.caracteristicas = { constitucion: { valor: 14, minimo: 0, perdido: true } };
+            const sinCon = await componente.evaluar(engendro, MEDIANO, false);
+            expect(sinCon.estado).toBe('bloqueada');
+            expect(sinCon.motivo).toContain(MOTIVO_SIN_CONSTITUCION);
+            // La prole no es una conversión: la Constitución no le importa.
+            expect((await componente.evaluar(PROLE, MEDIANO, false)).estado).toBe('elegible');
+        });
+
+        it('convertirse en muerto viviente en una campaña que no permite las clases de monstruo: no disponible, con su motivo', async () => {
+            const componente = await preparado();
+            componente.svc.PersonajeCreacion.Tipo_criatura = { Id: HUMANOIDE, Nombre: 'Humanoide' };
+            componente.sinClasesDeMonstruo = true;
+            const engendro = { ...PROLE, Id: 1009, Nombre: 'Engendro vampírico', Clase_de_monstruo: { Id: ENGENDRO, Nombre: 'Engendro vampírico' } };
+            const opcion = await componente.evaluar(engendro, MEDIANO, false);
+            expect(opcion.estado).toBe('bloqueada');
+            expect(opcion.motivo).toContain('La campaña no permite las clases de monstruo');
+        });
+
         it('una base que la API no admite, con su error', async () => {
             const componente = await preparado();
             razas.getRazaSobreBase.and.rejectWith(new Error('La raza base no cumple lo que pide la raza mutada.'));
@@ -171,5 +198,95 @@ describe('AdquirirRazaMutadaComponent (adquirir una raza mutada, fase 7)', () =>
         expect(componente.pasoDelError('idRaza', 'experiencia_insuficiente')).toBe('resumen');
         expect(componente.pasoDelError('ficha.personaje.edad', 'mutacion_edad_no_adulta')).toBe('resumen');
         expect(componente.pasoDelError('ficha.personaje.idRazaBase', 'mutacion_no_cuadra')).toBe('resumen');
+        // La conversión: la tirada del d12, en los PG; la clase que pierde el nivel, en el nivel; las clases, en el resumen.
+        componente.pasos = ['raza', 'nivel', 'pg', 'resumen'];
+        expect(componente.pasoDelError('pg.tirada', 'tirada_no_valida')).toBe('pg');
+        expect(componente.pasoDelError('idClase', 'perdida_clase_no_cuadra')).toBe('nivel');
+        expect(componente.pasoDelError('idRaza', 'conversion_sin_constitucion')).toBe('raza');
+        expect(componente.pasoDelError('ficha.colecciones.clases', 'conversion_clases_no_cuadra')).toBe('resumen');
+    });
+
+    describe('convertirse en muerto viviente: el cuerpo que se manda', () => {
+        const ENGENDRO_RAZA = {
+            raza: { Id: 1009, Nombre: 'Engendro vampírico', Clase_de_monstruo: { Id: ENGENDRO, Nombre: 'Engendro vampírico' }, Coste_al_adquirir: { Px: 0, Po: 0 } },
+            combinada: { Id: 1009, Nombre: 'Engendro vampírico', Clase_de_monstruo: { Id: ENGENDRO, Nombre: 'Engendro vampírico' }, Especiales_sustituidos: SUSTITUIDOS },
+            estado: 'elegible', motivo: '', avisos: [],
+        };
+
+        async function preparada(entrada: any, despues: any): Promise<any> {
+            const componente: any = await crear({}, {
+                cargarSesionDeJuego: async () => { throw new Error('Sin la sesión en la prueba.'); },
+                cuerpoDelMotor: () => despues,
+            } as any);
+            sesiones.adquirirRazaMutada.and.resolveTo({} as any);
+            Object.assign(componente, {
+                elegida: ENGENDRO_RAZA, anterior: { Id: 2, Nombre: 'Enano' }, entrada, sesion: { numero: 3, version: 'v7' },
+                claseDeMonstruo: { Id: ENGENDRO, Nombre: 'Engendro vampírico' }, daDg: true, carasDg: 12, paso: 'resumen',
+                pasos: ['raza', 'nivel', 'pg', 'resumen'], error: '',
+            });
+            return componente;
+        }
+
+        it('el guerrero enano 5 que pasa a guerrero 4 / engendro vampírico 1: la ficha sin su 5.º nivel, el engendro 1 y la tirada del d12', async () => {
+            const entrada = enanoGuerrero([nivel(1, 10), nivel(2, 6), nivel(3, 7), nivel(4, 4), nivel(5, 8)], 45);
+            const { antes, despues } = cuerpos();
+            const componente = await preparada(entrada, despues);
+            componente.perdida = fichaSinElNivel({ entrada, indice: 4, clase: claseGuerrero, caras: 10, dgsAntes: 5 });
+            componente.antesConversion = antes;
+            componente.pj = { Nivel_personaje: 5 };
+            componente.tiradas = [3, 7];
+            componente.tiradaElegida = 7;
+            componente.pg = { total: 34, delNivel: 7, retroactivo: -8, exacto: true };
+            componente.concepto = 'la consunción de energía de un vampiro';
+
+            await componente.guardar();
+
+            const [id, cuerpo]: [number, any] = sesiones.adquirirRazaMutada.calls.mostRecent().args;
+            expect(id).toBe(5);
+            expect(cuerpo.idRaza).toBe(1009);
+            expect(cuerpo.version).toBe('v7');
+            expect(cuerpo.pg).toEqual({ tirada: 7, tiradas: [3, 7] });
+            expect(cuerpo.idClase).toBeUndefined();
+            expect(cuerpo.concepto).toBe('la consunción de energía de un vampiro');
+            expect(cuerpo.ficha.colecciones.clases).toEqual([{ idClase: GUERRERO, nivel: 4 }, { idClase: ENGENDRO, nivel: 1 }]);
+            expect(cuerpo.ficha.niveles.map((n: any) => [n.idClase, n.nivelClase])).toEqual([[GUERRERO, 1], [GUERRERO, 2], [GUERRERO, 3], [GUERRERO, 4], [ENGENDRO, 1]]);
+            expect(cuerpo.ficha.personaje.puntosGolpe).toBe(34);
+            expect(cuerpo.ficha.caracteristicas.constitucion).toEqual({ valor: 14, minimo: 0, perdido: true });
+            expect(cuerpo.ficha.colecciones.especiales.map((e: any) => e.idEspecial)).toEqual([32, 3087]);
+            expect(componente.error).toBe('');
+        });
+
+        it('el humano guerrero 1: su primer DG va al máximo, sin `pg`; con el orden por conocer, la clase que pierde en `idClase`', async () => {
+            const entrada = enanoGuerrero([{ ...nivel(1, 10), ordenConocido: false }], 12);
+            const { antes, despues } = cuerpos();
+            const componente = await preparada(entrada, despues);
+            componente.idClaseElegida = GUERRERO;
+            componente.perdida = fichaSinElNivel({ entrada, indice: 0, clase: claseGuerrero, caras: 10, dgsAntes: 1 });
+            componente.antesConversion = antes;
+            componente.pj = { Nivel_personaje: 1 };
+            componente.primerDg = true;
+            componente.pg = { total: 12, delNivel: 12, retroactivo: 0, exacto: true };
+
+            await componente.guardar();
+
+            const [, cuerpo]: [number, any] = sesiones.adquirirRazaMutada.calls.mostRecent().args;
+            expect(cuerpo.pg).toBeUndefined();
+            expect(cuerpo.idClase).toBe(GUERRERO);
+            expect(cuerpo.ficha.colecciones.clases).toEqual([{ idClase: ENGENDRO, nivel: 1 }]);
+            expect(cuerpo.ficha.niveles.map((n: any) => [n.idClase, n.nivelClase])).toEqual([[ENGENDRO, 1]]);
+            expect(cuerpo.ficha.personaje.puntosGolpe).toBe(12);
+        });
+
+        it('la cabecera y el botón dicen que se convierte en muerto viviente', async () => {
+            const componente = await preparada(enanoGuerrero([nivel(1, 10)], 12), {});
+            componente.pj = { Nombre: 'Tordek', Nivel_personaje: 1 };
+            componente.cargando = false;
+            componente.cambios = [];
+            fixture.detectChanges();
+            const texto = fixture.nativeElement.textContent ?? '';
+            expect(texto).toContain('Convertirse en muerto viviente · Sesión 3');
+            expect(texto).toContain('Tordek se convierte en Engendro vampírico');
+            expect(fixture.nativeElement.querySelector('.subida__pie button[color="primary"]')?.textContent).toContain('Convertirse en muerto viviente');
+        });
     });
 });

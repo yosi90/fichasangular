@@ -1,13 +1,16 @@
 import { Clase } from 'src/app/interfaces/clase';
+import { Personaje } from 'src/app/interfaces/personaje';
+import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { CausaPerdidaDto } from 'src/app/interfaces/sesiones';
 import { textoAtaqueBase } from './ataque-base';
-import { modificadorCaracteristica } from './caracteristicas';
+import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
 import { modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
+import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 
 /*
  * Perder un nivel con el personaje ya creado (roadmap de sesiones, fase 7, segunda tanda; guía
@@ -111,6 +114,57 @@ export interface DatosPerdida {
     incrementoSinRegistro?: number | null;
     /** Sin su registro: la dote que pierde por el DG, si lo daba (la elige el jugador). */
     doteSinRegistro?: { idDote: number; idExtra: number; origen: string; } | null;
+}
+
+/** Una fila de «Lo que pierde»: qué, antes, ahora. */
+export interface FilaPerdida {
+    que: string;
+    antes: string;
+    ahora: string;
+}
+
+/** Los nombres de lo que tiene la ficha (para «Lo que pierde»), de su ficha y de los catálogos del motor. */
+export interface NombresDeLaFicha {
+    dote(idDote: number, idExtra: number): string;
+    aptitud(idEspecial: number): string;
+    conjuro(idConjuro: number): string;
+    idioma(idIdioma: number): string;
+    dominio(idDominio: number): string;
+    /** La habilidad con su extra y los rangos que tiene. */
+    habilidad(idHabilidad: number, idExtra: number): { nombre: string; rangos: number; };
+    /** La característica del incremento (1 Fuerza … 6 Carisma) con su puntuación. */
+    caracteristica(id: number): { nombre: string; valor: number; };
+}
+
+/**
+ * Las filas de «Lo que pierde» con lo que quita el nivel, sin el nivel, el NEP, los PX ni los PG (que pone quien llama):
+ * el ataque base, las salvaciones de clase, el incremento, las dotes, las aptitudes, los conjuros conocidos (y el que
+ * vuelve), los idiomas, los dominios y los rangos. La usan perder un nivel y la conversión en muerto viviente.
+ */
+export function filasDelNivelPerdido(resultado: ResultadoPerdida, nombres: NombresDeLaFicha): FilaPerdida[] {
+    const filas: FilaPerdida[] = [];
+    if (resultado.ataqueBase.antes !== resultado.ataqueBase.despues)
+        filas.push({ que: 'Ataque base', antes: resultado.ataqueBase.antes, ahora: resultado.ataqueBase.despues });
+    Object.entries(resultado.salvaciones).filter(([, d]) => toInt(d) !== 0)
+        .forEach(([s, d]) => filas.push({ que: `${s.charAt(0).toUpperCase()}${s.slice(1)} (de clase)`, antes: '', ahora: `−${d}` }));
+    const q = resultado.quitado;
+    if (q.incremento !== null) {
+        const c = nombres.caracteristica(q.incremento);
+        filas.push({ que: `${c.nombre} (incremento)`, antes: `${c.valor}`, ahora: `${c.valor - 1}` });
+    }
+    const lista = (que: string, lista: string[]) => lista.length > 0 && filas.push({ que, antes: lista.join(', '), ahora: '—' });
+    lista('Dotes', q.dotes.map((d) => nombres.dote(d.idDote, d.idExtra)));
+    lista('Aptitudes', q.especiales.map((e) => nombres.aptitud(e.idEspecial)));
+    lista('Conjuros conocidos', q.conjuros.map((c) => nombres.conjuro(c.idConjuro)));
+    if (q.vuelven.length > 0)
+        filas.push({ que: 'Vuelve a conocer', antes: '—', ahora: q.vuelven.map((c) => nombres.conjuro(c.idConjuro)).join(', ') });
+    lista('Idiomas', q.idiomas.map((id) => nombres.idioma(id)));
+    lista('Dominios', q.dominios.map((id) => nombres.dominio(id)));
+    q.rangos.forEach((r) => {
+        const h = nombres.habilidad(r.idHabilidad, r.idExtra);
+        filas.push({ que: `Rangos de ${h.nombre}`, antes: `${h.rangos}`, ahora: `${h.rangos - r.rangos}` });
+    });
+    return filas;
 }
 
 export interface QuitadoPorPerdida {
@@ -319,7 +373,12 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         pgDelNivel = Math.max(1, (tirada > 0 ? tirada : Math.floor(datos.caras / 2) + 1) + modAntes);
     }
     const sinElDg: PersonajeCreateRequestDto = { ...ficha, personaje: { ...ficha.personaje, puntosGolpe: pgAntes - pgDelNivel }, caracteristicas: entrada.caracteristicas };
-    const pg = pgTrasCambioDeCon(sinElDg, Math.max(0, toInt(datos.dgsAntes) - (pgDelNivel > 0 ? 1 : 0)), modConstitucionDeEntrada(ficha), null);
+    const dgsQueQuedan = Math.max(0, toInt(datos.dgsAntes) - (pgDelNivel > 0 ? 1 : 0));
+    const pg = pgTrasCambioDeCon(sinElDg, dgsQueQuedan, modConstitucionDeEntrada(ficha), null);
+    // Sin ningún DG (la conversión en muerto viviente de un personaje de 1.er nivel, que gana enseguida el de su clase de
+    // monstruo), lo que queda sin el mínimo de 1: lo que dan sus dotes (Dureza) o nada.
+    if (dgsQueQuedan < 1)
+        pg.total = Math.max(0, pgAntes - pgDelNivel);
     ficha.personaje.puntosGolpe = pg.total;
     if (!exacto)
         avisos.push('No se sabe lo que salió en el dado de ese nivel: se quita la media del dado.');
@@ -341,4 +400,32 @@ export function fichaConConstitucionPerdida(entrada: PersonajeCreateRequestDto, 
     const pg = pgTrasCambioDeCon(entrada, Math.max(1, toInt(dgs)), modificadorCaracteristica(ficha.caracteristicas.constitucion.valor), null);
     ficha.personaje.puntosGolpe = pg.total;
     return { ficha, antes: toInt(con.valor), despues: ficha.caracteristicas.constitucion.valor, pg: { antes: toInt(entrada.personaje.puntosGolpe), despues: pg.total } };
+}
+
+/**
+ * Los nombres de lo que tiene la ficha para «Lo que pierde» (`filasDelNivelPerdido`): de su ficha (`pj`, antes de perder
+ * el nivel), de su `entrada` (las puntuaciones) y de los catálogos del motor. Lo usan perder un nivel y la conversión en
+ * muerto viviente.
+ */
+export function nombresDeLaFicha(svc: NuevoPersonajeService, pj: Personaje | null, entrada: PersonajeCreateRequestDto): NombresDeLaFicha {
+    return {
+        dote: (idDote, idExtra) => {
+            const d = (pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote && toInt(x?.Contexto?.Id_extra) === idExtra)
+                ?? (pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote);
+            return d ? nombreDoteConExtra(d) : `Dote ${idDote}`;
+        },
+        aptitud: (id) => pj?.Claseas?.find((x) => toInt(x?.Id) === id)?.Nombre ?? `Aptitud ${id}`,
+        conjuro: (id) => svc.conjuroDelCatalogo(id)?.Nombre ?? `Conjuro ${id}`,
+        idioma: (id) => svc.EstadoFlujo.ventajas.catalogoIdiomas.find((x) => toInt((x as any)?.Id) === id)?.Nombre ?? `Idioma ${id}`,
+        dominio: (id) => pj?.Dominios?.find((x) => toInt(x?.Id) === id)?.Nombre ?? `Dominio ${id}`,
+        habilidad: (idHabilidad, idExtra) => {
+            const h = pj?.Habilidades?.find((x) => toInt(x?.Id) === idHabilidad && !x.Custom);
+            const nombre = h ? `${h.Nombre}${tieneTextoVisible(h.Extra) && toInt(idExtra) > 0 ? ` (${h.Extra})` : ''}` : `Habilidad ${idHabilidad}`;
+            return { nombre, rangos: toInt(h?.Rangos) };
+        },
+        caracteristica: (id) => ({
+            nombre: NOMBRES_CARACTERISTICAS[CARACTERISTICAS_DEL_ALTA[id - 1]?.[1]] ?? `Característica ${id}`,
+            valor: toInt((entrada.caracteristicas as any)?.[CARACTERISTICAS_DEL_ALTA[id - 1]?.[0]]?.valor),
+        }),
+    };
 }

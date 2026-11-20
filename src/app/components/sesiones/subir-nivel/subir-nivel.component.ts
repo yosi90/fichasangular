@@ -6,16 +6,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
-import { SelectorClaseOpcionalModalComponent } from 'src/app/components/nuevo-personaje/selector-clase-opcional-modal/selector-clase-opcional-modal.component';
-import { SelectorDominiosModalComponent } from 'src/app/components/nuevo-personaje/selector-dominios-modal/selector-dominios-modal.component';
-import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
-import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
-import { avisarPaso, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
+import { avisarPaso, catalogosDelNivel, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe, tomarNivelDeClase } from 'src/app/components/sesiones/pasos-con-selectores';
 import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
-import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
@@ -26,7 +21,7 @@ import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
-import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase, SeleccionOpcionalesClase } from 'src/app/services/nuevo-personaje.service';
+import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
@@ -334,74 +329,16 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     async elegirClase(clase: Clase): Promise<void> {
         if (this.claseElegida || this.guardando)
             return;
-        const opcionales = this.svc.obtenerOpcionalesSiguienteNivelClase(clase);
-        let seleccionesOpcionales: SeleccionOpcionalesClase | null = null;
-        for (const grupo of opcionales) {
-            const clave = await this.abrirModal<string>(SelectorClaseOpcionalModalComponent, {
-                titulo: `Grupo opcional ${grupo.grupo}`,
-                descripcion: 'Elige una opción para continuar con el nivel de clase.',
-                opciones: (grupo.opciones ?? []).map((o: any) => ({
-                    clave: `${o?.clave ?? ''}`, tipo: o?.tipo === 'especial' ? 'especial' : 'dote', nombre: `${o?.nombre ?? ''}`,
-                    extra: `${o?.extra ?? ''}`, ...(o?.bloqueada ? { bloqueada: true, motivo: `${o?.motivo ?? ''}` } : {}),
-                })),
-            }, ['confirmar'], ['cerrar']);
-            if (!clave)
-                return;
-            seleccionesOpcionales = { ...(seleccionesOpcionales ?? {}), [grupo.grupo]: clave };
-        }
-        if (this.svc.obtenerEspecialesExtraPendientesSiguienteNivelClase(clase, seleccionesOpcionales).length > 0) {
-            await avisarPaso('Aún no disponible', `El nivel ${this.nivelDe(clase)} de ${clase.Nombre} pide elegir el extra de una aptitud: la subida todavía no lo ofrece.`);
+        const nivel = await tomarNivelDeClase(this.svc, this.selectores, clase,
+            catalogosDelNivel(this.motor, this.escuelaSvc, this.disciplinaSvc, this.enemigoSvc));
+        if (nivel.estado === 'cancelado')
             return;
-        }
-        let seleccionesDominios: SeleccionDominiosClase | null = null;
-        const dominios = this.svc.obtenerDominiosPendientesSiguienteNivelClase(clase);
-        if (dominios && dominios.cantidad > 0) {
-            seleccionesDominios = await this.abrirModal<SeleccionDominiosClase>(SelectorDominiosModalComponent, {
-                opciones: dominios.opciones.map((o) => ({ id: toInt(o.id), nombre: o.nombre, oficial: o.oficial !== false })),
-                titulo: `Dominios de ${clase.Nombre}`, cantidadObjetivo: dominios.cantidad, cantidadSeleccionada: 0, bloquearCierreHastaCompletar: false,
-            }, ['confirmar'], ['cerrar']);
-            if (!seleccionesDominios)
-                return;
-        }
-        let aumentos: SeleccionAumentosClaseLanzadora | null = null;
-        let resultado = this.svc.aplicarSiguienteNivelClase(clase, seleccionesOpcionales, seleccionesDominios, false, aumentos, null);
-        if (!resultado.aplicado && (resultado.aumentosClaseLanzadoraPendientes ?? []).length > 0) {
-            aumentos = [];
-            for (const pendiente of resultado.aumentosClaseLanzadoraPendientes ?? []) {
-                const opciones: Record<string, string> = {};
-                (pendiente.opciones ?? []).forEach((o) => opciones[`${o.idClase}`] = `${o.nombreClase} (${o.tipoLanzamiento})`);
-                const r = await Swal.fire({
-                    icon: 'question', title: `${clase.Nombre}: aumento de lanzador`, text: pendiente.descripcion, input: 'select',
-                    inputOptions: opciones, showCancelButton: true, confirmButtonText: 'Aplicar', cancelButtonText: 'Cancelar',
-                    target: document.body, heightAuto: false, scrollbarPadding: false,
-                    inputValidator: (valor) => valor ? undefined : 'Elige la clase que sube',
-                });
-                if (!r.isConfirmed || !r.value)
-                    return;
-                aumentos[Math.max(0, toInt(pendiente.indice) - 1)] = toInt(r.value);
-            }
-            resultado = this.svc.aplicarSiguienteNivelClase(clase, seleccionesOpcionales, seleccionesDominios, false, aumentos, null);
-        }
-        if (!resultado.aplicado) {
-            await avisarPaso('No se puede subir en esta clase', resultado.evaluacion?.razones?.join(' · ') || resultado.razon || 'No se puede aplicar el nivel.');
+        if (nivel.estado === 'deshacer') {
+            await this.descartar(false);
             return;
         }
         this.claseElegida = clase;
-        this.nivelClase = toInt(resultado.nivelAplicado);
-        if (!await this.resolverEspecialidad(clase) || !await this.resolverEnemigos(resultado.especialesAplicados ?? [])) {
-            await this.descartar(false);
-            return;
-        }
-        const contexto = `${clase.Nombre} nivel ${this.nivelClase}`;
-        this.svc.registrarAumentosPendientesPorEspeciales(resultado.especialesAplicados ?? [], contexto);
-        this.svc.registrarAumentosPendientesPorProgresion(contexto);
-        if (!await this.resolverEleccionesRaciales()) {
-            await this.descartar(false);
-            return;
-        }
-        this.svc.registrarDotesPendientesPorRazaExtras(`${this.svc.RazaSeleccionada?.Nombre ?? 'Raza'}`);
-        this.svc.registrarDotesPendientesPorEspeciales(resultado.especialesAplicados ?? [], contexto);
-        this.svc.registrarDotesPendientesPorProgresion(contexto);
+        this.nivelClase = nivel.nivelClase;
         this.daDg = daDgEnNivel(clase, this.nivelClase);
         // Con una plantilla que actualiza los DG (el vampiro), su dado: d12.
         this.carasDg = this.svc.carasDadoGolpeDeClase(clase);
@@ -419,62 +356,6 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             'resumen',
         ];
         await this.siguiente();
-    }
-
-    private nivelDe(clase: Clase): number {
-        return toInt((this.svc.PersonajeCreacion.desgloseClases ?? []).find((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre))?.Nivel) + 1;
-    }
-
-    /**
-     * Lo que la progresión de sus rasgos le deja elegir a este nivel (`Elige_opcional`: el segundo sigilo de poder del
-     * iluminiano a 2.º nivel), con el selector de raciales opcionales de la creación y solo los de ese grupo que aún no
-     * tiene. `false` si se cierra sin elegir.
-     */
-    private resolverEleccionesRaciales(): Promise<boolean> {
-        return this.svc.resolverEleccionesRacialesPendientes(async ({ pendiente, grupos, titulo }) => {
-            const seleccion = await this.abrirModal<Record<number, string>>(SelectorRacialesOpcionalesModalComponent, {
-                grupos, titulo, razaContextoNombre: `${this.svc.RazaSeleccionada?.Nombre ?? ''}`.trim(),
-            }, ['confirmar'], ['cerrar']);
-            return seleccion ? `${seleccion[pendiente.grupo] ?? ''}` : null;
-        });
-    }
-
-    private async resolverEspecialidad(clase: Clase): Promise<boolean> {
-        const pendiente = this.svc.getEspecialidadMagicaPendiente(clase, this.nivelClase);
-        if (!pendiente)
-            return true;
-        const [escuelas, disciplinas] = await Promise.all([this.motor.primero(this.escuelaSvc.getEscuelas()), this.motor.primero(this.disciplinaSvc.getDisciplinas())]);
-        const escuelaFija = this.svc.escuelaFijaEnCatalogo(pendiente, escuelas ?? []);
-        const seleccion = await this.abrirModal<any>(SelectorEspecialidadMagicaModalComponent, {
-            titulo: 'Especialización mágica', nombreClase: clase.Nombre, mostrarArcano: pendiente.requiereArcano,
-            mostrarPsionico: pendiente.requierePsionico, escuelas: escuelas ?? [], escuelaFija, disciplinas: disciplinas ?? [],
-        }, ['confirmar'], []);
-        if (!seleccion)
-            return false;
-        const aplicado = this.svc.aplicarEspecialidadMagicaClase(clase, this.nivelClase, seleccion, escuelas ?? [], disciplinas ?? []);
-        if (!aplicado.aplicado) {
-            await avisarPaso('Especialización inválida', aplicado.razon ?? 'No se ha podido aplicar la especialización.');
-            return false;
-        }
-        this.svc.refrescarSesionConjurosPorEspecialidad();
-        return true;
-    }
-
-    private async resolverEnemigos(especiales: any[]): Promise<boolean> {
-        const total = this.svc.contarSeleccionesEnemigoPredilectoPorEspeciales(especiales);
-        if (total < 1)
-            return true;
-        const enemigos = (await this.motor.primero(this.enemigoSvc.getEnemigosPredilectos())) ?? [];
-        for (let i = 1; i <= total; i++) {
-            const id = await this.abrirModal<number>(SelectorEnemigoPredilectoModalComponent, {
-                titulo: total > 1 ? `Enemigo predilecto (${i} de ${total})` : 'Enemigo predilecto',
-                enemigos, enemigosYaElegidos: this.svc.PersonajeCreacion.enemigosPredilectos ?? [],
-            }, ['confirmar'], []);
-            const enemigo = enemigos.find((e: any) => toInt(e?.Id) === toInt(id));
-            if (!enemigo || !this.svc.aplicarSeleccionEnemigoPredilecto(enemigo))
-                return false;
-        }
-        return true;
     }
 
     // --- El reciclaje (Manual del jugador II, págs. 194-196) ------------------------------------------------------------

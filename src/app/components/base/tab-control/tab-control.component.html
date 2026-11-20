@@ -78,15 +78,15 @@
             (chakraDetallesId)="abrirDetallesChakraPorId($event);">
         </app-detalles-personaje>
     </mat-tab>
-    <mat-tab *ngFor="let subida of subidasNivelAbiertas" [label]="PESTANAS_DE_SESION[subida.modo].titulo + ': ' + subida.nombre">
+    <mat-tab *ngFor="let subida of subidasNivelAbiertas" [label]="(subida.pestana?.titulo ?? PESTANAS_DE_SESION[subida.modo].titulo) + ': ' + (subida.pestana?.nombre ?? subida.nombre)">
         <ng-template mat-tab-label>
             <mat-icon class="pestana-icono">{{PESTANAS_DE_SESION[subida.modo].icono}}</mat-icon>
-            <span class="pestana-etiqueta" [matTooltip]="PESTANAS_DE_SESION[subida.modo].titulo + ': ' + subida.nombre" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{PESTANAS_DE_SESION[subida.modo].corta}}: {{subida.nombre}}</span>
+            <span class="pestana-etiqueta" [matTooltip]="(subida.pestana?.titulo ?? PESTANAS_DE_SESION[subida.modo].titulo) + ': ' + (subida.pestana?.nombre ?? subida.nombre)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{subida.pestana?.corta ?? PESTANAS_DE_SESION[subida.modo].corta}}: {{subida.pestana?.nombre ?? subida.nombre}}</span>
             <button (click)="quitarSubidaNivel(subida.idPersonaje, subida.modo)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <ng-container *ngIf="componentesDeSesion[subida.modo] as componente"
             [ngComponentOutlet]="componente"
-            [ngComponentOutletInputs]="{ idPersonaje: subida.idPersonaje, alTerminar: subida.cerrar }"></ng-container>
+            [ngComponentOutletInputs]="subida.entradas"></ng-container>
     </mat-tab>
     <mat-tab *ngFor="let publicProfileTab of publicProfileTabs" [label]="getEtiquetaPerfilPublico(publicProfileTab)">
         <ng-template mat-tab-label>

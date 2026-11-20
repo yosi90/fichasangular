@@ -10,6 +10,7 @@ import { etapaEdad } from './edad-personaje';
 import { dgsRacialesQueCuentan } from './nivel-personaje';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
 import { esRazaMutada } from './raza-mutacion';
+import { formatoPx } from './sesiones-texto';
 import { diferencia, fichaConLoDelMotor, PgSubida, SE_CONSERVAN_PERSONAJE } from './subida-nivel';
 
 /*
@@ -212,6 +213,38 @@ export function fichaDeLaMutacion(datos: EntradaFichaMutacion): PersonajeCreateR
 
 // --- El resumen ---------------------------------------------------------------------------------------------------------
 
+/**
+ * Las filas propias de la conversión en muerto viviente: el nivel que pierde (*Libris Mortis*, pág. 34: «como si hubiese
+ * muerto y le hubieran revivido»), lo que quita, y el 1.er nivel de su clase de monstruo, que lo reemplaza.
+ */
+function filasDeLaConversion(c: ResumenDeLaConversion): CambioPlantilla[] {
+    const filas: CambioPlantilla[] = [];
+    if (c.perdida) {
+        const { clase, nivelClase } = c.perdida;
+        filas.push({
+            que: 'Nivel perdido', antes: `${clase} ${nivelClase}`,
+            ahora: nivelClase > 1 ? `${clase} ${nivelClase - 1}` : 'No le quedan niveles de clase',
+            porque: 'Pierde el último nivel de clase, como si hubiese muerto y le hubieran revivido (Libris Mortis, pág. 34)',
+        });
+        c.loQuePierde.forEach((f) => filas.push({ ...f, porque: 'Lo daba el nivel que pierde' }));
+    }
+    filas.push({
+        que: 'Nivel ganado', antes: '—', ahora: `${c.claseDeMonstruo} 1`,
+        porque: c.perdida ? 'El 1.er nivel de su clase de muerto viviente reemplaza al perdido' : 'El 1.er nivel de su clase de muerto viviente',
+    });
+    return filas;
+}
+
+/** Los PX de la conversión: la mitad de su nivel tras perder el nivel, o los suyos si ya tenía menos o no pierde ninguno. */
+function filaDeLosPxDeLaConversion(c: ResumenDeLaConversion): CambioPlantilla {
+    return {
+        que: 'PX', antes: formatoPx(c.pxAntes), ahora: formatoPx(c.pxDespues),
+        porque: !c.perdida ? 'No cambian: no tiene niveles de clase que perder'
+            : c.pxAntes === c.pxDespues ? 'No cambian: ya tenía menos de la mitad de su nivel tras perderlo'
+                : 'La mitad entre el mínimo de su nivel tras perderlo y el del siguiente, como al revivir (Manual del jugador, pág. 171)',
+    };
+}
+
 export interface EntradaCambiosMutacion {
     antes: Personaje;
     despues: Personaje;
@@ -229,6 +262,23 @@ export interface EntradaCambiosMutacion {
     exClases: Array<{ nombre: string; razones: string[]; }>;
     /** Lo que exige el alineamiento de la raza nueva si ya no es el suyo: se propone un «Cambio de alineamiento». */
     alineamientoExigido: string | null;
+    /** Si es la conversión en muerto viviente (la raza lleva una clase de monstruo), lo suyo; si no, nada. */
+    conversion?: ResumenDeLaConversion | null;
+}
+
+/** Lo que enseña el resumen de la conversión en muerto viviente, además de lo de la raza mutada. */
+export interface ResumenDeLaConversion {
+    /** El nivel que pierde (su clase y su nivel en ella), o `null` sin niveles de clase. */
+    perdida: { clase: string; nivelClase: number; } | null;
+    /** Lo que quita ese nivel (`filasDelNivelPerdido`). */
+    loQuePierde: Array<{ que: string; antes: string; ahora: string; }>;
+    claseDeMonstruo: string;
+    pxAntes: number;
+    pxDespues: number;
+    /** Las dotes que dejan de cumplir un prerrequisito: las conserva sin poder usarlas. */
+    sinPoderUsar: string[];
+    /** Las aptitudes que sustituye la raza en sus clases. */
+    sustituidas: Array<{ antes: string; ahora: string; }>;
 }
 
 function nombres(lista: ReadonlyArray<{ Nombre?: string | null; } | null | undefined> | null | undefined): string[] {
@@ -245,16 +295,21 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
     const filas: CambioPlantilla[] = [];
     const nombre = `${e.combinada?.Nombre ?? ''}`.trim() || 'la raza mutada';
     const base = `${e.anterior?.Nombre ?? ''}`.trim() || 'su raza';
-    const porLaRaza = `Raza mutada ${nombre}`;
+    const conversion = e.conversion ?? null;
+    const porLaRaza = conversion ? `Se convierte en ${nombre.toLowerCase()}` : `Raza mutada ${nombre}`;
     filas.push({ que: 'Raza', antes: base, ahora: nombre, porque: `${base} pasa a ser su raza base` });
+    if (conversion)
+        filas.push(...filasDeLaConversion(conversion));
     const nivel = toInt(e.experiencia?.nivel);
     const ajusteAntes = toInt(e.anterior?.Ajuste_nivel);
     const ajusteDespues = toInt(e.combinada?.Ajuste_nivel);
     filas.push({
         que: 'NEP', antes: `${nivel}`, ahora: `${e.nepDespues}`,
-        porque: e.nepDespues === nivel ? 'No cambia' : `Ajuste de nivel ${ajusteAntes} → ${ajusteDespues}`,
+        porque: e.nepDespues === nivel ? 'No cambia'
+            : conversion ? `${conversion.perdida ? 'Un nivel menos y uno más' : 'Un nivel más'}${ajusteAntes !== ajusteDespues ? `; ajuste de nivel ${ajusteAntes} → ${ajusteDespues}` : ''}`
+                : `Ajuste de nivel ${ajusteAntes} → ${ajusteDespues}`,
     });
-    const px = filaDeLosPx(e.experiencia, e.nepDespues);
+    const px = conversion ? filaDeLosPxDeLaConversion(conversion) : filaDeLosPx(e.experiencia, e.nepDespues);
     if (px)
         filas.push(px);
     const tipoA = `${e.antes?.Tipo_criatura?.Nombre ?? ''}`;
@@ -265,7 +320,9 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
     if (e.pg && e.pg.total !== toInt(e.antes?.Vida))
         filas.push({
             que: 'Puntos de golpe', antes: `${toInt(e.antes?.Vida)}`, ahora: `${e.pg.total}`,
-            porque: `La Constitución nueva en todos sus DG${e.pg.exacto ? '' : ' (aproximado: faltan tiradas de antes)'}`,
+            porque: conversion
+                ? `Sin Constitución en ningún DG, sin el DG del nivel que pierde y con el de ${conversion.claseDeMonstruo.toLowerCase()}${e.pg.exacto ? '' : ' (aproximado: faltan tiradas de antes)'}`
+                : `La Constitución nueva en todos sus DG${e.pg.exacto ? '' : ' (aproximado: faltan tiradas de antes)'}`,
         });
     const racialesA = nombres(e.antes?.Raciales);
     const racialesD = nombres(e.despues?.Raciales);
@@ -299,6 +356,14 @@ export function cambiosDeLaMutacion(e: EntradaCambiosMutacion): CambioPlantilla[
             que: 'Categoría de edad', antes: etapaA.nombre, ahora: etapaD.nombre,
             porque: `Con las edades de ${nombre}: ${etapaD.id === 'adulto' ? 'pierde los efectos de la edad que tenía' : 'cambian los efectos de la edad'}`,
         });
+    if (conversion && conversion.sinPoderUsar.length > 0)
+        filas.push({
+            que: 'Sin poder usar', antes: conversion.sinPoderUsar.join(', '), ahora: 'Las conserva',
+            porque: 'Dejan de cumplir un prerrequisito: vuelven a valer cuando lo cumpla (Manual del jugador, pág. 87)',
+        });
+    (conversion?.sustituidas ?? []).forEach((a) => filas.push({
+        que: 'Aptitud', antes: a.antes, ahora: a.ahora, porque: `La sustituye ${nombre.toLowerCase()} en todas sus clases (Libris Mortis, pág. 35)`,
+    }));
     if (e.alineamientoExigido)
         filas.push({
             que: 'Alineamiento', antes: `${e.antes?.Alineamiento ?? ''}`, ahora: `${nombre} exige ${e.alineamientoExigido.toLowerCase()}`, aviso: true,
