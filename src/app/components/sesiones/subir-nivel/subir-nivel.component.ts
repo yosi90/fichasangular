@@ -6,6 +6,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
+import {
+    SelectorEspecialidadMagicaConfirmacion, SelectorEspecialidadMagicaModalComponent,
+} from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { ClasesDelNivelComponent } from 'src/app/components/sesiones/clases-del-nivel/clases-del-nivel.component';
@@ -18,6 +21,7 @@ import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/p
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ExperienciaPersonaje, NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
@@ -46,7 +50,9 @@ import {
     DestinoDeRangos,
     destinosDeRangos,
     DoteReciclable,
+    dominiosParaReciclar,
     dotesParaReciclar,
+    esPlanDeRasgo,
     fichaConElReciclaje,
     filaDelReciclaje,
     filasDelReciclaje,
@@ -58,6 +64,7 @@ import {
     loQueDejariaDeCumplir,
     MAXIMO_CONJUROS_RECICLADOS,
     MAXIMO_RANGOS_RECICLADOS,
+    motivoDeLaEscuela,
     PlanReciclaje,
     rasgosParaReciclar,
     reciclajeDelPlan,
@@ -66,6 +73,10 @@ import {
     aptitudesConElegir, candidatasEnLugarDe, cambiosDelRasgo, HuecoDeRasgo, huecoDeLaDoteDelRasgo, mismaFila, nombreConExtra, nombreDeLoQueTiene, nombreDeOpcion, OpcionDeRasgo,
     PlanRasgo,
 } from 'src/app/services/utils/reciclaje-rasgos';
+import {
+    claseConEspecializacion, HuecoDeDominio, HuecoDeEscuela, huecoDeEscuela, nombreDeLaEspecializacion, OpcionDeDominio, PlanDominio,
+    planDelDominio, planDeLaEscuela, PlanEscuela,
+} from 'src/app/services/utils/reciclaje-dominio-escuela';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
@@ -88,8 +99,11 @@ interface BorradorSubida {
     reciclaje?: { plan: PlanReciclaje; entrada: PersonajeCreateRequestDto; clases: number[] | null; } | null;
 }
 
-/** Lo que se puede elegir en el paso «Reciclar» (MJ II, tablas 8-1 y 8-2; aún sin niveles de sustitución). */
-type TipoDeReciclaje = 'ninguno' | PlanReciclaje['tipo'];
+/**
+ * Lo que se puede elegir en el paso «Reciclar» (MJ II, tablas 8-1 y 8-2; aún sin niveles de sustitución): un dominio y la
+ * escuela del mago van con «Reciclar un rasgo de clase».
+ */
+type TipoDeReciclaje = 'ninguno' | Exclude<PlanReciclaje['tipo'], 'dominio' | 'escuela'>;
 
 /** Un cambio de conjuros a medio elegir: la clase, el que olvida y el que aprende en su lugar. */
 interface CambioDeConjuro {
@@ -180,8 +194,18 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     /** El hueco cuyas otras opciones se enseñan, y la que entra en su lugar (con la dote elegida, si la da). */
     rasgoElegido: HuecoDeRasgo | null = null;
     planRasgo: PlanRasgo | null = null;
+    /** Los dominios de sus clases que los dan, con los que puede poner en su lugar; el elegido y el que entra. */
+    dominiosReciclables: HuecoDeDominio[] = [];
+    dominioElegido: HuecoDeDominio | null = null;
+    planDominio: PlanDominio | null = null;
+    /** La escuela del mago (la especialización y las prohibidas), si una clase se la da, y la que entra. */
+    escuelaReciclable: HuecoDeEscuela | null = null;
+    planEscuela: PlanEscuela | null = null;
+    /** El catálogo de escuelas (solo si una de sus clases da especialización). */
+    private escuelas: EscuelaConjuros[] = [];
     readonly nombreDeLoQueTiene = nombreDeLoQueTiene;
     readonly nombreDeOpcion = nombreDeOpcion;
+    readonly nombreDeLaEspecializacion = nombreDeLaEspecializacion;
     /** Lo reciclado, ya hecho en el motor: va en el cuerpo de la subida y en la primera fila del resumen. */
     plan: PlanReciclaje | null = null;
     /** La `entrada` con el reciclaje hecho: la ficha sobre la que va el nivel. */
@@ -364,6 +388,11 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.rasgosReciclables = [];
         this.rasgoElegido = null;
         this.planRasgo = null;
+        this.dominiosReciclables = [];
+        this.dominioElegido = null;
+        this.planDominio = null;
+        this.escuelaReciclable = null;
+        this.planEscuela = null;
         this.idiomaQuita = this.idiomaPone = null;
         this.rangosOrigen = this.rangosDestino = null;
         this.rangosCantidad = 1;
@@ -378,6 +407,9 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         if (!this.permiteReciclar || !this.entrada)
             return;
         this.rasgosReciclables = rasgosParaReciclar(this.svc, await this.aptitudesConElegir());
+        this.dominiosReciclables = dominiosParaReciclar(this.svc, this.entrada, this.nivelDeAntes, this.conHomebrew);
+        this.escuelas = claseConEspecializacion(this.svc) ? await this.catalogoDeEscuelas() : [];
+        this.escuelaReciclable = huecoDeEscuela(this.svc, this.escuelas);
         this.dotesReciclables = dotesParaReciclar(this.svc, this.rasgosReciclables);
         const idiomas = idiomasParaReciclar(this.svc, this.entrada, this.conHomebrew);
         this.idiomasReciclables = idiomas.quitables;
@@ -393,6 +425,20 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const ids = aptitudesConElegir(this.svc);
         const detalles = await Promise.all(ids.map((id) => this.motor.primero(this.especialSvc.getEspecial(id))));
         return new Map(ids.map((id, i) => [id, detalles[i]]));
+    }
+
+    /** El catálogo de escuelas de magia, o ninguna si no se puede leer. */
+    private async catalogoDeEscuelas(): Promise<EscuelaConjuros[]> {
+        try {
+            return (await this.motor.primero(this.escuelaSvc.getEscuelas())) ?? [];
+        } catch {
+            return [];
+        }
+    }
+
+    /** Su nivel de personaje antes de subir (el tope de los rangos). */
+    private get nivelDeAntes(): number {
+        return toInt(this.pj?.Nivel_personaje) || toInt(this.experiencia?.nivel);
     }
 
     private cambioDeConjuroVacio(): CambioDeConjuro {
@@ -412,7 +458,11 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             { tipo: 'idioma', etiqueta: 'Reciclar un idioma', motivo: this.idiomasReciclables.length ? '' : 'No conoce ningún idioma.' },
             { tipo: 'rangos', etiqueta: 'Reciclar habilidades', motivo: this.habilidadesReciclables.length ? '' : 'No tiene rangos comprados.' },
             { tipo: 'conjuros', etiqueta: 'Reciclar conjuros', motivo: this.clasesConConocidos.length ? '' : 'Ninguna de sus clases tiene conocidos limitados (una tabla de conocidos).' },
-            { tipo: 'rasgo', etiqueta: 'Reciclar un rasgo de clase', motivo: this.rasgosReciclables.length ? '' : 'Ninguna de sus clases le ha dado a elegir entre opciones de su tabla.' },
+            {
+                tipo: 'rasgo', etiqueta: 'Reciclar un rasgo de clase',
+                motivo: this.rasgosReciclables.length || this.dominiosReciclables.length || this.escuelaReciclable
+                    ? '' : 'Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios ni una escuela.',
+            },
         ];
     }
 
@@ -449,7 +499,74 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             return;
         if (this.rasgoElegido !== hueco)
             this.planRasgo = null;
+        this.soloElRasgo('tabla');
         this.rasgoElegido = hueco;
+    }
+
+    /** Al elegir un hueco de un tipo, los otros dos se olvidan: se recicla un solo rasgo. */
+    private soloElRasgo(tipo: 'tabla' | 'dominio' | 'escuela'): void {
+        if (tipo !== 'tabla') {
+            this.rasgoElegido = null;
+            this.planRasgo = null;
+        }
+        if (tipo !== 'dominio') {
+            this.dominioElegido = null;
+            this.planDominio = null;
+        }
+        if (tipo !== 'escuela')
+            this.planEscuela = null;
+    }
+
+    /** Enseña los dominios que puede poner en lugar de ese (los de su deidad que no tiene). */
+    elegirDominio(hueco: HuecoDeDominio): void {
+        if (hueco.motivo || this.empezada)
+            return;
+        if (this.dominioElegido !== hueco)
+            this.planDominio = null;
+        this.soloElRasgo('dominio');
+        this.dominioElegido = hueco;
+    }
+
+    /** Otro dominio en lugar del elegido, con lo que cambia solo (su poder, sus dotes, sus habilidades y sus conjuros). */
+    async elegirOpcionDominio(opcion: OpcionDeDominio): Promise<void> {
+        const hueco = this.dominioElegido;
+        if (!hueco || opcion.motivo || this.empezada)
+            return;
+        this.planDominio = planDelDominio(this.svc, hueco, opcion);
+        if (!this.planDominio)
+            await avisarPaso('No se puede elegir ese dominio', `No se ha podido cambiar ${hueco.tiene.nombre} por ${opcion.nombre}: falta en el catálogo de dominios.`);
+    }
+
+    /** Lo que cambia solo con el dominio o la escuela elegidos («Dotes del dominio: — → Soltura con un arma (maza)»). */
+    get derivadosDelDominioOLaEscuela(): string {
+        const plan = this.planDominio ?? this.planEscuela;
+        return (plan?.derivados ?? []).map((d) => `${d.que.toLowerCase()}, ${d.antes} → ${d.ahora}`).join('; ');
+    }
+
+    /**
+     * Otra especialización, con el selector de la creación (las escuelas que puede elegir; sin homebrew si la ficha no lo
+     * admite): legal en el 1.er nivel y que no deje sin cumplir lo que tiene (una dote o una clase de prestigio que pide
+     * lanzar conjuros de una escuela que pasa a estar prohibida). El motor se deja como estaba: el cambio se hace al continuar.
+     */
+    async cambiarEscuela(): Promise<void> {
+        const hueco = this.escuelaReciclable;
+        if (!hueco || hueco.motivo || this.empezada)
+            return;
+        const escuelas = this.escuelas.filter((e) => this.conHomebrew || e.Oficial !== false);
+        const elegida = await this.abrirModal<SelectorEspecialidadMagicaConfirmacion>(SelectorEspecialidadMagicaModalComponent, {
+            titulo: 'Reciclar la especialización', nombreClase: hueco.clase, mostrarArcano: true, mostrarPsionico: false, escuelas,
+            escuelaFija: hueco.escuelaFija, disciplinas: [], cancelable: true,
+        }, ['confirmar'], ['cancelar']);
+        if (!elegida?.arcana)
+            return;
+        const { plan, motivo } = planDeLaEscuela(this.svc, hueco, elegida.arcana, escuelas);
+        const bloqueo = plan ? motivoDeLaEscuela(this.svc, plan) : motivo;
+        if (!plan || bloqueo) {
+            await avisarPaso('No se puede elegir esa especialización', bloqueo ?? 'No es legal en el 1.er nivel.');
+            return;
+        }
+        this.soloElRasgo('escuela');
+        this.planEscuela = plan;
     }
 
     /** El texto de una opción del hueco: la aptitud que da una dote, también la que se elija con ella. */
@@ -553,9 +670,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.rangosDestino = null;
             return;
         }
-        const nivel = toInt(this.pj?.Nivel_personaje) || toInt(this.experiencia?.nivel);
         const puedeSubir = this.clases.filter((c) => c.elegible).map((c) => c.clase);
-        this.destinosRangos = destinosDeRangos(this.svc, this.entrada, origen, this.rangosCantidad, nivel, puedeSubir);
+        this.destinosRangos = destinosDeRangos(this.svc, this.entrada, origen, this.rangosCantidad, this.nivelDeAntes, puedeSubir);
         if (!this.destinosRangos.some((d) => d.idHabilidad === this.rangosDestino && !d.motivo))
             this.rangosDestino = null;
         const rotas = loQueDejariaDeCumplir(this.svc, { rangos: { idHabilidad: origen.idHabilidad, idExtra: origen.idExtra, rangos: this.rangosCantidad } });
@@ -607,7 +723,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         if (this.tipoReciclaje === 'dote')
             return this.planDote;
         if (this.tipoReciclaje === 'rasgo')
-            return this.planRasgo;
+            return this.planRasgo ?? this.planDominio ?? this.planEscuela;
         if (this.tipoReciclaje === 'idioma') {
             const quita = this.idiomasReciclables.find((i) => i.idIdioma === toInt(this.idiomaQuita) && !i.motivo);
             const pone = this.idiomasAprendibles.find((i) => i.idIdioma === toInt(this.idiomaPone));
@@ -669,7 +785,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.entradaReciclada = fichaConElReciclaje(this.entrada!, reciclajeDelPlan(plan), {
                 origenDote: plan.tipo === 'dote' ? plan.quita.origen : undefined,
                 claseaDestino: !!destino && destino.clases === null,
-                rasgo: plan.tipo === 'rasgo' ? plan : undefined,
+                rasgo: esPlanDeRasgo(plan) ? plan : undefined,
                 // Lo que daba lo antiguo y lo que da lo nuevo: la API guarda tal cual los modificadores que llegan.
                 motor: this.antes ? { antes: this.antes, despues } : null,
             });
@@ -802,7 +918,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             reciclado: this.plan
                 ? {
                     filas: filasDelReciclaje(this.plan), idiomaNuevo: this.plan.tipo === 'idioma' ? this.plan.pone.nombre : undefined,
-                    aptitudesNuevas: aptitudesDelReciclaje(this.plan),
+                    aptitudesNuevas: aptitudesDelReciclaje(this.plan), dominioNuevo: this.plan.tipo === 'dominio' ? this.plan.pone.nombre : undefined,
                 }
                 : null,
         });

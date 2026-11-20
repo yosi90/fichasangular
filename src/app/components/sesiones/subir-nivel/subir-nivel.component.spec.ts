@@ -21,6 +21,7 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
+import { DeidadService } from 'src/app/services/deidad.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
@@ -66,7 +67,7 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
                 { provide: SubidaNivelPuertaService, useValue: new SubidaNivelPuertaService() },
                 ...[CampanaService, ClaseService, DoteService, ConjuroService, HabilidadService, IdiomaService, DominioService, RazaService,
                     PlantillaService, EscuelaConjurosService, DisciplinaConjurosService, EnemigoPredilectoService, ArmaService, ArmaduraService,
-                    GrupoArmaService, GrupoArmaduraService, SubtipoService, EspecialService].map((provide) => ({ provide, useValue: {} })),
+                    GrupoArmaService, GrupoArmaduraService, SubtipoService, EspecialService, DeidadService].map((provide) => ({ provide, useValue: {} })),
                 ...(motor ? [{ provide: MotorDesdeFichaService, useValue: motor }] : []),
             ],
         }).compileComponents();
@@ -126,7 +127,7 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             // Sin clases que den a elegir en su tabla, el rasgo de clase sale desactivado, con su motivo.
             expect(texto).toContain('Reciclar un rasgo de clase');
             expect(radios[5].disabled).toBeTrue();
-            expect(texto).toContain('Ninguna de sus clases le ha dado a elegir entre opciones de su tabla.');
+            expect(texto).toContain('Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios ni una escuela.');
             expect(texto).toContain('Continuar sin reciclar');
         });
 
@@ -206,6 +207,58 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
                 tipo: 'rasgo', hueco: { idClase: 6, nivelClase: 2, grupo: 1 },
                 quita: { especial: { id: 39, idExtra: 0 }, dote: null }, pone: { especial: { id: 156, idExtra: 0 }, dote: null },
             });
+        });
+
+        it('un dominio y la escuela del mago salen en la lista del rasgo de clase; el dominio abre sus opciones con su motivo y va en el cuerpo', async () => {
+            const componente = await crear({}, { pj: { PoliticaCompra: null } });
+            const c = componente as any;
+            const hueco = {
+                tipo: 'dominio' as const, clave: '4:d1', idClase: 4, clase: 'Clérigo', tiene: { id: 1, nombre: 'Agua' }, deidad: 'Kord', motivo: null,
+                opciones: [
+                    { id: 4, nombre: 'Bien', oficial: true, motivo: 'Con Bien, Nadar dejaría de ser de clase y tiene más de 2 rangos, el tope de una transclásea a su nivel (2).' },
+                    { id: 2, nombre: 'Fuego', oficial: true, motivo: null },
+                ],
+            };
+            c.dominiosReciclables = [hueco];
+            c.escuelaReciclable = {
+                tipo: 'escuela', clave: '9:escuela', idClase: 9, clase: 'Mago', escuelaFija: null, motivo: null,
+                tiene: { especialista: { id: 7, nombre: 'Nigromancia' }, prohibidas: [{ id: 5, nombre: 'Evocación' }, { id: 6, nombre: 'Ilusión' }] },
+            };
+            c.opcionesReciclaje = c.opcionesDeReciclaje();
+            componente.elegirTipoReciclaje('rasgo');
+            fixture.detectChanges();
+            let texto = fixture.nativeElement.textContent;
+            expect(texto).toContain('Dominio Agua');
+            expect(texto).toContain('Clérigo, nivel 1');
+            expect(texto).toContain('Especialización: Nigromancia (prohibidas: evocación e ilusión)');
+            componente.elegirDominio(hueco);
+            fixture.detectChanges();
+            texto = fixture.nativeElement.textContent;
+            expect(texto).toContain('En lugar de Agua (clérigo, nivel 1)');
+            expect(texto).toContain('Uno de los dominios de Kord que no tenga');
+            const radios = Array.from(fixture.nativeElement.querySelectorAll('input[name="opcionDominio"]') as NodeListOf<HTMLInputElement>);
+            expect(radios.map((r) => r.disabled)).toEqual([true, false]);
+            expect(texto).toContain('Con Bien, Nadar dejaría de ser de clase');
+
+            c.plan = {
+                tipo: 'dominio', hueco, pone: { id: 2, nombre: 'Fuego' }, aptitudesNuevas: [],
+                derivados: [{ que: 'Poder concedido', antes: 'El de agua', ahora: 'El de fuego' }],
+            };
+            c.entradaReciclada = JSON.parse(JSON.stringify(ENTRADA_ENANO_CLERIGO_1));
+            componente.claseElegida = { Id: 4, Nombre: 'Clérigo' } as any;
+            componente.daDg = false;
+            componente.pasos = ['reciclar', 'clase', 'resumen'];
+            // El dominio que entra no es del nivel nuevo: no sale otra vez entre lo que da.
+            componente.svc.PersonajeCreacion.Dominios = [{ Id: 2, Nombre: 'Fuego' }];
+            c.prepararResumen();
+            expect(componente.cambios.some((f) => f.que === 'Dominios')).toBeFalse();
+            expect(componente.cambios.slice(0, 2)).toEqual([
+                jasmine.objectContaining({ que: 'Reciclaje: dominio', antes: 'Agua', ahora: 'Fuego' }),
+                jasmine.objectContaining({ que: 'Reciclaje: poder concedido', antes: 'El de agua', ahora: 'El de fuego' }),
+            ]);
+            sesiones.subirNivel.and.resolveTo({ subida: { nivelesPorSubir: 0 } } as any);
+            await componente.guardar(false);
+            expect(sesiones.subirNivel.calls.mostRecent().args[1].reciclaje).toEqual({ tipo: 'rasgo', hueco: { idClase: 4, dominio: true }, quita: { dominio: 1 }, pone: { dominio: 2 } });
         });
     });
 });
