@@ -10,9 +10,8 @@ import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from './caracteris
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, caracteristicaDelAlta, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
-import { primerEntero, toInt } from './normalizacion';
+import { mismoExtra, primerEntero, toInt } from './normalizacion';
 import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgDeUnDgGuardado, pgTrasCambioDeCon } from './subida-nivel';
-import { mismoExtraDeHabilidad } from './habilidad-extra-visible';
 import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 
 /*
@@ -332,7 +331,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
                     break;
                 }
                 case 'rangos': {
-                    const h = col.habilidades.base.find((x: any) => toInt(x?.idHabilidad) === id && mismoExtraDeHabilidad(x?.idExtra, e.idExtra));
+                    const h = col.habilidades.base.find((x: any) => toInt(x?.idHabilidad) === id && mismoExtra(x?.idExtra, e.idExtra));
                     if (h) {
                         const quita = Math.min(toInt(h.rangos), Math.max(0, toInt(e.valor)));
                         h.rangos = toInt(h.rangos) - quita;
@@ -369,7 +368,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
             if (!h)
                 break;
             h.rangos = toInt(h.rangos) - 1;
-            const ya = quitado.rangos.find((r) => r.idHabilidad === toInt(h.idHabilidad) && mismoExtraDeHabilidad(r.idExtra, h.idExtra));
+            const ya = quitado.rangos.find((r) => r.idHabilidad === toInt(h.idHabilidad) && mismoExtra(r.idExtra, h.idExtra));
             if (ya)
                 ya.rangos += 1;
             else

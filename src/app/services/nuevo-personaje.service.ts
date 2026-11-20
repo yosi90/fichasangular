@@ -71,9 +71,9 @@ import {
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
+import { mismoExtra, normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
-import { extraHabilidadElegido, idExtraHabilidadParaGuardar, mismoExtraDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { ajustesCaracteristicaDeRaciales, caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -103,7 +103,7 @@ import {
 } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
 import {
-    apuntarEleccion, construirNivelesCreacion, nivelDelOrden, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
+    apuntarEleccion, construirNivelesCreacion, esLaEleccion, nivelDelOrden, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
     origenDotePorNivelDePersonaje, RefNivelTomado,
 } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
@@ -4024,7 +4024,8 @@ export class NuevoPersonajeService {
         };
     }
 
-    private cumpleRestriccionTipoDote(dote: Dote, tipoPermitido: string | null): boolean {
+    /** Si la dote es del tipo que admite un hueco (`tipoPermitido`; sin él, cualquiera). La usa también el reciclaje de un rasgo. */
+    cumpleRestriccionTipoDote(dote: Dote, tipoPermitido: string | null): boolean {
         const tipoNorm = normalizarTexto(`${tipoPermitido ?? ''}`);
         if (tipoNorm.length < 1)
             return true;
@@ -11804,8 +11805,7 @@ export class NuevoPersonajeService {
     indiceNivelDeLaDote(idDote: number, idExtra: number): number | null {
         const orden = this.personajeCreacion?.Orden_niveles ?? [];
         for (let i = orden.length - 1; i >= 0; i--) {
-            const eleccion = (orden[i]?.elecciones ?? []).find((e) => e.tipo === 'dote' && toInt(e.idElemento) === toInt(idDote)
-                && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
+            const eleccion = (orden[i]?.elecciones ?? []).find((e) => esLaEleccion(e, 'dote', idDote, idExtra));
             if (eleccion)
                 return this.ordenConocidoNiveles[i] === false ? null : i;
         }
@@ -11840,13 +11840,13 @@ export class NuevoPersonajeService {
         const ataqueEntonces = Array.from(hasta.entries()).reduce((acc, [id, nivel]) => acc + ataqueDe(id, nivel), 0);
         const dotes = [...(contexto.dotes ?? [])];
         elecciones.filter((e) => e.tipo === 'dote').forEach((e) => {
-            const i = dotes.findIndex((d) => toInt(d.id) === toInt(e.idElemento) && Math.max(0, toInt(d.idExtra)) === Math.max(0, toInt(e.idExtra)));
+            const i = dotes.findIndex((d) => toInt(d.id) === toInt(e.idElemento) && mismoExtra(d.idExtra, e.idExtra));
             if (i >= 0)
                 dotes.splice(i, 1);
         });
         const habilidades = (contexto.habilidades ?? []).map((h) => ({ ...h }));
         elecciones.filter((e) => e.tipo === 'rangos').forEach((e) => {
-            const h = habilidades.find((x) => toInt(x.id) === toInt(e.idElemento) && Math.max(0, toInt(x.idExtra)) === Math.max(0, toInt(e.idExtra)));
+            const h = habilidades.find((x) => toInt(x.id) === toInt(e.idElemento) && mismoExtra(x.idExtra, e.idExtra));
             if (h)
                 h.rangos = Math.max(0, toNumber(h.rangos) - toInt(e.valor));
         });
@@ -11884,8 +11884,7 @@ export class NuevoPersonajeService {
         const [quitada] = pj.DotesContextuales.splice(i, 1);
         this.quitarDeLaListaDeDotes(quitada);
         const nivel = indiceNivel !== null ? pj.Orden_niveles?.[indiceNivel] : undefined;
-        const k = (nivel?.elecciones ?? []).findIndex((e) => e.tipo === 'dote' && toInt(e.idElemento) === toInt(idDote)
-            && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
+        const k = (nivel?.elecciones ?? []).findIndex((e) => esLaEleccion(e, 'dote', idDote, idExtra));
         if (nivel && k >= 0)
             nivel.elecciones!.splice(k, 1);
         this.recalcularEfectosConservandoVentajas();
@@ -12199,11 +12198,9 @@ export class NuevoPersonajeService {
             return false;
         const pj = this.personajeCreacion;
         const ref = (nivelClase: number): RefNivelTomado => ({ idClase: toInt(clase.Id), nivelClase: toInt(nivelClase) });
-        const mismo = (e: PersonajeCreateNivelEleccionDto, tipo: string, id: number, idExtra: number) =>
-            e.tipo === tipo && toInt(e.idElemento) === toInt(id) && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra));
-        const quitarEleccion = (nivelClase: number, tipo: string, id: number, idExtra: number) => {
+        const quitarEleccion = (nivelClase: number, tipo: 'especial' | 'dote', id: number, idExtra: number) => {
             const nivel = nivelDelOrden(pj.Orden_niveles, ref(nivelClase));
-            const k = (nivel?.elecciones ?? []).findIndex((e) => mismo(e, tipo, id, idExtra));
+            const k = (nivel?.elecciones ?? []).findIndex((e) => esLaEleccion(e, tipo, id, idExtra));
             if (nivel && k >= 0)
                 nivel.elecciones!.splice(k, 1);
         };
@@ -12213,12 +12210,12 @@ export class NuevoPersonajeService {
             const quita = cambio.quita!;
             if (cambio.tipo === 'dote') {
                 const dote = (pj.DotesContextuales ?? []).find((d) => toInt(d?.Dote?.Id) === toInt(quita.id)
-                    && Math.max(0, toInt(d?.Contexto?.Id_extra)) === Math.max(0, toInt(quita.idExtra))
+                    && mismoExtra(d?.Contexto?.Id_extra, quita.idExtra)
                     && (quita.origen === undefined || `${(d?.Contexto as any)?.Origen ?? ''}` === quita.origen));
                 if (!dote || !this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`))
                     return false;
             } else if (!cambio.conservar) {
-                const i = (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(quita.id) && Math.max(0, toInt(e?.Id_extra)) === Math.max(0, toInt(quita.idExtra)));
+                const i = (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(quita.id) && mismoExtra(e?.Id_extra, quita.idExtra));
                 if (i < 0)
                     return false;
                 pj.Claseas.splice(i, 1);
@@ -12233,7 +12230,7 @@ export class NuevoPersonajeService {
             const pone = cambio.pone!;
             const idExtra = Math.max(0, toInt(pone.idExtra));
             if (cambio.tipo === 'especial') {
-                if (!(pj.Claseas ?? []).some((e) => toInt(e?.Id) === toInt(pone.id) && Math.max(0, toInt(e?.Id_extra)) === idExtra))
+                if (!(pj.Claseas ?? []).some((e) => toInt(e?.Id) === toInt(pone.id) && mismoExtra(e?.Id_extra, idExtra)))
                     pj.Claseas.push({ Id: toInt(pone.id), Id_extra: idExtra, Nombre: pone.nombre, Extra: pone.extra });
                 this.apuntarEnNivel(ref(cambio.nivelClase), { tipo: 'especial', idElemento: toInt(pone.id), idExtra });
             } else {
@@ -12340,7 +12337,7 @@ export class NuevoPersonajeService {
 
         // Las dotes de la mutada se van, salvo las que da también la de antes (no se añade ninguna).
         const deLaBase = this.resolverDotesDeRaza(nueva);
-        const mismaDote = (a: DoteDeRaza, b: DoteDeRaza) => toInt(a.dote?.Id) === toInt(b.dote?.Id) && Math.max(0, toInt(a.idExtra)) === Math.max(0, toInt(b.idExtra));
+        const mismaDote = (a: DoteDeRaza, b: DoteDeRaza) => toInt(a.dote?.Id) === toInt(b.dote?.Id) && mismoExtra(a.idExtra, b.idExtra);
         [...this.resolverDotesDeRaza(mutada), ...(actual ? this.resolverDotesDeRaza(actual) : [])]
             .filter((d) => !deLaBase.some((b) => mismaDote(b, d)))
             .forEach((d) => this.quitarDoteDeRaza(d));
@@ -12534,12 +12531,12 @@ export class NuevoPersonajeService {
 
     /**
      * La habilidad del catálogo de la sesión (no personalizada) de unos rangos del registro (`idHabilidad`, `idExtra`): sin
-     * extra, la habilidad guarda -1 y la elección no lo lleva (0), y son la misma (`mismoExtraDeHabilidad`). Lo usan quitar
+     * extra, la habilidad guarda -1 y la elección no lo lleva (0), y son la misma (`mismoExtra`). Lo usan quitar
      * los rangos de un nivel perdido y la vuelta a la vida con niveles después.
      */
     habilidadDeLaEleccion(idHabilidad: unknown, idExtra: unknown): Personaje['Habilidades'][number] | undefined {
         return (this.personajeCreacion?.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(idHabilidad)
-            && mismoExtraDeHabilidad(idExtraHabilidadParaGuardar(x), idExtra));
+            && mismoExtra(idExtraHabilidadParaGuardar(x), idExtra));
     }
 
     /**

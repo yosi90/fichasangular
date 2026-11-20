@@ -7,7 +7,7 @@ import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
 import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
-import { normalizarTexto, toInt, toNumber } from './normalizacion';
+import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import {
     aplicarRasgoAlMotor, derivadasDelCambio, fichaConElRasgo, HuecoDeRasgo, huecoDelCuerpo, huecosDeRasgo, nombreDeLoQueTiene,
@@ -318,7 +318,7 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
                 && `${x?.Origen ?? ''}` === d.origen);
         });
         (quita.aptitudes ?? []).forEach((a) => {
-            const es = (x: any) => toInt(x?.Id) === a.id && Math.max(0, toInt(x?.Id_extra)) === Math.max(0, a.idExtra);
+            const es = (x: any) => toInt(x?.Id) === a.id && mismoExtra(x?.Id_extra, a.idExtra);
             if (!a.soloElExtra)
                 sacarPrimero(pj.Claseas ?? [], es);
             else
@@ -358,7 +358,7 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
 export function dotesParaReciclar(motor: NuevoPersonajeService, rasgos: HuecoDeRasgo[] = []): DoteReciclable[] {
     // La de un grupo de la tabla de su clase (las del monje): se recicla con su rasgo.
     const deUnRasgo = (idDote: number, idExtra: number, origen: string) => rasgos.find((h) => !!h.tiene.dote && !!h.doteQueTiene
-        && h.doteQueTiene.id === idDote && h.doteQueTiene.idExtra === Math.max(0, idExtra) && h.doteQueTiene.origen === origen);
+        && h.doteQueTiene.id === idDote && mismoExtra(h.doteQueTiene.idExtra, idExtra) && h.doteQueTiene.origen === origen);
     return motor.dotesDelPersonaje().map((d) => {
         const idDote = toInt(d?.Dote?.Id);
         const idExtra = toInt(d?.Contexto?.Id_extra);
