@@ -11,7 +11,7 @@ import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
 import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import { nombreConExtra } from './reciclaje-rasgos';
-import { esEspecializable, prohibidasAlEspecializarse } from './reglas-magia';
+import { escuelasProhibibles, esEspecializable, prohibidasAlEspecializarse } from './reglas-magia';
 import { diferencia } from './subida-nivel';
 
 /*
@@ -338,7 +338,7 @@ export function huecoDeEscuela(motor: NuevoPersonajeService, escuelas: readonly 
         return null;
     const { clase, pendiente } = deLaClase;
     const escuelaFija = motor.escuelaFijaEnCatalogo(pendiente, [...escuelas]);
-    const prohibibles = escuelas.filter((e) => esEspecializable(e) && !!e.Prohibible && toInt(e.Id) !== toInt(escuelaFija?.Id));
+    const prohibibles = escuelasProhibibles(escuelas, escuelaFija?.Id);
     return {
         tipo: 'escuela', clave: `${toInt(clase.Id)}:escuela`, idClase: toInt(clase.Id), clase: `${clase.Nombre}`,
         tiene: especializacionDelMotor(motor, escuelas), escuelaFija,
@@ -385,7 +385,8 @@ function motivoDeLegalidad(e: EspecializacionDelMago, hueco: HuecoDeEscuela, esc
     if (!especialista || !esEspecializable(especialista) || (hueco.escuelaFija && toInt(hueco.escuelaFija.Id) !== e.especialista.id))
         return `No se puede especializar en ${e.especialista.nombre}.`;
     const requeridas = prohibidasAlEspecializarse(especialista);
-    const validas = e.prohibidas.filter((p) => p.id !== e.especialista!.id && !!escuelaDelCatalogo(escuelas, { Id: p.id })?.Prohibible);
+    const permitidas = new Set(escuelasProhibibles(escuelas, e.especialista.id).map((x) => toInt(x.Id)));
+    const validas = e.prohibidas.filter((p) => permitidas.has(p.id));
     if (new Set(validas.map((p) => p.id)).size !== e.prohibidas.length || e.prohibidas.length !== requeridas)
         return requeridas === 1 ? 'Tiene que prohibir 1 escuela que se pueda prohibir.' : `Tiene que prohibir ${requeridas} escuelas que se puedan prohibir.`;
     return null;

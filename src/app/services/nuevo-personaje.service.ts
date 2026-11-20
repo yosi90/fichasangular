@@ -85,6 +85,7 @@ import { tieneTextoVisible } from './utils/texto-visible';
 import {
     conjurosAdicionales,
     conjurosDiariosPorNivel,
+    escuelasProhibibles,
     esEspecializable,
     modificadorDePuntuacion,
     nivelDeClaveConjuro,
@@ -5607,13 +5608,13 @@ export class NuevoPersonajeService {
                     };
                 }
 
-                const escuelasProhibibles = this.obtenerCatalogoEscuelasProhibibles(escuelasCatalogo, idEspecialista);
+                const prohibibles = escuelasProhibibles(escuelasEspecializables, idEspecialista);
                 const idsProhibidas = Array.from(new Set(
                     (arcana?.escuelasProhibidasIds ?? [])
                         .map((id) => toInt(id))
                         .filter((id) => id > 0 && id !== idEspecialista)
                 ));
-                const prohibidasSeleccionadas = escuelasProhibibles
+                const prohibidasSeleccionadas = prohibibles
                     .filter((escuela) => idsProhibidas.includes(toNumber(escuela?.Id)));
                 const prohibidasRequeridas = prohibidasAlEspecializarse(escuelaEspecialista);
                 if (prohibidasSeleccionadas.length !== prohibidasRequeridas) {
@@ -9302,13 +9303,6 @@ export class NuevoPersonajeService {
                 return true;
             })
             .sort(porNombre);
-    }
-
-    private obtenerCatalogoEscuelasProhibibles(escuelasCatalogo: EscuelaConjuros[], idEspecialista: number): EscuelaConjuros[] {
-        const idEspecialistaNum = toNumber(idEspecialista);
-        return this.obtenerCatalogoEscuelasEspecializables(escuelasCatalogo)
-            .filter((escuela) => toNumber(escuela?.Id) !== idEspecialistaNum)
-            .filter((escuela) => toBoolean(escuela?.Prohibible));
     }
 
     private obtenerCatalogoDisciplinasEspecializables(disciplinasCatalogo: DisciplinaConjuros[]): DisciplinaConjuros[] {
