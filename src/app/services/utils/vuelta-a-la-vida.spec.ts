@@ -1,10 +1,10 @@
 import { fichaConConstitucionPerdida, fichaSinElNivel, filasDelNivelPerdido } from './perder-nivel';
 import { especialesDevueltos } from './raza-mutacion';
 import {
-    cambiosDeLaVuelta, conLaConstitucionDeVuelta, especialesDeLasTablas, estadoDeLaVuelta, fichaDeLaVuelta, indiceDelUltimoNivelDeLaClase,
-    MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver, MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL,
-    MOTIVO_VUELTA_NIVELES_DESPUES, MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO, MOTIVO_VUELTA_SIN_NIVELES, nepTrasLaVuelta, NO_SIRVEN_PARA_LA_VUELTA,
-    pxTrasLaVuelta, sumarPerdidas, tomoNivelesDespues,
+    apartarLoDelPrimerNivel, cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
+    fichaDeLaVuelta, indiceDelUltimoNivelDeLaClase, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
+    MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES, MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO, nepTrasLaVuelta, NO_SIRVEN_PARA_LA_VUELTA,
+    pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas, tomoNivelesDespues,
 } from './vuelta-a-la-vida';
 import {
     APTITUD_ENGENDRO, claseClerigo, claseEngendro, claseGuerrero, CLERIGO, cuerposDeLaVuelta, enanoEngendro, ENGENDRO, EXPULSAR,
@@ -43,7 +43,7 @@ describe('vuelta-a-la-vida', () => {
         it('se puede con los dos medios', () => {
             const entrada = enanoEngendro();
             const estado = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: entrada.niveles, clases: entrada.colecciones!.clases as any, dgs: 5, constitucion: 14 });
-            expect(estado).toEqual({ motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 1, dgsSinLaClase: 4, conOtrasClases: true });
+            expect(estado).toEqual({ motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 1, dgsSinLaClase: 4, conOtrasClases: true, ganaNivel: false });
         });
 
         it('sin el engendro: su dote, su aptitud, sus rangos y su DG; con la Constitución, que vuelve a sumar en sus 4 DG', () => {
@@ -213,16 +213,103 @@ describe('vuelta-a-la-vida', () => {
             expect(tomoNivelesDespues(sinOrden, ENGENDRO, claseEngendro, [{ idClase: ENGENDRO, nivel: 3 }, { idClase: GUERRERO, nivel: 4 }])).toBeFalse();
         });
 
-        it('sin ningún DG sin la clase de monstruo (el humano guerrero 1 que se convirtió en engendro 1)', () => {
-            const estado = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: [nivelDe(ENGENDRO, 1, 12)], clases: [{ idClase: ENGENDRO, nivel: 1 }], dgs: 1, constitucion: 12 });
-            expect(estado.motivo).toBe(MOTIVO_VUELTA_SIN_NIVELES);
-            expect(MOTIVO_VUELTA_SIN_NIVELES).toBe('Sin la clase de monstruo no le queda ningún nivel: por ahora, eso lo corrige el máster.');
-        });
-
         it('sin una Constitución guardada, con ningún medio (409 perdida_sin_constitucion)', () => {
             const entrada = enanoEngendro();
             const estado = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: entrada.niveles, clases: entrada.colecciones!.clases as any, dgs: 5, constitucion: null });
             expect(estado.motivo).toBe(motivoSinConstitucionParaVolver(null));
+        });
+    });
+
+    describe('sin ningún DG: gana el 1.er nivel de una clase básica (contrato, «Sin ningún DG»)', () => {
+        const HUMANO = { Ajuste_nivel: 0, Dgs_adicionales: { Cantidad: 0 } } as any;
+        const DROW = { Ajuste_nivel: 2, Dgs_adicionales: { Cantidad: 0 } } as any;
+
+        it('el humano guerrero 1 que se convirtió en engendro 1: ya no es un 409; con los dos medios, si la Constitución da', () => {
+            const estado = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: [nivelDe(ENGENDRO, 1, 12)], clases: [{ idClase: ENGENDRO, nivel: 1 }], dgs: 1, constitucion: 12 });
+            expect(estado).toEqual({ motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 1, dgsSinLaClase: 0, conOtrasClases: false, ganaNivel: true });
+            // Con resurrección paga 2 puntos de Constitución, como cualquier personaje de 1.er nivel: con 2, no se puede.
+            const debil = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: [nivelDe(ENGENDRO, 1, 12)], clases: [{ idClase: ENGENDRO, nivel: 1 }], dgs: 1, constitucion: 2 });
+            expect([debil.motivo, debil.motivoConResurreccion]).toEqual([null, motivoSinConstitucionParaVolver(2)]);
+            expect(MEDIOS_DE_LA_VUELTA[0].porque).toContain('si vuelve con su 1.er nivel, pierde 2 puntos de Constitución');
+        });
+
+        it('los PX y el NEP, ya con el 1.er nivel nuevo: la mitad de su nivel o los suyos si tenía menos', () => {
+            // Humano guerrero 1 convertido en engendro 1: con 0 PX, 0; con 500, 500 (NEP 1).
+            expect(nepTrasLaVuelta(1, 0, HUMANO, HUMANO, 1)).toBe(1);
+            expect(pxTrasLaVuelta(0, 1, null).despues).toBe(0);
+            expect(pxTrasLaVuelta(500, 1, null).despues).toBe(500);
+            // El humano engendro vampírico 3 con 3.000 (NEP 3) queda guerrero 1 con 500.
+            expect(nepTrasLaVuelta(3, 2, HUMANO, HUMANO, 3)).toBe(1);
+            expect(pxTrasLaVuelta(3000, 1, null)).toEqual({ enMedio: 500, despues: 500 });
+            // El drow engendro vampírico 3 con 10.000 (NEP 5, ajuste +2) queda con 4.500 y NEP 3.
+            expect(nepTrasLaVuelta(5, 2, DROW, DROW, 3)).toBe(3);
+            expect(pxTrasLaVuelta(10000, 3, null).despues).toBe(4500);
+        });
+
+        it('los PG, al máximo del dado de su clase con su Constitución de ahora (con resurrección, ya rebajada)', () => {
+            expect(pgDelPrimerNivel(10, 12).total).toBe(11);
+            expect(pgDelPrimerNivel(10, 10).total).toBe(10);
+            expect(pgDelPrimerNivel(4, 3).total).toBe(1);
+        });
+
+        it('solo las básicas: ni de prestigio ni de monstruo', () => {
+            expect(esClaseParaVolverSinDg(claseGuerrero)).toBeTrue();
+            expect(esClaseParaVolverSinDg({ ...claseGuerrero, Prestigio: true })).toBeFalse();
+            expect(esClaseParaVolverSinDg({ ...claseEngendro, Mutacion: { Id: 1009, Nombre: 'Engendro vampírico' } })).toBeFalse();
+            expect(esClaseParaVolverSinDg(null)).toBeFalse();
+        });
+
+        it('el paladín y el monje que tuvo antes de la clase de monstruo siguen cerrados; si nunca los tuvo, no', () => {
+            const PALADIN = 12;
+            const paladin: any = { Id: PALADIN, Nombre: 'Paladín', Multiclase_restringida: true, Conjuros: {} };
+            const clase = (id: number) => id === PALADIN ? paladin : id === ENGENDRO ? claseEngendro : null;
+            // El paladín 1 que perdió su nivel al convertirse.
+            const cerradas = restringidasCerradasAlVolver({
+                nivelesPerdidos: [{ idClase: PALADIN, ordenConocido: true, clasesAnteriores: [] }], claseDeMonstruo: claseEngendro, clase,
+            });
+            expect(cerradas.get(PALADIN)).toBe('Tras ganar niveles de engendro vampírico ya no puede volver a subir de paladín, aunque los pierda (Manual del jugador, págs. 52 y 55).');
+            // El creado como engendro, que nunca fue paladín; uno perdido después de la clase de monstruo; una raza que lo deja libre.
+            expect(restringidasCerradasAlVolver({ nivelesPerdidos: [], claseDeMonstruo: claseEngendro, clase }).size).toBe(0);
+            expect(restringidasCerradasAlVolver({
+                nivelesPerdidos: [{ idClase: PALADIN, ordenConocido: true, clasesAnteriores: [ENGENDRO] }], claseDeMonstruo: claseEngendro, clase,
+            }).size).toBe(0);
+            expect(restringidasCerradasAlVolver({
+                nivelesPerdidos: [{ idClase: PALADIN, ordenConocido: true, clasesAnteriores: [] }], claseDeMonstruo: claseEngendro, clase, libres: [PALADIN],
+            }).size).toBe(0);
+        });
+
+        it('la dote adicional del humano y sus idiomas por Inteligencia no se van con los niveles de la clase de monstruo', () => {
+            const nivel = nivelDe(ENGENDRO, 1, 12, [
+                { tipo: 'dote', idElemento: 77, idExtra: 0, origen: 'Engendro vampírico nivel 1' },
+                { tipo: 'dote', idElemento: 30, idExtra: 0, origen: 'Dote adicional de raza: Humano' },
+                { tipo: 'idioma', idElemento: 6, origen: 'Idiomas iniciales' },
+                { tipo: 'rangos', idElemento: 40, idExtra: 0, valor: 4 },
+            ]);
+            const entrada: any = { personaje: {}, colecciones: { clases: [{ idClase: ENGENDRO, nivel: 1 }] }, niveles: [nivel] };
+            const { entrada: sin, delPrimerNivel } = apartarLoDelPrimerNivel(entrada, ENGENDRO);
+            expect(delPrimerNivel.map((e) => [e.tipo, e.idElemento])).toEqual([['dote', 30], ['idioma', 6]]);
+            expect(sin.niveles![0].elecciones!.map((e) => [e.tipo, e.idElemento])).toEqual([['dote', 77], ['rangos', 40]]);
+            // La entrada no cambia.
+            expect(entrada.niveles[0].elecciones.length).toBe(4);
+        });
+
+        it('«Lo que cambia» con el nivel ganado y lo que da, los PG al máximo y la Constitución que paga', () => {
+            const pj = (con: number, ataque: string): any => ({ Tipo_criatura: { Nombre: 'Humanoide' }, Raciales: [], Fuerza: 14, Constitucion: con, Ataque_base: ataque });
+            const filas = cambiosDeLaVuelta({
+                antes: pj(0, '+0'), despues: pj(10, '+1'), raza: 'Engendro vampírico', razaDeAntes: 'Humano', claseDeMonstruo: 'Engendro vampírico',
+                nivelesDeLaClase: 3, loQueDaban: [], nivelDeMas: null, pierdeConstitucion: true, constitucion: 10,
+                nep: { antes: 3, despues: 1 }, px: { antes: 3000, enMedio: 500, despues: 500 }, pg: { antes: 20, despues: 10, exacto: true },
+                aptitudes: [], vuelvenAValer: [], sinPoderUsar: [],
+                nivelNuevo: { clase: 'Guerrero', caras: 10, filas: [{ que: 'Ataque base', antes: '+0', ahora: '+1', porque: 'Guerrero 1' }] },
+            });
+            const fila = (que: string) => filas.find((f) => f.que === que);
+            expect([fila('Nivel ganado')?.antes, fila('Nivel ganado')?.ahora]).toEqual(['—', 'Guerrero 1']);
+            expect(fila('Ataque base')?.ahora).toBe('+1');
+            expect(fila('NEP')?.porque).toBe('Sin la clase de monstruo y con su 1.er nivel de guerrero');
+            expect([fila('PX')?.antes, fila('PX')?.ahora]).toEqual(['3.000', '500']);
+            expect(fila('PX')?.porque).toContain('ya con el 1.er nivel nuevo');
+            expect(fila('Constitución')?.porque).toContain('es de 1.er nivel');
+            expect([fila('Puntos de golpe')?.ahora, fila('Puntos de golpe')?.porque]).toEqual(['10', 'Sin los DG que pierde y con el de su 1.er nivel de guerrero al máximo: 10 + 0 Con (Manual del jugador, pág. 23)']);
         });
     });
 

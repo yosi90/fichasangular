@@ -5,8 +5,10 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
 import { DominioService } from 'src/app/services/dominio.service';
 import { DoteService } from 'src/app/services/dote.service';
+import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
@@ -22,6 +24,8 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
+import { dgsDeClase } from 'src/app/services/utils/clase-niveles';
+import { claveHabilidad } from 'src/app/services/utils/habilidad-clave';
 import {
     estadoDeLaVuelta, MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES,
 } from 'src/app/services/utils/vuelta-a-la-vida';
@@ -56,7 +60,8 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
                 { provide: RazaService, useValue: jasmine.createSpyObj<RazaService>('RazaService', ['getRazaSobreBase']) },
                 { provide: SubidaNivelPuertaService, useValue: new SubidaNivelPuertaService() },
                 ...[ClaseService, DoteService, ConjuroService, HabilidadService, IdiomaService, DominioService, PlantillaService,
-                    EscuelaConjurosService, ArmaService, ArmaduraService, GrupoArmaService, GrupoArmaduraService, SubtipoService]
+                    EscuelaConjurosService, DisciplinaConjurosService, EnemigoPredilectoService, ArmaService, ArmaduraService, GrupoArmaService,
+                    GrupoArmaduraService, SubtipoService]
                     .map((provide) => ({ provide, useValue: {} })),
             ],
         }).compileComponents();
@@ -210,5 +215,254 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
         expect(fila('Nivel de más')?.antes).toBe('Guerrero 4');
         expect(fila('Constitución')?.ahora).toBe('15');
         expect(componente.puedeGuardar).toBeTrue();
+    });
+
+    describe('sin ningún DG: gana el 1.er nivel de una clase básica (contrato, «Sin ningún DG»)', () => {
+        const DOTE_HUMANO = { tipo: 'dote', idElemento: 30, idExtra: 0, origen: 'Dote adicional de raza: Humano' } as const;
+
+        /**
+         * El humano que se convirtió en engendro vampírico, con el motor de la creación: con `guerrero`, el guerrero 1 que lo
+         * perdió al convertirse; sin él, el creado como engendro (`engendro` niveles). Su dote adicional de humano, en el
+         * registro de su primer nivel. Deja la pantalla lista para calcular, con `pierdeNivel`.
+         */
+        function humanoEngendro(componente: DevolverLaVidaComponent, o: {
+            guerrero: boolean; engendro: number; px: number; nep: number; pierdeNivel: boolean; nivelesPerdidos?: any[];
+        }) {
+            const svc = componente.svc;
+            const engendro = normalizeClase(claseDeMonstruoApi(ENGENDRO_VAMPIRICO));
+            const guerrero = normalizeClase(guerreroApi());
+            const mago = normalizeClase({ ...guerreroApi(20, 'Mago'), Tipo_dado: { Id: 1, Nombre: 'd4' } });
+            const paladin = normalizeClase({ ...guerreroApi(21, 'Paladín'), Multiclase_restringida: true });
+            const prestigio = normalizeClase({ ...guerreroApi(22, 'Caballero de la rosa'), Prestigio: true });
+            svc.setCatalogoClases([engendro, guerrero, mago, paladin, prestigio]);
+            const base = normalizeRazaApi(baseApi('humano'));
+            expect(svc.seleccionarRaza(base)).toBeTrue();
+            svc.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 12, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            if (o.guerrero) {
+                expect(svc.aplicarSiguienteNivelClase(guerrero).aplicado).toBeTrue();
+                svc.registrarDotesPendientesPorRazaExtras('Humano');
+                svc.registrarDotesPendientesPorProgresion('Guerrero nivel 1');
+                svc.getDotesPendientes().forEach((d) => svc.omitirDotePendiente(d.id));
+                svc.perderNivelEnElMotor({ idClase: guerrero.Id, indiceNivel: 0 });
+            }
+            const combinada = normalizeRazaApi(razaDeMonstruoSobreApi(ENGENDRO_VAMPIRICO, baseApi('humano'), { Fuerza: 2, Carisma: 2 }));
+            expect(svc.adquirirRazaMutada(combinada, {})).toBeTrue();
+            for (let i = 0; i < o.engendro; i++) {
+                expect(svc.aplicarSiguienteNivelClase(engendro, null, null, true).aplicado).toBeTrue();
+                svc.registrarDotesPendientesPorRazaExtras('Engendro vampírico');
+            }
+            svc.getDotesPendientes().forEach((d) => svc.omitirDotePendiente(d.id));
+            (svc as any).aumentosPendientesCaracteristica = [];
+
+            const motor = TestBed.inject(MotorDesdeFichaService);
+            const entrada: any = motor.cuerpoDelMotor(svc, { personaje: { nombre: 'Ana' } } as any);
+            entrada.personaje.idRaza = combinada.Id;
+            entrada.personaje.idRazaBase = base.Id;
+            entrada.personaje.puntosGolpe = 20;
+            entrada.caracteristicas.constitucion = { valor: 12, minimo: 0, perdido: true };
+            entrada.niveles = svc.getOrdenNiveles().map((n, i) => ({ ...n, pg: { tirada: 12, maximo: false }, ordenConocido: true }));
+            entrada.niveles[0].elecciones = [...entrada.niveles[0].elecciones, { ...DOTE_HUMANO }];
+            entrada.colecciones.dotes = [...(entrada.colecciones.dotes ?? []), { idDote: 30, idExtra: 0, origen: DOTE_HUMANO.origen }];
+            const dgs = dgsDeClase(engendro, o.engendro);
+            componente.error = '';
+            componente.pj = { ...JSON.parse(JSON.stringify(svc.PersonajeCreacion)), Nombre: 'Ana' };
+            componente.entrada = entrada;
+            componente.sesion = { numero: 3, version: 'v' } as any;
+            componente.raza = combinada;
+            componente.razaDeAntes = base;
+            componente.claseDeMonstruo = engendro;
+            componente.dgs = dgs;
+            componente.experiencia = experiencia({ px: o.px, nivel: o.nep }) as any;
+            (componente as any).nivelesPerdidos = o.nivelesPerdidos ?? [];
+            componente.estado = estadoDeLaVuelta({ claseDeMonstruo: engendro, niveles: entrada.niveles, clases: entrada.colecciones.clases, dgs, constitucion: 12 });
+            componente.pierdeNivel = o.pierdeNivel;
+            return { svc, engendro, guerrero, mago, paladin, base, entrada };
+        }
+
+        /** Hasta el resumen: la clase (sin selectores que abrir), el reparto de rangos y la dote de 1.er nivel (sin candidatas, se omite). */
+        async function tomarElNivel(componente: DevolverLaVidaComponent, clase: any): Promise<void> {
+            await componente.elegirClaseNueva(clase);
+            expect(componente.paso).toBe('habilidades');
+            repartir(componente);
+            componente.cerrarHabilidades();
+            await fixture.whenStable();
+            expect(componente.paso).toBe('resumen');
+        }
+
+        /** Los puntos de habilidad del nivel, en las que se puedan subir (como con − / + en la tabla). */
+        function repartir(componente: DevolverLaVidaComponent): void {
+            const svc = componente.svc;
+            for (let i = 0; i < 100 && !svc.puedeCerrarDistribucionHabilidades(); i++) {
+                const h = svc.getHabilidadesSesion().find((x) => svc.puedeSubirRangoHabilidad(claveHabilidad(x)));
+                if (!h)
+                    break;
+                svc.ajustarRangoHabilidad(claveHabilidad(h), 1);
+            }
+            expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
+        }
+
+        it('el humano guerrero 1 convertido en engendro 1: solo las básicas, sin la de prestigio ni la de monstruo', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            humanoEngendro(componente, { guerrero: true, engendro: 1, px: 500, nep: 1, pierdeNivel: true });
+            expect(componente.ganaNivel).toBeTrue();
+            expect(componente.impedimento).toBe('');
+            componente.calcular();
+            expect(componente.base).not.toBeNull();
+            expect(componente.clasesNuevas.map((c) => [c.clase.Nombre, c.elegible])).toEqual([['Guerrero', true], ['Mago', true], ['Paladín', true]]);
+            fixture.detectChanges();
+            expect(texto()).toContain('Elige la clase de su 1.er nivel');
+            expect(texto()).toContain('gana el 1.er nivel de una clase básica, como al crear');
+            expect(texto()).not.toContain('Caballero de la rosa');
+            expect(boton('Devolver la vida')?.disabled).toBeTrue();
+        });
+
+        it('con resurrección vuelve guerrero 1: PG al máximo con la Constitución rebajada, ×4 + 4 del humano, su dote de humano sin repetir', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const { svc, guerrero, base } = humanoEngendro(componente, { guerrero: true, engendro: 1, px: 500, nep: 1, pierdeNivel: true });
+            componente.calcular();
+            const deRaza = svc.getDotesPendientes().filter((d) => d.fuente === 'raza').length;
+            await componente.elegirClaseNueva(guerrero);
+            // (2 + 0) × 4 + 4 del humano, con su Inteligencia de ahora.
+            expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(12);
+            // La dote de 1.er nivel de personaje sí; la adicional del humano no se repite.
+            expect(svc.getDotesPendientes().filter((d) => d.fuente === 'raza').length).toBe(deRaza);
+            expect(svc.getDotesPendientes().some((d) => d.fuente === 'nivel' && d.estado === 'pendiente')).toBeTrue();
+            expect(componente.pasos).toEqual(['clase', 'habilidades', 'dotes', 'resumen']);
+            repartir(componente);
+            componente.cerrarHabilidades();
+            await fixture.whenStable();
+            expect(componente.paso).toBe('resumen');
+
+            const ficha: any = componente.ficha;
+            expect([ficha.personaje.idRaza, ficha.personaje.idRazaBase]).toEqual([base.Id, null]);
+            expect(ficha.colecciones.clases).toEqual([{ idClase: guerrero.Id, nivel: 1 }]);
+            expect(ficha.niveles.length).toBe(1);
+            expect([ficha.niveles[0].idClase, ficha.niveles[0].nivelClase]).toEqual([guerrero.Id, 1]);
+            expect(ficha.niveles[0].pg).toBeUndefined();
+            // La dote adicional del humano pasa al 1.er nivel nuevo, con su origen, y sigue en la ficha.
+            expect(ficha.niveles[0].elecciones).toContain(jasmine.objectContaining(DOTE_HUMANO));
+            expect(ficha.colecciones.dotes.filter((d: any) => d.idDote === 30).length).toBe(1);
+            // Constitución 12 − 2 = 10: d10 al máximo + 0.
+            expect(ficha.caracteristicas.constitucion).toEqual({ valor: 10, minimo: 0, perdido: false });
+            expect(ficha.personaje.puntosGolpe).toBe(10);
+            expect([componente.nepDespues, componente.pxDespues]).toEqual([1, 500]);
+            const fila = (que: string) => componente.cambios.find((c) => c.que === que);
+            expect(fila('Nivel ganado')?.ahora).toBe('Guerrero 1');
+            expect(fila('Constitución')?.ahora).toBe('10');
+            expect(fila('Puntos de golpe')?.ahora).toBe('10');
+            expect(componente.puedeGuardar).toBeTrue();
+            // Con el nivel empezado, el medio no cambia (se empieza de nuevo).
+            componente.elegirMedio(componente.medios[1]);
+            expect(componente.pierdeNivel).toBeTrue();
+
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            const frase = 'volvió a la vida (vuelve a ser humano): −1 nivel de engendro vampírico, +1 nivel de guerrero (su 1.er nivel)';
+            sesiones.devolverLaVida.and.resolveTo({
+                sesion: { eventos: [{ id: 9, tipo: 'vuelta_a_la_vida', texto: frase }] }, vuelta: { idEvento: 9, raza: { id: base.Id, nombre: 'Humano' } },
+            } as any);
+            const toasts = TestBed.inject(AppToastService);
+            spyOn(toasts, 'showSuccess');
+            await componente.guardar();
+            // Sin `idClase` (no hay nivel de más) y sin `pg` (va al máximo).
+            expect(sesiones.devolverLaVida).toHaveBeenCalledWith(5, { pierdeNivel: true, ficha, version: 'v' });
+            expect(toasts.showSuccess).toHaveBeenCalledWith(`Ana ${frase}`);
+        });
+
+        it('con resurrección verdadera vuelve mago 1: conserva su Constitución (d4 + 1)', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const { mago } = humanoEngendro(componente, { guerrero: true, engendro: 1, px: 0, nep: 1, pierdeNivel: false });
+            componente.calcular();
+            await tomarElNivel(componente, mago);
+            const ficha: any = componente.ficha;
+            expect(ficha.colecciones.clases).toEqual([{ idClase: mago.Id, nivel: 1 }]);
+            expect(ficha.caracteristicas.constitucion).toEqual({ valor: 12, minimo: 0, perdido: false });
+            expect(ficha.personaje.puntosGolpe).toBe(5);
+            expect([componente.nepDespues, componente.pxDespues]).toEqual([1, 0]);
+            expect(componente.cambios.find((c) => c.que === 'Constitución')?.porque).toBe('Recupera su puntuación: vuelve a sumar en todos sus DG');
+        });
+
+        it('el humano creado como engendro vampírico 3 con 3.000 PX (NEP 3) queda guerrero 1 con 500', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const { guerrero } = humanoEngendro(componente, { guerrero: false, engendro: 3, px: 3000, nep: 3, pierdeNivel: true });
+            expect([componente.estado?.nivelesDeLaClase, componente.estado?.dgsSinLaClase, componente.ganaNivel]).toEqual([3, 0, true]);
+            componente.calcular();
+            await tomarElNivel(componente, guerrero);
+            const ficha: any = componente.ficha;
+            expect(ficha.colecciones.clases).toEqual([{ idClase: guerrero.Id, nivel: 1 }]);
+            expect(ficha.niveles.map((n: any) => [n.idClase, n.nivelClase])).toEqual([[guerrero.Id, 1]]);
+            expect(ficha.niveles[0].elecciones).toContain(jasmine.objectContaining(DOTE_HUMANO));
+            expect([componente.nepDespues, componente.pxDespues]).toEqual([1, 500]);
+            const fila = (que: string) => componente.cambios.find((c) => c.que === que);
+            expect([fila('Niveles de Engendro vampírico')?.ahora, fila('PX')?.ahora, fila('NEP')?.ahora]).toEqual(['Los pierde todos (3)', '500', '1']);
+        });
+
+        it('el paladín que perdió su nivel al convertirse sigue cerrado; sin haberlo sido, se puede', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            humanoEngendro(componente, {
+                guerrero: true, engendro: 1, px: 500, nep: 1, pierdeNivel: true,
+                nivelesPerdidos: [{ idClase: 21, nivelClase: 1, ordenConocido: true, clasesAnteriores: [], causa: 'conversion', restablecible: false }],
+            });
+            componente.calcular();
+            const paladin = componente.clasesNuevas.find((c) => c.clase.Nombre === 'Paladín');
+            expect(paladin?.elegible).toBeFalse();
+            expect(paladin?.motivo).toContain('ya no puede volver a subir de paladín');
+            fixture.detectChanges();
+            expect(texto()).toContain('ya no puede volver a subir de paladín');
+        });
+
+        it('una clase que no admite su alineamiento, como al crear: «Elegir igualmente», con aviso, y la decisión alineamiento_clase', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const { svc, paladin } = humanoEngendro(componente, { guerrero: true, engendro: 1, px: 500, nep: 1, pierdeNivel: true });
+            const evaluar = svc.evaluarClaseParaSeleccion.bind(svc);
+            spyOn(svc, 'evaluarClaseParaSeleccion').and.callFake((clase: any) => clase.Nombre === 'Paladín'
+                ? { estado: 'blocked_failed', razones: ['Requiere alineamiento legal bueno'], advertencias: [], soloPorAlineamiento: true } as any
+                : evaluar(clase));
+            // Con una campaña que no deja saltarse el alineamiento, no se ofrece.
+            componente.pj = { ...componente.pj!, PoliticaCompra: { permitirIgnorarRestriccionesAlineamiento: false } as any };
+            componente.calcular();
+            expect(componente.clasesNuevas.some((c) => c.clase.Nombre === 'Paladín')).toBeFalse();
+            // Sin campaña, sí: «Elegir igualmente», que avisa antes de volver homebrew la ficha.
+            const { svc: svc2, paladin: paladin2 } = humanoEngendro(componente, { guerrero: true, engendro: 1, px: 500, nep: 1, pierdeNivel: true });
+            expect(svc2).toBe(svc);
+            componente.calcular();
+            const item = componente.clasesNuevas.find((c) => c.clase.Nombre === 'Paladín');
+            expect([item?.elegible, item?.soloAlineamiento]).toEqual([false, true]);
+            fixture.detectChanges();
+            expect(boton('Elegir igualmente')).toBeDefined();
+            const aviso = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            await tomarElNivel(componente, paladin2);
+            expect(aviso).toHaveBeenCalled();
+            expect((componente.ficha as any).colecciones.clases).toEqual([{ idClase: paladin.Id, nivel: 1 }]);
+            expect(componente.ficha?.decisionesHomebrew).toContain({ tipo: 'alineamiento_clase', idElemento: paladin.Id });
+        });
+
+        it('con Constitución 2, con resurrección no se puede (quedaría en 0): queda la verdadera', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const entrada: any = { personaje: { puntosGolpe: 8 }, caracteristicas: { constitucion: { valor: 2, minimo: 0, perdido: true } },
+                colecciones: { clases: [{ idClase: ENGENDRO, nivel: 1 }] }, niveles: [nivelDe(ENGENDRO, 1, 12)] };
+            conPersonaje(componente, entrada, 1, 2);
+            expect(componente.ganaNivel).toBeTrue();
+            expect(componente.pierdeNivel).toBeFalse();
+            const radios = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>('input[name="medioVuelta"]'));
+            expect(radios.map((r) => [r.disabled, r.checked])).toEqual([[true, false], [false, true]]);
+            expect(texto()).toContain('Con Constitución 2 no se le puede devolver la vida');
+        });
+
+        it('el error de la API (vuelta_clase_nueva_no_valida) se enseña con su frase', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const entrada: any = { personaje: { puntosGolpe: 8 }, caracteristicas: { constitucion: { valor: 12, minimo: 0, perdido: true } },
+                colecciones: { clases: [{ idClase: ENGENDRO, nivel: 1 }] }, niveles: [nivelDe(ENGENDRO, 1, 12)] };
+            conPersonaje(componente, entrada, 1, 12);
+            componente.claseNueva = { Id: 9, Nombre: 'Guerrero' } as any;
+            componente.paso = 'resumen';
+            componente.ficha = { personaje: {} } as any;
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            const frase = 'Al volver a la vida sin ningún DG gana el 1.er nivel de una clase básica, como al crear.';
+            sesiones.devolverLaVida.and.rejectWith(Object.assign(new Error(frase), { code: 'vuelta_clase_nueva_no_valida', field: 'ficha.colecciones.clases' }));
+            await componente.guardar();
+            fixture.detectChanges();
+            expect(componente.error).toBe(frase);
+            expect(texto()).toContain(frase);
+        });
     });
 });

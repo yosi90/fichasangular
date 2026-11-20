@@ -27,13 +27,14 @@
             <p class="subida__nota">Pierde todos sus niveles de {{claseDeMonstruo?.Nombre}} ({{estado.nivelesDeLaClase}}), con todo lo que le dieron, y vuelve a ser {{razaDeAntes?.Nombre | lowercase}}, con su Constitución (Libris Mortis, pág. 35). Lo que pierde no se restablece nunca.</p>
             <div class="subida__opciones" role="radiogroup" aria-label="Con qué conjuro vuelve a la vida">
                 <label *ngFor="let m of medios" class="subida__opcion" [class.subida__opcion--bloqueada]="!!motivoDelMedio(m)">
-                    <input type="radio" name="medioVuelta" [checked]="pierdeNivel === m.pierdeNivel" [disabled]="!!motivoDelMedio(m) || guardando"
+                    <input type="radio" name="medioVuelta" [checked]="pierdeNivel === m.pierdeNivel" [disabled]="!!motivoDelMedio(m) || guardando || !!claseNueva"
                         (change)="elegirMedio(m)">
                     <span class="subida__opcion-texto">{{m.titulo}}</span>
                     <span class="subida__opcion-porque">{{m.porque}}</span>
                     <span *ngIf="motivoDelMedio(m) as motivoMedio" class="subida__fila-motivo subida__opcion-porque">{{motivoMedio}}</span>
                 </label>
             </div>
+            <p *ngIf="claseNueva" class="subida__nota">Para cambiar el conjuro, empieza de nuevo su 1.er nivel: su Constitución ya cuenta en él.</p>
             <p class="subida__nota">{{noSirven}}</p>
             <p class="subida__nota">Su cuerpo de muerto viviente tiene que haber sido destruido (Manual del jugador, pág. 285): lo confirma quien lo apunta.</p>
             <label class="subida__campo">
@@ -59,6 +60,37 @@
         </div>
 
         <p *ngIf="calculando" class="subida__estado">Calculando lo que cambia…</p>
+
+        <!-- Sin ningún DG: su 1.er nivel, con los pasos de la subida (los PG van al máximo) -->
+        <ng-container *ngIf="ganaNivel && !impedimento && !calculando && base">
+            <section class="subida__tarjeta">
+                <h2 class="subida__seccion">Su 1.er nivel</h2>
+                <p class="subida__nota">Sin {{claseDeMonstruo?.Nombre}} no le queda ningún DG: gana el 1.er nivel de una clase básica, como al crear. Los PG van al máximo de su dado, los puntos de habilidad ×4 con su Inteligencia de ahora, la dote de 1.er nivel y lo de la tabla de su clase; sin riqueza inicial. No está obligado a la que perdió al convertirse.</p>
+                <app-pasos-sesion [pasos]="pasos" [actual]="paso" [etiqueta]="etiquetaPaso" nombre="Pasos de su 1.er nivel"></app-pasos-sesion>
+            </section>
+            <section class="subida__tarjeta" *ngIf="paso !== 'resumen'" [ngSwitch]="paso">
+                <ng-container *ngSwitchCase="'clase'">
+                    <app-clases-del-nivel [clases]="clasesNuevas" titulo="Elige la clase de su 1.er nivel"
+                        nota="Una clase básica que pueda tomar ahora, como al crear: ni de prestigio ni de monstruo. Las que no puede tomar dicen por qué."
+                        [deshabilitado]="guardando" (elegida)="elegirClaseNueva($event)"></app-clases-del-nivel>
+                </ng-container>
+                <ng-container *ngSwitchCase="'incremento'">
+                    <h2 class="subida__seccion">Incremento de característica</h2>
+                    <p class="subida__nota">Elige en el selector la característica que sube.</p>
+                </ng-container>
+                <ng-container *ngSwitchCase="'habilidades'">
+                    <app-reparto-rangos [motor]="svc" titulo="Habilidades de su 1.er nivel"></app-reparto-rangos>
+                </ng-container>
+                <ng-container *ngSwitchCase="'dotes'">
+                    <h2 class="subida__seccion">Dotes de su 1.er nivel</h2>
+                    <p class="subida__nota">Elige en el selector la dote de 1.er nivel de personaje y las que dé la tabla de su clase. La dote adicional de su raza, si la tiene, la conserva: no se elige otra.</p>
+                </ng-container>
+                <ng-container *ngSwitchCase="'conjuros'">
+                    <app-conjuros-del-nivel [motor]="svc" [homebrew]="pj.Oficial === false"></app-conjuros-del-nivel>
+                </ng-container>
+            </section>
+        </ng-container>
+
         <section class="subida__tarjeta" *ngIf="!impedimento && !calculando && cambios.length > 0">
             <h2 class="subida__seccion">Lo que cambia</h2>
             <table class="subida__tabla subida__tabla--resumen">
@@ -72,9 +104,14 @@
         </section>
 
         <footer class="subida__pie">
-            <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+            <button mat-button type="button" (click)="claseNueva ? empezarDeNuevo() : cancelar()">{{claseNueva ? 'Empezar de nuevo' : 'Cancelar'}}</button>
             <span class="subida__hueco"></span>
+            <ng-container *ngIf="ganaNivel && claseNueva" [ngSwitch]="paso">
+                <button *ngSwitchCase="'habilidades'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades()" (click)="cerrarHabilidades()">Continuar</button>
+                <button *ngSwitchCase="'conjuros'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarSesionConjuros()" (click)="cerrarConjuros()">Continuar</button>
+            </ng-container>
             <button mat-flat-button color="primary" type="button" [disabled]="!puedeGuardar" (click)="guardar()">Devolver la vida</button>
         </footer>
     </ng-container>
+    <ng-container #modalHost></ng-container>
 </section>

@@ -252,7 +252,7 @@ describe('SesionesService', () => {
             expect(respuesta.vuelta).toEqual({
                 idEvento: 103, numeroSesion: 1, pierdeNivel: true, razaAntes: { id: 1009, nombre: 'Engendro vampírico' }, raza: { id: 2, nombre: 'Enano' },
                 claseDeMonstruo: { id: 482, nombre: 'Engendro vampírico' }, nivelesQuitados: 1, perdida: { clase: { id: 7, nombre: 'Guerrero' }, nivelClase: 4 },
-                constitucion: { antes: 14, despues: 14 }, nepAntes: 5, nepDespues: 3, pxAntes: 8000, pxDespues: 4500,
+                constitucion: { antes: 14, despues: 14 }, nivelNuevo: null, nepAntes: 5, nepDespues: 3, pxAntes: 8000, pxDespues: 4500,
             });
             const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
             expect([ultimo.tipo, ultimo.texto, ultimo.px, ultimo.idClase, ultimo.deshacible]).toEqual(['vuelta_a_la_vida', texto, -3500, 482, true]);
@@ -262,6 +262,14 @@ describe('SesionesService', () => {
             // Sin el nivel de más (resurrección verdadera), `perdida` es null.
             http.request.and.returnValue(of({ ...venta, reglasIgnoradas: [], vuelta: { idEvento: 104, pierdeNivel: false, perdida: null, nivelesQuitados: 1 } }));
             expect((await servicio.devolverLaVida(129, { ...cuerpo, pierdeNivel: false })).vuelta.perdida).toBeNull();
+
+            // Sin ningún DG gana el 1.er nivel de una clase: `nivelNuevo` con su clase.
+            http.request.and.returnValue(of({
+                ...venta, reglasIgnoradas: [],
+                vuelta: { idEvento: 105, pierdeNivel: true, perdida: null, nivelesQuitados: 3, nivelNuevo: { clase: { id: 9, nombre: 'Guerrero' } }, pxAntes: 3000, pxDespues: 500 },
+            }));
+            const sinDg = (await servicio.devolverLaVida(129, cuerpo)).vuelta;
+            expect([sinDg.nivelNuevo, sinDg.pxDespues]).toEqual([{ clase: { id: 9, nombre: 'Guerrero' } }, 500]);
 
             // Lo que pierde va a `nivelesPerdidos` con la causa `revivir` y sin restablecimiento.
             http.request.and.returnValue(of({

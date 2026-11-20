@@ -102,7 +102,9 @@ import {
     ClaseParaPenalizacion, ClasePredilecta, clasePredilectaDeRaza, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia,
 } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
-import { apuntarEleccion, construirNivelesCreacion, nivelDelOrden, RefNivelTomado } from './utils/niveles-creacion';
+import {
+    apuntarEleccion, construirNivelesCreacion, nivelDelOrden, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_IDIOMAS_INICIALES, RefNivelTomado,
+} from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claveDoteDeLaFicha } from './utils/correccion-ficha';
@@ -2419,7 +2421,7 @@ export class NuevoPersonajeService {
      */
     marcarIdiomasInicialesConcedidos(elegidos: Array<{ Nombre?: string; Id?: number; }> = []): void {
         this.idiomasInicialesConcedidos = true;
-        elegidos.forEach((idioma) => this.apuntarIdiomaEnNivel(idioma, 'Idiomas iniciales'));
+        elegidos.forEach((idioma) => this.apuntarIdiomaEnNivel(idioma, ORIGEN_IDIOMAS_INICIALES));
     }
 
     /**
@@ -5242,7 +5244,7 @@ export class NuevoPersonajeService {
         const prefijos: Record<DoteFuentePendiente, string> = {
             nivel: 'Dote por nivel',
             adicional: 'Dote adicional',
-            raza: 'Dote adicional de raza',
+            raza: ORIGEN_DOTE_ADICIONAL_DE_RAZA,
             raza_dg: 'DGs de raza',
         };
         const prefijo = prefijos[pendiente.fuente] ?? 'Dote adicional';

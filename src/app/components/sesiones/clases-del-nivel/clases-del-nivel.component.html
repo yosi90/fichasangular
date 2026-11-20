@@ -1,0 +1,14 @@
+<h2 class="subida__seccion">{{titulo}}</h2>
+<p class="subida__nota">{{nota}}</p>
+<ul class="subida__lista">
+    <li *ngFor="let item of clases" class="subida__fila" [class.subida__fila--bloqueada]="!item.elegible && !item.soloAlineamiento">
+        <div class="subida__fila-texto">
+            <span class="subida__fila-nombre">{{item.clase.Nombre}} {{item.siguienteNivel}}</span>
+            <span *ngIf="!item.elegible" class="subida__fila-motivo">{{item.motivo}}</span>
+            <span *ngIf="item.clase.Oficial === false" class="subida__etiqueta">Homebrew</span>
+        </div>
+        <button *ngIf="!item.soloAlineamiento" mat-flat-button color="primary" type="button" [disabled]="!item.elegible || deshabilitado" (click)="elegida.emit(item.clase)">Elegir</button>
+        <button *ngIf="item.soloAlineamiento" mat-stroked-button color="warn" type="button" [disabled]="deshabilitado" (click)="elegida.emit(item.clase)">Elegir igualmente</button>
+    </li>
+</ul>
+<p *ngIf="clases.length < 1" class="subida__nota">No puede tomar ninguna.</p>

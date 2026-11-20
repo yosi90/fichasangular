@@ -1,0 +1,16 @@
+<h2 class="subida__seccion">Conjuros nuevos<ng-container *ngIf="entrada"> de {{entrada.claseObjetivo.nombre}}</ng-container></h2>
+<ng-container *ngIf="entrada as e">
+    <p class="subida__nota">Te quedan {{e.cupoPendiente.total}} por elegir.</p>
+    <ul class="subida__chips" *ngIf="e.seleccionadosIds.length || e.autoadicionadosIds.length">
+        <li *ngFor="let id of e.autoadicionadosIds" class="subida__chip">{{nombre(id)}} <span class="subida__etiqueta">Automático</span></li>
+        <li *ngFor="let id of e.seleccionadosIds" class="subida__chip">{{nombre(id)}}
+            <button mat-icon-button type="button" [attr.aria-label]="'Quitar ' + nombre(id)" (click)="quitar(id)"><mat-icon>close</mat-icon></button></li>
+    </ul>
+    <label class="subida__filtro">Buscar <input type="search" [(ngModel)]="filtro" name="filtroConjuros"></label>
+    <ul class="subida__lista">
+        <li *ngFor="let c of disponibles" class="subida__fila">
+            <span class="subida__fila-nombre">{{c.Nombre}}</span>
+            <button mat-stroked-button type="button" (click)="elegir(c)">Elegir</button>
+        </li>
+    </ul>
+</ng-container>

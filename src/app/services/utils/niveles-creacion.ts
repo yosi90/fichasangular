@@ -19,6 +19,22 @@ import { DadoDeGolpe } from 'src/app/services/utils/puntos-golpe';
  * de lanzador (`progresionLanzador`, que ya dicen su clase y su nivel).
  */
 
+/** El origen de los idiomas adicionales del 1.er nivel (por Inteligencia), en la ficha y en el registro de su nivel. */
+export const ORIGEN_IDIOMAS_INICIALES = 'Idiomas iniciales';
+/** El principio del origen de la dote adicional de la raza (la del humano: «Dote adicional de raza: Humano»), en la ficha y en su nivel. */
+export const ORIGEN_DOTE_ADICIONAL_DE_RAZA = 'Dote adicional de raza';
+
+/**
+ * Si lo elegido es del 1.er nivel del personaje y no del nivel de su clase en que se apuntó: la dote adicional de la raza
+ * (*Manual del jugador*, pág. 13) y los idiomas adicionales por Inteligencia (pág. 82). Sale del origen que les pone el
+ * motor al elegirlos. Lo usa la vuelta a la vida sin ningún DG: se conservan y pasan al 1.er nivel nuevo.
+ */
+export function esDelPrimerNivelDelPersonaje(eleccion: Pick<PersonajeCreateNivelEleccionDto, 'tipo' | 'origen'> | null | undefined): boolean {
+    const origen = `${eleccion?.origen ?? ''}`.trim();
+    return (eleccion?.tipo === 'dote' && origen.startsWith(ORIGEN_DOTE_ADICIONAL_DE_RAZA))
+        || (eleccion?.tipo === 'idioma' && origen === ORIGEN_IDIOMAS_INICIALES);
+}
+
 /** Un nivel tomado: el n-ésimo de su clase, con lo que se eligió en él. */
 export interface NivelTomado {
     idClase: number;
