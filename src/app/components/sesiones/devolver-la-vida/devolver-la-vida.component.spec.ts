@@ -26,6 +26,7 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { dgsDeClase } from 'src/app/services/utils/clase-niveles';
 import { claveHabilidad } from 'src/app/services/utils/habilidad-clave';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 import {
     estadoDeLaVuelta, MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES,
 } from 'src/app/services/utils/vuelta-a-la-vida';
@@ -125,10 +126,11 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
         expect(componente.pierdeNivel).toBeFalse();
     });
 
-    it('con niveles de otra clase después de la de monstruo: deshabilitado, con la frase de la API', async () => {
+    it('con niveles de otra clase después y el orden por conocer: deshabilitado, con la frase de la API', async () => {
         const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
         const entrada: any = enanoEngendro([], [7, 6, 6, 6, 6, 6, 6, 6]);
-        entrada.niveles = [...entrada.niveles.map((n: any, i: number) => ({ ...n, nivelClase: i + 1 })), nivelDe(GUERRERO, 1, 8)];
+        entrada.niveles = [...entrada.niveles.map((n: any, i: number) => ({ ...n, nivelClase: i + 1 })), nivelDe(GUERRERO, 1, 8)]
+            .map((n: any) => ({ ...n, ordenConocido: false }));
         entrada.colecciones.clases = [{ idClase: ENGENDRO, nivel: 8 }, { idClase: GUERRERO, nivel: 1 }];
         conPersonaje(componente, entrada, 5);
         expect(componente.motivo).toBe(MOTIVO_VUELTA_NIVELES_DESPUES);
@@ -215,6 +217,262 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
         expect(fila('Nivel de más')?.antes).toBe('Guerrero 4');
         expect(fila('Constitución')?.ahora).toBe('15');
         expect(componente.puedeGuardar).toBeTrue();
+    });
+
+    describe('con niveles de otra clase después (contrato, «Con niveles de otra clase después»)', () => {
+        /** Un engendro vampírico de 4 niveles con un DG en cada uno (las dotes de su tabla a 1.º y 3.º). */
+        const ENGENDRO_4 = {
+            ...ENGENDRO_VAMPIRICO, id: 951, ataque: [0, 0, 1, 1], fortRef: [0, 0, 0, 0], voluntad: [2, 2, 3, 3], dgs: [1, 2, 3, 4], dotes: [1, 3],
+            armaduraNatural: { 2: 1, 4: 2 },
+        };
+        const dote = (id: number): any => ({
+            Id: id, Nombre: `Dote ${id}`, Descripcion: '', Beneficio: '', Normal: '', Especial: '', Manual: { Id: 1, Nombre: 'MJ', Pagina: 1 },
+            Tipos: [{ Id: 1, Nombre: 'General', Usado: 1 }], Repetible: 0, Repetible_distinto_extra: 0, Repetible_comb: 0, Comp_arma: 0, Oficial: true,
+            Extras_soportados: { Extra_arma: 0, Extra_armadura_armaduras: 0, Extra_armadura_escudos: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] }, Modificadores: {}, Prerrequisitos: {},
+        });
+        const HABILIDADES = [
+            { Id_habilidad: 2, Nombre: 'Trepar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            { Id_habilidad: 3, Nombre: 'Concentración', Id_caracteristica: 3, Caracteristica: 'Constitucion', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ];
+        const TREPAR = 2;
+
+        /** Sube `rangos` en una habilidad en el reparto abierto del motor (como con + en la tabla). */
+        function subir(svc: any, id: number, rangos: number): void {
+            const h = svc.getHabilidadesSesion().find((x: any) => Number(x.Id) === id);
+            for (let i = 0; i < rangos; i++)
+                expect(svc.ajustarRangoHabilidad(claveHabilidad(h), 1)).toBeTrue();
+        }
+
+        /**
+         * Con el motor de la creación: un `raza` que se creó engendro vampírico (`engendro` niveles, uno por DG) y después tomó
+         * guerrero, un nivel por cada entrada de `guerrero` (los rangos de Trepar que compró, la dote de nivel de personaje que
+         * eligió y el incremento). Deja la pantalla lista para calcular, con Inteligencia `inteligencia`.
+         */
+        function conNivelesDespues(componente: DevolverLaVidaComponent, o: {
+            raza: 'enano' | 'humano'; engendro: number; inteligencia: number; px: number; nep: number; pierdeNivel: boolean;
+            guerrero: Array<{ trepar?: number; dote?: number; incremento?: 'Inteligencia'; }>; doteDeRaza?: number;
+        }) {
+            const svc = componente.svc;
+            const engendro = normalizeClase(claseDeMonstruoApi(ENGENDRO_4, o.engendro < 4 ? { Progresion_obligatoria: false } : {}));
+            const guerrero = normalizeClase({ ...guerreroApi(), Habilidades: { Base: [{ Id_habilidad: TREPAR, Nombre: 'Trepar' }], Custom: [], Por_alineamiento: [] } });
+            svc.setCatalogoClases([engendro, guerrero]);
+            svc.setCatalogoDotes([50, 51, 52, 53].map(dote));
+            svc.setCatalogoHabilidades(HABILIDADES as any);
+            const base = normalizeRazaApi(baseApi(o.raza));
+            expect(svc.seleccionarRaza(base)).toBeTrue();
+            svc.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: o.inteligencia, Sabiduria: 11, Carisma: 9 });
+            const combinada = normalizeRazaApi(razaDeMonstruoSobreApi(ENGENDRO_4, baseApi(o.raza), { Fuerza: 2, Carisma: 2 }));
+            expect(svc.adquirirRazaMutada(combinada, {})).toBeTrue();
+            for (let i = 0; i < o.engendro; i++) {
+                expect(svc.aplicarSiguienteNivelClase(engendro, null, null, true).aplicado).toBeTrue();
+                svc.registrarDotesPendientesPorRazaExtras(base.Nombre);
+                svc.registrarDotesPendientesPorProgresion(`Engendro vampírico nivel ${i + 1}`);
+                svc.getDotesPendientes().filter((d) => d.estado === 'pendiente').forEach((d) => d.fuente === 'raza' && o.doteDeRaza
+                    ? expect(svc.aplicarDotePendiente(d.id, { idDote: o.doteDeRaza, idExtra: 0, extra: '' } as any)).toBeTrue()
+                    : svc.omitirDotePendiente(d.id));
+            }
+            (svc as any).aumentosPendientesCaracteristica = [];
+            o.guerrero.forEach((g, i) => {
+                expect(svc.aplicarSiguienteNivelClase(guerrero).aplicado).toBeTrue();
+                svc.registrarAumentosPendientesPorProgresion(`Guerrero nivel ${i + 1}`);
+                const aumentos = svc.getAumentosCaracteristicaPendientes();
+                if (g.incremento)
+                    expect(svc.aplicarAumentosCaracteristica(aumentos.map((a) => ({ idPendiente: a.id, caracteristica: g.incremento! })))).toBeTrue();
+                (svc as any).aumentosPendientesCaracteristica = [];
+                svc.iniciarDistribucionHabilidadesPorClase(guerrero);
+                subir(svc, TREPAR, g.trepar ?? 0);
+                // Lo que no gasta, se pierde (no cambia lo que se prueba).
+                svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+                svc.cerrarDistribucionHabilidades();
+                svc.registrarDotesPendientesPorProgresion(`Guerrero nivel ${i + 1}`);
+                svc.getDotesPendientes().filter((d) => d.estado === 'pendiente').forEach((d) => g.dote
+                    ? expect(svc.aplicarDotePendiente(d.id, { idDote: g.dote, idExtra: 0, extra: '' } as any)).toBeTrue()
+                    : svc.omitirDotePendiente(d.id));
+            });
+
+            const motor = TestBed.inject(MotorDesdeFichaService);
+            const entrada: any = motor.cuerpoDelMotor(svc, { personaje: { nombre: 'Tordek' } } as any);
+            const tiradas = [...Array.from({ length: o.engendro }, () => 8), 6, 5, 4];
+            entrada.personaje.idRaza = combinada.Id;
+            entrada.personaje.idRazaBase = base.Id;
+            // Su Constitución guardada, la de cuando vivía (13 y la de su raza).
+            entrada.caracteristicas.constitucion = { valor: 13 + toNumber(base.Modificadores?.Constitucion), minimo: 0, perdido: true };
+            entrada.niveles = svc.getOrdenNiveles().map((n, i) => ({ ...n, pg: { tirada: i === 0 ? 12 : tiradas[i], maximo: i === 0 }, ordenConocido: true }));
+            // Sin Constitución: el d12 de su 1.er nivel al máximo y lo que salió en los demás.
+            entrada.personaje.puntosGolpe = entrada.niveles.reduce((suma: number, n: any) => suma + n.pg.tirada, 0);
+            const dgs = o.engendro + o.guerrero.length;
+            componente.error = '';
+            componente.pj = { ...JSON.parse(JSON.stringify(svc.PersonajeCreacion)), Nombre: 'Tordek' };
+            componente.entrada = entrada;
+            componente.sesion = { numero: 3, version: 'v' } as any;
+            componente.raza = combinada;
+            componente.razaDeAntes = base;
+            componente.claseDeMonstruo = engendro;
+            componente.dgs = dgs;
+            componente.experiencia = experiencia({ px: o.px, nivel: o.nep }) as any;
+            componente.estado = estadoDeLaVuelta({ claseDeMonstruo: engendro, niveles: entrada.niveles, clases: entrada.colecciones.clases, dgs, constitucion: entrada.caracteristicas.constitucion.valor });
+            componente.pierdeNivel = o.pierdeNivel;
+            return { svc, engendro, guerrero, base, entrada };
+        }
+
+        /** El reparto abierto: los puntos, en lo que se pueda subir (lo que no cabe, se pierde), y «Continuar». */
+        function repartirYSeguir(componente: DevolverLaVidaComponent): void {
+            const svc = componente.svc;
+            for (let i = 0; i < 100 && !svc.puedeCerrarDistribucionHabilidades(); i++) {
+                const h = svc.getHabilidadesSesion().find((x) => svc.puedeSubirRangoHabilidad(claveHabilidad(x)));
+                if (!h)
+                    break;
+                svc.ajustarRangoHabilidad(claveHabilidad(h), 1);
+            }
+            expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
+            componente.cerrarHabilidades();
+        }
+
+        const rangosDe = (ficha: any, id: number) => toNumber(ficha.colecciones.habilidades.base.find((h: any) => h.idHabilidad === id)?.rangos);
+
+        it('el enano engendro vampírico 4 que después tomó guerrero 2: bajan 4 puestos, guerrero 1 es su primer DG y los rangos se reparten', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const { svc, guerrero, base } = conNivelesDespues(componente, {
+                raza: 'enano', engendro: 4, inteligencia: 18, px: 15000, nep: 6, pierdeNivel: false,
+                guerrero: [{ trepar: 6 }, { trepar: 3, dote: 50 }],
+            });
+            expect(componente.estado?.conNivelesDespues).toBeTrue();
+            expect(componente.impedimento).toBe('');
+            componente.calcular();
+            // Trepar 9 con un máximo de 5 (nivel 2 + 3): −3 de guerrero 2 y −1 de guerrero 1, que vuelven a esos niveles; y
+            // los ×4 de su primer DG, 3 × (2 + 4 de Int), en guerrero 1.
+            expect(componente.pasos).toEqual(['habilidades', 'resumen']);
+            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['guerrero 1', 19], ['guerrero 2', 3]]);
+            expect(componente.tituloDelReparto).toBe('Habilidades de guerrero 1: 19 puntos (su primer DG: ×4)');
+            expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(19);
+            expect(componente.puedeGuardar).toBeFalse();
+            fixture.detectChanges();
+            expect(texto()).toContain('Sus niveles de después');
+            expect(texto()).toContain('bajan 4 puestos');
+            // Con lo elegido, el medio no cambia sin empezar de nuevo.
+            repartirYSeguir(componente);
+            expect(componente.eleccionEmpezada).toBeTrue();
+            componente.elegirMedio(componente.medios[0]);
+            expect(componente.pierdeNivel).toBeFalse();
+            expect(componente.tituloDelReparto).toBe('Habilidades de guerrero 2: 3 puntos que vuelven');
+            repartirYSeguir(componente);
+            await fixture.whenStable();
+            expect(componente.paso).toBe('resumen');
+
+            const ficha: any = componente.ficha;
+            expect([ficha.personaje.idRaza, ficha.personaje.idRazaBase]).toEqual([base.Id, null]);
+            expect(ficha.colecciones.clases).toEqual([{ idClase: guerrero.Id, nivel: 2 }]);
+            expect(ficha.niveles.map((n: any) => [n.idClase, n.nivelClase, n.pg.maximo])).toEqual([[guerrero.Id, 1, true], [guerrero.Id, 2, false]]);
+            // Trepar en su máximo (lo que compró en guerrero 1, sin 1) y lo repartido, apuntado en guerrero 1 (Trepar ya no cabe).
+            expect(rangosDe(ficha, TREPAR)).toBe(5);
+            const repartidos = ficha.niveles[0].elecciones.filter((e: any) => e.tipo === 'rangos');
+            expect(repartidos[0]).toEqual({ tipo: 'rangos', idElemento: TREPAR, valor: 5 });
+            expect(repartidos.length).toBeGreaterThan(1);
+            expect(repartidos.slice(1).every((e: any) => e.idElemento !== TREPAR)).toBeTrue();
+            expect(ficha.niveles[1].elecciones.some((e: any) => e.tipo === 'rangos' && e.idElemento === TREPAR)).toBeFalse();
+            // La dote de su 6.º nivel es ahora la de su 1.º: se queda, en guerrero 2.
+            expect(ficha.niveles[1].elecciones).toEqual([jasmine.objectContaining({ tipo: 'dote', idElemento: 50 })]);
+            expect(ficha.colecciones.dotes.filter((d: any) => d.idDote === 50).length).toBe(1);
+            // PG: el d10 de guerrero 1 al máximo y lo que salió en guerrero 2, con Con 15 (+2): 12 + 7.
+            expect(ficha.caracteristicas.constitucion).toEqual({ valor: 15, minimo: 0, perdido: false });
+            expect(ficha.personaje.puntosGolpe).toBe(19);
+            expect([componente.nepDespues, componente.pxDespues]).toEqual([2, 2000]);
+            const fila = (que: string) => componente.cambios.find((c) => c.que === que);
+            expect([fila('Niveles de después')?.antes, fila('Niveles de después')?.ahora]).toEqual(['Nivel de personaje 5.º a 6.º', 'Nivel de personaje 1.º a 2.º']);
+            expect(fila('Primer DG')?.antes).toBe('Guerrero 1');
+            expect(fila('Rangos que pasan del máximo')?.antes).toBe('Trepar −3 (guerrero 2), Trepar −1 (guerrero 1)');
+            expect(fila('Rangos repartidos')?.ahora).toContain('(guerrero 1)');
+            expect(componente.puedeGuardar).toBeTrue();
+
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            sesiones.devolverLaVida.and.resolveTo({
+                sesion: { eventos: [{ id: 9, tipo: 'vuelta_a_la_vida', texto: 'volvió a la vida (vuelve a ser enano): −4 niveles de engendro vampírico, los niveles de después bajan 4 puestos' }] },
+                vuelta: { idEvento: 9, raza: { id: base.Id, nombre: 'Enano' }, renumerado: { puestos: 4, primerDg: { clase: { id: guerrero.Id, nombre: 'Guerrero' }, nivelClase: 1 } } },
+            } as any);
+            await componente.guardar();
+            // `ficha.niveles` va siempre: los que quedan, en su orden, con sus elecciones cambiadas.
+            expect(sesiones.devolverLaVida).toHaveBeenCalledWith(5, { pierdeNivel: false, ficha, version: 'v' });
+        });
+
+        it('con resurrección pierde además guerrero 2 y su dote: le falta la de su 1.er nivel, que elige en guerrero 1', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const { svc, guerrero } = conNivelesDespues(componente, {
+                raza: 'enano', engendro: 4, inteligencia: 18, px: 15000, nep: 6, pierdeNivel: true,
+                guerrero: [{ trepar: 6 }, { trepar: 3, dote: 50 }],
+            });
+            expect([componente.pierdeOtroNivel, componente.quedanNivelesDespues]).toEqual([true, true]);
+            componente.calcular();
+            // Trepar 6 con un máximo de 4: −2 de guerrero 1, y sus ×4 (18).
+            expect(componente.pasos).toEqual(['habilidades', 'dotes', 'resumen']);
+            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['guerrero 1', 20]]);
+            expect(componente.renumerado?.dote).toEqual({ indice: 0, nivelPersonaje: 1 });
+            repartirYSeguir(componente);
+            await fixture.whenStable();
+            expect(componente.paso).toBe('dotes');
+            fixture.detectChanges();
+            expect(texto()).toContain('puede ser de las de 1.er nivel');
+            // La dote, con el selector de la creación, en el hueco de su 1.er nivel de personaje.
+            const abrir = spyOn((componente as any).selectores, 'abrir').and.resolveTo({ idDote: 51, idExtra: 0, extra: '' });
+            await componente.elegirLaDoteQueFalta();
+            expect(abrir).toHaveBeenCalled();
+            expect(componente.paso).toBe('resumen');
+
+            const ficha: any = componente.ficha;
+            expect(ficha.colecciones.clases).toEqual([{ idClase: guerrero.Id, nivel: 1 }]);
+            expect(ficha.niveles.length).toBe(1);
+            expect(ficha.niveles[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 51, origen: 'Dote adicional por nivel 1' }));
+            expect(ficha.colecciones.dotes.map((d: any) => d.idDote)).toContain(51);
+            expect(ficha.colecciones.dotes.map((d: any) => d.idDote)).not.toContain(50);
+            expect(rangosDe(ficha, TREPAR)).toBe(4);
+            // El d10 de guerrero 1 al máximo con Con 15.
+            expect(ficha.personaje.puntosGolpe).toBe(12);
+            expect([componente.nepDespues, componente.pxDespues]).toEqual([1, 500]);
+            const fila = (que: string) => componente.cambios.filter((c) => c.que === que);
+            expect(fila('Nivel de más')[0]?.antes).toBe('Guerrero 2');
+            expect(fila('Dote por nivel de personaje').map((f) => [f.antes, f.ahora])).toEqual([['—', 'Dote 51']]);
+            expect(componente.puedeGuardar).toBeTrue();
+            expect(svc.getDotesPendientes().some((d) => d.estado === 'pendiente')).toBeFalse();
+        });
+
+        it('el humano engendro 2 / guerrero 2: le sobra el incremento de su 4.º nivel; su dote de humano pasa a guerrero 1 y los ×4, con los 3 del humano', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            const { guerrero } = conNivelesDespues(componente, {
+                raza: 'humano', engendro: 2, inteligencia: 10, px: 6000, nep: 4, pierdeNivel: false, doteDeRaza: 52,
+                guerrero: [{ dote: 50 }, { incremento: 'Inteligencia' }],
+            });
+            const entrada: any = componente.entrada;
+            expect(entrada.niveles[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 52, origen: 'Dote adicional de raza: Humano' }));
+            expect(entrada.niveles[3].elecciones).toContain(jasmine.objectContaining({ tipo: 'incremento', idElemento: 4 }));
+            expect(entrada.caracteristicas.inteligencia.valor).toBe(11);
+            componente.calcular();
+            // Su primer DG, guerrero 1: 3 × (2 + 0) + 3 del humano.
+            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['guerrero 1', 9]]);
+            repartirYSeguir(componente);
+            await fixture.whenStable();
+            const ficha: any = componente.ficha;
+            expect(ficha.colecciones.clases).toEqual([{ idClase: guerrero.Id, nivel: 2 }]);
+            // Pierde el incremento (la Inteligencia vuelve a 10) sin quitar puntos de habilidad.
+            expect(ficha.caracteristicas.inteligencia.valor).toBe(10);
+            expect(ficha.niveles[1].elecciones.some((e: any) => e.tipo === 'incremento')).toBeFalse();
+            // Su dote de humano se conserva y pasa al que es ahora su 1.er nivel; la de su 3.º (ahora 1.º) se queda.
+            expect(ficha.colecciones.dotes.filter((d: any) => d.idDote === 52).length).toBe(1);
+            expect(ficha.niveles[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 52, origen: 'Dote adicional de raza: Humano' }));
+            expect(ficha.niveles[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 50 }));
+            const fila = (que: string) => componente.cambios.find((c) => c.que === que);
+            expect([fila('Inteligencia (incremento)')?.antes, fila('Inteligencia (incremento)')?.ahora]).toEqual(['11', '10']);
+            expect(fila('Inteligencia (incremento)')?.porque).toContain('no quita puntos de habilidad');
+            expect(fila('Niveles de después')?.porque).toContain('Bajan 2 puestos');
+        });
+
+        it('si con resurrección pierde el único nivel de después, van las reglas de siempre (sin renumerar)', async () => {
+            const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            conNivelesDespues(componente, { raza: 'enano', engendro: 4, inteligencia: 10, px: 10000, nep: 5, pierdeNivel: true, guerrero: [{}] });
+            // Con un solo DG sin la clase de monstruo paga con Constitución: no pierde el nivel y se renumera.
+            expect([componente.pierdeOtroNivel, componente.pierdeConstitucion, componente.quedanNivelesDespues]).toEqual([false, true, true]);
+            componente.estado = { ...componente.estado!, dgsSinLaClase: 2 };
+            expect([componente.pierdeOtroNivel, componente.quedanNivelesDespues]).toEqual([true, false]);
+        });
     });
 
     describe('sin ningún DG: gana el 1.er nivel de una clase básica (contrato, «Sin ningún DG»)', () => {

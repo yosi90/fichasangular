@@ -24,6 +24,29 @@ import { DadoDeGolpe } from 'src/app/services/utils/puntos-golpe';
 export const ORIGEN_IDIOMAS_INICIALES = 'Idiomas iniciales';
 /** El principio del origen de la dote adicional de la raza (la del humano: «Dote adicional de raza: Humano»), en la ficha y en su nivel. */
 export const ORIGEN_DOTE_ADICIONAL_DE_RAZA = 'Dote adicional de raza';
+/**
+ * El principio del origen de la dote de un nivel de personaje (el 1.º y cada 3: *Manual del jugador*, pág. 22, tabla 3-2),
+ * con su nivel: «Dote adicional por nivel 6». Lo pone el motor al elegirla (`construirOrigenDoteDesdePendiente`).
+ */
+export const ORIGEN_DOTE_POR_NIVEL_DE_PERSONAJE = 'Dote adicional por nivel';
+/** El de una dote de nivel sin su número (un hueco de nivel sin él): «Dote por nivel» o «Dote por nivel: <origen>». */
+export const ORIGEN_DOTE_POR_NIVEL = 'Dote por nivel';
+
+/** El origen de la dote del nivel de personaje `nivel`: «Dote adicional por nivel 6». */
+export function origenDotePorNivelDePersonaje(nivel: number): string {
+    return `${ORIGEN_DOTE_POR_NIVEL_DE_PERSONAJE} ${toInt(nivel)}`;
+}
+
+/**
+ * Si lo elegido es la dote de un nivel de personaje (`ORIGEN_DOTE_POR_NIVEL_DE_PERSONAJE`), no la de la tabla de una clase
+ * (la del guerrero: «Dote adicional: Guerrero nivel 2»), la de la raza ni la de sus DG. Sale del origen que le pone el
+ * motor. Lo usa la vuelta a la vida con niveles después, que vuelve a contar estas dotes con el nivel nuevo.
+ */
+export function esDotePorNivelDePersonaje(eleccion: Pick<PersonajeCreateNivelEleccionDto, 'tipo' | 'origen'> | null | undefined): boolean {
+    const origen = `${eleccion?.origen ?? ''}`.trim();
+    return eleccion?.tipo === 'dote' && (origen.startsWith(`${ORIGEN_DOTE_POR_NIVEL_DE_PERSONAJE} `)
+        || origen === ORIGEN_DOTE_POR_NIVEL || origen.startsWith(`${ORIGEN_DOTE_POR_NIVEL}:`));
+}
 
 /**
  * Si lo elegido es del 1.er nivel del personaje y no del nivel de su clase en que se apuntó: la dote adicional de la raza

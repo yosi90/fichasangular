@@ -5,7 +5,7 @@ import {
     cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
     fichaDeLaVuelta, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
     MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES, MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO, nepTrasLaVuelta, NO_SIRVEN_PARA_LA_VUELTA,
-    pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas, tomoNivelesDespues,
+    pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas, nivelesDespuesDeLaClase,
 } from './vuelta-a-la-vida';
 import {
     APTITUD_ENGENDRO, claseClerigo, claseEngendro, claseGuerrero, CLERIGO, cuerposDeLaVuelta, enanoEngendro, ENGENDRO, EXPULSAR,
@@ -44,7 +44,7 @@ describe('vuelta-a-la-vida', () => {
         it('se puede con los dos medios', () => {
             const entrada = enanoEngendro();
             const estado = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: entrada.niveles, clases: entrada.colecciones!.clases as any, dgs: 5, constitucion: 14 });
-            expect(estado).toEqual({ motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 1, dgsSinLaClase: 4, conOtrasClases: true, ganaNivel: false });
+            expect(estado).toEqual({ motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 1, dgsSinLaClase: 4, conOtrasClases: true, ganaNivel: false, conNivelesDespues: false });
         });
 
         it('sin el engendro: su dote, su aptitud, sus rangos y su DG; con la Constitución, que vuelve a sumar en sus 4 DG', () => {
@@ -201,17 +201,26 @@ describe('vuelta-a-la-vida', () => {
             expect(MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO).toBe('Solo se devuelve así la vida a quien se convirtió en muerto viviente con una clase de monstruo.');
         });
 
-        it('con niveles de otra clase después de la de monstruo: con el orden real y, por conocer, si la terminó', () => {
+        it('con niveles de otra clase después de la de monstruo: con el orden conocido se puede; por conocer, lo corrige el máster', () => {
             const despues = [...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => nivelDe(ENGENDRO, n, 6)), nivelDe(GUERRERO, 1, 8)];
             const clases = [{ idClase: ENGENDRO, nivel: 8 }, { idClase: GUERRERO, nivel: 1 }];
-            expect(tomoNivelesDespues(despues, ENGENDRO, claseEngendro, clases)).toBeTrue();
-            expect(estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: despues, clases, dgs: 5, constitucion: 14 }).motivo).toBe(MOTIVO_VUELTA_NIVELES_DESPUES);
-            // Los de guerrero antes (el que se convirtió): sí.
-            expect(tomoNivelesDespues(enanoEngendro().niveles, ENGENDRO, claseEngendro, enanoEngendro().colecciones!.clases as any)).toBeFalse();
-            // Con el orden por conocer: terminada y con otras, después; sin terminar, la última.
+            expect(nivelesDespuesDeLaClase(despues, ENGENDRO, claseEngendro, clases)).toBe('conocidos');
+            const conocidos = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: despues, clases, dgs: 5, constitucion: 14 });
+            expect([conocidos.motivo, conocidos.conNivelesDespues]).toEqual([null, true]);
+            // Los de guerrero antes (el que se convirtió): no hay niveles después.
+            expect(nivelesDespuesDeLaClase(enanoEngendro().niveles, ENGENDRO, claseEngendro, enanoEngendro().colecciones!.clases as any)).toBe('ninguno');
+            expect(estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: enanoEngendro().niveles, clases: enanoEngendro().colecciones!.clases as any, dgs: 5, constitucion: 14 })
+                .conNivelesDespues).toBeFalse();
+            // Con todo el orden por conocer: terminada y con otras, después (409 vuelta_niveles_despues); sin terminar, la última.
             const sinOrden = despues.map((n) => ({ ...n, ordenConocido: false }));
-            expect(tomoNivelesDespues(sinOrden, ENGENDRO, claseEngendro, clases)).toBeTrue();
-            expect(tomoNivelesDespues(sinOrden, ENGENDRO, claseEngendro, [{ idClase: ENGENDRO, nivel: 3 }, { idClase: GUERRERO, nivel: 4 }])).toBeFalse();
+            expect(nivelesDespuesDeLaClase(sinOrden, ENGENDRO, claseEngendro, clases)).toBe('por_conocer');
+            const porConocer = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: sinOrden, clases, dgs: 5, constitucion: 14 });
+            expect([porConocer.motivo, porConocer.conNivelesDespues]).toEqual([MOTIVO_VUELTA_NIVELES_DESPUES, false]);
+            expect(nivelesDespuesDeLaClase(sinOrden, ENGENDRO, claseEngendro, [{ idClase: ENGENDRO, nivel: 3 }, { idClase: GUERRERO, nivel: 4 }])).toBe('ninguno');
+            // Con el orden por conocer en un nivel de la clase de monstruo, aunque los de después lo tengan: tampoco.
+            const unoPorConocer = despues.map((n, i) => i === 2 ? { ...n, ordenConocido: false } : n);
+            expect(nivelesDespuesDeLaClase(unoPorConocer, ENGENDRO, claseEngendro, clases)).toBe('por_conocer');
+            expect(MOTIVO_VUELTA_NIVELES_DESPUES).toBe('Después de la clase de monstruo tomó niveles de otra clase y el orden de sus niveles está por conocer: eso lo corrige el máster.');
         });
 
         it('sin una Constitución guardada, con ningún medio (409 perdida_sin_constitucion)', () => {
@@ -227,7 +236,7 @@ describe('vuelta-a-la-vida', () => {
 
         it('el humano guerrero 1 que se convirtió en engendro 1: ya no es un 409; con los dos medios, si la Constitución da', () => {
             const estado = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: [nivelDe(ENGENDRO, 1, 12)], clases: [{ idClase: ENGENDRO, nivel: 1 }], dgs: 1, constitucion: 12 });
-            expect(estado).toEqual({ motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 1, dgsSinLaClase: 0, conOtrasClases: false, ganaNivel: true });
+            expect(estado).toEqual({ motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 1, dgsSinLaClase: 0, conOtrasClases: false, ganaNivel: true, conNivelesDespues: false });
             // Con resurrección paga 2 puntos de Constitución, como cualquier personaje de 1.er nivel: con 2, no se puede.
             const debil = estadoDeLaVuelta({ claseDeMonstruo: claseEngendro, niveles: [nivelDe(ENGENDRO, 1, 12)], clases: [{ idClase: ENGENDRO, nivel: 1 }], dgs: 1, constitucion: 2 });
             expect([debil.motivo, debil.motivoConResurreccion]).toEqual([null, motivoSinConstitucionParaVolver(2)]);

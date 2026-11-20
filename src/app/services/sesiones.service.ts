@@ -343,6 +343,8 @@ export class SesionesService {
         const v = respuesta?.vuelta ?? {};
         const perdida = v.perdida && typeof v.perdida === 'object' ? v.perdida : null;
         const nivelNuevo = v.nivelNuevo && typeof v.nivelNuevo === 'object' ? v.nivelNuevo : null;
+        const renumerado = v.renumerado && typeof v.renumerado === 'object' ? v.renumerado : null;
+        const primerDg = renumerado?.primerDg && typeof renumerado.primerDg === 'object' ? renumerado.primerDg : null;
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             vuelta: {
@@ -356,6 +358,10 @@ export class SesionesService {
                 perdida: perdida ? { clase: leerIdNombre(perdida.clase), nivelClase: toInt(perdida.nivelClase) } : null,
                 constitucion: v.constitucion ? { antes: toInt(v.constitucion.antes), despues: toInt(v.constitucion.despues) } : null,
                 nivelNuevo: nivelNuevo ? { clase: leerIdNombre(nivelNuevo.clase) } : null,
+                renumerado: renumerado ? {
+                    puestos: Math.max(0, toInt(renumerado.puestos)),
+                    primerDg: primerDg ? { clase: leerIdNombre(primerDg.clase), nivelClase: toInt(primerDg.nivelClase) } : null,
+                } : null,
                 nepAntes: toIntOrNull(v.nepAntes),
                 nepDespues: toIntOrNull(v.nepDespues),
                 pxAntes: toInt(v.pxAntes),
