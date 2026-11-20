@@ -2117,17 +2117,23 @@ export class NuevoPersonajeService {
         this.catalogoDeidades = [...deidades];
     }
 
-    evaluarClaseParaSeleccion(clase: Clase): ClaseEvaluacionResultado {
+    /**
+     * Si puede tomar un nivel de `clase`, con sus razones. Con `soloPrerrequisitos`, solo si cumple lo que pide (sus
+     * prerrequisitos), sin mirar si puede subirla (el nivel máximo, el cierre por multiclase y las reglas de las clases de
+     * monstruo): es lo que comparan quienes miran qué deja de cumplir una clase que ya tiene (`razonesDeSusClases`), también
+     * una de prestigio terminada.
+     */
+    evaluarClaseParaSeleccion(clase: Clase, { soloPrerrequisitos = false }: { soloPrerrequisitos?: boolean; } = {}): ClaseEvaluacionResultado {
         const siguienteNivel = this.obtenerSiguienteNivelClase(clase.Nombre);
         const nivelMaximo = toNumber(clase?.Nivel_max_claseo);
-        if (nivelMaximo > 0 && siguienteNivel > nivelMaximo) {
+        if (!soloPrerrequisitos && nivelMaximo > 0 && siguienteNivel > nivelMaximo) {
             return {
                 estado: 'blocked_failed',
                 razones: ['Nivel máximo alcanzado para esta clase'],
                 advertencias: [],
             };
         }
-        if (this.clasesCerradasPorMulticlase.has(normalizarTexto(clase?.Nombre ?? ''))) {
+        if (!soloPrerrequisitos && this.clasesCerradasPorMulticlase.has(normalizarTexto(clase?.Nombre ?? ''))) {
             return {
                 estado: 'blocked_failed',
                 razones: [`Tras ganar un nivel de otra clase ya no puede volver a subir de ${`${clase?.Nombre ?? ''}`.trim().toLowerCase()}`],
@@ -2136,7 +2142,7 @@ export class NuevoPersonajeService {
         }
         // Las clases de monstruo (`clases-de-monstruo.ts`): la de su raza desde el 1.er nivel y una progresión obligatoria
         // hasta terminarla; la que lleva una raza mutada, solo con esa raza. Las mismas que comprueba el alta.
-        const motivoMonstruo = motivoClaseDeMonstruo(clase, this.contextoClasesDeMonstruo());
+        const motivoMonstruo = soloPrerrequisitos ? null : motivoClaseDeMonstruo(clase, this.contextoClasesDeMonstruo());
         if (motivoMonstruo) {
             return {
                 estado: 'blocked_failed',

@@ -216,11 +216,12 @@ function clasesQueTiene(motor: NuevoPersonajeService): Clase[] {
 }
 
 /**
- * Lo que no cumplía cada clase que tiene (`evaluarClaseParaSeleccion`), para ver después qué deja de cumplir
+ * Lo que no cumplía cada clase que tiene (sus prerrequisitos: `evaluarClaseParaSeleccion` con `soloPrerrequisitos`, para
+ * que una de prestigio terminada o cerrada no se quede en «nivel máximo»), para ver después qué deja de cumplir
  * (`clasesQueDejanDeCumplir`). Lo usan el reciclaje (`loQueDejariaDeCumplir`) y la raza mutada adquirida.
  */
 export function razonesDeSusClases(motor: NuevoPersonajeService): Map<number, Set<string>> {
-    return new Map(clasesQueTiene(motor).map((c) => [toInt(c.Id), new Set(motor.evaluarClaseParaSeleccion(c).razones ?? [])]));
+    return new Map(clasesQueTiene(motor).map((c) => [toInt(c.Id), new Set(motor.evaluarClaseParaSeleccion(c, { soloPrerrequisitos: true }).razones ?? [])]));
 }
 
 /**
@@ -232,7 +233,7 @@ export function clasesQueDejanDeCumplir(motor: NuevoPersonajeService, antes: Map
     : Array<{ idClase: number; nombre: string; razones: string[]; }> {
     return clasesQueTiene(motor).flatMap((c) => {
         const previas = antes.get(toInt(c.Id)) ?? new Set<string>();
-        const razones = (motor.evaluarClaseParaSeleccion(c).razones ?? []).filter((r) => !previas.has(r));
+        const razones = (motor.evaluarClaseParaSeleccion(c, { soloPrerrequisitos: true }).razones ?? []).filter((r) => !previas.has(r));
         return razones.length > 0 ? [{ idClase: toInt(c.Id), nombre: `${c.Nombre}`, razones }] : [];
     });
 }

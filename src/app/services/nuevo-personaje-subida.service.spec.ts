@@ -959,6 +959,17 @@ describe('El reciclaje del Manual del jugador II con el motor de la creación (p
         expect(motor.PersonajeCreacion.Habilidades.find((h) => h.Id === 2)?.Rangos).toBe(trepar.rangos);
     });
 
+    it('una clase en su nivel máximo: con soloPrerrequisitos se miran sus prerrequisitos, no que ya no pueda subirla', () => {
+        const svc = crear(HUMANO, { Inteligencia: 10 });
+        [1, 2].forEach(() => aplicarNivel(svc, GUERRERO));
+        const terminada = { ...GUERRERO, Nivel_max_claseo: 2 };
+        expect(svc.evaluarClaseParaSeleccion(terminada).razones).toContain('Nivel máximo alcanzado para esta clase');
+        // Así el reciclaje ve qué deja de cumplir una de prestigio terminada (y la vuelta a la vida y la raza mutada lo avisan).
+        const prerrequisitos = svc.evaluarClaseParaSeleccion(terminada, { soloPrerrequisitos: true });
+        expect(prerrequisitos.razones ?? []).not.toContain('Nivel máximo alcanzado para esta clase');
+        expect(prerrequisitos.estado).toBe('eligible');
+    });
+
     it('los conjuros: solo las clases con tabla de conocidos, y otro del mismo nivel que no conozca', () => {
         const svc = crear(HUMANO, { Carisma: 16 });
         aplicarNivel(svc, HECHICERO);
