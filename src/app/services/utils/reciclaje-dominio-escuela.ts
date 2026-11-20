@@ -365,12 +365,15 @@ export function mismaEspecializacion(a: EspecializacionDelMago, b: Especializaci
     return toInt(a.especialista?.id) === toInt(b.especialista?.id) && ids(a) === ids(b);
 }
 
-/** La especialización en una frase: «Nigromancia (prohibidas: evocación e ilusión)» o «Generalista». */
+/**
+ * La especialización en una frase, como la de la API: «Nigromancia (prohibidas: evocación e ilusión)», «Adivinación
+ * (prohibida: evocación)» o «Generalista».
+ */
 export function nombreDeLaEspecializacion(e: EspecializacionDelMago): string {
     if (!e.especialista)
         return 'Generalista';
     const nombres = e.prohibidas.map((p) => p.nombre.toLowerCase());
-    return nombres.length > 0 ? `${e.especialista.nombre} (prohibidas: ${unirLista(nombres, 'y')})` : e.especialista.nombre;
+    return nombres.length > 0 ? `${e.especialista.nombre} (${nombres.length === 1 ? 'prohibida' : 'prohibidas'}: ${unirLista(nombres, 'y')})` : e.especialista.nombre;
 }
 
 /**
