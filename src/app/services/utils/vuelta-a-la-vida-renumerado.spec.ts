@@ -9,8 +9,8 @@ import { claseEngendro, claseGuerrero, cuerposDeLaVuelta, enanoEngendro, ENGENDR
 
 /*
  * Devolver la vida con niveles de otra clase después de la clase de monstruo (contrato en `personajes.md`, «Devolver la
- * vida a un muerto viviente», «Con niveles de otra clase después»; dictamen del máster de Rol del 2026-11-20, parte B): la
- * renumeración y lo que va por nivel de personaje.
+ * vida a un muerto viviente», «Con niveles de otra clase después»; dictamen del máster de Rol del 2026-11-20, parte B, con
+ * el nivel de personaje del dictamen que lo corrige): la renumeración y lo que va por nivel de personaje.
  */
 
 /** Un engendro vampírico de 4 niveles con un DG en cada uno (dotes de su tabla a 1.º y 3.º). */
@@ -50,15 +50,16 @@ describe('vuelta-a-la-vida, con niveles de otra clase después', () => {
         expect(esDotePorNivelDePersonaje({ tipo: 'idioma', origen: 'Dote adicional por nivel 3' })).toBeFalse();
     });
 
-    it('el nivel de personaje son los DG: un nivel de Libris Mortis sin DG no lo sube', () => {
-        // El engendro vampírico de la tabla da DG en su 1.º y su 3.º: engendro 4 / guerrero 2 son 4 DG.
+    it('el nivel de personaje cuenta todos los niveles: uno de Libris Mortis sin DG también lo sube (dictamen del máster de Rol)', () => {
+        // El engendro vampírico de la tabla da DG en su 1.º y su 3.º: engendro 4 / guerrero 2 son 4 DG y 6 niveles de
+        // personaje (Libris Mortis, pág. 35).
         const niveles = [...engendros(4), guerrero(1, 6), guerrero(2, 5)];
         const r = renumerar(niveles, 4, claseEngendro);
         expect(r.base).toBe(0);
         expect([...r.antes.values()].map((n) => [n.nivelPersonaje, n.daDg, n.conTabla])).toEqual([
-            [1, true, true], [1, false, true], [2, true, true], [2, false, true], [3, true, false], [4, true, false],
+            [1, true, true], [2, false, true], [3, true, true], [4, false, true], [5, true, false], [6, true, false],
         ]);
-        // Los de guerrero bajan 2 puestos (los 2 DG del engendro).
+        // Los de guerrero bajan 4 puestos (los 4 niveles del engendro).
         expect(r.ahora.map((n) => [n.indice, n.nivelClase, n.nivelPersonaje])).toEqual([[0, 1, 1], [1, 2, 2]]);
         // Con DG raciales (el gnoll, 2), cuentan antes del primer nivel.
         expect(dgsAntesDeSusNiveles(6, niveles, r.clase)).toBe(2);

@@ -96,7 +96,7 @@
         <ng-container *ngIf="renumerado && !impedimento && !calculando">
             <section class="subida__tarjeta">
                 <h2 class="subida__seccion">Sus niveles de después</h2>
-                <p class="subida__nota">Sin {{claseDeMonstruo?.Nombre}} sus niveles de después bajan {{renumerado.resumen.puestos}} {{renumerado.resumen.puestos === 1 ? 'puesto' : 'puestos'}} (los DG que le daba) y lo que va por nivel de personaje se vuelve a contar: las dotes del 1.º y cada 3, los incrementos cada 4, el máximo de rangos y su primer DG. Lo de su clase (el ataque base, las salvaciones, su tabla) no cambia.</p>
+                <p class="subida__nota">Sin {{claseDeMonstruo?.Nombre}} sus niveles de después bajan {{renumerado.resumen.puestos}} {{renumerado.resumen.puestos === 1 ? 'puesto' : 'puestos'}} (sus niveles en ella) y lo que va por nivel de personaje se vuelve a contar: las dotes del 1.º y cada 3, los incrementos cada 4, el máximo de rangos y su primer DG. Lo de su clase (el ataque base, las salvaciones, su tabla) no cambia.</p>
                 <app-pasos-sesion *ngIf="pasos.length > 1" [pasos]="pasos" [actual]="paso" [etiqueta]="etiquetaPaso" nombre="Lo que falta al renumerar sus niveles"></app-pasos-sesion>
             </section>
             <section class="subida__tarjeta" *ngIf="paso !== 'resumen'" [ngSwitch]="paso">

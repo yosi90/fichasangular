@@ -11,7 +11,9 @@ import { toInt } from 'src/app/services/utils/normalizacion';
  *   no viene, como en la caché de la RTDB, que no escribe los `null`) y la clase da lo de siempre: un DG en cada nivel, las
  *   dotes por nivel de personaje y ninguna armadura natural.
  * - El **nivel de personaje** (niveles de clase + DG raciales + DG de plantilla, `dgsTotales` de `nivel-personaje.ts`) no
- *   cambia: con él van los aumentos de característica cada 4, los rangos máximos y el NEP (*Libris Mortis*, pág. 32).
+ *   cambia: cada nivel de una clase de monstruo lo sube, dé DG o no, y con él van los aumentos de característica cada 4,
+ *   los rangos máximos y el NEP (*Libris Mortis*, págs. 32 y 35; *Especies salvajes*, págs. 25, 27 y 28; dictamen del
+ *   máster de Rol del 2026-11-20).
  * - Los **DG** de una clase con tabla son sus niveles con `Dg` hasta el suyo (un engendro vampírico 8 tiene 4 DG): con
  *   ellos van los PG, los puntos de habilidad, los prerrequisitos de DG y los bonos por DG (la misma cuenta que la API usa
  *   en el dato `dg` de los prerrequisitos de una mutación).

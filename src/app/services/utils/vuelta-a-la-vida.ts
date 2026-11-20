@@ -385,8 +385,10 @@ export function fichaDeLaVuelta(d: EntradaFichaVuelta): PersonajeCreateRequestDt
 //
 // Contrato, «Con niveles de otra clase después», y dictamen del máster de Rol del 2026-11-20, parte B: quitar los niveles de
 // la clase de monstruo, que no son los últimos, baja el nivel de personaje de los de después, y con él lo que va por nivel
-// de personaje (las dotes y los incrementos, el máximo de rangos y el primer DG). El nivel de personaje son los DG totales,
-// sin el ajuste de nivel; un nivel sin DG (*Libris Mortis*) no lo sube.
+// de personaje (las dotes y los incrementos, el máximo de rangos y el primer DG). El nivel de personaje son los DG raciales
+// que cuentan y los de plantilla más todos sus niveles de clase: un nivel de una clase de monstruo sin DG también lo sube
+// (*Libris Mortis*, págs. 32 y 35; *Especies salvajes*, págs. 25, 27 y 28; dictamen del máster de Rol del 2026-11-20, que
+// corrige el de la parte B). Los DG solo cuentan para lo que va por DG: los PG, los puntos y el primer DG.
 
 /** La clave de un nivel de su registro (su clase y su nivel en ella), que no cambia al quitar otros. */
 export function claveDelNivel(nivel: Pick<PersonajeCreateNivelDto, 'idClase' | 'nivelClase'>): string {
@@ -399,7 +401,7 @@ export interface NivelDePersonaje {
     indice: number;
     idClase: number;
     nivelClase: number;
-    /** Los DG hasta él, con los de antes de su primer nivel (raciales que cuentan y de plantilla). */
+    /** Su nivel de personaje: sus niveles hasta él, con los DG de antes de su primer nivel (raciales que cuentan y de plantilla). */
     nivelPersonaje: number;
     daDg: boolean;
     /** Si su clase tiene tabla por nivel (las de monstruo): sus dotes van por su tabla, no cada 3 niveles de personaje. */
@@ -420,8 +422,7 @@ export function nivelesDePersonaje(niveles: PersonajeCreateNivelDto[] | undefine
     return (niveles ?? []).map((n, indice) => {
         const deLaClase = clase(toInt(n?.idClase));
         const daDg = daDgEnNivel(deLaClase, toInt(n?.nivelClase));
-        if (daDg)
-            nivelPersonaje++;
+        nivelPersonaje++;
         return { indice, idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase), nivelPersonaje, daDg, conTabla: tieneTablaPorNivel(deLaClase) };
     });
 }
@@ -477,12 +478,12 @@ export function recuentoPorNivelDePersonaje(niveles: PersonajeCreateNivelDto[], 
             elecciones.filter((e) => esDotePorNivelDePersonaje(e)).forEach((eleccion) => dotes.push({ indice: n.indice, eleccion }));
         const previo = antes.get(claveDelNivel(n));
         const incremento = [...elecciones].reverse().find((e) => e.tipo === 'incremento');
-        if (incremento && previo?.daDg && daIncrementoPorNivelDePersonaje(previo.nivelPersonaje))
+        if (incremento && previo && daIncrementoPorNivelDePersonaje(previo.nivelPersonaje))
             incrementos.push({ indice: n.indice, eleccion: incremento });
     });
     return {
-        dotes: recontarHitos(ahora.filter((n) => n.daDg && !n.conTabla && daDotePorNivelDePersonaje(n.nivelPersonaje)), dotes),
-        incrementos: recontarHitos(ahora.filter((n) => n.daDg && daIncrementoPorNivelDePersonaje(n.nivelPersonaje)), incrementos),
+        dotes: recontarHitos(ahora.filter((n) => !n.conTabla && daDotePorNivelDePersonaje(n.nivelPersonaje)), dotes),
+        incrementos: recontarHitos(ahora.filter((n) => daIncrementoPorNivelDePersonaje(n.nivelPersonaje)), incrementos),
     };
 }
 
@@ -577,7 +578,7 @@ export function eleccionesApuntadas(antes: ReadonlyArray<Pick<PersonajeCreateNiv
 
 /** Lo que enseña «Lo que cambia» de la renumeración. */
 export interface ResumenRenumerado {
-    /** Los puestos que bajan los niveles de después (los DG de la clase de monstruo). */
+    /** Los puestos que bajan los niveles de después (los niveles de la clase de monstruo). */
     puestos: number;
     /** El nivel de personaje del primero y del último de los de después que le quedan, antes y ahora (`null` sin ninguno). */
     niveles: { desde: { antes: number; ahora: number; }; hasta: { antes: number; ahora: number; }; } | null;
@@ -603,7 +604,7 @@ export function filasDeLaRenumeracion(r: ResumenRenumerado): CambioPlantilla[] {
         const tramo = (k: 'antes' | 'ahora') => `Nivel de personaje ${desde[k] === hasta[k] ? `${desde[k]}.º` : `${desde[k]}.º a ${hasta[k]}.º`}`;
         filas.push({
             que: 'Niveles de después', antes: tramo('antes'), ahora: tramo('ahora'),
-            porque: `Bajan ${r.puestos} ${r.puestos === 1 ? 'puesto' : 'puestos'}: los DG de la clase de monstruo ya no cuentan. Lo de su clase (el ataque base, las salvaciones, su tabla) no cambia`,
+            porque: `Bajan ${r.puestos} ${r.puestos === 1 ? 'puesto' : 'puestos'}: los niveles de la clase de monstruo ya no cuentan. Lo de su clase (el ataque base, las salvaciones, su tabla) no cambia`,
         });
     }
     if (r.primerDg) {

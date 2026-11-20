@@ -2,7 +2,7 @@ import { apartarLoDelPrimerNivel } from './niveles-creacion';
 import { fichaConConstitucionPerdida, fichaSinElNivel, filasDelNivelPerdido, indiceDelUltimoNivelDeLaClase } from './perder-nivel';
 import { especialesDevueltos } from './raza-mutacion';
 import {
-    cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
+    cambiosDeLaVuelta, claveDelNivel, nivelesDePersonaje, recuentoPorNivelDePersonaje, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
     fichaDeLaVuelta, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
     MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES, MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO, nepTrasLaVuelta, NO_SIRVEN_PARA_LA_VUELTA,
     pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas, nivelesDespuesDeLaClase,
@@ -329,5 +329,27 @@ describe('vuelta-a-la-vida', () => {
         expect(motivoRevivirSinConstitucion(true)).toContain('«Devolver la vida»');
         expect(motivoRevivirSinConstitucion(false)).toContain('«Otra causa»');
         expect(motivoRevivirSinConstitucion(false)).toContain('Manual del jugador, pág. 285');
+    });
+    describe('el nivel de personaje cuenta todos los niveles de la clase de monstruo, den o no DG (dictamen del máster de Rol)', () => {
+        const clase = (id: number) => (id === ENGENDRO ? claseEngendro : claseGuerrero);
+        const nivel = (idClase: number, nivelClase: number, elecciones: any[] = []) => ({ idClase, nivelClase, elecciones, ordenConocido: true }) as any;
+
+        it('el engendro vampírico 4 / guerrero 1 es de 5.º nivel de personaje con 3 DG (Libris Mortis, pág. 35)', () => {
+            const niveles = [1, 2, 3, 4].map((n) => nivel(ENGENDRO, n)).concat(nivel(GUERRERO, 1));
+            const cuenta = nivelesDePersonaje(niveles, clase, 0);
+            expect(cuenta.map((n) => n.nivelPersonaje)).toEqual([1, 2, 3, 4, 5]);
+            expect(cuenta.map((n) => n.daDg)).toEqual([true, false, true, false, true]);
+        });
+
+        it('el incremento del 4.º nivel de personaje en un nivel sin DG cuenta como el de su hito', () => {
+            const incremento = { tipo: 'incremento', idElemento: 1, valor: 1 };
+            const antes = [1, 2, 3, 4].map((n) => nivel(ENGENDRO, n, n === 4 ? [incremento] : [])).concat([1, 2, 3, 4].map((n) => nivel(GUERRERO, n)));
+            const quedan = [1, 2, 3, 4].map((n) => nivel(GUERRERO, n));
+            const porClave = new Map(nivelesDePersonaje(antes, clase, 0).map((n) => [claveDelNivel(n), n]));
+            // Sin el engendro, los guerreros 1-4 son los niveles 1-4: el del 4.º falta (el del engendro 4 se fue con él).
+            const recuento = recuentoPorNivelDePersonaje(quedan, nivelesDePersonaje(quedan, clase, 0), porClave);
+            expect(recuento.incrementos.sobra).toBeNull();
+            expect(recuento.incrementos.falta?.nivelPersonaje).toBe(4);
+        });
     });
 });

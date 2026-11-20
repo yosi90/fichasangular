@@ -666,7 +666,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
     /**
      * Con niveles de otra clase después de la de monstruo (contrato, «Con niveles de otra clase después»; dictamen del
      * máster de Rol del 2026-11-20, parte B), sobre lo que queda (`tras`, ya sin el nivel de más): los de después bajan tantos
-     * puestos como DG daban los de la clase de monstruo, y lo que va por nivel de personaje se vuelve a contar con el nivel
+     * puestos como niveles tenía la clase de monstruo, y lo que va por nivel de personaje se vuelve a contar con el nivel
      * final. La dote o el incremento que sobra se pierde (el del nivel más reciente); el nivel que pasa a ser su primer DG va
      * al máximo y gana los ×4; los rangos que pasan del máximo se quitan desde los últimos niveles y sus puntos vuelven a
      * ese nivel. Lo que falta (el incremento, los puntos que se reparten, la dote) queda en sus pasos. `true` si no queda
@@ -681,7 +681,9 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const dgsAntes = dgsAntesDeSusNiveles(this.dgs, entrada.niveles, claseDe);
         const antes = new Map(nivelesDePersonaje(entrada.niveles, claseDe, dgsAntes).map((n) => [claveDelNivel(n), n]));
         const ahora = nivelesDePersonaje(ficha.niveles, claseDe, dgsAntes);
-        const dgs = ahora.length > 0 ? ahora[ahora.length - 1].nivelPersonaje : dgsAntes;
+        // El nivel de personaje (para el máximo de rangos) y los DG (para los PG) de después.
+        const nivel = ahora.length > 0 ? ahora[ahora.length - 1].nivelPersonaje : dgsAntes;
+        const dgs = dgsAntes + ahora.filter((n) => n.daDg).length;
         const nombres = tras.sin.nombres;
 
         // Los de después (los que se quedan detrás del primero de la clase de monstruo), con su nivel de personaje.
@@ -689,10 +691,10 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const despues = ahora.filter((n) => deDespues.has(claveDelNivel(n)));
         const tramo = (n: NivelDePersonaje) => ({ antes: toInt(antes.get(claveDelNivel(n))?.nivelPersonaje), ahora: n.nivelPersonaje });
         const resumen: ResumenRenumerado = {
-            puestos: dgsDeClase(this.claseDeMonstruo, this.estado!.nivelesDeLaClase),
+            puestos: this.estado!.nivelesDeLaClase,
             niveles: despues.length > 0 ? { desde: tramo(despues[0]), hasta: tramo(despues[despues.length - 1]) } : null,
             primerDg: null, dotePerdida: null, doteElegida: null, incrementoPerdido: null, incrementoElegido: null,
-            maximoDeRangos: limiteRangosHabilidad(dgs, true), rangosQuitados: [], rangosRepartidos: [], prestigio: [],
+            maximoDeRangos: limiteRangosHabilidad(nivel, true), rangosQuitados: [], rangosRepartidos: [], prestigio: [],
         };
         const recuento = recuentoPorNivelDePersonaje(ficha.niveles ?? [], ahora, antes);
 
@@ -760,7 +762,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
             return h && clase && svc.esHabilidadDeClaseDe(h, clase) ? 1 : 2;
         };
         const topes = habilidades.map((h) => ({
-            idHabilidad: toInt(h.Id), idExtra: extraDe(h), rangos: toInt(h.Rangos), maximo: limiteRangosHabilidad(dgs, svc.esHabilidadDeClaseEnAlguna(h)),
+            idHabilidad: toInt(h.Id), idExtra: extraDe(h), rangos: toInt(h.Rangos), maximo: limiteRangosHabilidad(nivel, svc.esHabilidadDeClaseEnAlguna(h)),
         }));
         const enLaFicha = rangosQueSobran(ficha.niveles ?? [], topes, coste);
         const enElMotor = rangosQueSobran(svc.getOrdenNiveles(), topes, coste);
