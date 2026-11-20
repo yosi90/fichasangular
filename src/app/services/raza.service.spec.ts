@@ -264,6 +264,22 @@ describe('RazaService helpers', () => {
         expect(normalizeRazaLegacy({ Id: 25, Nombre: 'Humano' }).Clase_de_monstruo).toBeNull();
     });
 
+    it('lee las aptitudes que sustituye una raza mutada: por HTTP, solo un array; desde la caché `Razas` 35 (sin el campo), ninguna', () => {
+        const sustituidos = [{ Especial: { Id: 31, Nombre: 'Expulsar muertos vivientes' }, Especial_nuevo: { Id: 32, Nombre: 'Reprender muertos vivientes' } }];
+        const engendro = { Mutada: true, Especiales_sustituidos: sustituidos };
+        [normalizeRazaApi(createRazaApiRaw(engendro)), normalizeRazaLegacy({ Id: 1009, Nombre: 'Engendro vampírico', ...engendro })]
+            .forEach((raza) => expect(raza.Especiales_sustituidos).toEqual(sustituidos));
+        // La RTDB guarda los arrays como objetos con sus índices: la caché los lee; HTTP, no.
+        const comoObjeto = { 0: sustituidos[0] };
+        expect(normalizeRazaLegacy({ Id: 1009, Nombre: 'Engendro vampírico', Especiales_sustituidos: comoObjeto }).Especiales_sustituidos).toEqual(sustituidos);
+        expect(normalizeRazaApi(createRazaApiRaw({ Especiales_sustituidos: comoObjeto })).Especiales_sustituidos).toEqual([]);
+        expect(normalizeRazaLegacy({ Id: 25, Nombre: 'Humano' }).Especiales_sustituidos).toEqual([]);
+        // Sin las dos aptitudes, o la misma, no cuenta.
+        expect(normalizeRazaApi(createRazaApiRaw({
+            Especiales_sustituidos: [{ Especial: { Id: 31, Nombre: 'Expulsar' } }, { Especial: { Id: 31, Nombre: 'Expulsar' }, Especial_nuevo: { Id: 31, Nombre: 'Expulsar' } }],
+        })).Especiales_sustituidos).toEqual([]);
+    });
+
     it('lee la clase predilecta (id y comodín) y la edad máxima, por HTTP y desde la caché (tanda de noviembre)', () => {
         const humano = { Id_clase_predilecta: 0, Clase_predilecta_comodin: 'cualquiera', Edad_maxima_dados: 2, Edad_maxima_caras: 20 };
         [normalizeRazaApi(createRazaApiRaw(humano)), normalizeRazaLegacy({ Id: 25, Nombre: 'Humano', ...humano })].forEach((raza) => {

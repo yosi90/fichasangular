@@ -15,7 +15,7 @@ import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import {
-    SUJETOS_MUTACION, normalizarCambiosMutacion, normalizarCamposCreacionRaza, normalizarCamposEdadRaza,
+    SUJETOS_MUTACION, leerEspecialesSustituidos, normalizarCambiosMutacion, normalizarCamposCreacionRaza, normalizarCamposEdadRaza,
     normalizarPrerrequisitosMutacion, normalizarTextosRaza, normalizeRazaApi, textoClasePredilecta,
 } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
@@ -249,6 +249,8 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Cambios_mutacion: normalizarCambiosMutacion(raw?.Cambios_mutacion),
         // La caché `Razas` 25: la clase de monstruo que lleva una mutada, como la API.
         Clase_de_monstruo: idNombre(raw?.Clase_de_monstruo, { filtro: 'conIdONombre' }),
+        // La caché `Razas` 36: las aptitudes que sustituye una mutada (hasta renovarla, no las trae: ninguna).
+        Especiales_sustituidos: leerEspecialesSustituidos(raw?.Especiales_sustituidos, false),
         Armadura_natural: toNumber(raw?.Armadura_natural ?? raw?.ant),
         Varios_armadura: toNumber(raw?.Varios_armadura ?? raw?.va),
         Correr: toNumber(raw?.Correr ?? raw?.co),

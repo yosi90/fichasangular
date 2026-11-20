@@ -83,6 +83,12 @@ export interface RazaCreateCore {
      * plantillas sin los niveles): los PX y las po; sin mutar, 0.
      */
     coste_al_adquirir?: { px: number; po: number; };
+    /**
+     * Las aptitudes de clase que sustituye una raza mutada (`RazaDetalle.Especiales_sustituidos`, desde el 2026-11-20): la
+     * aptitud `id_especial` de cualquiera de sus clases es `id_especial_nuevo`. Solo en una mutada; sin el campo, el alta no
+     * pone ninguna y la edición conserva las que tiene; `[]` las quita.
+     */
+    especiales_sustituidos?: Array<{ id_especial: number; id_especial_nuevo: number; }>;
     id_alineamiento: number;
     oficial: boolean;
     /** Carga como un cuadrúpedo (el centauro). Opcional en la API (por defecto, no). */

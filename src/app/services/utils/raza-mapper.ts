@@ -5,7 +5,7 @@ import { DoteContextual } from "src/app/interfaces/dote-contextual";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import {
-    CambioMutacion, CategoriaEdadRaza, ClaveCaracteristicaRaza, LanzamientoRaza, ListaLanzamientoRaza, PasoEdadRaza,
+    CambioMutacion, CategoriaEdadRaza, ClaveCaracteristicaRaza, EspecialSustituido, LanzamientoRaza, ListaLanzamientoRaza, PasoEdadRaza,
     PrerrequisitoMutacion, Raza, RazaCompetencias, RazaHabilidades, RazaPrerrequisitos, ReferenciasEdicionRaza,
     SujetoPrerrequisitoMutacion
 } from "src/app/interfaces/raza";
@@ -22,6 +22,18 @@ import { leerCosteAlAdquirir } from './coste-al-adquirir';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Las aptitudes de clase que sustituye una raza mutada (`Especiales_sustituidos`, desde el 2026-11-20): cada una con las
+ * dos aptitudes con su id (`Especial` y `Especial_nuevo`). Por HTTP (`estricto`), solo un array; desde la caché `Razas`,
+ * que hasta la 36 no lo trae, también el objeto de la RTDB (sin el campo, ninguna). Las que no tienen las dos, fuera.
+ */
+export function leerEspecialesSustituidos(raw: any, estricto: boolean): EspecialSustituido[] {
+    const ref = (valor: any) => ({ Id: toNumber(valor?.Id), Nombre: toText(valor?.Nombre).trim() });
+    return (estricto ? toStrictArray(raw) : toArray(raw))
+        .map((item: any) => ({ Especial: ref(item?.Especial), Especial_nuevo: ref(item?.Especial_nuevo) }))
+        .filter((s) => s.Especial.Id > 0 && s.Especial_nuevo.Id > 0 && s.Especial.Id !== s.Especial_nuevo.Id);
 }
 
 function normalizeModificadoresApi(raw: any): Raza["Modificadores"] {
@@ -535,6 +547,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Prerrequisitos: normalizarPrerrequisitosMutacion(raw?.pr),
         Cambios_mutacion: normalizarCambiosMutacion(raw?.Cambios_mutacion),
         Clase_de_monstruo: idNombre(raw?.Clase_de_monstruo, { filtro: 'conIdONombre' }),
+        Especiales_sustituidos: leerEspecialesSustituidos(raw?.Especiales_sustituidos, true),
         Armadura_natural: toNumber(raw?.ant),
         Varios_armadura: toNumber(raw?.va),
         Correr: toNumber(raw?.co),

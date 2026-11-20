@@ -9,6 +9,7 @@ import { PersonajeService } from './personaje.service';
 import { SesionesService, esSesionDesactualizada, leerHistorial, leerRespuestaSesion } from './sesiones.service';
 import { AppToastService } from './app-toast.service';
 import { AVISO_REGLAS_IGNORADAS } from './utils/reglas-ignoradas';
+import { ETIQUETA_EVENTO } from './utils/sesiones-texto';
 
 describe('SesionesService', () => {
     let http: { request: jasmine.Spy; };
@@ -190,7 +191,7 @@ describe('SesionesService', () => {
             expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/raza-mutada`, jasmine.objectContaining({ body: cuerpo })]);
             expect(respuesta.razaMutada).toEqual({
                 idEvento: 101, numeroSesion: 1, raza: { id: 21, nombre: 'Prole de Bahamut' }, razaBase: { id: 25, nombre: 'Humano' },
-                nepAntes: 5, nepDespues: 5, coste: { px: 0, po: 100, poCoste: 100, poPagadasPorOtro: false },
+                nepAntes: 5, nepDespues: 5, coste: { px: 0, po: 100, poCoste: 100, poPagadasPorOtro: false }, conversion: null,
             });
             const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
             expect([ultimo.tipo, ultimo.texto, ultimo.deshacible]).toEqual(['raza_mutada_adquirida', texto, true]);
@@ -206,6 +207,54 @@ describe('SesionesService', () => {
             expect(respuesta.razaMutada.coste).toEqual({ px: 0, po: 0, poCoste: 0, poPagadasPorOtro: false });
             expect([respuesta.razaMutada.nepAntes, respuesta.razaMutada.nepDespues]).toEqual([7, 5]);
             await expectAsync(servicio.adquirirRazaMutada(0, { idRaza: 952, ficha: {} as any, version: sesion.version })).toBeRejected();
+        });
+
+        it('convertirse en muerto viviente: el cuerpo con `pg` e `idClase`, la conversión de la respuesta y su evento', async () => {
+            const venta = respuestaSesiones<any>('venta');
+            const texto = 'se convirtió en engendro vampírico: −1 nivel de guerrero (queda en 4), +1 nivel de engendro vampírico, PX 12.000 → 8.000, '
+                + 'PG 45 → 39, sin Constitución, tipo humanoide → muerto viviente (la consunción de energía de un vampiro)';
+            const evento = { ...venta.sesion.eventos[venta.sesion.eventos.length - 1], id: 102, tipo: 'conversion_muerto_viviente', texto, px: -4000, deshacible: true };
+            http.request.and.returnValue(of({
+                ...venta, sesion: { ...venta.sesion, eventos: [...venta.sesion.eventos.map((e: any) => ({ ...e, deshacible: false })), evento] },
+                razaMutada: { idEvento: 102, numeroSesion: 1, raza: { id: 1009, nombre: 'Engendro vampírico' }, razaBase: { id: 2, nombre: 'Enano' },
+                    nepAntes: 5, nepDespues: 5, coste: { px: 0, po: 0, poCoste: 0, poPagadasPorOtro: false },
+                    conversion: { perdida: { clase: { id: 7, nombre: 'Guerrero' }, nivelClase: 5 }, claseDeMonstruo: { id: 482, nombre: 'Engendro vampírico' }, pxAntes: 12000, pxDespues: 8000 } },
+                reglasIgnoradas: [],
+            }));
+            const cuerpo = { idRaza: 1009, ficha: {} as any, version: sesion.version, pg: { tirada: 7, tiradas: [3, 7] }, concepto: 'la consunción de energía de un vampiro' };
+            const respuesta = await servicio.adquirirRazaMutada(129, cuerpo);
+            expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/raza-mutada`, jasmine.objectContaining({ body: cuerpo })]);
+            expect(respuesta.razaMutada.conversion).toEqual({
+                perdida: { clase: { id: 7, nombre: 'Guerrero' }, nivelClase: 5 }, claseDeMonstruo: { id: 482, nombre: 'Engendro vampírico' }, pxAntes: 12000, pxDespues: 8000,
+            });
+            const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
+            expect([ultimo.tipo, ultimo.texto, ultimo.px, ultimo.deshacible]).toEqual(['conversion_muerto_viviente', texto, -4000, true]);
+            expect(ETIQUETA_EVENTO['conversion_muerto_viviente']).toBe('Conversión');
+        });
+
+        it('la conversión del gnoll (sin niveles de clase): sin nivel perdido', async () => {
+            http.request.and.returnValue(of({
+                ...respuestaSesiones<any>('venta'), reglasIgnoradas: [],
+                razaMutada: { idEvento: 8, numeroSesion: 2, raza: { id: 1009, nombre: 'Engendro vampírico' }, razaBase: { id: 18, nombre: 'Gnoll' },
+                    nepAntes: 3, nepDespues: 4, coste: null,
+                    conversion: { perdida: null, claseDeMonstruo: { id: 482, nombre: 'Engendro vampírico' }, pxAntes: 3500, pxDespues: 3500 } },
+            }));
+            const respuesta = await servicio.adquirirRazaMutada(129, { idRaza: 1009, ficha: {} as any, version: sesion.version, pg: { tirada: 5 } });
+            expect(respuesta.razaMutada.conversion?.perdida).toBeNull();
+            expect([respuesta.razaMutada.nepAntes, respuesta.razaMutada.nepDespues]).toEqual([3, 4]);
+        });
+
+        it('los niveles perdidos: la conversión (`conversion`) no se restablece; una causa que no conoce, sin causa', async () => {
+            http.request.and.returnValue(of({
+                ...respuestaSesiones<any>('detalle_abierta'), ficha: crearDetalleApi(),
+                nivelesPerdidos: [
+                    { idClase: 7, nivelClase: 5, ordenConocido: true, clasesAnteriores: [7], causa: 'conversion', restablecible: false },
+                    { idClase: 7, nivelClase: 4, ordenConocido: true, clasesAnteriores: [7], causa: 'nivel_negativo', restablecible: true },
+                    { idClase: 7, nivelClase: 3, ordenConocido: true, clasesAnteriores: [7], causa: 'otra_cosa' },
+                ],
+            }));
+            const detalle = await servicio.sesion(129, 1);
+            expect(detalle.nivelesPerdidos!.map((n) => [n.causa, n.restablecible])).toEqual([['conversion', false], ['nivel_negativo', true], [null, false]]);
         });
 
         it('un NEP que falta o no es un número se lee como null, no como 0 (toIntOrNull)', async () => {
