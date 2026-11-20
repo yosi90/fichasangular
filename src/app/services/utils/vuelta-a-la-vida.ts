@@ -20,7 +20,7 @@ import {
 } from './perder-nivel';
 import { especialesDevueltos } from './raza-mutacion';
 import { formatoPx } from './sesiones-texto';
-import { diferencia, fichaConLoDelMotor, pgTrasCambioDeCon, PgSubida, puntosGolpeTrasSubida } from './subida-nivel';
+import { diferencia, fichaConLoDelMotor, pgDeUnDgGuardado, pgTrasCambioDeCon, PgSubida, puntosGolpeTrasSubida } from './subida-nivel';
 
 /*
  * Devolver la vida a un muerto viviente de clase de monstruo (*Libris Mortis*, pág. 35; contrato en
@@ -90,11 +90,20 @@ export function nivelesDespuesDeLaClase(niveles: PersonajeCreateNivelDto[] | und
         const terminada = toInt(clase?.Nivel_max_claseo) > 0 && nivel >= toInt(clase?.Nivel_max_claseo);
         return terminada && clases.some((c) => toInt(c.idClase) !== id && toInt(c.nivel) > 0) ? 'por_conocer' : 'ninguno';
     }
-    const primera = lista.findIndex((n) => toInt(n?.idClase) === id);
-    const desde = primera >= 0 ? lista.slice(primera) : [];
-    if (!desde.some((n) => toInt(n?.idClase) !== id && ordenConocido(n)))
+    if (!nivelesDeOtraClaseDespues(lista, id).some((n) => ordenConocido(n)))
         return 'ninguno';
-    return desde.every((n) => ordenConocido(n)) ? 'conocidos' : 'por_conocer';
+    return lista.slice(lista.findIndex((n) => toInt(n?.idClase) === id)).every((n) => ordenConocido(n)) ? 'conocidos' : 'por_conocer';
+}
+
+/**
+ * Los niveles del registro de otra clase que tomó después del primero de la clase `idClase` (la de monstruo), en su orden;
+ * sin ella, ninguno. Lo usan `nivelesDespuesDeLaClase` y la vuelta a la vida con niveles después (los que se renumeran).
+ */
+export function nivelesDeOtraClaseDespues<T extends Pick<PersonajeCreateNivelDto, 'idClase'>>(niveles: ReadonlyArray<T> | undefined,
+    idClase: number): T[] {
+    const lista = niveles ?? [];
+    const primera = lista.findIndex((n) => toInt(n?.idClase) === toInt(idClase));
+    return primera < 0 ? [] : lista.slice(primera + 1).filter((n) => toInt(n?.idClase) !== toInt(idClase));
 }
 
 /** Lo que se puede hacer: por qué no se puede (`motivo`), por qué no con *resurrección* (`motivoConResurreccion`) y sus DG. */
@@ -508,11 +517,8 @@ export function pgDelPrimerDg(pg: PersonajeCreateNivelDto['pg'] | null | undefin
     : { suma: number; exacto: boolean; } {
     if (pg?.maximo)
         return { suma: 0, exacto: true };
-    const dado = Math.max(1, toInt(caras));
-    const tirada = toInt(pg?.tirada);
-    const salio = tirada > 0 ? tirada : Math.floor(dado / 2) + 1;
-    const mod = toInt(modConstitucion);
-    return { suma: Math.max(1, dado + mod) - Math.max(1, salio + mod), exacto: tirada > 0 };
+    const salio = pgDeUnDgGuardado(pg, caras, modConstitucion);
+    return { suma: pgDeUnDgGuardado({ tirada: null, maximo: true }, caras, modConstitucion).pg - salio.pg, exacto: salio.exacto };
 }
 
 /** Unos rangos quitados de lo comprado en un nivel: su lugar en el registro, la habilidad, cuántos y lo que costó cada uno. */

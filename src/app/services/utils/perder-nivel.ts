@@ -8,10 +8,10 @@ import { CAUSAS_DE_PERDIDA, CausaPerdidaDto } from 'src/app/interfaces/sesiones'
 import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
-import { CARACTERISTICAS_DEL_ALTA, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
+import { CARACTERISTICAS_DEL_ALTA, caracteristicaDelAlta, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
-import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
+import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgDeUnDgGuardado, pgTrasCambioDeCon } from './subida-nivel';
 import { mismoExtraDeHabilidad } from './habilidad-extra-visible';
 import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 
@@ -293,7 +293,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
             quitado.especiales.push({ idEspecial, idExtra });
     };
     const bajarCaracteristica = (id: number, cuanto: number) => {
-        const clave = CARACTERISTICAS_DEL_ALTA[id - 1]?.[0];
+        const clave = caracteristicaDelAlta(id)?.[0];
         const c = clave ? (ficha.caracteristicas as any)?.[clave] : null;
         if (c && !c.perdido) {
             c.valor = toInt(c.valor) - Math.max(1, cuanto);
@@ -410,11 +410,8 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
     const modAntes = modConstitucionDeEntrada(entrada);
     let pgDelNivel = 0;
     let exacto = true;
-    if (daDgEnNivel(clase as any, nivelClase) && datos.caras > 0) {
-        const tirada = nivel?.pg?.maximo ? datos.caras : toInt(nivel?.pg?.tirada);
-        exacto = tirada > 0;
-        pgDelNivel = Math.max(1, (tirada > 0 ? tirada : Math.floor(datos.caras / 2) + 1) + modAntes);
-    }
+    if (daDgEnNivel(clase as any, nivelClase) && datos.caras > 0)
+        ({ pg: pgDelNivel, exacto } = pgDeUnDgGuardado(nivel?.pg, datos.caras, modAntes));
     const sinElDg: PersonajeCreateRequestDto = { ...ficha, personaje: { ...ficha.personaje, puntosGolpe: pgAntes - pgDelNivel }, caracteristicas: entrada.caracteristicas };
     const dgsQueQuedan = Math.max(0, toInt(datos.dgsAntes) - (pgDelNivel > 0 ? 1 : 0));
     const pg = pgTrasCambioDeCon(sinElDg, dgsQueQuedan, modConstitucionDeEntrada(ficha), null);
@@ -481,10 +478,13 @@ export function nombresDeLaFicha(svc: NuevoPersonajeService, pj: Personaje | nul
             const nombre = h ? `${h.Nombre}${tieneTextoVisible(h.Extra) && toInt(idExtra) > 0 ? ` (${h.Extra})` : ''}` : `Habilidad ${idHabilidad}`;
             return { nombre, rangos: toInt(h?.Rangos) };
         },
-        caracteristica: (id) => ({
-            nombre: NOMBRES_CARACTERISTICAS[CARACTERISTICAS_DEL_ALTA[id - 1]?.[1]] ?? `Característica ${id}`,
-            valor: toInt((entrada.caracteristicas as any)?.[CARACTERISTICAS_DEL_ALTA[id - 1]?.[0]]?.valor),
-        }),
+        caracteristica: (id) => {
+            const [clave, caracteristica] = caracteristicaDelAlta(id) ?? [];
+            return {
+                nombre: (caracteristica ? NOMBRES_CARACTERISTICAS[caracteristica] : undefined) ?? `Característica ${id}`,
+                valor: toInt(clave ? (entrada.caracteristicas as any)?.[clave]?.valor : undefined),
+            };
+        },
     };
 }
 
@@ -539,7 +539,7 @@ export function doteDeLaClave(clave: string): { idDote: number; idExtra: number;
  * de más), para seguir con lo que le queda.
  */
 export function quitarElNivelDelMotor(svc: NuevoPersonajeService, perdida: ResultadoPerdida, idClase: number, indice: number): void {
-    const incremento = perdida.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[perdida.quitado.incremento - 1]?.[1] ?? null : null;
+    const incremento = perdida.quitado.incremento !== null ? caracteristicaDelAlta(perdida.quitado.incremento)?.[1] ?? null : null;
     svc.perderNivelEnElMotor({
         idClase,
         ataqueBase: perdida.ataqueBase.despues,

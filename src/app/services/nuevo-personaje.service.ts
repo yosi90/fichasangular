@@ -272,6 +272,8 @@ const TIRADAS_POR_TABLA = 6;
 const FILAS_TIRADAS = MAX_TIRADA - MIN_TIRADA + 1;
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 const MAX_VENTAJAS_SELECCIONABLES = 3;
+/** La descripción del incremento de característica de cada 4 niveles de personaje (MJ p. 22): la subida y la vuelta a la vida. */
+const DESCRIPCION_AUMENTO_POR_PROGRESION = 'Aumento por progresion cada 4 niveles efectivos';
 const NUEVO_PERSONAJE_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 /** `tipos_salvacion` de los scripts canónicos: el tipo de una salvación racial sale de su `Id_salvacion`. */
 const SALVACION_POR_ID: Record<number, SalvacionKey> = { 1: 'fortaleza', 2: 'reflejos', 3: 'voluntad' };
@@ -2554,9 +2556,7 @@ export class NuevoPersonajeService {
 
         const returnStep: StepNuevoPersonaje = this.estadoFlujo.conjuros.activa ? 'conjuros' : 'dotes';
         // Sin lo anotado de esa clase (un borrador de antes), las marcadas `Clasea`, como antes.
-        const deLaClase = this.habilidadesDeClasePorOrigen[origenDeClase(clase?.Nombre)];
-        const deClaseEnLaSesion = Array.isArray(deLaClase) ? [...deLaClase, ...this.habilidadesSiempreDeClase()] : null;
-        this.iniciarDistribucionHabilidadesInterna('clase_nivel', returnStep, total, [], null, deClaseEnLaSesion);
+        this.iniciarDistribucionHabilidadesInterna('clase_nivel', returnStep, total, [], null, this.habilidadesDeClaseDe(clase));
         return true;
     }
 
@@ -3086,7 +3086,7 @@ export class NuevoPersonajeService {
         const creados = Array.from({ length: nuevos }, () => this.crearPendienteAumento(
             1,
             origenNormalizado,
-            'Aumento por progresion cada 4 niveles efectivos'
+            DESCRIPCION_AUMENTO_POR_PROGRESION
         ));
 
         this.aumentosPendientesCaracteristica = [
@@ -7150,6 +7150,16 @@ export class NuevoPersonajeService {
     /** Las que son de clase en todos los repartos (los raciales, `Se_considera_clasea`). */
     private habilidadesSiempreDeClase(): ClaveHabilidad[] {
         return this.habilidadesDeClasePorOrigen[ORIGEN_SIEMPRE_DE_CLASE] ?? [];
+    }
+
+    /**
+     * Las de clase en un nivel de `clase`: lo anotado de ella y las de siempre; `null` sin lo anotado de esa clase (un
+     * borrador de antes), y entonces valen las marcadas `Clasea`. Lo usan el reparto de un nivel de clase
+     * (`iniciarDistribucionHabilidadesPorClase`) y el coste de un rango comprado en un nivel ya hecho (`esHabilidadDeClaseDe`).
+     */
+    private habilidadesDeClaseDe(clase: Clase | null | undefined): ClaveHabilidad[] | null {
+        const deLaClase = this.habilidadesDeClasePorOrigen[origenDeClase(clase?.Nombre)];
+        return Array.isArray(deLaClase) ? [...deLaClase, ...this.habilidadesSiempreDeClase()] : null;
     }
 
     /**
@@ -11986,9 +11996,7 @@ export class NuevoPersonajeService {
                 .map((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre ?? '') ? { ...c, Nivel: toNumber(c.Nivel) - 1 } : c)
                 .filter((c) => toNumber(c.Nivel) > 0);
         (cambios.rangos ?? []).forEach((r) => {
-            // Sin extra, la habilidad guarda -1 y la elección no lo lleva (0): son la misma.
-            const h = (pj.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(r.idHabilidad)
-                && mismoExtraDeHabilidad(idExtraHabilidadParaGuardar(x), r.idExtra));
+            const h = this.habilidadDeLaEleccion(r.idHabilidad, r.idExtra);
             if (h)
                 h.Rangos = Math.max(0, toNumber(h.Rangos) - toInt(r.rangos));
         });
@@ -12302,21 +12310,28 @@ export class NuevoPersonajeService {
             abierto = this.iniciarDistribucionHabilidadesPorRazaDG(false, 'clases', modInicial);
         else if (paso.tipo === 'plantilla_dg')
             abierto = this.iniciarDistribucionHabilidadesPorPlantillasDG(undefined, modInicial);
-        else {
-            const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(paso.indice)];
-            const clase = nivel ? this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel.idClase)) : undefined;
-            if (!nivel || !clase)
-                return false;
-            this.nivelEnCurso = { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) };
-            abierto = this.iniciarDistribucionHabilidadesPorClase(clase, {
-                nivelClase: toInt(nivel.nivelClase),
+        else
+            abierto = this.abrirRepartoDelNivelDelOrden(toInt(paso.indice), {
                 primerNivel: toInt(paso.indice) === 0 && !primerDgEsRacial(this.getPartesNivelPersonaje()),
                 modInteligencia: this.modInteligenciaAlNivel(toInt(paso.indice)),
             });
-        }
         if (abierto)
             this.estadoFlujo.habilidades.nivelPersonajeReferencia = Math.max(1, toInt(paso.nivelPersonaje));
         return abierto && toInt(this.estadoFlujo.habilidades.puntosTotales) > 0;
+    }
+
+    /**
+     * Abre el reparto del nivel `indice` de su orden, ya hecho, con la clase de ese nivel (`opciones`, las de
+     * `iniciarDistribucionHabilidadesPorClase` salvo su nivel de clase): el de la corrección (`abrirPasoDelRepartoDeRangos`)
+     * y el de la vuelta a la vida (`abrirRepartoEnNivel`). `false` sin ese nivel o sin su clase.
+     */
+    private abrirRepartoDelNivelDelOrden(indice: number, opciones: { primerNivel?: boolean; modInteligencia?: number; puntos?: number; }): boolean {
+        const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(indice)];
+        const clase = nivel ? this.claseDelCatalogo(nivel.idClase) : null;
+        if (!nivel || !clase)
+            return false;
+        this.nivelEnCurso = { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) };
+        return this.iniciarDistribucionHabilidadesPorClase(clase, { ...opciones, nivelClase: toInt(nivel.nivelClase) });
     }
 
     // --- Lo que cambia en un nivel ya hecho (la vuelta a la vida con niveles después) -----------------------------------
@@ -12328,12 +12343,7 @@ export class NuevoPersonajeService {
      * del nivel que pasa a ser su primer DG). `false` sin ese nivel, sin su clase o sin puntos.
      */
     abrirRepartoEnNivel(indice: number, puntos: number): boolean {
-        const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(indice)];
-        const clase = nivel ? this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel.idClase)) : undefined;
-        if (!nivel || !clase || toInt(puntos) < 1)
-            return false;
-        this.nivelEnCurso = { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) };
-        return this.iniciarDistribucionHabilidadesPorClase(clase, { nivelClase: toInt(nivel.nivelClase), puntos: toInt(puntos) });
+        return toInt(puntos) >= 1 && this.abrirRepartoDelNivelDelOrden(indice, { puntos: toInt(puntos) });
     }
 
     /**
@@ -12341,9 +12351,18 @@ export class NuevoPersonajeService {
      * o 2. Sin lo anotado de esa clase (un borrador de antes), si la tiene marcada de clase.
      */
     esHabilidadDeClaseDe(habilidad: Personaje['Habilidades'][number], clase: Clase): boolean {
-        const clave = claveHabilidad(habilidad);
-        const deLaClase = this.habilidadesDeClasePorOrigen[origenDeClase(clase?.Nombre)];
-        return this.habilidadesSiempreDeClase().includes(clave) || (Array.isArray(deLaClase) ? deLaClase.includes(clave) : !!habilidad?.Clasea);
+        const deLaClase = this.habilidadesDeClaseDe(clase);
+        return deLaClase ? deLaClase.includes(claveHabilidad(habilidad)) : this.habilidadesSiempreDeClase().includes(claveHabilidad(habilidad)) || !!habilidad?.Clasea;
+    }
+
+    /**
+     * La habilidad del catálogo de la sesión (no personalizada) de unos rangos del registro (`idHabilidad`, `idExtra`): sin
+     * extra, la habilidad guarda -1 y la elección no lo lleva (0), y son la misma (`mismoExtraDeHabilidad`). Lo usan quitar
+     * los rangos de un nivel perdido y la vuelta a la vida con niveles después.
+     */
+    habilidadDeLaEleccion(idHabilidad: unknown, idExtra: unknown): Personaje['Habilidades'][number] | undefined {
+        return (this.personajeCreacion?.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(idHabilidad)
+            && mismoExtraDeHabilidad(idExtraHabilidadParaGuardar(x), idExtra));
     }
 
     /**
@@ -12355,9 +12374,9 @@ export class NuevoPersonajeService {
         const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(indice)];
         if (!nivel)
             return false;
-        const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel.idClase));
+        const clase = this.claseDelCatalogo(nivel.idClase);
         this.aumentosPendientesCaracteristica = [...this.aumentosPendientesCaracteristica, {
-            ...this.crearPendienteAumento(1, `${clase?.Nombre ?? 'Clase'} nivel ${toInt(nivel.nivelClase)}`, 'Aumento por progresion cada 4 niveles efectivos'),
+            ...this.crearPendienteAumento(1, `${clase?.Nombre ?? 'Clase'} nivel ${toInt(nivel.nivelClase)}`, DESCRIPCION_AUMENTO_POR_PROGRESION),
             nivel: { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) },
         }];
         return true;

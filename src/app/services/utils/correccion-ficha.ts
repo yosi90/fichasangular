@@ -16,6 +16,11 @@ import { aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subi
 export const CARACTERISTICAS_DEL_ALTA: ReadonlyArray<readonly [string, Caracteristica]> = CARACTERISTICAS
     .map((key) => [key.toLowerCase(), key] as const);
 
+/** Las claves de la característica con ese `id_caracteristica` (1, la fuerza, … 6, el carisma: el orden de `CARACTERISTICAS`). */
+export function caracteristicaDelAlta(id: unknown): readonly [string, Caracteristica] | undefined {
+    return CARACTERISTICAS_DEL_ALTA[toInt(id) - 1];
+}
+
 export interface DoteDeLaFicha {
     idDote: number;
     idExtra: number;

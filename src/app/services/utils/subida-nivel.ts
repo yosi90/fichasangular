@@ -75,6 +75,19 @@ export function puntosGolpeTrasSubida(entrada: EntradaPgSubida): PgSubida {
 }
 
 /**
+ * Los PG de un DG guardado en el registro (el `pg` de un nivel): al máximo, su dado; si no, lo que salió (su tirada) o, sin
+ * ella, la media (y no es exacto), con el modificador de Constitución y al menos 1 (MJ p. 23). Lo usan la pérdida de un
+ * nivel (`perder-nivel.ts`) y la vuelta a la vida (el nivel que pasa a ser su primer DG, `pgDelPrimerDg`).
+ */
+export function pgDeUnDgGuardado(pg: PersonajeCreateNivelDto['pg'] | null | undefined, caras: number, modConstitucion: number)
+    : { pg: number; exacto: boolean; } {
+    const dado = Math.max(1, toInt(caras));
+    const tirada = pg?.maximo ? dado : toInt(pg?.tirada);
+    const salio = tirada > 0 ? tirada : Math.floor(dado / 2) + 1;
+    return { pg: Math.max(1, salio + toInt(modConstitucion)), exacto: tirada > 0 };
+}
+
+/**
  * Los PG de una ficha guardada (`entrada`) con el modificador de Constitución `modConDespues` y, si da DG, la tirada de
  * un DG nuevo: lo que usan la subida (un nivel más) y la corrección (`tirada` `null`: solo el retroactivo de la Con). Los
  * DG de antes son los de su nivel de personaje (`nivelPersonaje`) o, si son más, sus niveles guardados.
