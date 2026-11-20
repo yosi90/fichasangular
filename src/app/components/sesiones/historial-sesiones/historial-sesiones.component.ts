@@ -141,6 +141,18 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
         this.puertaSubida.solicitarPlantilla(this.idPersonaje);
     }
 
+    /**
+     * «Adquirir una raza mutada» (fase 7): como la plantilla, y solo si aún no tiene una (`RazaBase`, la de antes de una
+     * raza mutada): no se pone una mutación sobre otra.
+     */
+    get puedeAdquirirRazaMutada(): boolean {
+        return this.puedeAdquirirPlantilla && !this.pj?.RazaBase;
+    }
+
+    adquirirRazaMutada(): void {
+        this.puertaSubida.solicitarMutacion(this.idPersonaje);
+    }
+
     /** «Perder un nivel» (fase 7, segunda tanda): quien apunta, con una sesión de juego abierta, como la plantilla. */
     perderNivel(): void {
         this.puertaSubida.solicitarPerdida(this.idPersonaje);

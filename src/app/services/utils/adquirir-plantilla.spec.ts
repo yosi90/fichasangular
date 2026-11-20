@@ -1,5 +1,5 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { cambiosDeLaPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, loQuePierdeDeSuMagia, puntosGolpeTrasPlantilla } from './adquirir-plantilla';
+import { cambiosDeLaPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, filaDeLosPx, loQuePierdeDeSuMagia, nombresNuevos, puntosGolpeTrasPlantilla } from './adquirir-plantilla';
 
 // Adquirir una plantilla con el personaje ya creado (roadmap de sesiones, fase 7). Los casos son los del dictamen del
 // máster de Rol (roadmap, «Adquirir una plantilla»).
@@ -124,5 +124,13 @@ describe('loQuePierdeDeSuMagia (la ex clase que pierde su magia)', () => {
         expect(loQuePierdeDeSuMagia({ Ex: ex, Aumenta_clase_lanzadora: true })).toEqual(['su magia', 'los niveles de lanzador que suma a otra clase']);
         expect(loQuePierdeDeSuMagia({ Ex: ex, Aumenta_clase_lanzadora: false })).toEqual(['su magia']);
         expect(loQuePierdeDeSuMagia({ Ex: { ...ex, Pierde_magia: false }, Aumenta_clase_lanzadora: true })).toEqual([]);
+    });
+
+    it('lo que cambia, común con la raza mutada: los nombres nuevos sin repetir y la fila de los PX (si baja el NEP, sube antes)', () => {
+        expect(nombresNuevos(['Alerta'], ['alerta', 'Esquiva', 'Esquiva'])).toEqual(['Esquiva']);
+        const experiencia = { px: 10000, nivel: 5 } as any;
+        expect(filaDeLosPx(experiencia, 6)?.porque).toBe('No cambian: sube a nivel 7 con 21.000 PX');
+        expect(filaDeLosPx(experiencia, 4)?.porque).toBe('No cambian: puede subir antes, a nivel 5 con 10.000 PX');
+        expect(filaDeLosPx(null, 4)).toBeNull();
     });
 });

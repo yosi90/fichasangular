@@ -22,6 +22,14 @@ export interface DoteDeLaFicha {
     origen: string;
 }
 
+/**
+ * La clave de una dote de la ficha (su id, su extra y su origen), para ver cuáles de `dotesSinSusPrerrequisitos` son
+ * nuevas. La usan el motor (`dotesSinPrerrequisitosTrasPerder`), el reciclaje y la raza mutada adquirida.
+ */
+export function claveDoteDeLaFicha(d: DoteDeLaFicha): string {
+    return `${d.idDote}|${d.idExtra}|${d.origen}`;
+}
+
 export interface CambiosCorreccion {
     /** Lo que cambia cada puntuación (la del motor después menos la de antes). */
     caracteristicas: Partial<Record<Caracteristica, number>>;

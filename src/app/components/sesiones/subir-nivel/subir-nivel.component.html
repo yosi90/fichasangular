@@ -14,10 +14,7 @@
     </div>
 
     <ng-container *ngIf="!cargando && pj && entrada">
-        <nav class="subida__pasos" aria-label="Pasos de la subida">
-            <span *ngFor="let p of pasos" class="subida__paso" [class.subida__paso--hecho]="estadoPaso(p) === 'hecho'"
-                [class.subida__paso--actual]="estadoPaso(p) === 'actual'" [attr.aria-current]="estadoPaso(p) === 'actual' ? 'step' : null">{{etiquetaPaso(p)}}</span>
-        </nav>
+        <app-pasos-sesion [pasos]="pasos" [actual]="paso" [etiqueta]="etiquetaPaso" nombre="Pasos de la subida"></app-pasos-sesion>
 
         <div *ngIf="error && empezada" class="subida__aviso subida__aviso--error" role="alert">
             <mat-icon aria-hidden="true">error_outline</mat-icon>

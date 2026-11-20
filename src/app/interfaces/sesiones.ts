@@ -37,6 +37,8 @@ export type TipoEventoSesion =
     | 'correccion_master'
     /** Una plantilla adquirida con el personaje ya creado (fase 7, `POST /personajes/{id}/plantillas`). */
     | 'plantilla_adquirida'
+    /** Una raza mutada adquirida con el personaje ya creado (fase 7, `POST /personajes/{id}/raza-mutada`). */
+    | 'raza_mutada_adquirida'
     /** Un nivel perdido con el personaje ya creado (fase 7, segunda tanda, `POST /personajes/{id}/niveles/perdida`). */
     | 'nivel_perdido'
     /** Un nivel consumido que devuelve un restablecimiento (`POST /personajes/{id}/niveles/restablecimiento`). */
@@ -205,13 +207,20 @@ export interface AdquirirPlantillaDto {
     poPagadasPorOtro?: boolean;
 }
 
-/** Lo que costó adquirir una plantilla (`plantilla.coste` de la respuesta). */
-export interface CosteDePlantillaCobrado {
+/**
+ * Lo que costó adquirir una raza mutada (`razaMutada.coste` de la respuesta): `px`, los que pagó; `po`, lo que salió de su
+ * saldo; `poCoste`, lo que costaba.
+ */
+export interface CosteCobrado {
     px: number;
     po: number;
     poCoste: number;
-    niveles: number;
     poPagadasPorOtro: boolean;
+}
+
+/** Lo que costó adquirir una plantilla (`plantilla.coste` de la respuesta): el de la raza mutada y los niveles que perdió. */
+export interface CosteDePlantillaCobrado extends CosteCobrado {
+    niveles: number;
 }
 
 /** Lo que responde la adquisición: la sesión donde queda, los PX (que no cambian) y el NEP de antes y de ahora. */
@@ -219,6 +228,36 @@ export interface RespuestaPlantilla extends RespuestaSesion {
     plantilla: {
         idEvento: number; numeroSesion: number; id: number; nombre: string; nepAntes: number | null; nepDespues: number | null;
         coste: CosteDePlantillaCobrado | null;
+    };
+}
+
+/** Como mucho, los caracteres del concepto de una raza mutada adquirida («El Rito del Renacimiento…»). */
+export const MAXIMO_CONCEPTO_RAZA_MUTADA = 150;
+
+/**
+ * El cuerpo de `POST /personajes/{id}/raza-mutada` (fase 7): la ficha completa con la mutación aplicada (la raza mutada en
+ * `personaje.idRaza` y la de antes en `personaje.idRazaBase`).
+ */
+export interface AdquirirRazaMutadaDto {
+    idRaza: number;
+    ficha: PersonajeCreateRequestDto;
+    version: string;
+    /** Las po que cuesta las paga otro (o ya se apuntaron): no salen de su saldo. */
+    poPagadasPorOtro?: boolean;
+    /** Texto libre al final de la frase (como mucho `MAXIMO_CONCEPTO_RAZA_MUTADA`). */
+    concepto?: string;
+}
+
+/** Lo que responde la adquisición de una raza mutada: la sesión, los PX (que no cambian) y el NEP de antes y de ahora. */
+export interface RespuestaRazaMutada extends RespuestaSesion {
+    razaMutada: {
+        idEvento: number;
+        numeroSesion: number;
+        raza: { id: number; nombre: string; };
+        razaBase: { id: number; nombre: string; };
+        nepAntes: number | null;
+        nepDespues: number | null;
+        coste: CosteCobrado | null;
     };
 }
 

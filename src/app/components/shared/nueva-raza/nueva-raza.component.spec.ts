@@ -522,6 +522,17 @@ describe('NuevaRazaComponent', () => {
         expect(component.buildPayload().prerrequisitos_mutacion).toEqual([]);
     });
 
+    it('lo que cuesta adquirir una raza mutada (PX y po, con dos decimales) va en raza.coste_al_adquirir; sin mutar, no se manda', () => {
+        component.form.patchValue({ mutada: true, coste_px: 0, coste_po: 100 });
+        expect(component.buildPayload().raza.coste_al_adquirir).toEqual({ px: 0, po: 100 });
+        component.form.patchValue({ coste_px: -5 });
+        expect(component.form.controls.coste_px.invalid).toBeTrue();
+        component.form.patchValue({ coste_px: 0, coste_po: 12.345 });
+        expect(component.buildPayload().raza.coste_al_adquirir).toEqual({ px: 0, po: 12.35 });
+        component.form.patchValue({ mutada: false, coste_px: 300, coste_po: 100 });
+        expect(component.buildPayload().raza.coste_al_adquirir).toBeUndefined();
+    });
+
     it('no envia prerrequisitos ni cambios de mutación cuando no es mutada', () => {
         component.form.patchValue({ mutada: false });
         component.prerrequisitosMutacionSeleccionados = ['mutacion.actitud_requerido'];
@@ -1365,6 +1376,12 @@ describe('NuevaRazaComponent', () => {
             expect(component.form.controls.fortaleza.enabled).toBeTrue();
             component.form.patchValue({ fortaleza: 3 });
             expect(component.buildPayload().raza.fortaleza).toBe(3);
+        });
+
+        it('al modificar una raza mutada, su coste al adquirir sale de la API y se vuelve a mandar', async () => {
+            await crearEnModificar(razaDeLaApi({ Mutada: true, Coste_al_adquirir: { Px: 0, Po: 100 } }));
+            expect([component.form.controls.coste_px.value, component.form.controls.coste_po.value]).toEqual([0, 100]);
+            expect(component.buildPayload().raza.coste_al_adquirir).toEqual({ px: 0, po: 100 });
         });
 
         it('admite pesos de más de 999,99 (el centauro de Races of the Wild)', async () => {

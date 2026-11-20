@@ -174,6 +174,50 @@ describe('SesionesService', () => {
             expect(respuesta.plantilla.coste).toEqual({ px: 4800, po: 0, poCoste: 120000, niveles: 0, poPagadasPorOtro: true });
         });
 
+        it('adquirir una raza mutada (fase 7): la ruta, su cuerpo con el concepto, la raza y su base, lo que costó y el evento', async () => {
+            const venta = respuestaSesiones<any>('venta');
+            const texto = 'adquirió la raza mutada Prole de Bahamut (pagó 100 po): Constitución 14 → 16, Destreza 12 → 10, PG 30 → 38, '
+                + 'quitó la dote Alerta, idioma Dracónico (el Rito del Renacimiento)';
+            const evento = { ...venta.sesion.eventos[venta.sesion.eventos.length - 1], id: 101, tipo: 'raza_mutada_adquirida', texto, deshacible: true };
+            http.request.and.returnValue(of({
+                ...venta, sesion: { ...venta.sesion, eventos: [...venta.sesion.eventos.map((e: any) => ({ ...e, deshacible: false })), evento] },
+                razaMutada: { idEvento: 101, numeroSesion: 1, raza: { id: 21, nombre: 'Prole de Bahamut' }, razaBase: { id: 25, nombre: 'Humano' },
+                    nepAntes: 5, nepDespues: 5, coste: { px: 0, po: 100, poCoste: 100, poPagadasPorOtro: false } },
+                reglasIgnoradas: [],
+            }));
+            const cuerpo = { idRaza: 21, ficha: {} as any, version: sesion.version, concepto: 'el Rito del Renacimiento' };
+            const respuesta = await servicio.adquirirRazaMutada(129, cuerpo);
+            expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/raza-mutada`, jasmine.objectContaining({ body: cuerpo })]);
+            expect(respuesta.razaMutada).toEqual({
+                idEvento: 101, numeroSesion: 1, raza: { id: 21, nombre: 'Prole de Bahamut' }, razaBase: { id: 25, nombre: 'Humano' },
+                nepAntes: 5, nepDespues: 5, coste: { px: 0, po: 100, poCoste: 100, poPagadasPorOtro: false },
+            });
+            const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
+            expect([ultimo.tipo, ultimo.texto, ultimo.deshacible]).toEqual(['raza_mutada_adquirida', texto, true]);
+        });
+
+        it('una raza mutada que no cuesta nada (el nacido del Infierno), con el NEP que baja, y un id que no vale', async () => {
+            http.request.and.returnValue(of({
+                ...respuestaSesiones<any>('venta'), reglasIgnoradas: [],
+                razaMutada: { idEvento: 7, numeroSesion: 2, raza: { id: 952, nombre: 'Nacido del Infierno' }, razaBase: { id: 308, nombre: 'Drow' },
+                    nepAntes: 7, nepDespues: 5, coste: { px: 0, po: 0, poCoste: 0, poPagadasPorOtro: false } },
+            }));
+            const respuesta = await servicio.adquirirRazaMutada(129, { idRaza: 952, ficha: {} as any, version: sesion.version });
+            expect(respuesta.razaMutada.coste).toEqual({ px: 0, po: 0, poCoste: 0, poPagadasPorOtro: false });
+            expect([respuesta.razaMutada.nepAntes, respuesta.razaMutada.nepDespues]).toEqual([7, 5]);
+            await expectAsync(servicio.adquirirRazaMutada(0, { idRaza: 952, ficha: {} as any, version: sesion.version })).toBeRejected();
+        });
+
+        it('un NEP que falta o no es un número se lee como null, no como 0 (toIntOrNull)', async () => {
+            http.request.and.returnValue(of({
+                ...respuestaSesiones<any>('venta'), reglasIgnoradas: [],
+                razaMutada: { idEvento: 7, numeroSesion: 2, raza: { id: 952, nombre: 'Nacido del Infierno' }, razaBase: { id: 308, nombre: 'Drow' },
+                    nepAntes: '', nepDespues: null, coste: null },
+            }));
+            const respuesta = await servicio.adquirirRazaMutada(129, { idRaza: 952, ficha: {} as any, version: sesion.version });
+            expect([respuesta.razaMutada.nepAntes, respuesta.razaMutada.nepDespues, respuesta.razaMutada.coste]).toEqual([null, null, null]);
+        });
+
         it('restablecer un nivel: la ruta, el conjuro y cuántos quedan; el historial dice cuántos se pueden', async () => {
             const venta = respuestaSesiones<any>('venta');
             http.request.and.returnValue(of({

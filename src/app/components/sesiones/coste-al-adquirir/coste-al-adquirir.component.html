@@ -1,0 +1,12 @@
+<ng-container *ngIf="coste as c">
+    <h2 class="subida__seccion">Lo que cuesta</h2>
+    <p class="subida__nota">
+        <ng-container *ngIf="(c.niveles ?? 0) > 0">Antes, pierde {{c.niveles}} nivel{{(c.niveles ?? 0) > 1 ? 'es' : ''}} en esta sesión («Perder un nivel», por el coste de una plantilla). </ng-container>
+        <ng-container *ngIf="c.px > 0">Paga {{px(c.px)}} PX, que no le pueden bajar de nivel. </ng-container>
+        <ng-container *ngIf="c.po > 0">Paga {{px(c.po)}} po de su saldo (tiene {{px(saldo)}} po).<ng-container *ngIf="!poPagadasPorOtro && saldo < c.po"> No le llega: márcalo si las paga otro.</ng-container></ng-container>
+    </p>
+    <label *ngIf="c.po > 0" class="subida__campo">
+        <span><input type="checkbox" [checked]="poPagadasPorOtro" (change)="cambiarPagadasPorOtro($any($event.target).checked)">
+        Las po las paga otro (un mecenas) o ya están apuntadas</span>
+    </label>
+</ng-container>

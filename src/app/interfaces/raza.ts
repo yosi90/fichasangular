@@ -8,6 +8,7 @@ import { ArmaNatural } from "./arma-natural";
 import { IdiomaDetalle } from "./idioma";
 import { ManualReferencia } from "./manual";
 import { Maniobrabilidad } from "./maniobrabilidad";
+import type { CosteAlAdquirir } from "./plantilla";
 import { RacialDetalle } from "./racial";
 import { SubtipoRef } from "./subtipo";
 import { Tamano } from "./tamaño";
@@ -34,6 +35,11 @@ export interface PrerrequisitoMutacion {
     Sujeto: SujetoPrerrequisitoMutacion;
     Id_referencia: number | null;
     Referencia: string | null;
+    /**
+     * La clave estable de la referencia si su catálogo la tiene (desde el 2026-11-19): hoy, la del momento (`al_crear` o
+     * `despues`); `null` en los demás.
+     */
+    Clave_referencia: string | null;
     Cantidad: number | null;
     Texto: string | null;
     Opcional: number;
@@ -287,6 +293,12 @@ export interface Raza {
     Puntos_habilidad_extra_primer_nivel?: number;
     /** Puntos de habilidad extra de la raza en cada nivel siguiente (el humano: 1). */
     Puntos_habilidad_extra_por_nivel?: number;
+    /**
+     * Lo que cuesta adquirir la raza mutada con el personaje ya creado (`RazaDetalle.Coste_al_adquirir`, `{ Px, Po }`: el
+     * de las plantillas sin los niveles; la prole de Bahamut, 100 po por el huevo del Rito del Renacimiento). Al crear el
+     * personaje no se cobra.
+     */
+    Coste_al_adquirir?: CosteAlAdquirir;
     /** Carga como un cuadrúpedo (Manual del jugador, tabla 9-1; el centauro). */
     Cuadrupedo?: boolean;
     /**

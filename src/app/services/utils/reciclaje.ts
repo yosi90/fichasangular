@@ -1,12 +1,11 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
-import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
 import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
-import { sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
-import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from './habilidad-extra-visible';
+import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
+import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import { aplicarCaracteristicasDelMotor, aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subida-nivel';
@@ -220,16 +219,36 @@ function clasesQueTiene(motor: NuevoPersonajeService): Clase[] {
 }
 
 /**
+ * Lo que no cumplía cada clase que tiene (`evaluarClaseParaSeleccion`), para ver después qué deja de cumplir
+ * (`clasesQueDejanDeCumplir`). Lo usan el reciclaje (`loQueDejariaDeCumplir`) y la raza mutada adquirida.
+ */
+export function razonesDeSusClases(motor: NuevoPersonajeService): Map<number, Set<string>> {
+    return new Map(clasesQueTiene(motor).map((c) => [toInt(c.Id), new Set(motor.evaluarClaseParaSeleccion(c).razones ?? [])]));
+}
+
+/**
+ * Las clases que dejan de cumplir lo que piden (una de prestigio que pide una dote, unos rangos o una raza): solo lo que no
+ * fallaba antes (`antes`, de `razonesDeSusClases`). Con la raza mutada adquirida, quedan ex mientras no cumplan (*El arcano
+ * completo*, pág. 17), como al adquirir una plantilla.
+ */
+export function clasesQueDejanDeCumplir(motor: NuevoPersonajeService, antes: Map<number, Set<string>>)
+    : Array<{ idClase: number; nombre: string; razones: string[]; }> {
+    return clasesQueTiene(motor).flatMap((c) => {
+        const previas = antes.get(toInt(c.Id)) ?? new Set<string>();
+        const razones = (motor.evaluarClaseParaSeleccion(c).razones ?? []).filter((r) => !previas.has(r));
+        return razones.length > 0 ? [{ idClase: toInt(c.Id), nombre: `${c.Nombre}`, razones }] : [];
+    });
+}
+
+/**
  * Lo que dejaría de cumplir sus prerrequisitos si el personaje perdiera `quita`: sus dotes (cada una en el nivel en que la
  * eligió, como la corrección: `dotesSinSusPrerrequisitos`) y sus clases (una de prestigio, con lo que pide su
  * `evaluarClaseParaSeleccion`). Solo lo que cumplía antes; el motor se queda como estaba. Frases: «Movilidad (No cumple: Esquiva)».
  */
 export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQueQuita): string[] {
     const pj = motor.PersonajeCreacion;
-    const clave = (d: { idDote: number; idExtra: number; origen: string; }) => `${d.idDote}|${d.idExtra}|${d.origen}`;
-    const dotesAntes = new Set(motor.dotesSinSusPrerrequisitos().map(clave));
-    const clases = clasesQueTiene(motor);
-    const razonesAntes = new Map(clases.map((c) => [toInt(c.Id), new Set(motor.evaluarClaseParaSeleccion(c).razones ?? [])]));
+    const dotesAntes = new Set(motor.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
+    const razonesAntes = razonesDeSusClases(motor);
     const guardado = {
         contextuales: [...(pj.DotesContextuales ?? [])],
         dotes: [...(pj.Dotes ?? [])],
@@ -255,16 +274,11 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         }
         (quita.conjuros ?? []).forEach((c) => sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === c.idConjuro && esConjuroDeLaClase(x, normalizarTexto(c.clase))));
 
-        const sinDote = (d: { idDote: number; idExtra: number; origen: string; }) => !quita.dote || clave(d) !== clave(quita.dote);
+        const sinDote = (d: DoteDeLaFicha) => !quita.dote || claveDoteDeLaFicha(d) !== claveDoteDeLaFicha(quita.dote);
         const motivos = motor.dotesSinSusPrerrequisitos()
-            .filter((d) => !dotesAntes.has(clave(d)) && sinDote(d))
+            .filter((d) => !dotesAntes.has(claveDoteDeLaFicha(d)) && sinDote(d))
             .map((d) => `${d.nombre} (${(d.razones ?? []).join('; ') || 'sus prerrequisitos'})`);
-        clases.forEach((c) => {
-            const antes = razonesAntes.get(toInt(c.Id)) ?? new Set<string>();
-            const nuevas = (motor.evaluarClaseParaSeleccion(c).razones ?? []).filter((r) => !antes.has(r));
-            if (nuevas.length > 0)
-                motivos.push(`${c.Nombre} (${nuevas.join('; ')})`);
-        });
+        clasesQueDejanDeCumplir(motor, razonesAntes).forEach((c) => motivos.push(`${c.nombre} (${c.razones.join('; ')})`));
         return motivos;
     } finally {
         pj.DotesContextuales = guardado.contextuales;
@@ -336,10 +350,6 @@ export function idiomasParaReciclar(motor: NuevoPersonajeService, entrada: Perso
     return { quitables, aprendibles };
 }
 
-function nombreDeHabilidad(h: Personaje['Habilidades'][number]): string {
-    return extraHabilidadElegido(h?.Extra) ? `${h.Nombre} (${h.Extra})` : `${h?.Nombre ?? ''}`;
-}
-
 /**
  * Si la habilidad sería de clase para una clase que puede subir (`habilidadesDeClaseDeLaClase` del motor; un extra en 0 o
  * sin él, cualquiera).
@@ -359,7 +369,7 @@ export function habilidadesConRangos(motor: NuevoPersonajeService, entrada: Pers
         .filter((h) => toInt(h?.rangos) >= 1)
         .map((h) => {
             const delMotor = habilidades.find((x) => toInt(x.Id) === toInt(h.idHabilidad));
-            return { idHabilidad: toInt(h.idHabilidad), idExtra: toInt(h.idExtra), nombre: delMotor ? nombreDeHabilidad(delMotor) : `#${toInt(h.idHabilidad)}`, rangos: toInt(h.rangos) };
+            return { idHabilidad: toInt(h.idHabilidad), idExtra: toInt(h.idExtra), nombre: delMotor ? nombreDeHabilidadConExtra(delMotor) : `#${toInt(h.idHabilidad)}`, rangos: toInt(h.rangos) };
         })
         .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 }
@@ -384,7 +394,7 @@ export function destinosDeRangos(motor: NuevoPersonajeService, entrada: Personaj
             const idExtra = Math.max(0, extraGuardado);
             const guardada = guardadas.find((g) => toInt(g?.idHabilidad) === idHabilidad);
             const tiene = toInt(guardada?.rangos ?? h.Rangos);
-            const base = { idHabilidad, idExtra, nombre: nombreDeHabilidad(h), rangos: tiene };
+            const base = { idHabilidad, idExtra, nombre: nombreDeHabilidadConExtra(h), rangos: tiene };
             if (h.Soporta_extra && extraGuardado <= 0)
                 return { ...base, clases: null, motivo: 'Aún no tiene elegida su especialidad.' };
             // De clase como en la ficha: por sus clases (con sus dominios) o su raza (el motor, `esHabilidadDeClaseEnAlguna`).

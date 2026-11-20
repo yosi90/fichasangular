@@ -341,9 +341,16 @@ export interface PlantillaMutacionResponse {
     plantilla: Plantilla | null;
 }
 
-/** Lo que cuesta adquirir una plantilla (`Coste_al_adquirir`). */
-export interface PlantillaCosteAlAdquirir {
+/**
+ * Lo que cuesta adquirir una raza mutada con el personaje ya creado (`RazaDetalle.Coste_al_adquirir`): los PX y las po. El
+ * de una plantilla lleva además los niveles que pierde antes.
+ */
+export interface CosteAlAdquirir {
     Px: number;
     Po: number;
+}
+
+/** Lo que cuesta adquirir una plantilla (`Coste_al_adquirir`): los PX, las po y los niveles que pierde antes. */
+export interface PlantillaCosteAlAdquirir extends CosteAlAdquirir {
     Niveles_perdidos: number;
 }

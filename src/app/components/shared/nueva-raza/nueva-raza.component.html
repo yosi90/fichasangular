@@ -784,6 +784,21 @@
                                     (selectedTypesChange)="onPrerrequisitosMutacionSeleccionadosChange($event)"
                                     (rowsChange)="onPrerrequisitosMutacionRowsChange($event)">
                                 </app-prerrequisito-editor-host>
+
+                                <!-- Lo que cuesta adquirirla con el personaje ya creado (el huevo del Rito del Renacimiento), como en las plantillas -->
+                                <div class="subpanel-head">
+                                    <h3 class="subpanel-title">Lo que cuesta adquirirla</h3>
+                                </div>
+                                <p class="mutacion-nota">
+                                    Se cobra al adquirirla con el personaje ya creado (los PX, siempre del personaje; las po, de su saldo o de quien las pague). Al crear el personaje no se cobra.
+                                </p>
+                                <div class="values-grid">
+                                    <mat-form-field appearance="fill"><mat-label>PX que cuesta adquirirla</mat-label><input matInput type="number" min="0" step="1" formControlName="coste_px" />
+                                        <mat-error *ngIf="form.controls.coste_px.invalid">Un número entero de 0 o más.</mat-error></mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Po que cuesta adquirirla</mat-label><input matInput type="number" min="0" step="0.01" formControlName="coste_po" />
+                                        <mat-error *ngIf="form.controls.coste_po.invalid">Un número de 0 o más.</mat-error></mat-form-field>
+                                </div>
+                                <p class="bloque-error" *ngIf="errores.mensajeDe('coste_al_adquirir')">{{errores.mensajeDe('coste_al_adquirir')}}</p>
                             </div>
                         </section>
 

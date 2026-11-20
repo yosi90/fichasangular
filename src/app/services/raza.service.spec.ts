@@ -846,6 +846,11 @@ describe('RazaService helpers', () => {
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/952\/sobre\/864\?idPasoEdad=3053$/));
         await service.getRazaSobreBase(952, 864, 0);
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/952\/sobre\/864$/));
+        // Al adquirirla con el personaje ya creado, con su momento (`?momento=despues`), solo o con la edad.
+        await service.getRazaSobreBase(21, 18, null, 'despues');
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/sobre\/18\?momento=despues$/));
+        await service.getRazaSobreBase(952, 864, 3053, 'despues');
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/952\/sobre\/864\?idPasoEdad=3053&momento=despues$/));
     });
 
     it('getRazaSobreBase da el texto del error de la API (raza_base_no_cumple_requisitos)', async () => {
@@ -912,9 +917,12 @@ describe('RazaService helpers', () => {
     // Fase 3 de las razas mutadas: lo que pide y lo que cambia una mutada, y el modelo de lo que admite.
     const PR_API = {
         tipo_criatura: [{ Id: 1, Tipo: 'tipo_criatura', Sujeto: 'raza_base', Id_referencia: 11, Referencia: 'Humanoide',
-            Cantidad: null, Texto: null, Opcional: 0, Frase: 'Criatura de tipo humanoide' }],
+            Clave_referencia: null, Cantidad: null, Texto: null, Opcional: 0, Frase: 'Criatura de tipo humanoide' }],
         dgs_raciales_maximos: [{ Id: 2, Tipo: 'dgs_raciales_maximos', Sujeto: 'raza_base', Id_referencia: null, Referencia: null,
-            Cantidad: 1, Texto: null, Opcional: 0, Frase: 'Raza base con 1 DG raciales como máximo' }],
+            Clave_referencia: null, Cantidad: 1, Texto: null, Opcional: 0, Frase: 'Raza base con 1 DG raciales como máximo' }],
+        // El momento, con su clave estable (`Clave_referencia`, desde el 2026-11-19).
+        momento: [{ Id: 3, Tipo: 'momento', Sujeto: 'creacion', Id_referencia: 2, Referencia: 'Después de crear el personaje',
+            Clave_referencia: 'despues', Cantidad: null, Texto: null, Opcional: 0, Frase: 'Se adquiere después de crear el personaje' }],
     };
     const CAMBIOS_API = [{ Campo: 'Tamano', Nombre: 'Tamaño', Operacion: 'heredar', Valor: null, Elementos: [],
         Frase: 'Tamaño: lo de la raza base' }];

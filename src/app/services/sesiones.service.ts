@@ -5,6 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import {
     AbrirSesionDto,
     AdquirirPlantillaDto,
+    AdquirirRazaMutadaDto,
+    CosteCobrado,
     CosteDePlantillaCobrado,
     RestablecerNivelDto,
     RespuestaRestablecimiento,
@@ -18,6 +20,7 @@ import {
     RespuestaCorreccion,
     RespuestaPerdida,
     RespuestaPlantilla,
+    RespuestaRazaMutada,
     RespuestaSesion,
     RespuestaSubidaNivel,
     ResumenSesion,
@@ -46,7 +49,7 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
-    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'nivel_perdido',
+    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'raza_mutada_adquirida', 'nivel_perdido',
     'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'nota',
 ]);
 
@@ -139,17 +142,22 @@ export function leerHistorial(valor: any): HistorialSesiones {
     };
 }
 
-/** Lo que costó adquirir una plantilla, o `null` si la API no lo da. */
-export function leerCosteDePlantilla(valor: any): CosteDePlantillaCobrado | null {
+/** Lo que costó adquirir una raza mutada, o `null` si la API no lo da. */
+export function leerCosteCobrado(valor: any): CosteCobrado | null {
     if (!valor || typeof valor !== 'object')
         return null;
     return {
         px: toInt(valor.px),
         po: Number(valor.po) || 0,
         poCoste: Number(valor.poCoste) || 0,
-        niveles: toInt(valor.niveles),
         poPagadasPorOtro: valor.poPagadasPorOtro === true,
     };
+}
+
+/** Lo que costó adquirir una plantilla (el de la raza mutada y los niveles), o `null` si la API no lo da. */
+export function leerCosteDePlantilla(valor: any): CosteDePlantillaCobrado | null {
+    const coste = leerCosteCobrado(valor);
+    return coste ? { ...coste, niveles: toInt(valor.niveles) } : null;
 }
 
 /** La respuesta de una escritura: `{ sesion, experiencia }` y, según la ruta, `idEvento` o `deshecho`. */
@@ -235,7 +243,6 @@ export class SesionesService {
         if (id <= 0)
             throw new Error('Id de personaje no válido');
         const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/plantillas`, cuerpo, 'No se ha podido adquirir la plantilla.');
-        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             plantilla: {
@@ -243,9 +250,29 @@ export class SesionesService {
                 numeroSesion: toInt(respuesta?.plantilla?.numeroSesion),
                 id: toInt(respuesta?.plantilla?.plantilla?.id),
                 nombre: `${respuesta?.plantilla?.plantilla?.nombre ?? ''}`,
-                nepAntes: nep(respuesta?.plantilla?.nepAntes),
-                nepDespues: nep(respuesta?.plantilla?.nepDespues),
+                nepAntes: toIntOrNull(respuesta?.plantilla?.nepAntes),
+                nepDespues: toIntOrNull(respuesta?.plantilla?.nepDespues),
                 coste: leerCosteDePlantilla(respuesta?.plantilla?.coste),
+            },
+        };
+    }
+
+    /**
+     * Adquirir una raza mutada (fase 7): queda en la sesión de juego abierta, con lo que costó; el máster, con el aviso de lo
+     * que se salta.
+     */
+    async adquirirRazaMutada(idPersonaje: number, cuerpo: AdquirirRazaMutadaDto): Promise<RespuestaRazaMutada> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/raza-mutada`, cuerpo, 'No se ha podido adquirir la raza mutada.');
+        const r = respuesta?.razaMutada;
+        const ref = (valor: any) => ({ id: toInt(valor?.id), nombre: `${valor?.nombre ?? ''}` });
+        return {
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
+            razaMutada: {
+                idEvento: toInt(r?.idEvento), numeroSesion: toInt(r?.numeroSesion), raza: ref(r?.raza), razaBase: ref(r?.razaBase),
+                nepAntes: toIntOrNull(r?.nepAntes), nepDespues: toIntOrNull(r?.nepDespues), coste: leerCosteCobrado(r?.coste),
             },
         };
     }
@@ -257,16 +284,15 @@ export class SesionesService {
             throw new Error('Id de personaje no válido');
         const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/niveles/perdida`, cuerpo, 'No se ha podido apuntar la pérdida del nivel.');
         const p = respuesta?.perdida ?? {};
-        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             perdida: {
                 idEvento: toInt(p.idEvento),
                 numeroSesion: toInt(p.numeroSesion),
                 clase: p.clase ? { id: toInt(p.clase.id), nombre: `${p.clase.nombre ?? ''}` } : null,
-                nivelClase: nep(p.nivelClase),
-                nepAntes: nep(p.nepAntes),
-                nepDespues: nep(p.nepDespues),
+                nivelClase: toIntOrNull(p.nivelClase),
+                nepAntes: toIntOrNull(p.nepAntes),
+                nepDespues: toIntOrNull(p.nepDespues),
                 pxAntes: toInt(p.pxAntes),
                 pxDespues: toInt(p.pxDespues),
                 constitucion: p.constitucion ? { antes: toInt(p.constitucion.antes), despues: toInt(p.constitucion.despues) } : null,

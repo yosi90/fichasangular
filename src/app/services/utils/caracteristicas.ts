@@ -99,6 +99,16 @@ export function caracteristicasPerdidasDe(
     return { ...perdidas, Constitucion: perdidas.Constitucion || toBoolean(pj?.Constitucion_perdida) };
 }
 
+/**
+ * El modificador de Constitución que cuenta en sus PG: el suyo, o 0 si la ha perdido (un muerto viviente). Lo usan la
+ * plantilla y la raza mutada adquiridas, antes y después de aplicarlas en el motor.
+ */
+export function modConstitucionQueCuenta(
+    pj: { Caracteristicas_perdidas?: unknown; Constitucion_perdida?: unknown; ModConstitucion?: unknown; } | null | undefined,
+): number {
+    return caracteristicasPerdidasDe(pj).Constitucion ? 0 : toInt(pj?.ModConstitucion);
+}
+
 /** Sin valor, una característica se enseña con «—», como en el manual. */
 export const SIN_CARACTERISTICA = '—';
 

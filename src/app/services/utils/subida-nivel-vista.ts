@@ -13,6 +13,16 @@ import { PgSubida } from './subida-nivel';
  */
 export type PasoSubida = 'reciclar' | 'clase' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'conjuros' | 'intercambio' | 'resumen';
 
+/**
+ * Cómo se pinta un paso en la cabecera de pasos: hecho (antes del de ahora), el de ahora o pendiente. La usan la subida, la
+ * plantilla y la raza mutada adquiridas.
+ */
+export function estadoDelPaso<T>(pasos: readonly T[], paso: T, actual: T): 'hecho' | 'actual' | 'pendiente' {
+    const i = pasos.indexOf(paso);
+    const a = pasos.indexOf(actual);
+    return i < a ? 'hecho' : i === a ? 'actual' : 'pendiente';
+}
+
 /** Una fila de «Lo que cambia» (lienzo, pantalla 4): qué, antes, ahora y por qué. */
 export interface CambioSubida {
     que: string;

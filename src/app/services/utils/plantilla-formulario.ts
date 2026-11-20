@@ -16,8 +16,9 @@ import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { textoOSinEspecificar } from './texto-sin-especificar';
-import { idsUnicosOrdenados, toInt, toNullableText, toText } from './normalizacion';
+import { idsUnicosOrdenados, toInt, toNullableText, toNumber, toText } from './normalizacion';
 import { FilaArmaNatural, cuerpoDeArmasNaturales, filasDeArmasNaturales } from './armas-naturales';
+import { costeAlAdquirirPlantillaParaGuardar } from './coste-al-adquirir';
 
 // El formulario de las plantillas (lienzo «Plantillas: crear y modificar», aprobado el 2026-10-30): los pasos, los
 // campos con su etiqueta y su paso, el cuerpo de `POST /plantillas/add` (contrato: «Endpoint: GET /plantillas» y
@@ -331,7 +332,7 @@ export function valorDesdePlantilla(plantilla: Plantilla): PlantillaFormularioVa
         trepar: toInt(plantilla.Movimientos?.Trepar),
         excavar: toInt(plantilla.Movimientos?.Excavar),
         coste_px: toInt(plantilla.Coste_al_adquirir?.Px),
-        coste_po: toInt(plantilla.Coste_al_adquirir?.Po),
+        coste_po: toNumber(plantilla.Coste_al_adquirir?.Po),
         coste_niveles: toInt(plantilla.Coste_al_adquirir?.Niveles_perdidos),
         id_maniobrabilidad: toInt(plantilla.Maniobrabilidad?.Id),
         puntos_hab_suma: toInt(plantilla.Puntos_habilidad?.Suma),
@@ -526,11 +527,7 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
         .filter((campo) => !CAMPOS_NO_NUMERICOS.has(campo))
         .forEach((campo) => escritura[campo] = toInt(escritura[campo]));
     // Lo que cuesta adquirirla, siempre (la edición lo pone tal como está en el formulario).
-    plantilla.coste_al_adquirir = {
-        px: Math.max(0, toInt(coste_px)),
-        po: Math.max(0, toInt(coste_po)),
-        niveles_perdidos: Math.min(20, Math.max(0, toInt(coste_niveles))),
-    };
+    plantilla.coste_al_adquirir = costeAlAdquirirPlantillaParaGuardar(coste_px, coste_po, coste_niveles);
 
     return {
         plantilla,

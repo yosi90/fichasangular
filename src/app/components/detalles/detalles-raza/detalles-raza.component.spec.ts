@@ -401,7 +401,7 @@ describe('DetallesRazaComponent', () => {
         const doteSpy = spyOn(component.doteDetalles, 'emit');
         const plantillaSpy = spyOn(component.plantillaDetalles, 'emit');
         const prerrequisito = (Tipo: string, Sujeto: any, Frase: string, Opcional = 0) => ({
-            Id: 1, Tipo, Sujeto, Id_referencia: null, Referencia: null, Cantidad: null, Texto: null, Opcional, Frase,
+            Id: 1, Tipo, Sujeto, Id_referencia: null, Referencia: null, Clave_referencia: null, Cantidad: null, Texto: null, Opcional, Frase,
         });
         pintar({
             Mutada: true,

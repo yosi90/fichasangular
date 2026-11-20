@@ -4,9 +4,11 @@ import { Auth } from '@angular/fire/auth';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
+import { CosteAlAdquirirComponent } from 'src/app/components/sesiones/coste-al-adquirir/coste-al-adquirir.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
+import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
@@ -23,9 +25,9 @@ import { cambiosDeLaPlantilla, CambioPlantilla, esPlantillaAdquirible, fichaDeLa
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
-import { caracteristicasPerdidasDe, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { caracteristicasPerdidasDe, modConstitucionQueCuenta, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
 import { ajusteDePlantillas, dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { DecisionHomebrew, motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { evaluarPlantillaParaElegir, PlantillaEvaluacionParaElegir } from 'src/app/services/utils/plantilla-elegibilidad';
@@ -70,7 +72,7 @@ export interface OpcionPlantilla {
 @Component({
     selector: 'app-adquirir-plantilla',
     standalone: true,
-    imports: [CommonModule, MatButtonModule, MatIconModule, RepartoRangosComponent],
+    imports: [CommonModule, CosteAlAdquirirComponent, MatButtonModule, MatIconModule, PasosSesionComponent, RepartoRangosComponent],
     templateUrl: './adquirir-plantilla.component.html',
     styleUrls: ['../subir-nivel/subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -109,8 +111,9 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         return c && (c.Px > 0 || c.Po > 0 || c.Niveles_perdidos > 0) ? { px: c.Px, po: c.Po, niveles: c.Niveles_perdidos } : null;
     }
 
-    textoPx(valor: number): string {
-        return formatoPx(valor);
+    /** Las po que tiene, para «Lo que cuesta». */
+    get saldo(): number {
+        return toNumber(this.pj?.Dinero?.po);
     }
 
     tiradasPermitidas = 1;
@@ -175,7 +178,8 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         return formatoPx(valor);
     }
 
-    etiquetaPaso(paso: PasoPlantilla): string {
+    /** El texto de cada paso en la fila de pasos (`app-pasos-sesion`), con su número. */
+    readonly etiquetaPaso = (paso: PasoPlantilla): string => {
         const nombres: Record<PasoPlantilla, string> = {
             plantilla: this.elegida ? `Plantilla: ${this.elegida.Nombre}` : 'Plantilla',
             incremento: 'Incremento',
@@ -185,13 +189,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             resumen: 'Resumen',
         };
         return `${this.pasos.indexOf(paso) + 1} · ${nombres[paso]}`;
-    }
-
-    estadoPaso(paso: PasoPlantilla): 'hecho' | 'actual' | 'pendiente' {
-        const i = this.pasos.indexOf(paso);
-        const actual = this.pasos.indexOf(this.paso);
-        return i < actual ? 'hecho' : i === actual ? 'actual' : 'pendiente';
-    }
+    };
 
     // --- Carga -------------------------------------------------------------------------------------------------------
 
@@ -235,12 +233,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         this.carasClaseAntes = new Map((this.entrada!.niveles ?? []).map((n) =>
             [toInt(n?.idClase), this.svc.carasDadoGolpeDeClase(this.svc.claseDelCatalogo(n?.idClase))] as const));
         this.carasRacialAntes = this.svc.carasDadoGolpeRacial();
-        this.modConAntes = this.modConstitucion();
-    }
-
-    private modConstitucion(): number {
-        const p = this.svc.PersonajeCreacion;
-        return caracteristicasPerdidasDe(p).Constitucion ? 0 : toInt(p.ModConstitucion);
+        this.modConAntes = modConstitucionQueCuenta(this.svc.PersonajeCreacion);
     }
 
     // --- La plantilla --------------------------------------------------------------------------------------------------
@@ -385,7 +378,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             entrada: this.entrada,
             dgsAntes: toInt(this.pj?.Nivel_personaje),
             modConAntes: this.modConAntes,
-            modConDespues: this.modConstitucion(),
+            modConDespues: modConstitucionQueCuenta(this.svc.PersonajeCreacion),
             carasClaseAntes: (id) => this.carasClaseAntes.get(id) ?? this.svc.carasDadoGolpeDeClase(clase(id)),
             carasClaseDespues: (id) => this.svc.carasDadoGolpeDeClase(clase(id)),
             carasRacialAntes: this.carasRacialAntes,

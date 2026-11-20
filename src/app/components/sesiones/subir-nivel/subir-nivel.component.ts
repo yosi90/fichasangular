@@ -13,6 +13,7 @@ import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nue
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { avisarPaso, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
+import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { Clase } from 'src/app/interfaces/clase';
@@ -97,7 +98,7 @@ const CADUCIDAD_BORRADOR_MS = 7 * 24 * 60 * 60 * 1000;
 @Component({
     selector: 'app-subir-nivel',
     standalone: true,
-    imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, RepartoRangosComponent],
+    imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, PasosSesionComponent, RepartoRangosComponent],
     templateUrl: './subir-nivel.component.html',
     styleUrls: ['./subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -223,7 +224,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         return this.svc.CatalogoConjuros.find((c) => toInt(c?.Id) === toInt(id))?.Nombre ?? `#${id}`;
     }
 
-    etiquetaPaso(paso: PasoSubida): string {
+    /** El texto de cada paso en la fila de pasos (`app-pasos-sesion`), con su número. */
+    readonly etiquetaPaso = (paso: PasoSubida): string => {
         const nombres: Record<PasoSubida, string> = {
             reciclar: 'Reciclar',
             clase: this.claseElegida ? `Clase: ${this.claseElegida.Nombre.toLowerCase()}` : 'Clase',
@@ -236,13 +238,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             resumen: 'Resumen',
         };
         return `${this.pasos.indexOf(paso) + 1} · ${nombres[paso]}`;
-    }
-
-    estadoPaso(paso: PasoSubida): 'hecho' | 'actual' | 'pendiente' {
-        const i = this.pasos.indexOf(paso);
-        const actual = this.pasos.indexOf(this.paso);
-        return i < actual ? 'hecho' : i === actual ? 'actual' : 'pendiente';
-    }
+    };
 
     // --- Carga -------------------------------------------------------------------------------------------------------
 

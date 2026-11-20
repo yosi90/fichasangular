@@ -65,8 +65,11 @@ import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 /** Lo que hace falta de una entrada para abrir o refrescar su pestaña de «Modificar»: su id y su nombre. */
 type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
 
-/** Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección, la plantilla y la pérdida. */
-export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'perdida';
+/**
+ * Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección, la plantilla, la raza
+ * mutada y la pérdida.
+ */
+export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida';
 
 /** Lo que enseña la pestaña de cada modo y cómo se carga su componente (carga diferida: el bundle inicial va al tope). */
 export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; corta: string; icono: string; cargar: () => Promise<Type<unknown>>; }> = {
@@ -81,6 +84,10 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
     plantilla: {
         titulo: 'Adquirir una plantilla', corta: 'Plantilla', icono: 'auto_fix_high',
         cargar: async () => (await import('src/app/components/sesiones/adquirir-plantilla/adquirir-plantilla.component')).AdquirirPlantillaComponent,
+    },
+    mutacion: {
+        titulo: 'Adquirir una raza mutada', corta: 'Raza mutada', icono: 'auto_awesome',
+        cargar: async () => (await import('src/app/components/sesiones/adquirir-raza-mutada/adquirir-raza-mutada.component')).AdquirirRazaMutadaComponent,
     },
     perdida: {
         titulo: 'Perder un nivel', corta: 'Perder', icono: 'trending_down',
@@ -136,7 +143,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public detallesPersonajeAbiertos: Personaje[] = [];
     /**
      * Las subidas de nivel (roadmap de sesiones, fase 4), las correcciones de la ficha (fase 6) y las plantillas que se
-     * adquieren (fase 7) abiertas: una pestaña por personaje y modo, `subida:<id>`, `correccion:<id>` o `plantilla:<id>`.
+     * adquieren (fase 7) abiertas: una pestaña por personaje y modo, `subida:<id>`, `correccion:<id>`, `plantilla:<id>`,
+     * `mutacion:<id>` o `perdida:<id>`.
      */
     public subidasNivelAbiertas: Array<{ idPersonaje: number; nombre: string; modo: ModoPestanaSesion; cerrar: () => void; }> = [];
     /** Lo que enseña la pestaña de cada modo. */
@@ -242,6 +250,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.puertaSubida?.plantillas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'plantilla'));
+        this.puertaSubida?.mutaciones$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'mutacion'));
         this.puertaSubida?.perdidas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'perdida'));

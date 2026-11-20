@@ -1,0 +1,131 @@
+<!-- Adquirir una raza mutada (sesiones, fase 7): las piezas de la subida (subir-nivel.component.sass) -->
+<section class="subida" aria-live="polite">
+    <header class="subida__cabecera">
+        <div class="subida__titulos">
+            <span class="subida__antetitulo">Adquirir una raza mutada<ng-container *ngIf="sesion"> · Sesión {{sesion.numero}}</ng-container></span>
+            <h1 class="subida__titulo">{{pj?.Nombre || 'Personaje'}}<ng-container *ngIf="elegida"> pasa a {{elegida.raza.Nombre}}</ng-container></h1>
+        </div>
+        <span *ngIf="experiencia" class="subida__px">{{px(experiencia.px)}} PX · NEP {{experiencia.nivel}}<ng-container *ngIf="elegida"> → {{nepDespues}}</ng-container></span>
+    </header>
+
+    <p *ngIf="cargando" class="subida__estado">Preparando las razas mutadas…</p>
+    <div *ngIf="!cargando && error && !elegida" class="subida__aviso subida__aviso--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{error}}</span>
+    </div>
+
+    <ng-container *ngIf="!cargando && pj && entrada && anterior">
+        <app-pasos-sesion [pasos]="pasos" [actual]="paso" [etiqueta]="etiquetaPaso" nombre="Pasos de la raza mutada"></app-pasos-sesion>
+
+        <div *ngIf="error && elegida" class="subida__aviso subida__aviso--error" role="alert">
+            <mat-icon aria-hidden="true">error_outline</mat-icon>
+            <span>{{error}}</span>
+        </div>
+
+        <section class="subida__tarjeta" [ngSwitch]="paso">
+            <!-- La raza: las que puede adquirir, por su dato «momento», evaluadas con el personaje de ahora -->
+            <ng-container *ngSwitchCase="'raza'">
+                <h2 class="subida__seccion">Elige la raza mutada que adquiere</h2>
+                <p class="subida__nota">Se aplica sobre su raza de ahora, {{anterior.Nombre}}, que pasa a ser su raza base: la prole de Bahamut con el Rito del Renacimiento, el nacido del Infierno con la Flagelación. Las de nacimiento (las variantes elementales) se eligen al crear el personaje. Sus PX no cambian.</p>
+                <p *ngIf="evaluando" class="subida__estado">Comprobando lo que pide cada una…</p>
+                <p *ngIf="!evaluando && opciones.length < 1" class="subida__nota">No hay razas mutadas que pueda adquirir.</p>
+                <ul class="subida__lista">
+                    <li *ngFor="let o of opciones" class="subida__fila" [class.subida__fila--bloqueada]="o.estado === 'bloqueada'">
+                        <div class="subida__fila-texto">
+                            <span class="subida__fila-nombre">{{o.raza.Nombre}}</span>
+                            <span class="subida__fila-motivo" *ngIf="o.motivo">{{o.motivo}}</span>
+                            <span class="subida__fila-motivo" *ngFor="let a of o.avisos">{{a}}</span>
+                            <span *ngIf="o.raza.Oficial === false" class="subida__etiqueta">Homebrew</span>
+                            <span *ngIf="o.raza.Coste_al_adquirir?.Px" class="subida__etiqueta">{{px(o.raza.Coste_al_adquirir?.Px ?? 0)}} PX</span>
+                            <span *ngIf="o.raza.Coste_al_adquirir?.Po" class="subida__etiqueta">{{px(o.raza.Coste_al_adquirir?.Po ?? 0)}} po</span>
+                        </div>
+                        <button mat-stroked-button type="button" (click)="verDetalles(o.raza)">Detalles</button>
+                        <button mat-flat-button color="primary" type="button" [disabled]="o.estado === 'bloqueada' || !!elegida"
+                            (click)="elegir(o)">Elegir</button>
+                    </li>
+                </ul>
+            </ng-container>
+
+            <!-- La dote adicional de su raza de antes (la del humano): la elige el jugador -->
+            <ng-container *ngSwitchCase="'dote'">
+                <h2 class="subida__seccion">La dote que pierde</h2>
+                <p class="subida__nota">Pierde la dote adicional de {{anterior.Nombre | lowercase}}: elige cuál de las suyas ({{dotesPerdidas.length}} de {{pierde.dotes}}). No puede ser una que necesite otra de las que tiene (Races of the Dragon, pág. 10).</p>
+                <ul class="subida__lista" aria-label="Las dotes que puede perder">
+                    <li *ngFor="let d of dotesQuePuedePerder" class="subida__fila" [class.subida__fila--bloqueada]="!!d.motivo">
+                        <div class="subida__fila-texto">
+                            <span class="subida__fila-nombre">{{d.nombre}}<ng-container *ngIf="d.extra"> ({{d.extra}})</ng-container></span>
+                            <span class="subida__fila-motivo" *ngIf="d.motivo">{{d.motivo}}</span>
+                        </div>
+                        <button mat-stroked-button type="button" [disabled]="!!d.motivo || guardando" (click)="perderDote(d)">Perder esta</button>
+                    </li>
+                </ul>
+            </ng-container>
+
+            <!-- Los puntos de habilidad extra de su raza de antes: cada rango, por lo que costó -->
+            <ng-container *ngSwitchCase="'habilidades'">
+                <h2 class="subida__seccion">Los puntos de habilidad que pierde: {{pierde.puntos}}</h2>
+                <p class="subida__nota">Pierde los puntos de habilidad extra de {{anterior.Nombre | lowercase}}: quita los rangos que elijas, cada uno por lo que costó (1 punto si es de clase, 2 si no). Quedan {{puntosPorPagar}}.</p>
+                <table class="subida__tabla">
+                    <thead><tr><th scope="col">Habilidad</th><th scope="col">Rangos</th><th scope="col">Cuesta</th><th scope="col">Quita</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let r of rangos">
+                            <th scope="row">{{r.nombre}}</th>
+                            <td>{{r.rangos - r.quitados}}</td>
+                            <td>{{r.coste}}</td>
+                            <td class="subida__botones">
+                                <button mat-icon-button type="button" [disabled]="r.quitados < 1 || rangosAplicados" (click)="quitarRango(r, -1)" [attr.aria-label]="'Devolver un rango a ' + r.nombre"><mat-icon>remove</mat-icon></button>
+                                {{r.quitados}}
+                                <button mat-icon-button type="button" [disabled]="r.quitados >= r.rangos || puntosPorPagar < 1 || rangosAplicados" (click)="quitarRango(r, 1)" [attr.aria-label]="'Quitar un rango de ' + r.nombre"><mat-icon>add</mat-icon></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </ng-container>
+
+            <!-- Las dotes que dejan de cumplir sus prerrequisitos: otra en su hueco, con el selector de la creación -->
+            <ng-container *ngSwitchCase="'dotes'">
+                <h2 class="subida__seccion">Las dotes que dejan de cumplirse</h2>
+                <p class="subida__nota">Con su raza nueva, estas dotes ya no cumplen sus prerrequisitos: se cambian en el acto por otra que sí los cumpla, en su mismo hueco (Races of the Dragon, pág. 10). Sin ninguna que cumpla, se queda sin ella.</p>
+                <p *ngIf="!dotesResueltas" class="subida__estado">Elige en el selector la dote que entra en su lugar.</p>
+                <ul class="subida__lista" aria-label="Las dotes cambiadas">
+                    <li *ngFor="let c of dotesCambiadas" class="subida__fila">
+                        <div class="subida__fila-texto">
+                            <span class="subida__fila-nombre">{{c.antes}} → {{c.ahora || 'ninguna'}}</span>
+                        </div>
+                    </li>
+                </ul>
+            </ng-container>
+
+            <!-- Resumen -->
+            <ng-container *ngSwitchCase="'resumen'">
+                <h2 class="subida__seccion">Lo que cambia</h2>
+                <table class="subida__tabla subida__tabla--resumen">
+                    <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th><th scope="col">Por qué</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let c of cambios" [class.subida__fila--bloqueada]="c.aviso"><th scope="row">{{c.que}}</th><td>{{c.antes}}</td><td class="subida__ahora">{{c.ahora}}</td><td>{{c.porque}}</td></tr>
+                    </tbody>
+                </table>
+                <app-coste-al-adquirir [coste]="coste" [saldo]="saldo" [(poPagadasPorOtro)]="poPagadasPorOtro"></app-coste-al-adquirir>
+                <label class="subida__campo">
+                    Concepto (opcional)
+                    <input type="text" [attr.maxlength]="maximoConcepto" [value]="concepto" (input)="concepto = $any($event.target).value"
+                        placeholder="El Rito del Renacimiento en el templo de Bahamut">
+                </label>
+                <p class="subida__nota">La raza mutada queda en la sesión {{sesion?.numero}} y se puede deshacer mientras la sesión siga abierta (también lo que costó).</p>
+            </ng-container>
+        </section>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="elegida ? descartar() : cancelar()">{{elegida ? 'Empezar de nuevo' : 'Cancelar'}}</button>
+            <span class="subida__hueco"></span>
+            <!-- Desde el paso de un error de la API, de vuelta al resumen (ya hecho) -->
+            <button *ngIf="elegida && error && paso !== 'resumen' && cambios.length > 0" mat-stroked-button type="button" (click)="volverAlResumen()">Volver al resumen</button>
+            <ng-container [ngSwitch]="paso">
+                <button *ngSwitchCase="'habilidades'" mat-flat-button color="primary" type="button" [disabled]="!puedeCerrarHabilidades || rangosAplicados" (click)="cerrarHabilidades()">Continuar</button>
+                <button *ngSwitchCase="'dotes'" mat-flat-button color="primary" type="button" [disabled]="!dotesResueltas" (click)="siguiente()">Continuar</button>
+                <button *ngSwitchCase="'resumen'" mat-flat-button color="primary" type="button" [disabled]="guardando" (click)="guardar()">Adquirir la raza mutada</button>
+            </ng-container>
+        </footer>
+    </ng-container>
+    <ng-container #modalHost></ng-container>
+</section>
