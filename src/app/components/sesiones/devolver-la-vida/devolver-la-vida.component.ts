@@ -34,7 +34,7 @@ import { daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
     caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, fichaConConstitucionPerdida,
-    FilaPerdida, filasDelNivelPerdido, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos, NombresDeLaFicha, nombresDeLaFicha, ordenPorConocer,
+    FilaPerdida, filasDelNivelPerdido, indiceDelNivelQueSePierde, indiceDelUltimoNivelDeLaClase, marcarDotesSinPrerrequisitos, NombresDeLaFicha, nombresDeLaFicha, ordenPorConocer,
     perdidaDelNivel, quitarElNivelDelMotor, ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
@@ -46,7 +46,7 @@ import { motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialida
 import { campanaDejaSaltarAlineamiento } from 'src/app/services/utils/politica-campana';
 import {
     apartarLoDelPrimerNivel, cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, EstadoDeLaVuelta, especialesDeLasTablas,
-    estadoDeLaVuelta, fichaDeLaVuelta, indiceDelUltimoNivelDeLaClase, MedioDeLaVuelta, MEDIOS_DE_LA_VUELTA, nepTrasLaVuelta,
+    estadoDeLaVuelta, fichaDeLaVuelta, MedioDeLaVuelta, MEDIOS_DE_LA_VUELTA, nepTrasLaVuelta,
     NO_SIRVEN_PARA_LA_VUELTA, pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas,
 } from 'src/app/services/utils/vuelta-a-la-vida';
 

@@ -93,6 +93,16 @@ export function indiceDelNivelQueSePierde(niveles: PersonajeCreateNivelDto[] | u
         return null;
     if (ordenConocido(lista[lista.length - 1]))
         return lista.length - 1;
+    return indiceDelUltimoNivelDeLaClase(lista, toInt(idClase));
+}
+
+/**
+ * El índice en `niveles` del último nivel de `idClase`: el de más nivel de clase (con el orden por conocer, el que se
+ * guardó así); `null` si no tiene ninguno. Lo usan la pérdida con el orden por conocer (`indiceDelNivelQueSePierde`) y la
+ * vuelta a la vida, que quita así uno a uno los niveles de la clase de monstruo, del último al 1.º.
+ */
+export function indiceDelUltimoNivelDeLaClase(niveles: PersonajeCreateNivelDto[] | undefined, idClase: number): number | null {
+    const lista = niveles ?? [];
     let indice: number | null = null;
     lista.forEach((n, i) => {
         if (toInt(n?.idClase) === toInt(idClase) && (indice === null || toInt(n.nivelClase) >= toInt(lista[indice].nivelClase)))

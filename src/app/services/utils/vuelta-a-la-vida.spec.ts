@@ -1,8 +1,8 @@
-import { fichaConConstitucionPerdida, fichaSinElNivel, filasDelNivelPerdido } from './perder-nivel';
+import { fichaConConstitucionPerdida, fichaSinElNivel, filasDelNivelPerdido, indiceDelUltimoNivelDeLaClase } from './perder-nivel';
 import { especialesDevueltos } from './raza-mutacion';
 import {
     apartarLoDelPrimerNivel, cambiosDeLaVuelta, conLaConstitucionDeVuelta, esClaseParaVolverSinDg, especialesDeLasTablas, estadoDeLaVuelta,
-    fichaDeLaVuelta, indiceDelUltimoNivelDeLaClase, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
+    fichaDeLaVuelta, MEDIOS_DE_LA_VUELTA, motivoRevivirSinConstitucion, motivoSinConstitucionParaVolver,
     MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL, MOTIVO_VUELTA_NIVELES_DESPUES, MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO, nepTrasLaVuelta, NO_SIRVEN_PARA_LA_VUELTA,
     pgDelPrimerNivel, pxTrasLaVuelta, restringidasCerradasAlVolver, sumarPerdidas, tomoNivelesDespues,
 } from './vuelta-a-la-vida';
