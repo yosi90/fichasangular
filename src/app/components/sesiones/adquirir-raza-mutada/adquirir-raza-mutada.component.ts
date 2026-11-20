@@ -37,6 +37,7 @@ import {
 } from 'src/app/services/utils/adquirir-raza-mutada';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { caracteristicasPerdidasDe, modConstitucionQueCuenta } from 'src/app/services/utils/caracteristicas';
+import { motivoCampanaSinClasesDeMonstruo } from 'src/app/services/utils/clases-de-monstruo';
 import { daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import {
@@ -436,7 +437,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         if (esConversion(raza) && !tieneConstitucion(this.entrada, caracteristicasPerdidasDe(this.svc.PersonajeCreacion)))
             motivos.push(MOTIVO_SIN_CONSTITUCION);
         if (esConversion(raza) && this.sinClasesDeMonstruo)
-            motivos.push(`La campaña no permite las clases de monstruo y ${raza.Nombre} se juega con la suya, «${raza.Clase_de_monstruo?.Nombre ?? ''}».`);
+            motivos.push(motivoCampanaSinClasesDeMonstruo(raza.Nombre, raza.Clase_de_monstruo?.Nombre));
         try {
             const paso = razaPorEdades(anterior) ? toInt(this.entrada?.personaje?.idPasoEdad) || null : null;
             opcion.combinada = await this.razaSvc.getRazaSobreBase(raza.Id, anterior.Id, paso, MOMENTO_DESPUES);
