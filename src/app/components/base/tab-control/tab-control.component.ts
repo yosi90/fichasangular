@@ -61,6 +61,7 @@ import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-r
 import { NovedadesService } from 'src/app/services/novedades.service';
 import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
+import type { PestanaDeSesion } from 'src/app/components/sesiones/adquirir-raza-mutada/adquirir-raza-mutada.component';
 
 /** Lo que hace falta de una entrada para abrir o refrescar su pestaña de «Modificar»: su id y su nombre. */
 type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
@@ -104,7 +105,7 @@ export interface SesionAbierta {
     nombre: string;
     modo: ModoPestanaSesion;
     cerrar: () => void;
-    pestana: { titulo: string; corta: string; nombre: string; } | null;
+    pestana: PestanaDeSesion | null;
     entradas: Record<string, unknown>;
 }
 
@@ -1154,11 +1155,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
         // La raza mutada se renombra si es la conversión en muerto viviente.
         abierta.entradas = {
             idPersonaje: id, alTerminar: abierta.cerrar,
-            ...(modo === 'mutacion' ? { alNombrar: (pestana: SesionAbierta['pestana']) => abierta.pestana = pestana } : {}),
+            ...(modo === 'mutacion' ? { alNombrar: (pestana: PestanaDeSesion | null) => abierta.pestana = pestana } : {}),
         };
         this.subidasNivelAbiertas.push(abierta);
         this.registerOpenContext(clave, this.getSafeOpenerKey());
         this.focusOpenedTab(clave);
+    }
+
+    /** El título de una pestaña de sesión («Subir de nivel: Aldric»), con el que le ponga su componente si la renombra. */
+    tituloDeSesion(subida: SesionAbierta): string {
+        return `${subida.pestana?.titulo ?? PESTANAS_DE_SESION[subida.modo].titulo}: ${subida.pestana?.nombre ?? subida.nombre}`;
     }
 
     quitarSubidaNivel(idPersonaje: number, modo: ModoPestanaSesion = 'subida'): boolean {
