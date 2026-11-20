@@ -48,8 +48,8 @@ import { nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extr
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import {
-    caracteristicaMasAlta, FilaPerdida, fichaSinElNivel, filasDelNivelPerdido, indiceDelNivelQueSePierde, nombresDeLaFicha, ordenConocido,
-    ResultadoPerdida, sinLoQueDabanLasDotes,
+    caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, FilaPerdida,
+    filasDelNivelPerdido, indiceDelNivelQueSePierde, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel, ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
@@ -60,7 +60,6 @@ import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
 import { clasesQueDejanDeCumplir, DoteReciclable, dotesParaReciclar, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { pgTrasCambioDeCon, PgSubida } from 'src/app/services/utils/subida-nivel';
-import { nombreDoteConExtra } from 'src/app/services/utils/texto-visible';
 
 /**
  * Los pasos: los de la raza mutada (la raza, la dote y los puntos que pierde, las dotes que dejan de cumplirse) y, en la
@@ -255,15 +254,12 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
 
     /** Si no se sabe en qué orden ganó sus niveles (las fichas de antes del historial): elige la clase el jugador. */
     get sinOrden(): boolean {
-        const niveles = this.entrada?.niveles ?? [];
-        return niveles.length > 0 && !ordenConocido(niveles[niveles.length - 1]);
+        return ordenPorConocer(this.entrada?.niveles);
     }
 
     /** Sus clases, para elegir la que pierde el nivel con el orden por conocer. */
     get clasesPropias(): Array<{ id: number; nombre: string; nivel: number; }> {
-        return (this.entrada?.colecciones?.clases ?? []).map((c) => ({
-            id: toInt(c.idClase), nombre: this.svc.claseDelCatalogo(c.idClase)?.Nombre ?? `Clase ${c.idClase}`, nivel: toInt(c.nivel),
-        }));
+        return clasesQuePuedenPerder(this.svc, this.entrada);
     }
 
     /** Sus DG (de clase, raciales y de plantilla) antes de la conversión. */
@@ -281,19 +277,12 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     }
 
     get caracteristicasDelIncremento(): Array<{ id: number; nombre: string; valor: number; }> {
-        const nombres = this.entrada ? nombresDeLaFicha(this.svc, this.pj, this.entrada) : null;
-        return CARACTERISTICAS_DEL_ALTA.map(([clave], i) => ({ id: i + 1, clave }))
-            .filter((c) => !(this.entrada?.caracteristicas as any)?.[c.clave]?.perdido)
-            .map((c) => ({ id: c.id, ...(nombres?.caracteristica(c.id) ?? { nombre: '', valor: 0 }) }));
+        return caracteristicasDelIncrementoPerdido(this.entrada);
     }
 
     /** Las dotes que puede perder sin registro: las suyas (no las de su raza ni sus plantillas). */
     get dotesSinRegistro(): Array<{ clave: string; nombre: string; }> {
-        return (this.pj?.DotesContextuales ?? []).filter((d) => !d?.Contexto?.Entidad || d.Contexto.Entidad === 'personaje')
-            .map((d) => ({
-                clave: `${toInt(d?.Dote?.Id)}|${toInt(d?.Contexto?.Id_extra)}|${(d?.Contexto as any)?.Origen ?? ''}`,
-                nombre: nombreDoteConExtra(d),
-            }));
+        return dotesQuePuedePerder(this.pj);
     }
 
     get puedeSeguirPg(): boolean {
@@ -592,22 +581,11 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         const indice = entrada ? indiceDelNivelQueSePierde(entrada.niveles, this.idClaseElegida) : null;
         if (!entrada || indice === null)
             return;
-        const nivel = entrada.niveles![indice];
-        const clase = this.svc.claseDelCatalogo(nivel.idClase);
-        const [idDote, idExtra, ...origen] = this.doteElegida.split('|');
-        const sinElNivel = fichaSinElNivel({
-            entrada, indice, clase, caras: this.svc.carasDadoGolpeDeClase(clase), dgsAntes: this.dgs,
-            incrementoSinRegistro: this.incrementoElegido,
-            doteSinRegistro: this.pideDote && toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null,
+        const { resultado, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
+            entrada, indice, dgs: this.dgs, incremento: this.incrementoElegido, dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
         });
-        // Sin lo que daban las dotes que se van con el nivel (con el motor antes de perderlo).
-        this.perdida = sinLoQueDabanLasDotes(sinElNivel,
-            this.motor.loQueDabanLasDotes(this.svc, entrada, sinElNivel.quitado.dotes, this.dgs - 1));
-        const nombreClase = clase?.Nombre ?? `Clase ${nivel.idClase}`;
-        this.filasPerdida = [
-            { que: 'Nivel de clase', antes: `${nombreClase} ${nivel.nivelClase}`, ahora: nivel.nivelClase > 1 ? `${nombreClase} ${nivel.nivelClase - 1}` : 'Deja la clase' },
-            ...filasDelNivelPerdido(this.perdida, nombresDeLaFicha(this.svc, this.pj, entrada)),
-        ];
+        this.perdida = resultado;
+        this.filasPerdida = [filaDelNivel, ...filasDelNivelPerdido(resultado, nombresDeLaFicha(this.svc, this.pj, entrada))];
     }
 
     /** El índice del nivel que pierde en su registro (`entrada.niveles`), o `null`. */

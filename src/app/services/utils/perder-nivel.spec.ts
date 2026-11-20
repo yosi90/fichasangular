@@ -1,7 +1,8 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import {
-    caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos,
-    puntoMedioDelNivel, pxTrasPerder, pxTrasPerderExperiencia, sinLoQueDabanLasDotes,
+    caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, doteDeLaClave, dotesQuePuedePerder, fichaConConstitucionPerdida,
+    fichaSinElNivel, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos, ordenPorConocer, puntoMedioDelNivel, pxTrasPerder,
+    pxTrasPerderExperiencia, sinLoQueDabanLasDotes,
 } from './perder-nivel';
 
 /*
@@ -195,5 +196,34 @@ describe('perder-nivel: perder PX y las dotes sin sus prerrequisitos', () => {
         ]);
         // La ficha de partida no cambia.
         expect((ficha.colecciones as any).dotes[1].sinPrerrequisitos).toBeTrue();
+    });
+});
+
+describe('perder-nivel: lo que elige el jugador con el orden por conocer (perder un nivel y la conversión)', () => {
+    it('el orden está por conocer solo si el último nivel lo dice', () => {
+        expect(ordenPorConocer(undefined)).toBeFalse();
+        expect(ordenPorConocer([{ idClase: GUERRERO, nivelClase: 1, elecciones: [] }])).toBeFalse();
+        expect(ordenPorConocer([{ idClase: GUERRERO, nivelClase: 1, elecciones: [], ordenConocido: false } as any])).toBeTrue();
+    });
+
+    it('las características del incremento, sin las perdidas y con su puntuación', () => {
+        const entrada: any = { caracteristicas: { fuerza: { valor: 16 }, constitucion: { valor: 0, perdido: true }, carisma: { valor: 9 } } };
+        const lista = caracteristicasDelIncrementoPerdido(entrada);
+        expect(lista.length).toBe(5);
+        expect(lista.find((c) => c.id === 1)).toEqual({ id: 1, nombre: 'Fuerza', valor: 16 });
+        expect(lista.some((c) => c.id === 3)).toBeFalse();
+    });
+
+    it('la clave de una dote que puede perder va y vuelve', () => {
+        const pj: any = {
+            DotesContextuales: [
+                { Dote: { Id: 5, Nombre: 'Soltura con un arma' }, Contexto: { Entidad: 'personaje', Id_extra: 3, Extra: 'Espada larga', Origen: 'Nivel 3' } },
+                { Dote: { Id: 6, Nombre: 'Alerta' }, Contexto: { Entidad: 'raza', Id_extra: 0 } },
+            ],
+        };
+        const dotes = dotesQuePuedePerder(pj);
+        expect(dotes.map((d) => d.clave)).toEqual(['5|3|Nivel 3']);
+        expect(doteDeLaClave(dotes[0].clave)).toEqual({ idDote: 5, idExtra: 3, origen: 'Nivel 3' });
+        expect(doteDeLaClave('')).toBeNull();
     });
 });

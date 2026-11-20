@@ -12,17 +12,16 @@ import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.servi
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA } from 'src/app/services/utils/correccion-ficha';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
-    CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, FilaPerdida, filasDelNivelPerdido,
-    indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos, nombresDeLaFicha, ordenConocido, pxTrasPerder, pxTrasPerderExperiencia,
-    quitadoVacio, ResultadoPerdida, sinLoQueDabanLasDotes,
+    CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave,
+    dotesQuePuedePerder, fichaConConstitucionPerdida, FilaPerdida, filasDelNivelPerdido, indiceDelNivelQueSePierde,
+    marcarDotesSinPrerrequisitos, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel, pxTrasPerder, pxTrasPerderExperiencia, quitadoVacio,
+    ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /**
  * Perder un nivel con el personaje ya creado (roadmap de sesiones, fase 7, segunda tanda): la causa (volver a la vida,
@@ -99,14 +98,11 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
 
     /** Si no se sabe en qué orden ganó sus niveles (las fichas de antes del historial): elige la clase el jugador. */
     get sinOrden(): boolean {
-        const niveles = this.entrada?.niveles ?? [];
-        return niveles.length > 0 && !ordenConocido(niveles[niveles.length - 1]);
+        return ordenPorConocer(this.entrada?.niveles);
     }
 
     get clases(): Array<{ id: number; nombre: string; nivel: number; }> {
-        return (this.entrada?.colecciones?.clases ?? []).map((c) => ({
-            id: toInt(c.idClase), nombre: this.svc.claseDelCatalogo(c.idClase)?.Nombre ?? `Clase ${c.idClase}`, nivel: toInt(c.nivel),
-        }));
+        return clasesQuePuedenPerder(this.svc, this.entrada);
     }
 
     /** Sin su registro, si el DG que pierde daba incremento o dote (cada 4 y 1.º y cada 3). */
@@ -119,18 +115,12 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
     }
 
     get caracteristicas(): Array<{ id: number; nombre: string; valor: number; }> {
-        return CARACTERISTICAS_DEL_ALTA.map(([clave, motor], i) => ({
-            id: i + 1, nombre: NOMBRES_CARACTERISTICAS[motor], valor: toInt((this.entrada?.caracteristicas as any)?.[clave]?.valor),
-        })).filter((c) => !(this.entrada?.caracteristicas as any)?.[CARACTERISTICAS_DEL_ALTA[c.id - 1][0]]?.perdido);
+        return caracteristicasDelIncrementoPerdido(this.entrada);
     }
 
     /** Las dotes que puede perder sin registro: las suyas (no las de su raza ni sus plantillas). */
     get dotes(): Array<{ clave: string; nombre: string; }> {
-        return (this.pj?.DotesContextuales ?? []).filter((d) => !d?.Contexto?.Entidad || d.Contexto.Entidad === 'personaje')
-            .map((d) => ({
-                clave: `${toInt(d?.Dote?.Id)}|${toInt(d?.Contexto?.Id_extra)}|${(d?.Contexto as any)?.Origen ?? ''}`,
-                nombre: nombreDoteConExtra(d),
-            }));
+        return dotesQuePuedePerder(this.pj);
     }
 
     px(valor: number): string {
@@ -254,21 +244,9 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             this.impedimento = 'Elige la clase que pierde el nivel.';
             return;
         }
-        const nivel = entrada.niveles![indice];
-        const clase = this.svc.claseDelCatalogo(nivel.idClase);
-        const [idDote, idExtra, ...origen] = this.doteElegida.split('|');
-        const sinElNivel = fichaSinElNivel({
-            entrada,
-            indice,
-            clase,
-            caras: this.svc.carasDadoGolpeDeClase(clase),
-            dgsAntes: this.dgs,
-            incrementoSinRegistro: this.incrementoElegido,
-            doteSinRegistro: this.pideDote && toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null,
+        const { resultado, nivel, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
+            entrada, indice, dgs: this.dgs, incremento: this.incrementoElegido, dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
         });
-        // Sin lo que daban las dotes que se van con el nivel (la iniciativa de Iniciativa mejorada, los PG de Dureza).
-        const resultado = sinLoQueDabanLasDotes(sinElNivel,
-            this.motor.loQueDabanLasDotes(this.svc, entrada, sinElNivel.quitado.dotes, this.dgs - 1));
         const caracteristicaQueBaja = resultado.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[resultado.quitado.incremento - 1]?.[1] : null;
         this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({
             idClase: nivel.idClase,
@@ -278,9 +256,8 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             dotesQuitadas: resultado.quitado.dotes,
         });
         this.resultado = { ...resultado, ficha: marcarDotesSinPrerrequisitos(resultado.ficha, this.sinPrerrequisitos) };
-        const nombreClase = clase?.Nombre ?? `Clase ${nivel.idClase}`;
         const filas: FilaPerdida[] = [
-            { que: 'Nivel de clase', antes: `${nombreClase} ${nivel.nivelClase}`, ahora: nivel.nivelClase > 1 ? `${nombreClase} ${nivel.nivelClase - 1}` : 'Deja la clase' },
+            filaDelNivel,
             { que: 'NEP', antes: `${nep}`, ahora: `${nep - 1}` },
             { que: 'PX', antes: this.px(px), ahora: this.px(porExperiencia ? porExperiencia.px : pxTrasPerder(px, nep - 1)) },
             { que: 'Puntos de golpe', antes: `${resultado.pg.antes}`, ahora: `${resultado.pg.despues}${resultado.pg.exacto ? '' : ' (aproximado)'}` },

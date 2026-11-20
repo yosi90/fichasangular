@@ -1,6 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
 import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import type { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { CausaPerdidaDto } from 'src/app/interfaces/sesiones';
 import { textoAtaqueBase } from './ataque-base';
@@ -443,5 +444,76 @@ export function nombresDeLaFicha(svc: NuevoPersonajeService, pj: Personaje | nul
             nombre: NOMBRES_CARACTERISTICAS[CARACTERISTICAS_DEL_ALTA[id - 1]?.[1]] ?? `Característica ${id}`,
             valor: toInt((entrada.caracteristicas as any)?.[CARACTERISTICAS_DEL_ALTA[id - 1]?.[0]]?.valor),
         }),
+    };
+}
+
+// --- El nivel que pierde: lo comparten perder un nivel y la conversión en muerto viviente -------------------------
+
+/** Si no se sabe en qué orden ganó sus niveles (las fichas de antes del historial): la clase la elige el jugador. */
+export function ordenPorConocer(niveles: PersonajeCreateNivelDto[] | undefined): boolean {
+    const lista = niveles ?? [];
+    return lista.length > 0 && !ordenConocido(lista[lista.length - 1]);
+}
+
+/** Sus clases, con su nombre del catálogo y su nivel, para elegir la que pierde el nivel con el orden por conocer. */
+export function clasesQuePuedenPerder(svc: NuevoPersonajeService, entrada: PersonajeCreateRequestDto | null | undefined)
+    : Array<{ id: number; nombre: string; nivel: number; }> {
+    return (entrada?.colecciones?.clases ?? []).map((c) => ({
+        id: toInt(c.idClase), nombre: svc.claseDelCatalogo(c.idClase)?.Nombre ?? `Clase ${c.idClase}`, nivel: toInt(c.nivel),
+    }));
+}
+
+/** Sin su registro, las características que puede bajar el incremento que pierde: las que no tiene perdidas, con su puntuación. */
+export function caracteristicasDelIncrementoPerdido(entrada: PersonajeCreateRequestDto | null | undefined)
+    : Array<{ id: number; nombre: string; valor: number; }> {
+    const caracteristicas = entrada?.caracteristicas as any;
+    return CARACTERISTICAS_DEL_ALTA.map(([clave, motor], i) => ({ id: i + 1, clave, nombre: NOMBRES_CARACTERISTICAS[motor] }))
+        .filter((c) => !caracteristicas?.[c.clave]?.perdido)
+        .map(({ id, clave, nombre }) => ({ id, nombre, valor: toInt(caracteristicas?.[clave]?.valor) }));
+}
+
+/**
+ * Sin su registro, las dotes que puede perder por el DG: las suyas (no las de su raza ni sus plantillas), cada una con su
+ * clave (`idDote|idExtra|origen`, la que lee `doteDeLaClave`).
+ */
+export function dotesQuePuedePerder(pj: Personaje | null | undefined): Array<{ clave: string; nombre: string; }> {
+    return (pj?.DotesContextuales ?? []).filter((d) => !d?.Contexto?.Entidad || d.Contexto.Entidad === 'personaje')
+        .map((d) => ({
+            clave: `${toInt(d?.Dote?.Id)}|${toInt(d?.Contexto?.Id_extra)}|${(d?.Contexto as any)?.Origen ?? ''}`,
+            nombre: nombreDoteConExtra(d),
+        }));
+}
+
+/** La dote de una clave de `dotesQuePuedePerder`, o `null` si no hay ninguna elegida. */
+export function doteDeLaClave(clave: string): { idDote: number; idExtra: number; origen: string; } | null {
+    const [idDote, idExtra, ...origen] = `${clave ?? ''}`.split('|');
+    return toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null;
+}
+
+/**
+ * Lo que quita el nivel `indice` de la `entrada` (`fichaSinElNivel`), sin lo que daban las dotes que se van con él
+ * (`sinLoQueDabanLasDotes`, con el motor de antes de perderlo: la iniciativa de Iniciativa mejorada, los PG de Dureza), con
+ * ese nivel y la primera fila de «Lo que pierde» (el nivel de clase). `dgs`, sus DG antes de perderlo; `incremento` y
+ * `dote`, lo que eligió el jugador sin su registro.
+ */
+export function perdidaDelNivel(svc: NuevoPersonajeService, motor: MotorDesdeFichaService, datos: {
+    entrada: PersonajeCreateRequestDto;
+    indice: number;
+    dgs: number;
+    incremento: number | null;
+    dote: { idDote: number; idExtra: number; origen: string; } | null;
+}): { resultado: ResultadoPerdida; nivel: PersonajeCreateNivelDto; filaDelNivel: FilaPerdida; } {
+    const { entrada, indice, dgs } = datos;
+    const nivel = entrada.niveles![indice];
+    const clase = svc.claseDelCatalogo(nivel.idClase);
+    const sinElNivel = fichaSinElNivel({
+        entrada, indice, clase, caras: svc.carasDadoGolpeDeClase(clase), dgsAntes: dgs,
+        incrementoSinRegistro: datos.incremento, doteSinRegistro: datos.dote,
+    });
+    const resultado = sinLoQueDabanLasDotes(sinElNivel, motor.loQueDabanLasDotes(svc, entrada, sinElNivel.quitado.dotes, dgs - 1));
+    const nombreClase = clase?.Nombre ?? `Clase ${nivel.idClase}`;
+    return {
+        resultado, nivel,
+        filaDelNivel: { que: 'Nivel de clase', antes: `${nombreClase} ${nivel.nivelClase}`, ahora: nivel.nivelClase > 1 ? `${nombreClase} ${nivel.nivelClase - 1}` : 'Deja la clase' },
     };
 }
