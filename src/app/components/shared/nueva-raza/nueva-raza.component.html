@@ -799,6 +799,24 @@
                                         <mat-error *ngIf="form.controls.coste_po.invalid">Un número de 0 o más.</mat-error></mat-form-field>
                                 </div>
                                 <p class="bloque-error" *ngIf="errores.mensajeDe('coste_al_adquirir')">{{errores.mensajeDe('coste_al_adquirir')}}</p>
+
+                                <!-- Las aptitudes de clase que sustituye mientras el personaje tenga la raza (Libris Mortis, pág. 35) -->
+                                <p class="mutacion-nota">
+                                    Mientras el personaje tenga la raza, cualquiera de sus clases da la aptitud nueva en lugar de la de antes, al crearlo y al convertirse (el clérigo convertido en muerto viviente reprende en lugar de expulsar).
+                                </p>
+                                <app-lista-de-catalogo titulo="Las aptitudes que sustituye" icono="especial"
+                                    vacio="Ninguna: sus clases dan sus aptitudes de siempre."
+                                    textoAnadir="Añadir aptitud que sustituye"
+                                    [filas]="especialesSustituidos" [opciones]="opcionesEspeciales" [deshabilitado]="guardando || edicion.cargando"
+                                    [error]="errores.mensajeDe('especiales_sustituidos')"
+                                    (anadir)="anadirSustitucion($event)" (quitar)="quitarSustitucion($event)">
+                                    <ng-template let-fila>
+                                        <app-catalogo-buscador etiqueta="La pasa a ser" placeholder="Elige la aptitud nueva"
+                                            [opciones]="opcionesEspecialNuevo(fila)" [valor]="comoSustitucion(fila).idNuevo"
+                                            [deshabilitado]="guardando" (elegir)="elegirEspecialNuevo(fila, $event)">
+                                        </app-catalogo-buscador>
+                                    </ng-template>
+                                </app-lista-de-catalogo>
                             </div>
                         </section>
 

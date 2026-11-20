@@ -61,6 +61,7 @@ import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-r
 import { NovedadesService } from 'src/app/services/novedades.service';
 import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
+import type { PestanaDeSesion } from 'src/app/components/sesiones/adquirir-raza-mutada/adquirir-raza-mutada.component';
 
 /** Lo que hace falta de una entrada para abrir o refrescar su pestaña de «Modificar»: su id y su nombre. */
 type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
@@ -94,6 +95,19 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
         cargar: async () => (await import('src/app/components/sesiones/perder-nivel/perder-nivel.component')).PerderNivelComponent,
     },
 };
+
+/**
+ * Una pestaña de sesión abierta: su personaje, su modo y lo que pasa a su componente (`entradas`). `pestana`, lo que enseña
+ * si su componente la renombra (la conversión en muerto viviente, «Conversión: <raza>»); `null`, la de su modo.
+ */
+export interface SesionAbierta {
+    idPersonaje: number;
+    nombre: string;
+    modo: ModoPestanaSesion;
+    cerrar: () => void;
+    pestana: PestanaDeSesion | null;
+    entradas: Record<string, unknown>;
+}
 
 interface ListadoTabAbierto {
     key: string;
@@ -146,7 +160,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
      * adquieren (fase 7) abiertas: una pestaña por personaje y modo, `subida:<id>`, `correccion:<id>`, `plantilla:<id>`,
      * `mutacion:<id>` o `perdida:<id>`.
      */
-    public subidasNivelAbiertas: Array<{ idPersonaje: number; nombre: string; modo: ModoPestanaSesion; cerrar: () => void; }> = [];
+    public subidasNivelAbiertas: SesionAbierta[] = [];
     /** Lo que enseña la pestaña de cada modo. */
     public readonly PESTANAS_DE_SESION = PESTANAS_DE_SESION;
     /** El componente de cada modo, con carga diferida la primera vez que se abre (`SubirNivelComponent`…). */
@@ -1137,9 +1151,20 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!this.componentesDeSesion[modo])
             this.componentesDeSesion[modo] = await PESTANAS_DE_SESION[modo].cargar();
         const nombre = this.detallesPersonajeAbiertos.find((pj) => Number(pj.Id) === id)?.Nombre ?? 'Personaje';
-        this.subidasNivelAbiertas.push({ idPersonaje: id, nombre, modo, cerrar: () => this.quitarSubidaNivel(id, modo) });
+        const abierta: SesionAbierta = { idPersonaje: id, nombre, modo, cerrar: () => this.quitarSubidaNivel(id, modo), pestana: null, entradas: {} };
+        // La raza mutada se renombra si es la conversión en muerto viviente.
+        abierta.entradas = {
+            idPersonaje: id, alTerminar: abierta.cerrar,
+            ...(modo === 'mutacion' ? { alNombrar: (pestana: PestanaDeSesion | null) => abierta.pestana = pestana } : {}),
+        };
+        this.subidasNivelAbiertas.push(abierta);
         this.registerOpenContext(clave, this.getSafeOpenerKey());
         this.focusOpenedTab(clave);
+    }
+
+    /** El título de una pestaña de sesión («Subir de nivel: Aldric»), con el que le ponga su componente si la renombra. */
+    tituloDeSesion(subida: SesionAbierta): string {
+        return `${subida.pestana?.titulo ?? PESTANAS_DE_SESION[subida.modo].titulo}: ${subida.pestana?.nombre ?? subida.nombre}`;
     }
 
     quitarSubidaNivel(idPersonaje: number, modo: ModoPestanaSesion = 'subida'): boolean {

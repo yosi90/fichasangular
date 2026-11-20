@@ -135,7 +135,7 @@ import { evaluarGruposParaSelectorRacial } from 'src/app/services/utils/racial-p
 import type { GrupoRacialOpcionalModal } from './selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
 import { esRazaMutada } from 'src/app/services/utils/raza-mutacion';
-import { avisoRazaConClase } from 'src/app/services/utils/clases-de-monstruo';
+import { avisoRazaConClase, motivoCampanaSinClasesDeMonstruo } from 'src/app/services/utils/clases-de-monstruo';
 import { BasesRazaMutada, EstadoBaseRazaMutada, RequisitoDelPersonajeMutacion } from 'src/app/interfaces/razas-api';
 import { distanciaEntreAlineamientos, getVectorDesdeNombreBasico } from 'src/app/services/utils/alineamiento-contrato';
 import { EvaluacionAlineamientoRaza, evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
@@ -7194,8 +7194,7 @@ export class NuevoPersonajeComponent {
         // (`policy` es `null`) y el máster de la campaña se salta sus reglas (`overrideReglasCampana`), como la API.
         const claseDeMonstruo = this.nuevoPSvc.claseDeMonstruoDeRaza(this.razaSeleccionada?.Id);
         if (policy?.permitirClasesDeMonstruo === false && claseDeMonstruo && !this.isSelectedCampaignActiveMaster) {
-            blockers.push(`La campaña no permite las clases de monstruo y la raza «${`${this.razaSeleccionada?.Nombre ?? ''}`.trim()}» `
-                + `se juega con la suya, «${`${claseDeMonstruo.Nombre ?? ''}`.trim()}». Elige otra campaña o «Sin campaña».`);
+            blockers.push(`${motivoCampanaSinClasesDeMonstruo(this.razaSeleccionada?.Nombre, claseDeMonstruo.Nombre)} Elige otra campaña o «Sin campaña».`);
         }
 
         return {

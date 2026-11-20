@@ -8,7 +8,7 @@ import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } f
 import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
 import { normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
-import { aplicarCaracteristicasDelMotor, aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subida-nivel';
+import { aplicarLoQueDanLasDotes } from './subida-nivel';
 import { CambioSubida } from './subida-nivel-vista';
 
 /*
@@ -192,11 +192,8 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
         });
     }
     const motor = opciones.motor;
-    if (motor) {
-        aplicarModificadoresDelMotor(ficha, motor.antes, motor.despues);
-        aplicarCaracteristicasDelMotor(ficha, motor.antes, motor.despues);
-        aplicarHabilidadesDelMotor(ficha, motor.antes, motor.despues, true);
-    }
+    if (motor)
+        aplicarLoQueDanLasDotes(ficha, motor.antes, motor.despues);
     return ficha;
 }
 

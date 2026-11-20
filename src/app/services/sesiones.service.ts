@@ -6,6 +6,8 @@ import {
     AbrirSesionDto,
     AdquirirPlantillaDto,
     AdquirirRazaMutadaDto,
+    CausaNivelPerdido,
+    ConversionMuertoViviente,
     CosteCobrado,
     CosteDePlantillaCobrado,
     RestablecerNivelDto,
@@ -49,7 +51,8 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
-    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'raza_mutada_adquirida', 'nivel_perdido',
+    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'raza_mutada_adquirida',
+    'conversion_muerto_viviente', 'nivel_perdido',
     'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'nota',
 ]);
 
@@ -154,6 +157,30 @@ export function leerCosteCobrado(valor: any): CosteCobrado | null {
     };
 }
 
+/** Una referencia de la respuesta (una raza, una clase): su id y su nombre. */
+function leerIdNombre(valor: any): { id: number; nombre: string; } {
+    return { id: toInt(valor?.id), nombre: `${valor?.nombre ?? ''}` };
+}
+
+/** Las causas de un nivel perdido que da la API (`nivelesPerdidos[].causa`); otra, sin causa. */
+const CAUSAS_NIVEL_PERDIDO: ReadonlySet<string> = new Set<CausaNivelPerdido>(['revivir', 'nivel_negativo', 'plantilla', 'experiencia', 'otro', 'conversion']);
+
+/**
+ * Lo que dice la conversión en muerto viviente (`razaMutada.conversion`), o `null` si la raza no lleva clase de monstruo:
+ * el nivel que perdió (`null` sin niveles de clase), la clase de monstruo y los PX de antes y de después.
+ */
+export function leerConversion(valor: any): ConversionMuertoViviente | null {
+    if (!valor || typeof valor !== 'object')
+        return null;
+    const perdida = valor.perdida && typeof valor.perdida === 'object' ? valor.perdida : null;
+    return {
+        perdida: perdida ? { clase: leerIdNombre(perdida.clase), nivelClase: toInt(perdida.nivelClase) } : null,
+        claseDeMonstruo: leerIdNombre(valor.claseDeMonstruo),
+        pxAntes: toInt(valor.pxAntes),
+        pxDespues: toInt(valor.pxDespues),
+    };
+}
+
 /** Lo que costó adquirir una plantilla (el de la raza mutada y los niveles), o `null` si la API no lo da. */
 export function leerCosteDePlantilla(valor: any): CosteDePlantillaCobrado | null {
     const coste = leerCosteCobrado(valor);
@@ -202,7 +229,7 @@ export class SesionesService {
                 nivelClase: toInt(n?.nivelClase),
                 ordenConocido: n?.ordenConocido !== false,
                 clasesAnteriores: (Array.isArray(n?.clasesAnteriores) ? n.clasesAnteriores : []).map((c: unknown) => toInt(c)),
-                causa: typeof n?.causa === 'string' ? n.causa : null,
+                causa: CAUSAS_NIVEL_PERDIDO.has(`${n?.causa ?? ''}`) ? n.causa as CausaNivelPerdido : null,
                 restablecible: n?.restablecible === true,
             })),
         };
@@ -259,7 +286,7 @@ export class SesionesService {
 
     /**
      * Adquirir una raza mutada (fase 7): queda en la sesión de juego abierta, con lo que costó; el máster, con el aviso de lo
-     * que se salta.
+     * que se salta. Con una raza que lleva una clase de monstruo, la conversión en muerto viviente (`conversion`).
      */
     async adquirirRazaMutada(idPersonaje: number, cuerpo: AdquirirRazaMutadaDto): Promise<RespuestaRazaMutada> {
         const id = toInt(idPersonaje);
@@ -267,12 +294,12 @@ export class SesionesService {
             throw new Error('Id de personaje no válido');
         const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/raza-mutada`, cuerpo, 'No se ha podido adquirir la raza mutada.');
         const r = respuesta?.razaMutada;
-        const ref = (valor: any) => ({ id: toInt(valor?.id), nombre: `${valor?.nombre ?? ''}` });
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             razaMutada: {
-                idEvento: toInt(r?.idEvento), numeroSesion: toInt(r?.numeroSesion), raza: ref(r?.raza), razaBase: ref(r?.razaBase),
+                idEvento: toInt(r?.idEvento), numeroSesion: toInt(r?.numeroSesion), raza: leerIdNombre(r?.raza), razaBase: leerIdNombre(r?.razaBase),
                 nepAntes: toIntOrNull(r?.nepAntes), nepDespues: toIntOrNull(r?.nepDespues), coste: leerCosteCobrado(r?.coste),
+                conversion: leerConversion(r?.conversion),
             },
         };
     }
@@ -289,7 +316,7 @@ export class SesionesService {
             perdida: {
                 idEvento: toInt(p.idEvento),
                 numeroSesion: toInt(p.numeroSesion),
-                clase: p.clase ? { id: toInt(p.clase.id), nombre: `${p.clase.nombre ?? ''}` } : null,
+                clase: p.clase ? leerIdNombre(p.clase) : null,
                 nivelClase: toIntOrNull(p.nivelClase),
                 nepAntes: toIntOrNull(p.nepAntes),
                 nepDespues: toIntOrNull(p.nepDespues),
@@ -313,7 +340,7 @@ export class SesionesService {
             restablecimiento: {
                 idEvento: toInt(r.idEvento),
                 numeroSesion: toInt(r.numeroSesion),
-                clase: r.clase ? { id: toInt(r.clase.id), nombre: `${r.clase.nombre ?? ''}` } : null,
+                clase: r.clase ? leerIdNombre(r.clase) : null,
                 nivelClase: r.nivelClase === null || r.nivelClase === undefined ? null : toInt(r.nivelClase),
                 pxAntes: toInt(r.pxAntes),
                 pxDespues: toInt(r.pxDespues),

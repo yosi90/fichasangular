@@ -8,13 +8,21 @@ import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nue
 import { CosteAlAdquirirComponent } from 'src/app/components/sesiones/coste-al-adquirir/coste-al-adquirir.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
-import { resolverDotesPendientes } from 'src/app/components/sesiones/pasos-con-selectores';
+import {
+    catalogosDelNivel, politicaDeCreacionDe, resolverDotesPendientes, resolverIncrementoPendiente, tiradasDeLaPolitica, tomarNivelDeClase,
+} from 'src/app/components/sesiones/pasos-con-selectores';
 import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
+import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
+import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { Raza } from 'src/app/interfaces/raza';
 import { TipoPrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
 import { ExperienciaPersonaje, MAXIMO_CONCEPTO_RAZA_MUTADA, SesionPersonaje } from 'src/app/interfaces/sesiones';
+import { CampanaService } from 'src/app/services/campana.service';
+import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
+import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
+import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
@@ -28,12 +36,22 @@ import {
     pagaLosPuntos, puntosDevueltos, quitaDgRaciales, tipoQueNoCumpleLaMutacion,
 } from 'src/app/services/utils/adquirir-raza-mutada';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
-import { modConstitucionQueCuenta } from 'src/app/services/utils/caracteristicas';
+import { caracteristicasPerdidasDe, modConstitucionQueCuenta } from 'src/app/services/utils/caracteristicas';
+import { motivoCampanaSinClasesDeMonstruo } from 'src/app/services/utils/clases-de-monstruo';
+import { daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
-import { claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
+import {
+    esConversion, fichaDeLaConversion, MOTIVO_SIN_CONSTITUCION, nepTrasLaConversion, pgDeLaConversion, pxTrasLaConversion, tieneConstitucion,
+} from 'src/app/services/utils/conversion-muerto-viviente';
+import { CARACTERISTICAS_DEL_ALTA, claveDoteDeLaFicha } from 'src/app/services/utils/correccion-ficha';
+import { tirarDado } from 'src/app/services/utils/dados';
 import { nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import {
+    caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, FilaPerdida,
+    filasDelNivelPerdido, indiceDelNivelQueSePierde, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel, ResultadoPerdida,
+} from 'src/app/services/utils/perder-nivel';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { costeRangoHabilidad } from 'src/app/services/utils/puntos-habilidad';
@@ -44,7 +62,19 @@ import { clasesQueDejanDeCumplir, DoteReciclable, dotesParaReciclar, razonesDeSu
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { pgTrasCambioDeCon, PgSubida } from 'src/app/services/utils/subida-nivel';
 
-export type PasoMutacion = 'raza' | 'dote' | 'habilidades' | 'dotes' | 'resumen';
+/**
+ * Los pasos: los de la raza mutada (la raza, la dote y los puntos que pierde, las dotes que dejan de cumplirse) y, en la
+ * conversión en muerto viviente, el nivel que pierde y los del 1.er nivel de su clase de monstruo (el incremento, los PG,
+ * los rangos y las dotes del nivel).
+ */
+export type PasoMutacion = 'raza' | 'nivel' | 'dote' | 'habilidades' | 'dotes' | 'incremento' | 'pg' | 'rangos' | 'doteNivel' | 'resumen';
+
+/** Lo que enseña la pestaña cuando cambia: la conversión en muerto viviente se llama «Conversión: <raza>». */
+export interface PestanaDeSesion {
+    titulo: string;
+    corta: string;
+    nombre: string;
+}
 
 /** Una raza mutada de la lista, con lo que dice su evaluación con el personaje de ahora y si se puede elegir. */
 export interface OpcionMutacion {
@@ -79,11 +109,17 @@ export interface FilaRangos {
  * instancia (`MotorDesdeFichaService`, `NuevoPersonajeService.adquirirRazaMutada`) y las piezas de la subida
  * (`subir-nivel.component.sass`, `HuecoDeSelectores`). Se abre desde «Adquirir una raza mutada» del historial
  * (`SubidaNivelPuertaService.solicitarMutacion`) en su pestaña.
+ *
+ * Con una raza que lleva una clase de monstruo (`Clase_de_monstruo`), es la conversión en muerto viviente (*Libris Mortis*,
+ * pág. 34; contrato en `personajes.md`, «Convertirse en muerto viviente»): pierde el último nivel de clase, como en
+ * «Perder un nivel» (`fichaSinElNivel`, `perderNivelEnElMotor`), y gana el 1.er nivel de su clase de monstruo con los pasos
+ * de la subida (`tomarNivelDeClase`, el incremento, los PG del d12 con las tiradas de la campaña o al máximo si es su
+ * primer DG, el reparto de rangos y las dotes). Las dotes que dejan de cumplirse se conservan sin poder usarse.
  */
 @Component({
     selector: 'app-adquirir-raza-mutada',
     standalone: true,
-    imports: [CommonModule, CosteAlAdquirirComponent, MatButtonModule, MatIconModule, PasosSesionComponent],
+    imports: [CommonModule, CosteAlAdquirirComponent, MatButtonModule, MatIconModule, PasosSesionComponent, RepartoRangosComponent],
     templateUrl: './adquirir-raza-mutada.component.html',
     styleUrls: ['../subir-nivel/subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -92,6 +128,8 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     @Input() idPersonaje = 0;
     /** Lo que hace la pestaña al terminar o cancelar (la cierra). */
     @Input() alTerminar: (() => void) | null = null;
+    /** Lo que enseña la pestaña (la conversión la llama «Conversión: <raza>»; `null`, la de siempre). */
+    @Input() alNombrar: ((pestana: PestanaDeSesion | null) => void) | null = null;
 
     @ViewChild('modalHost', { read: ViewContainerRef }) modalHost?: ViewContainerRef;
 
@@ -128,6 +166,31 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
 
     pg: PgSubida | null = null;
     cambios: CambioPlantilla[] = [];
+
+    // La conversión en muerto viviente: el nivel que pierde y el 1.er nivel de su clase de monstruo.
+    /** Con el orden de sus niveles por conocer: la clase que pierde el nivel, la característica del incremento y la dote. */
+    idClaseElegida: number | null = null;
+    incrementoElegido: number | null = null;
+    doteElegida = '';
+    /** Lo que quita el nivel que pierde (`fichaSinElNivel`) y sus filas; `null` sin niveles de clase. */
+    perdida: ResultadoPerdida | null = null;
+    filasPerdida: FilaPerdida[] = [];
+    claseDeMonstruo: Clase | null = null;
+    nivelMonstruoAplicado = false;
+    daDg = true;
+    carasDg = 0;
+    /** El nivel nuevo es su primer DG: va al máximo y lleva los puntos ×4. */
+    primerDg = false;
+    tiradasPermitidas = 1;
+    tiradas: number[] = [];
+    tiradaElegida: number | null = null;
+    /** Las dotes que dejan de cumplir un prerrequisito: las conserva sin poder usarlas. */
+    sinPrerrequisitos: Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> = [];
+    /** Si su campaña no permite las clases de monstruo (y no se la salta: el máster, un PNJ). */
+    private sinClasesDeMonstruo = false;
+    private seleccionMutacion: SeleccionRacialesOpcionales | null = null;
+    /** El cuerpo del alta del motor tras perder el nivel y antes de la raza y del nivel nuevo. */
+    private antesConversion: PersonajeCreateRequestDto | null = null;
     concepto = '';
     /** Las po que cuesta las paga otro (un mecenas, o ya se apuntaron): no salen de su saldo. */
     poPagadasPorOtro = false;
@@ -150,6 +213,10 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         private razaSvc: RazaService,
         private personajeSvc: PersonajeService,
         private navegacion: NavegacionRolService,
+        private campanaSvc: CampanaService,
+        private escuelaSvc: EscuelaConjurosService,
+        private disciplinaSvc: DisciplinaConjurosService,
+        private enemigoSvc: EnemigoPredilectoService,
     ) {
         this.cuenta = new MismaCuenta(auth);
     }
@@ -169,9 +236,67 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
 
     get nepDespues(): number {
         const nivel = toInt(this.experiencia?.nivel);
-        return this.anterior && this.combinada
-            ? nepTrasLaMutacion(nivel, this.anterior, this.combinada, this.nivelesClase)
+        if (!this.anterior || !this.combinada)
+            return nivel;
+        return this.conversion
+            ? nepTrasLaConversion(nivel, this.anterior, this.combinada, this.nivelesClase, this.pierdeNivel).despues
+            : nepTrasLaMutacion(nivel, this.anterior, this.combinada, this.nivelesClase);
+    }
+
+    /** Si la elegida es la conversión en muerto viviente: lleva una clase de monstruo. */
+    get conversion(): boolean {
+        return esConversion(this.elegida?.raza);
+    }
+
+    /** Si la conversión le quita un nivel de clase (sin niveles de clase, solo DG raciales, no pierde nada). */
+    get pierdeNivel(): boolean {
+        return this.nivelesClase > 0;
+    }
+
+    /** Si no se sabe en qué orden ganó sus niveles (las fichas de antes del historial): elige la clase el jugador. */
+    get sinOrden(): boolean {
+        return ordenPorConocer(this.entrada?.niveles);
+    }
+
+    /** Sus clases, para elegir la que pierde el nivel con el orden por conocer. */
+    get clasesPropias(): Array<{ id: number; nombre: string; nivel: number; }> {
+        return clasesQuePuedenPerder(this.svc, this.entrada);
+    }
+
+    /** Sus DG (de clase, raciales y de plantilla) antes de la conversión. */
+    private get dgs(): number {
+        return toInt(this.pj?.Nivel_personaje);
+    }
+
+    /** Sin su registro, si el DG que pierde daba incremento o dote (cada 4 y 1.º y cada 3), como al perder un nivel. */
+    get pideIncremento(): boolean {
+        return this.sinOrden && this.pierdeNivel && daIncrementoPorNivelDePersonaje(this.dgs);
+    }
+
+    get pideDote(): boolean {
+        return this.sinOrden && this.pierdeNivel && daDotePorNivelDePersonaje(this.dgs);
+    }
+
+    get caracteristicasDelIncremento(): Array<{ id: number; nombre: string; valor: number; }> {
+        return caracteristicasDelIncrementoPerdido(this.entrada);
+    }
+
+    /** Las dotes que puede perder sin registro: las suyas (no las de su raza ni sus plantillas). */
+    get dotesSinRegistro(): Array<{ clave: string; nombre: string; }> {
+        return dotesQuePuedePerder(this.pj);
+    }
+
+    get puedeSeguirPg(): boolean {
+        return !this.daDg || this.primerDg || this.tiradaElegida !== null;
+    }
+
+    /** Los PX tras la conversión: como al revivir, con el NEP de justo después de perder el nivel. */
+    get pxDespues(): number {
+        const nivel = toInt(this.experiencia?.nivel);
+        const trasPerder = this.anterior && this.combinada
+            ? nepTrasLaConversion(nivel, this.anterior, this.combinada, this.nivelesClase, this.pierdeNivel).trasPerder
             : nivel;
+        return pxTrasLaConversion(toInt(this.experiencia?.px), trasPerder, this.pierdeNivel);
     }
 
     private get nivelesClase(): number {
@@ -208,9 +333,14 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     readonly etiquetaPaso = (paso: PasoMutacion): string => {
         const nombres: Record<PasoMutacion, string> = {
             raza: this.elegida ? `Raza: ${this.elegida.raza.Nombre}` : 'Raza mutada',
+            nivel: 'El nivel que pierde',
             dote: 'La dote que pierde',
             habilidades: 'Los puntos que pierde',
             dotes: 'Dotes que dejan de cumplirse',
+            incremento: 'Incremento',
+            pg: 'Puntos de golpe',
+            rangos: 'Habilidades',
+            doteNivel: 'Dotes',
             resumen: 'Resumen',
         };
         return `${this.pasos.indexOf(paso) + 1} · ${nombres[paso]}`;
@@ -248,6 +378,12 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             if (!this.cuenta.sigue())
                 return;
             this.tiposPrerrequisito = modelo?.Tipos_de_prerrequisito ?? [];
+            // Una sola lectura de su campaña: las tiradas de PG y si permite las clases de monstruo.
+            const politica = await politicaDeCreacionDe(this.entrada, this.campanaSvc);
+            if (!this.cuenta.sigue())
+                return;
+            this.tiradasPermitidas = tiradasDeLaPolitica(this.entrada, politica);
+            this.sinClasesDeMonstruo = politica?.permitirClasesDeMonstruo === false && this.rolActor !== 'master';
             await this.evaluarOpciones(catalogo ?? []);
         } catch (error: any) {
             this.error = `${error?.message ?? ''}`.trim() || 'No se han podido preparar las razas mutadas.';
@@ -297,6 +433,11 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             return { ...opcion, motivo: 'La campaña no admite contenido homebrew.' };
         const motivos = tipoQueNoCumpleLaMutacion(raza, this.tiposPrerrequisito, toInt(this.svc.PersonajeCreacion.Tipo_criatura?.Id))
             .map((frase) => `Su tipo, con sus plantillas: ${frase}`);
+        // La conversión en muerto viviente: solo un personaje vivo, y si su campaña permite las clases de monstruo.
+        if (esConversion(raza) && !tieneConstitucion(this.entrada, caracteristicasPerdidasDe(this.svc.PersonajeCreacion)))
+            motivos.push(MOTIVO_SIN_CONSTITUCION);
+        if (esConversion(raza) && this.sinClasesDeMonstruo)
+            motivos.push(motivoCampanaSinClasesDeMonstruo(raza.Nombre, raza.Clase_de_monstruo?.Nombre));
         try {
             const paso = razaPorEdades(anterior) ? toInt(this.entrada?.personaje?.idPasoEdad) || null : null;
             opcion.combinada = await this.razaSvc.getRazaSobreBase(raza.Id, anterior.Id, paso, MOMENTO_DESPUES);
@@ -346,6 +487,10 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         this.claveRotasAntes = new Set(this.svc.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
         const perderibles = pierde.dotes > 0 ? dotesParaReciclar(this.svc) : [];
         const rangos = pierde.puntos > 0 ? this.filasDeRangos() : [];
+        if (esConversion(opcion.raza)) {
+            await this.elegirConversion(opcion, seleccion, pierde, perderibles, rangos);
+            return;
+        }
         if (!this.svc.adquirirRazaMutada(opcion.combinada, seleccion)) {
             this.error = `No se ha podido aplicar ${opcion.raza.Nombre} sobre ${this.anterior.Nombre}.`;
             return;
@@ -380,19 +525,213 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         }, ['confirmar'], ['cerrar']);
     }
 
+    // --- La conversión en muerto viviente ----------------------------------------------------------------------------
+
+    /**
+     * «Elegir» una raza con clase de monstruo: la conversión. Con niveles de clase, el paso del nivel que pierde (con el
+     * orden por conocer, la clase la elige el jugador); sin ellos (el gnoll), se aplica ya. Lo que pierde en su hueco (la
+     * dote y los puntos del humano), si los hay, va después, y el nivel de la clase de monstruo al final.
+     */
+    private async elegirConversion(opcion: OpcionMutacion, seleccion: SeleccionRacialesOpcionales,
+        pierde: { dotes: number; puntos: number; }, perderibles: DoteReciclable[], rangos: FilaRangos[]): Promise<void> {
+        this.elegida = opcion;
+        this.seleccionMutacion = seleccion;
+        this.error = '';
+        this.pierde = pierde;
+        this.dotesQuePuedePerder = perderibles;
+        this.rangos = rangos;
+        this.alNombrar?.({ titulo: 'Convertirse en muerto viviente', corta: 'Conversión', nombre: opcion.raza.Nombre });
+        this.pasos = [
+            'raza',
+            ...(this.pierdeNivel ? ['nivel' as const] : []),
+            ...(this.pierde.dotes > 0 ? ['dote' as const] : []),
+            ...(this.pierde.puntos > 0 ? ['habilidades' as const] : []),
+            'resumen',
+        ];
+        if (this.pierdeNivel) {
+            this.idClaseElegida = this.sinOrden ? this.clasesPropias[this.clasesPropias.length - 1]?.id ?? null : null;
+            this.incrementoElegido = this.entrada ? caracteristicaMasAlta(this.entrada) : null;
+            this.paso = 'nivel';
+            this.recalcularPerdida();
+            return;
+        }
+        await this.aplicarConversion();
+    }
+
+    elegirClasePerdida(id: string): void {
+        this.idClaseElegida = toInt(id) || null;
+        this.recalcularPerdida();
+    }
+
+    elegirIncrementoPerdido(id: string): void {
+        this.incrementoElegido = toInt(id) || null;
+        this.recalcularPerdida();
+    }
+
+    elegirDotePerdida(clave: string): void {
+        this.doteElegida = clave;
+        this.recalcularPerdida();
+    }
+
+    /** El nivel que pierde, como en «Perder un nivel»: el último que ganó y lo que eligió en él (`fichaSinElNivel`). */
+    recalcularPerdida(): void {
+        this.perdida = null;
+        this.filasPerdida = [];
+        const entrada = this.entrada;
+        const indice = entrada ? indiceDelNivelQueSePierde(entrada.niveles, this.idClaseElegida) : null;
+        if (!entrada || indice === null)
+            return;
+        const { resultado, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
+            entrada, indice, dgs: this.dgs, incremento: this.incrementoElegido, dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
+        });
+        this.perdida = resultado;
+        this.filasPerdida = [filaDelNivel, ...filasDelNivelPerdido(resultado, nombresDeLaFicha(this.svc, this.pj, entrada))];
+    }
+
+    /** El índice del nivel que pierde en su registro (`entrada.niveles`), o `null`. */
+    private get indicePerdido(): number | null {
+        return this.pierdeNivel && this.entrada ? indiceDelNivelQueSePierde(this.entrada.niveles, this.idClaseElegida) : null;
+    }
+
+    get puedeSeguirNivel(): boolean {
+        return !!this.perdida && (!this.pideDote || !!this.doteElegida);
+    }
+
+    /**
+     * Aplica la conversión en el motor: quita el nivel que pierde (`perderNivelEnElMotor`), guarda el cuerpo de después
+     * (lo que compara la ficha) y le cambia la raza por la combinada. Después, lo que pierde en su hueco (si hay) y el nivel
+     * de su clase de monstruo (`tomarNivelDeMonstruo`, al llegar a sus pasos).
+     */
+    async aplicarConversion(): Promise<void> {
+        const combinada = this.combinada;
+        if (!combinada || !this.entrada || (this.pierdeNivel && !this.puedeSeguirNivel))
+            return;
+        const perdida = this.perdida;
+        const indice = this.indicePerdido;
+        if (perdida && indice !== null) {
+            const nivel = this.entrada.niveles![indice];
+            const incremento = perdida.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[perdida.quitado.incremento - 1]?.[1] ?? null : null;
+            this.svc.perderNivelEnElMotor({
+                idClase: nivel.idClase,
+                ataqueBase: perdida.ataqueBase.despues,
+                caracteristica: incremento ? { clave: incremento, menos: 1 } : null,
+                rangos: perdida.quitado.rangos,
+                dotesQuitadas: perdida.quitado.dotes,
+                especialesQuitados: perdida.quitado.especiales,
+                indiceNivel: indice,
+            });
+        }
+        this.antesConversion = this.motor.cuerpoDelMotor(this.svc, this.entrada);
+        if (!this.svc.adquirirRazaMutada(combinada, this.seleccionMutacion)) {
+            this.error = `No se ha podido aplicar ${this.elegida?.raza.Nombre ?? 'la raza'} sobre ${this.anterior?.Nombre ?? 'su raza'}.`;
+            await this.reiniciar();
+            return;
+        }
+        await this.siguiente();
+    }
+
+    /**
+     * El 1.er nivel de su clase de monstruo, con los selectores de la subida (su alineamiento no se fuerza: se propone), y
+     * sus pasos: el incremento, los PG (sin ellos, al máximo, si es su primer DG), los rangos y las dotes del nivel.
+     * `false` si no se puede o se cierra un selector: se empieza de nuevo.
+     */
+    private async tomarNivelDeMonstruo(): Promise<boolean> {
+        const clase = this.svc.claseDelCatalogo(toInt(this.combinada?.Clase_de_monstruo?.Id));
+        if (!clase) {
+            this.error = `No se encuentra la clase de monstruo «${this.combinada?.Clase_de_monstruo?.Nombre ?? ''}» en el catálogo de clases.`;
+            await this.reiniciar();
+            return false;
+        }
+        const nivel = await tomarNivelDeClase(this.svc, this.selectores, clase,
+            catalogosDelNivel(this.motor, this.escuelaSvc, this.disciplinaSvc, this.enemigoSvc), { permitirBloqueoSoloAlineamiento: true });
+        if (nivel.estado !== 'aplicado') {
+            await this.reiniciar();
+            return false;
+        }
+        this.claseDeMonstruo = clase;
+        this.nivelMonstruoAplicado = true;
+        this.daDg = daDgEnNivel(clase, nivel.nivelClase);
+        this.carasDg = this.svc.carasDadoGolpeDeClase(clase);
+        this.primerDg = this.svc.esPrimerNivelDelPersonaje();
+        this.svc.iniciarDistribucionHabilidadesPorClase(clase);
+        const delNivel: PasoMutacion[] = [
+            ...(this.svc.getAumentosCaracteristicaPendientes().length > 0 ? ['incremento' as const] : []),
+            ...(this.daDg && this.carasDg > 0 ? ['pg' as const] : []),
+            ...(this.svc.EstadoFlujo.habilidades.activa ? ['rangos' as const] : []),
+            ...(this.svc.getDotesPendientes().some((d) => d.estado === 'pendiente') ? ['doteNivel' as const] : []),
+        ];
+        this.pasos = [...this.pasos.filter((p) => p !== 'resumen'), ...delNivel, 'resumen'];
+        this.calcularPg();
+        return true;
+    }
+
+    tirar(): void {
+        if (this.tiradas.length >= this.tiradasPermitidas || this.carasDg < 1 || this.primerDg)
+            return;
+        const tirada = tirarDado(this.carasDg);
+        this.tiradas = [...this.tiradas, tirada];
+        this.tiradaElegida = Math.max(this.tiradaElegida ?? 0, tirada);
+        this.calcularPg();
+    }
+
+    elegirTirada(tirada: number): void {
+        this.tiradaElegida = tirada;
+        this.calcularPg();
+    }
+
+    /**
+     * Los PG de la conversión: sin el DG del nivel que pierde, sin la Constitución en ningún DG y con el de la clase de
+     * monstruo (su tirada; al máximo si es su primer DG; sin DG, nada).
+     */
+    private calcularPg(): void {
+        const tirada = !this.daDg ? null : this.primerDg ? this.carasDg : this.tiradaElegida;
+        this.pg = pgDeLaConversion(this.perdida?.ficha ?? this.entrada!, this.dgs - (this.perdida ? 1 : 0), this.daDg ? tirada ?? 0 : null);
+    }
+
+    cerrarRangos(): void {
+        if (!this.svc.puedeCerrarDistribucionHabilidades())
+            return;
+        this.svc.cerrarDistribucionHabilidades();
+        void this.siguiente();
+    }
+
+    private async resolverIncremento(): Promise<void> {
+        await resolverIncrementoPendiente(this.svc, this.selectores, `Incremento de característica de ${this.claseDeMonstruo?.Nombre ?? 'su clase'} 1`);
+        // Con más Inteligencia, los puntos de este nivel también suben: el reparto se vuelve a abrir.
+        if (this.svc.EstadoFlujo.habilidades.activa && this.claseDeMonstruo)
+            this.svc.iniciarDistribucionHabilidadesPorClase(this.claseDeMonstruo);
+        await this.siguiente();
+    }
+
+    private async resolverDotesDelNivel(): Promise<void> {
+        if (await resolverDotesPendientes(this.svc, this.selectores))
+            await this.siguiente();
+    }
+
     // --- Lo que pierde en su hueco -------------------------------------------------------------------------------------
 
     async siguiente(): Promise<void> {
         const i = this.pasos.indexOf(this.paso);
         let siguiente = this.pasos[i + 1] ?? 'resumen';
-        // Antes del resumen, las dotes que dejan de cumplir sus prerrequisitos con todo lo de antes (también los rangos).
-        if (siguiente === 'resumen' && !this.dotesResueltas && this.hayDotesRotas()) {
+        // En la conversión, el nivel de su clase de monstruo, tras lo que pierde.
+        if (this.conversion && !this.nivelMonstruoAplicado && PASOS_TRAS_LA_MUTACION.has(siguiente)) {
+            if (!await this.tomarNivelDeMonstruo())
+                return;
+            siguiente = this.pasos[this.pasos.indexOf(this.paso) + 1] ?? 'resumen';
+        }
+        // Antes del resumen, las dotes que dejan de cumplir sus prerrequisitos con todo lo de antes (también los rangos). En
+        // la conversión no se cambian: se conservan sin poder usarse.
+        if (siguiente === 'resumen' && !this.conversion && !this.dotesResueltas && this.hayDotesRotas()) {
             this.pasos = [...this.pasos.filter((p) => p !== 'resumen'), 'dotes', 'resumen'];
             siguiente = 'dotes';
         }
         this.paso = siguiente;
         if (siguiente === 'dotes')
             await this.resolverDotesRotas();
+        else if (siguiente === 'incremento')
+            await this.resolverIncremento();
+        else if (siguiente === 'doteNivel')
+            await this.resolverDotesDelNivel();
         else if (siguiente === 'resumen')
             this.prepararResumen();
     }
@@ -487,7 +826,12 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     }
 
     private prepararResumen(): void {
-        this.pg = pgTrasCambioDeCon(this.entrada!, toInt(this.pj?.Nivel_personaje), modConstitucionQueCuenta(this.svc.PersonajeCreacion), null);
+        if (this.conversion) {
+            this.calcularPg();
+            this.sinPrerrequisitos = this.svc.dotesSinSusPrerrequisitos().filter((d) => !this.claveRotasAntes.has(claveDoteDeLaFicha(d)))
+                .map(({ idDote, idExtra, origen, nombre }) => ({ idDote, idExtra, origen, nombre }));
+        } else
+            this.pg = pgTrasCambioDeCon(this.entrada!, toInt(this.pj?.Nivel_personaje), modConstitucionQueCuenta(this.svc.PersonajeCreacion), null);
         this.cambios = cambiosDeLaMutacion({
             antes: this.pjAntes!,
             despues: this.svc.PersonajeCreacion,
@@ -501,10 +845,42 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             dotesCambiadas: this.dotesCambiadas,
             exClases: clasesQueDejanDeCumplir(this.svc, this.razonesClasesAntes),
             alineamientoExigido: this.alineamientoExigido(),
+            conversion: this.conversion ? this.resumenDeLaConversion() : null,
         });
     }
 
+    /** Lo propio de la conversión en el resumen: el nivel perdido y el ganado, los PX, las dotes sin usar y las aptitudes. */
+    private resumenDeLaConversion() {
+        const nivel = this.indicePerdido !== null ? this.entrada?.niveles?.[this.indicePerdido] : null;
+        const nombre = (id: number) => this.pjAntes?.Claseas?.find((e) => toInt(e?.Id) === id)?.Nombre ?? '';
+        const sustituidas = (this.combinada?.Especiales_sustituidos ?? [])
+            .filter((s) => (this.pjAntes?.Claseas ?? []).some((e) => toInt(e?.Id) === toInt(s.Especial.Id)))
+            .map((s) => ({ antes: nombre(toInt(s.Especial.Id)) || s.Especial.Nombre, ahora: s.Especial_nuevo.Nombre }));
+        return {
+            perdida: nivel ? { clase: this.svc.claseDelCatalogo(nivel.idClase)?.Nombre ?? `Clase ${nivel.idClase}`, nivelClase: toInt(nivel.nivelClase) } : null,
+            loQuePierde: this.filasPerdida.slice(1),
+            claseDeMonstruo: this.claseDeMonstruo?.Nombre ?? `${this.combinada?.Clase_de_monstruo?.Nombre ?? ''}`,
+            pxAntes: toInt(this.experiencia?.px),
+            pxDespues: this.pxDespues,
+            sinPoderUsar: this.sinPrerrequisitos.map((d) => d.nombre),
+            sustituidas,
+        };
+    }
+
     private fichaParaGuardar(): PersonajeCreateRequestDto {
+        if (this.conversion)
+            return fichaDeLaConversion({
+                entrada: this.perdida?.ficha ?? this.entrada!,
+                antes: this.antesConversion!,
+                despues: this.motor.cuerpoDelMotor(this.svc, this.entrada!),
+                idRaza: toInt(this.elegida?.raza?.Id),
+                idRazaBase: toInt(this.anterior?.Id),
+                puntosGolpe: this.pg?.total ?? toInt(this.entrada?.personaje.puntosGolpe),
+                idClaseDeMonstruo: toInt(this.claseDeMonstruo?.Id),
+                nivel: { idClase: toInt(this.claseDeMonstruo?.Id), nivelClase: 1, elecciones: this.svc.getEleccionesDelNivelEnCurso() },
+                sustituidos: this.combinada?.Especiales_sustituidos ?? [],
+                sinPrerrequisitos: this.sinPrerrequisitos,
+            });
         return fichaDeLaMutacion({
             entrada: this.entrada!,
             antes: this.antes!,
@@ -522,12 +898,18 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         this.error = '';
         try {
             const concepto = this.concepto.trim().slice(0, MAXIMO_CONCEPTO_RAZA_MUTADA);
+            const nivelPerdido = this.indicePerdido !== null ? this.entrada?.niveles?.[this.indicePerdido] : null;
             await this.sesionesSvc.adquirirRazaMutada(this.idPersonaje, {
                 idRaza: toInt(this.elegida.raza.Id),
                 ficha: this.fichaParaGuardar(),
                 version: this.sesion.version,
                 ...(this.coste && this.coste.po > 0 && this.poPagadasPorOtro ? { poPagadasPorOtro: true } : {}),
                 ...(concepto ? { concepto } : {}),
+                // La conversión: la tirada del DG de su clase de monstruo (no si es su primer DG, que va al máximo) y, con el
+                // orden por conocer, la clase que pierde el nivel.
+                ...(this.conversion && this.daDg && !this.primerDg && this.tiradaElegida !== null
+                    ? { pg: { tirada: this.tiradaElegida, tiradas: [...this.tiradas] } } : {}),
+                ...(this.conversion && this.sinOrden && nivelPerdido ? { idClase: toInt(nivelPerdido.idClase) } : {}),
             });
             if (!this.cuenta.sigue())
                 return;
@@ -549,7 +931,14 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
      * `idRaza`), la edad (`ficha.personaje.edad`) y lo demás de la ficha, en el resumen.
      */
     pasoDelError(field: string, code = ''): PasoMutacion {
-        return field === 'idRaza' && !ERRORES_DEL_COSTE.has(code) ? 'raza' : 'resumen';
+        if (field === 'idRaza' && !ERRORES_DEL_COSTE.has(code))
+            return 'raza';
+        // La conversión: la tirada, en los PG; la clase que pierde el nivel, en el nivel.
+        if (field.startsWith('pg') && this.pasos.includes('pg'))
+            return 'pg';
+        if (field === 'idClase' && this.pasos.includes('nivel'))
+            return 'nivel';
+        return 'resumen';
     }
 
     /** «Volver al resumen» desde el paso de un error. */
@@ -565,6 +954,12 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         });
         if (!r.isConfirmed)
             return;
+        await this.reiniciar(false);
+    }
+
+    /** Vuelve a la lista con el motor como estaba (también tras un selector cerrado en la conversión). */
+    private async reiniciar(conservarError = true): Promise<void> {
+        const error = conservarError ? this.error : '';
         this.elegida = null;
         this.pasos = ['raza', 'resumen'];
         this.paso = 'raza';
@@ -578,7 +973,23 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         this.pg = null;
         this.cambios = [];
         this.poPagadasPorOtro = false;
-        this.error = '';
+        this.idClaseElegida = null;
+        this.incrementoElegido = null;
+        this.doteElegida = '';
+        this.perdida = null;
+        this.filasPerdida = [];
+        this.claseDeMonstruo = null;
+        this.nivelMonstruoAplicado = false;
+        this.daDg = true;
+        this.carasDg = 0;
+        this.primerDg = false;
+        this.tiradas = [];
+        this.tiradaElegida = null;
+        this.sinPrerrequisitos = [];
+        this.seleccionMutacion = null;
+        this.antesConversion = null;
+        this.alNombrar?.(null);
+        this.error = error;
         await this.hidratar();
     }
 
@@ -586,6 +997,9 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         this.alTerminar?.();
     }
 }
+
+/** Los pasos tras los de la raza mutada: al llegar a uno, la conversión toma antes el nivel de su clase de monstruo. */
+const PASOS_TRAS_LA_MUTACION: ReadonlySet<PasoMutacion> = new Set<PasoMutacion>(['incremento', 'pg', 'rangos', 'doteNivel', 'resumen']);
 
 /** Los errores de lo que cuesta (con `field: idRaza`), que se enseñan en el resumen, donde está el coste. */
 const ERRORES_DEL_COSTE: ReadonlySet<string> = new Set(['dinero_insuficiente', 'experiencia_insuficiente']);

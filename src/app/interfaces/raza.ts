@@ -234,6 +234,12 @@ export interface ReferenciasEdicionRaza {
     Dgs_raciales: DgsRacialesGuardados;
 }
 
+/** Una aptitud de clase que sustituye una raza mutada (`Especiales_sustituidos`): la de antes y la que la reemplaza. */
+export interface EspecialSustituido {
+    Especial: { Id: number; Nombre: string; };
+    Especial_nuevo: { Id: number; Nombre: string; };
+}
+
 export interface Raza {
     Id: number;
     Nombre: string;
@@ -324,6 +330,12 @@ export interface Raza {
      * 2026-11-07: las de *Libris Mortis*); `null` si no la lleva ninguna.
      */
     Clase_de_monstruo?: { Id: number; Nombre: string; } | null;
+    /**
+     * Las aptitudes de clase que la raza mutada sustituye (`Especiales_sustituidos`, desde el 2026-11-20; caché `Razas` 36):
+     * mientras el personaje tenga la raza, la aptitud `Especial` de cualquiera de sus clases es `Especial_nuevo` (*Libris
+     * Mortis*, pág. 35: expulsar muertos vivientes pasa a reprenderlos). Vacía si ninguna.
+     */
+    Especiales_sustituidos?: EspecialSustituido[];
     Armadura_natural: number;
     Varios_armadura: number;
     Correr: number;

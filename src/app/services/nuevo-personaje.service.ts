@@ -46,7 +46,7 @@ import { evaluarGruposParaSelectorRacial } from './utils/racial-prerrequisitos';
 import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
 import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
-import { esRazaMutada } from './utils/raza-mutacion';
+import { esRazaMutada, especialQueLaSustituye } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, ContextoCompatibles, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
@@ -106,6 +106,7 @@ import { apuntarEleccion, construirNivelesCreacion, nivelDelOrden, RefNivelTomad
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claveDoteDeLaFicha } from './utils/correccion-ficha';
+import { doteContextualPorId } from './utils/perder-nivel';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
@@ -1040,6 +1041,18 @@ interface NuevoPersonajeDraftEstadoFlujoV1 {
     };
     habilidades: HabilidadesFlujoState;
     conjuros: ConjurosFlujoState;
+}
+
+/**
+ * Lo que quita del motor un nivel perdido (`dotesSinPrerrequisitosTrasPerder`, `perderNivelEnElMotor`): un nivel menos de
+ * su clase, el ataque base de después, la característica que baja su incremento, sus rangos y sus dotes.
+ */
+export interface CambiosDePerdidaDeNivel {
+    idClase?: number | null;
+    ataqueBase?: string | null;
+    caracteristica?: { clave: Caracteristica; menos: number; } | null;
+    rangos?: ReadonlyArray<{ idHabilidad: number; idExtra: number; rangos: number; }>;
+    dotesQuitadas?: ReadonlyArray<{ idDote: number; idExtra: number; }>;
 }
 
 /** Lo que necesita `iniciarSubidaDesdeFicha`. */
@@ -8283,9 +8296,15 @@ export class NuevoPersonajeService {
         seleccionesExtras: SeleccionExtrasEspecialesClase | null
     ): void {
         especialesNivel.forEach((especialNivel) => {
-            const nombre = `${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim();
-            if (nombre.length < 1)
+            const nombreDeLaTabla = `${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim();
+            if (nombreDeLaTabla.length < 1)
                 return;
+            const especialRaw = (especialNivel?.Especial as Record<string, any>) ?? {};
+            const idDeLaTabla = toNumber(especialRaw?.['Id'] ?? especialRaw?.['id']) || this.resolverIdEspecialPorNombre(nombreDeLaTabla);
+            // La que su raza pone en lugar de esa (el engendro vampírico: reprender en lugar de expulsar).
+            const sustituta = this.especialSustituto(idDeLaTabla);
+            const nombre = sustituta?.Nombre || nombreDeLaTabla;
+            const idEspecial = sustituta?.Id ?? idDeLaTabla;
             // El extra «Elegir» de la tabla se cambia por el que se ha elegido (el elemento del asenda).
             const elegido = especialNivel?.Extra_comodin === 'elegir'
                 ? seleccionesExtras?.[this.claveEspecialNivel(detalleNivel, especialNivel)] ?? null
@@ -8297,8 +8316,6 @@ export class NuevoPersonajeService {
                 && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
             );
             if (!duplicado) {
-                const especialRaw = (especialNivel?.Especial as Record<string, any>) ?? {};
-                const idEspecial = toNumber(especialRaw?.['Id'] ?? especialRaw?.['id']) || this.resolverIdEspecialPorNombre(nombre);
                 this.personajeCreacion.Claseas.push({
                     Id: idEspecial > 0 ? idEspecial : undefined,
                     Id_extra: idExtra,
@@ -8310,6 +8327,24 @@ export class NuevoPersonajeService {
             }
             this.registrarIdInternoEspecial(clase, toNumber(especialNivel?.Id_interno));
         });
+    }
+
+    /** La aptitud que su raza de ahora pone en lugar de la de `idEspecial` (`especialQueLaSustituye`), o `null`. */
+    private especialSustituto(idEspecial: number): { Id: number; Nombre: string; } | null {
+        return especialQueLaSustituye(this.razaSeleccionada?.Especiales_sustituidos, idEspecial);
+    }
+
+    /** Las aptitudes de sus clases que sustituye su raza (`especialSustituto`), ya cambiadas y sin repetir. */
+    private sustituirEspecialesDeLaRaza(): void {
+        const resultado: Personaje['Claseas'] = [];
+        (this.personajeCreacion.Claseas ?? []).forEach((especial) => {
+            const sustituta = this.especialSustituto(toInt(especial?.Id));
+            const nueva = sustituta ? { ...especial, Id: sustituta.Id, Nombre: sustituta.Nombre || especial.Nombre } : especial;
+            if (!resultado.some((e) => normalizarTexto(e?.Nombre ?? '') === normalizarTexto(nueva?.Nombre ?? '')
+                && normalizarTexto(e?.Extra ?? '') === normalizarTexto(nueva?.Extra ?? '')))
+                resultado.push(nueva);
+        });
+        this.personajeCreacion.Claseas = resultado;
     }
 
     /**
@@ -10084,7 +10119,8 @@ export class NuevoPersonajeService {
             simulacion.tipoCriaturaActualNombre
         );
         const subtiposBase = this.copiarSubtipos(this.razaSeleccionada?.Subtipos ?? []);
-        const subtiposResultantes = this.resolverSubtiposResultantes(subtiposBase, seleccionadas, simulacion.cambianElTipo);
+        const subtiposResultantes = this.resolverSubtiposResultantes(subtiposBase, seleccionadas,
+            simulacion.cambianElTipo.length > 0 || this.mutacionCambiaElTipo());
         // Sin los rasgos de su tipo que quitan sus plantillas (el fantasma, ajeno sin «sin alma»).
         const rasgosTipoConOrigen = rasgosTipoSinQuitados(this.asignarOrigenRasgosTipo(
             tipoResultante.Rasgos,
@@ -10142,18 +10178,30 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Los subtipos de la raza con los de sus plantillas y, de las que le cambian de verdad el tipo (`cambianElTipo`, de
-     * `simularEstadoPlantillas`: la pareja de tipos que le toca lleva a otro tipo, no a «Cualquiera»), los que da cambiar
-     * de tipo (`Al_cambiar_tipo` del catálogo de subtipos: el agrandado, MM1, pág. 291). Sale de los datos, no del nombre.
+     * Si su raza mutada le cambia el tipo de su raza base (el engendro vampírico sobre un humano: de humanoide a muerto
+     * viviente; *Libris Mortis*, pág. 34), por los tipos de las dos razas. Como una plantilla que cambia el tipo, le da el
+     * agrandado (Manual de monstruos, pág. 311), al crear y al convertirse.
      */
-    private resolverSubtiposResultantes(subtiposBase: SubtipoRef[], seleccionadas: Plantilla[], cambianElTipo: number[] = []): SubtipoRef[] {
+    private mutacionCambiaElTipo(): boolean {
+        const base = toNumber(this.razaBaseSeleccionadaCompleta?.Tipo_criatura?.Id);
+        const mutada = toNumber(this.razaSeleccionada?.Tipo_criatura?.Id);
+        return base > 0 && mutada > 0 && base !== mutada;
+    }
+
+    /**
+     * Los subtipos de la raza con los de sus plantillas y, si algo le cambia de verdad el tipo (`cambiaElTipo`: una
+     * plantilla cuya pareja de tipos lleva a otro tipo, no a «Cualquiera», de `simularEstadoPlantillas`, o su raza mutada,
+     * `mutacionCambiaElTipo`), los que da cambiar de tipo (`Al_cambiar_tipo` del catálogo de subtipos: el agrandado, MM1,
+     * pág. 291). Sale de los datos, no del nombre.
+     */
+    private resolverSubtiposResultantes(subtiposBase: SubtipoRef[], seleccionadas: Plantilla[], cambiaElTipo = false): SubtipoRef[] {
         let actuales = this.copiarSubtipos(subtiposBase);
         seleccionadas.forEach((plantilla) => {
             const subtiposPlantilla = this.copiarSubtipos(plantilla?.Subtipos ?? []);
             if (subtiposPlantilla.length > 0)
                 actuales = this.unirSubtiposDeduplicados(actuales, subtiposPlantilla);
         });
-        if (cambianElTipo.length > 0) {
+        if (cambiaElTipo) {
             const alCambiarTipo = this.catalogoSubtipos
                 .filter((subtipo) => subtipo?.Al_cambiar_tipo === true && toNumber(subtipo?.Id) > 0)
                 .map((subtipo) => ({ Id: toNumber(subtipo.Id), Nombre: `${subtipo.Nombre ?? ''}`.trim() }));
@@ -11531,7 +11579,8 @@ export class NuevoPersonajeService {
                 const detalle = this.obtenerDetalleNivelClase(clase, nivel);
                 (detalle?.Dotes ?? []).filter((d) => idsDotes.has(toInt(d?.Dote?.Id)))
                     .forEach((d) => this.registrarIdInternoDote(clase, toInt(d?.Id_interno)));
-                (detalle?.Especiales ?? []).filter((e) => idsEspeciales.has(toInt((e?.Especial as any)?.Id)))
+                (detalle?.Especiales ?? []).filter((e) => idsEspeciales.has(toInt((e?.Especial as any)?.Id))
+                    || idsEspeciales.has(toInt(this.especialSustituto(toInt((e?.Especial as any)?.Id))?.Id)))
                     .forEach((e) => this.registrarIdInternoEspecial(clase, toInt(e?.Id_interno)));
             }
             this.aplicarHabilidadesPrimerNivelClase(clase);
@@ -11767,10 +11816,7 @@ export class NuevoPersonajeService {
             return false;
         const indiceNivel = this.indiceNivelDeLaDote(idDote, idExtra);
         const [quitada] = pj.DotesContextuales.splice(i, 1);
-        const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quitada?.Dote?.Nombre ?? '')
-            && `${d?.Origen ?? ''}` === `${(quitada?.Contexto as any)?.Origen ?? ''}`);
-        if (j >= 0)
-            pj.Dotes.splice(j, 1);
+        this.quitarDeLaListaDeDotes(quitada);
         const nivel = indiceNivel !== null ? pj.Orden_niveles?.[indiceNivel] : undefined;
         const k = (nivel?.elecciones ?? []).findIndex((e) => e.tipo === 'dote' && toInt(e.idElemento) === toInt(idDote)
             && Math.max(0, toInt(e.idExtra)) === Math.max(0, toInt(idExtra)));
@@ -11779,6 +11825,35 @@ export class NuevoPersonajeService {
         this.recalcularEfectosConservandoVentajas();
         this.recalcularDerivadasPorCombate();
         return true;
+    }
+
+    /** Quita de `Dotes` (la lista por nombre) la de una dote contextual que se quita, por su nombre y su origen. */
+    private quitarDeLaListaDeDotes(quitada: DoteContextual | undefined): void {
+        const pj = this.personajeCreacion;
+        const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quitada?.Dote?.Nombre ?? '')
+            && `${d?.Origen ?? ''}` === `${(quitada?.Contexto as any)?.Origen ?? ''}`);
+        if (j >= 0)
+            pj.Dotes.splice(j, 1);
+    }
+
+    /**
+     * Los PG que dan esas dotes (`Modificadores.Pg_a`, Dureza +3, y `Pg_a_n`, +N por DG) con `dgs` DG, del catálogo: lo
+     * que se va con ellas al perder el nivel en que se eligieron.
+     */
+    pgQueDanLasDotes(dotes: ReadonlyArray<{ idDote: number; }>, dgs: number): number {
+        return dotes.reduce((suma, d) => {
+            const mods = this.doteDelCatalogo(toInt(d.idDote))?.Modificadores as Record<string, unknown> | undefined;
+            return suma + toInt(mods?.['Pg_a']) + toInt(mods?.['Pg_a_n']) * Math.max(0, toInt(dgs));
+        }, 0);
+    }
+
+    /**
+     * Quita una dote que tiene por su id y su extra (la primera; si no, la primera con ese id), con lo que da
+     * (`quitarDoteDeLaFicha`). `false` si no la tiene.
+     */
+    quitarDotePorId(idDote: number, idExtra: number): boolean {
+        const dote = doteContextualPorId(this.personajeCreacion.DotesContextuales, idDote, idExtra);
+        return !!dote && this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`);
     }
 
     /**
@@ -11801,13 +11876,7 @@ export class NuevoPersonajeService {
      * característica que baja, los rangos y las dotes que se van) y se deja como estaba; solo las que antes cumplían.
      * Con el registro por nivel, cada dote se juzga en el nivel en que la eligió, como en la corrección.
      */
-    dotesSinPrerrequisitosTrasPerder(cambios: {
-        idClase?: number | null;
-        ataqueBase?: string | null;
-        caracteristica?: { clave: Caracteristica; menos: number; } | null;
-        rangos?: ReadonlyArray<{ idHabilidad: number; idExtra: number; rangos: number; }>;
-        dotesQuitadas?: ReadonlyArray<{ idDote: number; idExtra: number; }>;
-    }): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> {
+    dotesSinPrerrequisitosTrasPerder(cambios: CambiosDePerdidaDeNivel): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> {
         const antes = new Set(this.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
         const pj = this.personajeCreacion;
         const guardado = {
@@ -11816,31 +11885,9 @@ export class NuevoPersonajeService {
             habilidades: (pj.Habilidades ?? []).map((h) => ({ ...h })),
             dotes: [...(pj.DotesContextuales ?? [])],
         };
-        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
-        const caracteristica = cambios.caracteristica && base && !this.esCaracteristicaPerdida(cambios.caracteristica.clave)
-            ? { clave: cambios.caracteristica.clave, valor: toNumber(base[cambios.caracteristica.clave]) - this.ajusteRacialCaracteristica(cambios.caracteristica.clave) }
-            : null;
+        const caracteristica = this.caracteristicaQueBajaLaPerdida(cambios);
         try {
-            if (tieneTextoVisible(cambios.ataqueBase ?? ''))
-                pj.Ataque_base = `${cambios.ataqueBase}`;
-            const clase = cambios.idClase ? this.claseDelCatalogo(cambios.idClase) : null;
-            if (clase)
-                pj.desgloseClases = (pj.desgloseClases ?? [])
-                    .map((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre ?? '') ? { ...c, Nivel: toNumber(c.Nivel) - 1 } : c)
-                    .filter((c) => toNumber(c.Nivel) > 0);
-            (cambios.rangos ?? []).forEach((r) => {
-                const h = (pj.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(r.idHabilidad)
-                    && idExtraHabilidadParaGuardar(x) === toInt(r.idExtra));
-                if (h)
-                    h.Rangos = Math.max(0, toNumber(h.Rangos) - toInt(r.rangos));
-            });
-            (cambios.dotesQuitadas ?? []).forEach((q) => {
-                const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(q.idDote) && toInt(d?.Contexto?.Id_extra) === toInt(q.idExtra));
-                if (i >= 0)
-                    pj.DotesContextuales.splice(i, 1);
-            });
-            if (caracteristica)
-                this.corregirBaseCaracteristica(caracteristica.clave, caracteristica.valor - toInt(cambios.caracteristica?.menos));
+            this.quitarLoDelNivelPerdido(cambios, caracteristica);
             return this.dotesSinSusPrerrequisitos().filter((d) => !antes.has(claveDoteDeLaFicha(d)))
                 .map(({ idDote, idExtra, origen, nombre }) => ({ idDote, idExtra, origen, nombre }));
         } finally {
@@ -11851,6 +11898,82 @@ export class NuevoPersonajeService {
             pj.Habilidades = guardado.habilidades;
             pj.DotesContextuales = guardado.dotes;
         }
+    }
+
+    /**
+     * Quita del motor, para siempre, el nivel que pierde (*Libris Mortis*, pág. 34: convertirse en muerto viviente pierde el
+     * último nivel de clase antes de ganar el de su clase de monstruo): lo de `dotesSinPrerrequisitosTrasPerder` (un nivel
+     * menos de su clase, el ataque base, la característica del incremento, los rangos y las dotes de ese nivel), además su
+     * registro (`indiceNivel` en su orden) y sus aptitudes, y vuelve a calcular lo que suman. Lo que se quita de la ficha
+     * lo calcula `fichaSinElNivel` (`perder-nivel.ts`); esto deja el motor igual, para que el nivel nuevo se tome con lo que
+     * le queda (su nivel de personaje, sus dotes, sus rangos).
+     */
+    perderNivelEnElMotor(cambios: CambiosDePerdidaDeNivel & {
+        indiceNivel: number | null;
+        especialesQuitados?: ReadonlyArray<{ idEspecial: number; idExtra: number; }>;
+    }): void {
+        const pj = this.personajeCreacion;
+        const dotes = (cambios.dotesQuitadas ?? []).map((q) => (pj.DotesContextuales ?? [])
+            .find((d) => toInt(d?.Dote?.Id) === toInt(q.idDote) && toInt(d?.Contexto?.Id_extra) === toInt(q.idExtra)))
+            .filter((d): d is DoteContextual => !!d);
+        this.quitarLoDelNivelPerdido(cambios, this.caracteristicaQueBajaLaPerdida(cambios));
+        dotes.forEach((quitada) => this.quitarDeLaListaDeDotes(quitada));
+        (cambios.especialesQuitados ?? []).forEach((q) => {
+            const i = (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(q.idEspecial) && toInt(e?.Id_extra) === toInt(q.idExtra));
+            const j = i >= 0 ? i : (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(q.idEspecial));
+            if (j >= 0)
+                pj.Claseas.splice(j, 1);
+        });
+        const indice = cambios.indiceNivel;
+        if (indice !== null && indice >= 0 && indice < (pj.Orden_niveles ?? []).length) {
+            pj.Orden_niveles = (pj.Orden_niveles ?? []).filter((_, i) => i !== indice);
+            this.ordenConocidoNiveles = this.ordenConocidoNiveles.filter((_, i) => i !== indice);
+        }
+        // Lo ya concedido por la progresión (las dotes de nivel y los incrementos cada 4), con su nivel de ahora, como al
+        // hidratarlo: el nivel siguiente vuelve a dar lo de ese nivel (el guerrero 4 que pasa a guerrero 3 / engendro 1).
+        const dotesPendientes = this.dotesPendientes;
+        const aumentosPendientes = this.aumentosPendientesCaracteristica;
+        this.dotesProgresionConcedidas = 0;
+        this.aumentosProgresionConcedidos = 0;
+        this.registrarDotesPendientesPorProgresion('');
+        this.registrarAumentosPendientesPorProgresion('');
+        this.dotesPendientes = dotesPendientes;
+        this.aumentosPendientesCaracteristica = aumentosPendientes;
+        this.recalcularEfectosConservandoVentajas();
+        this.recalcularDerivadasPorCombate();
+    }
+
+    /** La característica que baja el incremento del nivel perdido, con su base de ahora (sin la raza), o `null`. */
+    private caracteristicaQueBajaLaPerdida(cambios: CambiosDePerdidaDeNivel): { clave: Caracteristica; valor: number; } | null {
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        return cambios.caracteristica && base && !this.esCaracteristicaPerdida(cambios.caracteristica.clave)
+            ? { clave: cambios.caracteristica.clave, valor: toNumber(base[cambios.caracteristica.clave]) - this.ajusteRacialCaracteristica(cambios.caracteristica.clave) }
+            : null;
+    }
+
+    /** Lo que quita del motor el nivel perdido (lo común de la simulación y de `perderNivelEnElMotor`). */
+    private quitarLoDelNivelPerdido(cambios: CambiosDePerdidaDeNivel, caracteristica: { clave: Caracteristica; valor: number; } | null): void {
+        const pj = this.personajeCreacion;
+        if (tieneTextoVisible(cambios.ataqueBase ?? ''))
+            pj.Ataque_base = `${cambios.ataqueBase}`;
+        const clase = cambios.idClase ? this.claseDelCatalogo(cambios.idClase) : null;
+        if (clase)
+            pj.desgloseClases = (pj.desgloseClases ?? [])
+                .map((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre ?? '') ? { ...c, Nivel: toNumber(c.Nivel) - 1 } : c)
+                .filter((c) => toNumber(c.Nivel) > 0);
+        (cambios.rangos ?? []).forEach((r) => {
+            const h = (pj.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(r.idHabilidad)
+                && idExtraHabilidadParaGuardar(x) === toInt(r.idExtra));
+            if (h)
+                h.Rangos = Math.max(0, toNumber(h.Rangos) - toInt(r.rangos));
+        });
+        (cambios.dotesQuitadas ?? []).forEach((q) => {
+            const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(q.idDote) && toInt(d?.Contexto?.Id_extra) === toInt(q.idExtra));
+            if (i >= 0)
+                pj.DotesContextuales.splice(i, 1);
+        });
+        if (caracteristica)
+            this.corregirBaseCaracteristica(caracteristica.clave, caracteristica.valor - toInt(cambios.caracteristica?.menos));
     }
 
     dotesSinSusPrerrequisitos(): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; razones: string[]; nivel: number | null; }> {
@@ -11986,6 +12109,8 @@ export class NuevoPersonajeService {
         ];
         this.agregarDotesDeRaza(nueva);
         this.aplicarIdiomasAutomaticos(nueva.Nombre, nueva.Idiomas ?? []);
+        // Las aptitudes de sus clases que sustituye la mutada (el clérigo convertido: reprender en lugar de expulsar).
+        this.sustituirEspecialesDeLaRaza();
         this.recalcularTipoYSubtiposDerivados();
         this.recalcularEfectosConservandoVentajas();
         this.recalcularDerivadasPorCombate();
@@ -12232,7 +12357,7 @@ export class NuevoPersonajeService {
      * fueron su primer DG). Los DG de una plantilla no cuentan: el animal de un licántropo nunca es su primer DG (Manual
      * de monstruos), así que su primer nivel de clase sí lleva el ×4.
      */
-    private esPrimerNivelDelPersonaje(): boolean {
+    esPrimerNivelDelPersonaje(): boolean {
         return this.getNivelClasesActual() <= 1 && !primerDgEsRacial(this.getPartesNivelPersonaje());
     }
 

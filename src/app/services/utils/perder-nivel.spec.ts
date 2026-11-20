@@ -1,7 +1,8 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import {
-    caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos,
-    puntoMedioDelNivel, pxTrasPerder, pxTrasPerderExperiencia,
+    caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, doteDeLaClave, dotesQuePuedePerder, fichaConConstitucionPerdida,
+    fichaSinElNivel, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos, ordenPorConocer, puntoMedioDelNivel, pxTrasPerder,
+    pxTrasPerderExperiencia, sinLoQueDabanLasDotes,
 } from './perder-nivel';
 
 /*
@@ -146,6 +147,30 @@ describe('perder-nivel (fase 7, segunda tanda)', () => {
     });
 });
 
+describe('perder-nivel: lo que daban las dotes que se van con el nivel', () => {
+    it('quita sus modificadores, los rangos varios de sus habilidades y sus PG (Dureza); sin dotes, la misma', () => {
+        const entrada = guerrero([nivel(1, 10), nivel(2, 6), nivel(3, 7), nivel(4, 4), nivel(5, 8, [{ tipo: 'dote', idElemento: 30, idExtra: 0, origen: 'Guerrero nivel 4' }])]);
+        (entrada.modificadores as any).iniciativa = [{ valor: 4, origen: 'Dote: Iniciativa mejorada' }, { valor: 2, origen: 'Rasgo' }];
+        (entrada.colecciones as any).habilidades.base[0].rangosVarios = 2;
+        const r = fichaSinElNivel({ entrada, indice: 4, clase: claseGuerrero, caras: 10, dgsAntes: 5 });
+        const antes: any = {
+            modificadores: { iniciativa: [{ valor: 4, origen: 'Dote: Iniciativa mejorada' }, { valor: 2, origen: 'Rasgo' }] },
+            colecciones: { habilidades: { base: [{ idHabilidad: 40, idExtra: 0, clasea: true, rangos: 6, rangosVarios: 2 }], custom: [] } },
+        };
+        const despues: any = {
+            modificadores: { iniciativa: [{ valor: 2, origen: 'Rasgo' }] },
+            colecciones: { habilidades: { base: [{ idHabilidad: 40, idExtra: 0, clasea: true, rangos: 6, rangosVarios: 0 }], custom: [] } },
+        };
+        const sin = sinLoQueDabanLasDotes(r, { antes, despues, pg: 3 });
+        expect((sin.ficha.modificadores as any).iniciativa).toEqual([{ valor: 2, origen: 'Rasgo' }]);
+        expect((sin.ficha.colecciones as any).habilidades.base[0].rangosVarios).toBe(0);
+        // Los rangos comprados, sin tocar.
+        expect((sin.ficha.colecciones as any).habilidades.base[0].rangos).toBe(8);
+        expect([sin.ficha.personaje.puntosGolpe, sin.pg.despues]).toEqual([35 - 3, 35 - 3]);
+        expect(sinLoQueDabanLasDotes(r, null)).toBe(r);
+    });
+});
+
 describe('perder-nivel: perder PX y las dotes sin sus prerrequisitos', () => {
     it('perder PX que bajan un nivel: los que le quedan, sin punto medio (el familiar del hechicero 3, MJ pág. 45)', () => {
         // El hechicero 3 con 3.230 PX pierde 300: vuelve a 2.º con 2.930.
@@ -171,5 +196,34 @@ describe('perder-nivel: perder PX y las dotes sin sus prerrequisitos', () => {
         ]);
         // La ficha de partida no cambia.
         expect((ficha.colecciones as any).dotes[1].sinPrerrequisitos).toBeTrue();
+    });
+});
+
+describe('perder-nivel: lo que elige el jugador con el orden por conocer (perder un nivel y la conversión)', () => {
+    it('el orden está por conocer solo si el último nivel lo dice', () => {
+        expect(ordenPorConocer(undefined)).toBeFalse();
+        expect(ordenPorConocer([{ idClase: GUERRERO, nivelClase: 1, elecciones: [] }])).toBeFalse();
+        expect(ordenPorConocer([{ idClase: GUERRERO, nivelClase: 1, elecciones: [], ordenConocido: false } as any])).toBeTrue();
+    });
+
+    it('las características del incremento, sin las perdidas y con su puntuación', () => {
+        const entrada: any = { caracteristicas: { fuerza: { valor: 16 }, constitucion: { valor: 0, perdido: true }, carisma: { valor: 9 } } };
+        const lista = caracteristicasDelIncrementoPerdido(entrada);
+        expect(lista.length).toBe(5);
+        expect(lista.find((c) => c.id === 1)).toEqual({ id: 1, nombre: 'Fuerza', valor: 16 });
+        expect(lista.some((c) => c.id === 3)).toBeFalse();
+    });
+
+    it('la clave de una dote que puede perder va y vuelve', () => {
+        const pj: any = {
+            DotesContextuales: [
+                { Dote: { Id: 5, Nombre: 'Soltura con un arma' }, Contexto: { Entidad: 'personaje', Id_extra: 3, Extra: 'Espada larga', Origen: 'Nivel 3' } },
+                { Dote: { Id: 6, Nombre: 'Alerta' }, Contexto: { Entidad: 'raza', Id_extra: 0 } },
+            ],
+        };
+        const dotes = dotesQuePuedePerder(pj);
+        expect(dotes.map((d) => d.clave)).toEqual(['5|3|Nivel 3']);
+        expect(doteDeLaClave(dotes[0].clave)).toEqual({ idDote: 5, idExtra: 3, origen: 'Nivel 3' });
+        expect(doteDeLaClave('')).toBeNull();
     });
 });

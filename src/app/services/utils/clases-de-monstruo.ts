@@ -101,6 +101,15 @@ export function motivoClaseDeMonstruo(clase: ClaseDeMonstruo, contexto: Contexto
 }
 
 /**
+ * Por qué no puede tener una raza que lleva una clase de monstruo en una campaña que no las permite
+ * (`permitirClasesDeMonstruo`, *Libris Mortis*, pág. 31): al crear el personaje y al convertirse en muerto viviente.
+ */
+export function motivoCampanaSinClasesDeMonstruo(nombreRaza: string | null | undefined, nombreClase: string | null | undefined): string {
+    return `La campaña no permite las clases de monstruo y la raza «${`${nombreRaza ?? ''}`.trim()}» `
+        + `se juega con la suya, «${`${nombreClase ?? ''}`.trim()}».`;
+}
+
+/**
  * El aviso de una raza que lleva una clase de monstruo, para quien la mira antes de elegirla: «Se juega con su clase,
  * «Engendro vampírico»: la toma desde el 1.er nivel y la termina (8 niveles) antes de cualquier otra.»
  */

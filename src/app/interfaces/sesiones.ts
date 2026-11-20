@@ -39,6 +39,8 @@ export type TipoEventoSesion =
     | 'plantilla_adquirida'
     /** Una raza mutada adquirida con el personaje ya creado (fase 7, `POST /personajes/{id}/raza-mutada`). */
     | 'raza_mutada_adquirida'
+    /** Convertirse en muerto viviente (*Libris Mortis*, pág. 34): la raza mutada con su clase de monstruo, en la misma ruta. */
+    | 'conversion_muerto_viviente'
     /** Un nivel perdido con el personaje ya creado (fase 7, segunda tanda, `POST /personajes/{id}/niveles/perdida`). */
     | 'nivel_perdido'
     /** Un nivel consumido que devuelve un restablecimiento (`POST /personajes/{id}/niveles/restablecimiento`). */
@@ -137,8 +139,11 @@ export interface NivelPerdido {
     nivelClase: number;
     ordenConocido: boolean;
     clasesAnteriores: number[];
-    /** La causa de la pérdida y si un restablecimiento lo devuelve ahora (desde el 2026-11-13). */
-    causa?: CausaPerdidaDto | null;
+    /**
+     * La causa de la pérdida y si un restablecimiento lo devuelve ahora (desde el 2026-11-13). El perdido al convertirse en
+     * muerto viviente (`conversion`) no se restablece nunca.
+     */
+    causa?: CausaNivelPerdido | null;
     restablecible?: boolean;
 }
 
@@ -246,6 +251,22 @@ export interface AdquirirRazaMutadaDto {
     poPagadasPorOtro?: boolean;
     /** Texto libre al final de la frase (como mucho `MAXIMO_CONCEPTO_RAZA_MUTADA`). */
     concepto?: string;
+    /**
+     * Convertirse en muerto viviente (una raza con `Clase_de_monstruo`): la tirada del DG de la clase de monstruo, como en la
+     * subida; sin ella si el nivel nuevo es su primer DG (va al máximo).
+     */
+    pg?: { tirada: number; tiradas?: number[]; };
+    /** En la conversión, con el orden de sus niveles por conocer: la clase que pierde el nivel. */
+    idClase?: number;
+}
+
+/** Lo que dice la respuesta de la conversión en muerto viviente (`razaMutada.conversion`). */
+export interface ConversionMuertoViviente {
+    /** El nivel que perdió (su clase y el nivel de clase que tenía), o `null` si no tenía niveles de clase. */
+    perdida: { clase: { id: number; nombre: string; }; nivelClase: number; } | null;
+    claseDeMonstruo: { id: number; nombre: string; };
+    pxAntes: number;
+    pxDespues: number;
 }
 
 /** Lo que responde la adquisición de una raza mutada: la sesión, los PX (que no cambian) y el NEP de antes y de ahora. */
@@ -258,11 +279,16 @@ export interface RespuestaRazaMutada extends RespuestaSesion {
         nepAntes: number | null;
         nepDespues: number | null;
         coste: CosteCobrado | null;
+        /** Si la raza lleva una clase de monstruo (la conversión en muerto viviente); si no, `null`. */
+        conversion: ConversionMuertoViviente | null;
     };
 }
 
 /** El cuerpo de `POST /personajes/{id}/niveles/perdida`: la ficha sin lo del nivel que pierde (fase 7, segunda tanda). */
 export type CausaPerdidaDto = 'revivir' | 'nivel_negativo' | 'plantilla' | 'experiencia' | 'otro';
+
+/** La causa de un nivel perdido: las de la pérdida y la conversión en muerto viviente (que no se pide en esa ruta). */
+export type CausaNivelPerdido = CausaPerdidaDto | 'conversion';
 
 export interface PerderNivelDto {
     causa: CausaPerdidaDto;

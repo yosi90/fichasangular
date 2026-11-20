@@ -5,6 +5,7 @@ import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { CategoriaEdadService, normalizarCategoriaEdad } from 'src/app/services/categoria-edad.service';
+import { EspecialService } from 'src/app/services/especial.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DominioService } from 'src/app/services/dominio.service';
@@ -51,6 +52,9 @@ const MODELO_MUTACION: ModeloMutacion = {
  * inserciones): respuestas reales de `rol_dev` (`src/testing/ida-y-vuelta-razas.ts`), con las edades de los dragones y
  * los ids de sus pasos, que la API conserva.
  */
+/** Las aptitudes de `GET /especiales` que usa el paso «Mutación» (las que sustituye una raza mutada). */
+const ESPECIALES_DE_PRUEBA = [{ Id: 31, Nombre: 'Expulsar muertos vivientes' }, { Id: 32, Nombre: 'Reprender muertos vivientes' }] as any[];
+
 describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
     async function cargada(get: any): Promise<NuevaRazaComponent> {
         const razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'getRazaFresca', 'getModeloMutacion']);
@@ -91,6 +95,7 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
                 { provide: ArmaduraService, useValue: { getArmaduras: () => of([]) } },
                 { provide: GrupoArmaService, useValue: { getGruposArmas: () => of([]) } },
                 { provide: GrupoArmaduraService, useValue: { getGruposArmaduras: () => of([]) } },
+                { provide: EspecialService, useValue: { getEspeciales: () => of(ESPECIALES_DE_PRUEBA) } },
                 { provide: CategoriaEdadService, useValue: { getCategoriasEdad: () => of(CATALOGOS.categoriasEdad.map(normalizarCategoriaEdad)) } },
                 { provide: RazaCatalogosService, useValue: {
                     getManiobrabilidades: () => of(CATALOGOS.maniobrabilidades), getTiposDado: () => of(CATALOGOS.tiposDado), getActitudes: () => of([]),

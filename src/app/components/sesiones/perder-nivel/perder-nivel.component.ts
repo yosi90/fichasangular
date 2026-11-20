@@ -12,23 +12,16 @@ import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.servi
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA } from 'src/app/services/utils/correccion-ficha';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
-    CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde,
-    marcarDotesSinPrerrequisitos, ordenConocido, pxTrasPerder, pxTrasPerderExperiencia, quitadoVacio, ResultadoPerdida,
+    CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave,
+    dotesQuePuedePerder, fichaConConstitucionPerdida, FilaPerdida, filasDelNivelPerdido, indiceDelNivelQueSePierde,
+    marcarDotesSinPrerrequisitos, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel, pxTrasPerder, pxTrasPerderExperiencia, quitadoVacio,
+    ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-
-/** Una fila de «Lo que pierde»: qué, antes, ahora. */
-export interface FilaPerdida {
-    que: string;
-    antes: string;
-    ahora: string;
-}
 
 /**
  * Perder un nivel con el personaje ya creado (roadmap de sesiones, fase 7, segunda tanda): la causa (volver a la vida,
@@ -105,14 +98,11 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
 
     /** Si no se sabe en qué orden ganó sus niveles (las fichas de antes del historial): elige la clase el jugador. */
     get sinOrden(): boolean {
-        const niveles = this.entrada?.niveles ?? [];
-        return niveles.length > 0 && !ordenConocido(niveles[niveles.length - 1]);
+        return ordenPorConocer(this.entrada?.niveles);
     }
 
     get clases(): Array<{ id: number; nombre: string; nivel: number; }> {
-        return (this.entrada?.colecciones?.clases ?? []).map((c) => ({
-            id: toInt(c.idClase), nombre: this.svc.claseDelCatalogo(c.idClase)?.Nombre ?? `Clase ${c.idClase}`, nivel: toInt(c.nivel),
-        }));
+        return clasesQuePuedenPerder(this.svc, this.entrada);
     }
 
     /** Sin su registro, si el DG que pierde daba incremento o dote (cada 4 y 1.º y cada 3). */
@@ -125,18 +115,12 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
     }
 
     get caracteristicas(): Array<{ id: number; nombre: string; valor: number; }> {
-        return CARACTERISTICAS_DEL_ALTA.map(([clave, motor], i) => ({
-            id: i + 1, nombre: NOMBRES_CARACTERISTICAS[motor], valor: toInt((this.entrada?.caracteristicas as any)?.[clave]?.valor),
-        })).filter((c) => !(this.entrada?.caracteristicas as any)?.[CARACTERISTICAS_DEL_ALTA[c.id - 1][0]]?.perdido);
+        return caracteristicasDelIncrementoPerdido(this.entrada);
     }
 
     /** Las dotes que puede perder sin registro: las suyas (no las de su raza ni sus plantillas). */
     get dotes(): Array<{ clave: string; nombre: string; }> {
-        return (this.pj?.DotesContextuales ?? []).filter((d) => !d?.Contexto?.Entidad || d.Contexto.Entidad === 'personaje')
-            .map((d) => ({
-                clave: `${toInt(d?.Dote?.Id)}|${toInt(d?.Contexto?.Id_extra)}|${(d?.Contexto as any)?.Origen ?? ''}`,
-                nombre: nombreDoteConExtra(d),
-            }));
+        return dotesQuePuedePerder(this.pj);
     }
 
     px(valor: number): string {
@@ -260,17 +244,8 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             this.impedimento = 'Elige la clase que pierde el nivel.';
             return;
         }
-        const nivel = entrada.niveles![indice];
-        const clase = this.svc.claseDelCatalogo(nivel.idClase);
-        const [idDote, idExtra, ...origen] = this.doteElegida.split('|');
-        const resultado = fichaSinElNivel({
-            entrada,
-            indice,
-            clase,
-            caras: this.svc.carasDadoGolpeDeClase(clase),
-            dgsAntes: this.dgs,
-            incrementoSinRegistro: this.incrementoElegido,
-            doteSinRegistro: this.pideDote && toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null,
+        const { resultado, nivel, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
+            entrada, indice, dgs: this.dgs, incremento: this.incrementoElegido, dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
         });
         const caracteristicaQueBaja = resultado.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[resultado.quitado.incremento - 1]?.[1] : null;
         this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({
@@ -281,35 +256,13 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             dotesQuitadas: resultado.quitado.dotes,
         });
         this.resultado = { ...resultado, ficha: marcarDotesSinPrerrequisitos(resultado.ficha, this.sinPrerrequisitos) };
-        const nombreClase = clase?.Nombre ?? `Clase ${nivel.idClase}`;
         const filas: FilaPerdida[] = [
-            { que: 'Nivel de clase', antes: `${nombreClase} ${nivel.nivelClase}`, ahora: nivel.nivelClase > 1 ? `${nombreClase} ${nivel.nivelClase - 1}` : 'Deja la clase' },
+            filaDelNivel,
             { que: 'NEP', antes: `${nep}`, ahora: `${nep - 1}` },
             { que: 'PX', antes: this.px(px), ahora: this.px(porExperiencia ? porExperiencia.px : pxTrasPerder(px, nep - 1)) },
             { que: 'Puntos de golpe', antes: `${resultado.pg.antes}`, ahora: `${resultado.pg.despues}${resultado.pg.exacto ? '' : ' (aproximado)'}` },
         ];
-        if (resultado.ataqueBase.antes !== resultado.ataqueBase.despues)
-            filas.push({ que: 'Ataque base', antes: resultado.ataqueBase.antes, ahora: resultado.ataqueBase.despues });
-        Object.entries(resultado.salvaciones).filter(([, d]) => toInt(d) !== 0)
-            .forEach(([s, d]) => filas.push({ que: `${s.charAt(0).toUpperCase()}${s.slice(1)} (de clase)`, antes: '', ahora: `−${d}` }));
-        const q = resultado.quitado;
-        if (q.incremento !== null) {
-            const c = this.caracteristicas.find((x) => x.id === q.incremento);
-            filas.push({ que: `${NOMBRES_CARACTERISTICAS[CARACTERISTICAS_DEL_ALTA[q.incremento - 1][1]]} (incremento)`, antes: `${c?.valor ?? ''}`, ahora: `${toInt(c?.valor) - 1}` });
-        }
-        const lista = (que: string, nombres: string[]) => nombres.length > 0 && filas.push({ que, antes: nombres.join(', '), ahora: '—' });
-        lista('Dotes', q.dotes.map((d) => this.nombreDote(d.idDote, d.idExtra)));
-        lista('Aptitudes', q.especiales.map((e) => this.pj?.Claseas?.find((x) => toInt(x?.Id) === e.idEspecial)?.Nombre ?? `Aptitud ${e.idEspecial}`));
-        lista('Conjuros conocidos', q.conjuros.map((c) => this.svc.conjuroDelCatalogo(c.idConjuro)?.Nombre ?? `Conjuro ${c.idConjuro}`));
-        if (q.vuelven.length > 0)
-            filas.push({ que: 'Vuelve a conocer', antes: '—', ahora: q.vuelven.map((c) => this.svc.conjuroDelCatalogo(c.idConjuro)?.Nombre ?? `Conjuro ${c.idConjuro}`).join(', ') });
-        lista('Idiomas', q.idiomas.map((id) => this.svc.EstadoFlujo.ventajas.catalogoIdiomas.find((x) => toInt((x as any)?.Id) === id)?.Nombre ?? `Idioma ${id}`));
-        lista('Dominios', q.dominios.map((id) => this.pj?.Dominios?.find((x) => toInt(x?.Id) === id)?.Nombre ?? `Dominio ${id}`));
-        q.rangos.forEach((r) => {
-            const h = this.pj?.Habilidades?.find((x) => toInt(x?.Id) === r.idHabilidad && !x.Custom);
-            const nombre = h ? `${h.Nombre}${tieneTextoVisible(h.Extra) && toInt(r.idExtra) > 0 ? ` (${h.Extra})` : ''}` : `Habilidad ${r.idHabilidad}`;
-            filas.push({ que: `Rangos de ${nombre}`, antes: `${h?.Rangos ?? ''}`, ahora: `${toInt(h?.Rangos) - r.rangos}` });
-        });
+        filas.push(...filasDelNivelPerdido(resultado, nombresDeLaFicha(this.svc, this.pj, entrada)));
         filas.push(...this.filaSinPrerrequisitos());
         this.filas = filas;
     }
@@ -319,12 +272,6 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         return this.sinPrerrequisitos.length > 0
             ? [{ que: 'Sin poder usar (hasta cumplir de nuevo sus prerrequisitos)', antes: this.sinPrerrequisitos.map((d) => d.nombre).join(', '), ahora: 'Las conserva' }]
             : [];
-    }
-
-    private nombreDote(idDote: number, idExtra: number): string {
-        const d = (this.pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote && toInt(x?.Contexto?.Id_extra) === idExtra)
-            ?? (this.pj?.DotesContextuales ?? []).find((x) => toInt(x?.Dote?.Id) === idDote);
-        return d ? nombreDoteConExtra(d) : `Dote ${idDote}`;
     }
 
     // --- Guardar -------------------------------------------------------------------------------------------------------
