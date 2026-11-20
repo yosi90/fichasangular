@@ -74,6 +74,15 @@ export function extraHabilidadElegido(extra: unknown): boolean {
 }
 
 /**
+ * Si dos `idExtra` de una habilidad son el mismo: sin extra, la habilidad del motor guarda -1 (`idExtraHabilidadParaGuardar`;
+ * 0, «Elegir», si lo admite y falta) y la ficha y sus elecciones `rangos` llevan 0 o no lo llevan. Lo usan quitar los rangos
+ * de un nivel perdido en el motor y en la ficha (`perder-nivel.ts`) y la vuelta a la vida.
+ */
+export function mismoExtraDeHabilidad(a: unknown, b: unknown): boolean {
+    return Math.max(0, toInt(a)) === Math.max(0, toInt(b));
+}
+
+/**
  * El nombre de una habilidad del motor con su extra si ya está elegido («Saber (los planos)»). Lo usan el reciclaje y la raza
  * mutada adquirida (los rangos que se quitan).
  */

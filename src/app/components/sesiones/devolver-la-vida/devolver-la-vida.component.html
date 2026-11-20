@@ -27,7 +27,7 @@
             <p class="subida__nota">Pierde todos sus niveles de {{claseDeMonstruo?.Nombre}} ({{estado.nivelesDeLaClase}}), con todo lo que le dieron, y vuelve a ser {{razaDeAntes?.Nombre | lowercase}}, con su Constitución (Libris Mortis, pág. 35). Lo que pierde no se restablece nunca.</p>
             <div class="subida__opciones" role="radiogroup" aria-label="Con qué conjuro vuelve a la vida">
                 <label *ngFor="let m of medios" class="subida__opcion" [class.subida__opcion--bloqueada]="!!motivoDelMedio(m)">
-                    <input type="radio" name="medioVuelta" [checked]="pierdeNivel === m.pierdeNivel" [disabled]="!!motivoDelMedio(m) || guardando || !!claseNueva"
+                    <input type="radio" name="medioVuelta" [checked]="pierdeNivel === m.pierdeNivel" [disabled]="!!motivoDelMedio(m) || guardando || eleccionEmpezada"
                         (change)="elegirMedio(m)">
                     <span class="subida__opcion-texto">{{m.titulo}}</span>
                     <span class="subida__opcion-porque">{{m.porque}}</span>
@@ -35,6 +35,7 @@
                 </label>
             </div>
             <p *ngIf="claseNueva" class="subida__nota">Para cambiar el conjuro, empieza de nuevo su 1.er nivel: su Constitución ya cuenta en él.</p>
+            <p *ngIf="!claseNueva && eleccionEmpezada" class="subida__nota">Para cambiar el conjuro, empieza de nuevo: lo elegido depende de los niveles que le quedan.</p>
             <p class="subida__nota">{{noSirven}}</p>
             <p class="subida__nota">Su cuerpo de muerto viviente tiene que haber sido destruido (Manual del jugador, pág. 285): lo confirma quien lo apunta.</p>
             <label class="subida__campo">
@@ -91,6 +92,30 @@
             </section>
         </ng-container>
 
+        <!-- Con niveles de otra clase después: lo que falta al renumerarlos, con los pasos de la subida -->
+        <ng-container *ngIf="renumerado && !impedimento && !calculando">
+            <section class="subida__tarjeta">
+                <h2 class="subida__seccion">Sus niveles de después</h2>
+                <p class="subida__nota">Sin {{claseDeMonstruo?.Nombre}} sus niveles de después bajan {{renumerado.resumen.puestos}} {{renumerado.resumen.puestos === 1 ? 'puesto' : 'puestos'}} (los DG que le daba) y lo que va por nivel de personaje se vuelve a contar: las dotes del 1.º y cada 3, los incrementos cada 4, el máximo de rangos y su primer DG. Lo de su clase (el ataque base, las salvaciones, su tabla) no cambia.</p>
+                <app-pasos-sesion *ngIf="pasos.length > 1" [pasos]="pasos" [actual]="paso" [etiqueta]="etiquetaPaso" nombre="Lo que falta al renumerar sus niveles"></app-pasos-sesion>
+            </section>
+            <section class="subida__tarjeta" *ngIf="paso !== 'resumen'" [ngSwitch]="paso">
+                <ng-container *ngSwitchCase="'incremento'">
+                    <h2 class="subida__seccion">Incremento que le falta</h2>
+                    <p class="subida__nota">Con su nivel de personaje nuevo le toca un incremento en su {{renumerado.incremento?.nivelPersonaje}}.º nivel (Manual del jugador, pág. 22): se elige como en una subida y se apunta en ese nivel.</p>
+                    <button mat-stroked-button type="button" [disabled]="guardando" (click)="elegirIncrementoQueFalta()">Elegir el incremento</button>
+                </ng-container>
+                <ng-container *ngSwitchCase="'habilidades'">
+                    <app-reparto-rangos [motor]="svc" [titulo]="tituloDelReparto"></app-reparto-rangos>
+                </ng-container>
+                <ng-container *ngSwitchCase="'dotes'">
+                    <h2 class="subida__seccion">Dote que le falta</h2>
+                    <p class="subida__nota">Con su nivel de personaje nuevo le toca una dote en su {{renumerado.dote?.nivelPersonaje}}.º nivel (Manual del jugador, pág. 22): se elige como en una subida, con lo que tenía en ese nivel<ng-container *ngIf="renumerado.dote?.nivelPersonaje === 1">, y puede ser de las de 1.er nivel</ng-container>.</p>
+                    <button mat-stroked-button type="button" [disabled]="guardando" (click)="elegirLaDoteQueFalta()">Elegir la dote</button>
+                </ng-container>
+            </section>
+        </ng-container>
+
         <section class="subida__tarjeta" *ngIf="!impedimento && !calculando && cambios.length > 0">
             <h2 class="subida__seccion">Lo que cambia</h2>
             <table class="subida__tabla subida__tabla--resumen">
@@ -104,9 +129,9 @@
         </section>
 
         <footer class="subida__pie">
-            <button mat-button type="button" (click)="claseNueva ? empezarDeNuevo() : cancelar()">{{claseNueva ? 'Empezar de nuevo' : 'Cancelar'}}</button>
+            <button mat-button type="button" (click)="eleccionEmpezada ? empezarDeNuevo() : cancelar()">{{eleccionEmpezada ? 'Empezar de nuevo' : 'Cancelar'}}</button>
             <span class="subida__hueco"></span>
-            <ng-container *ngIf="ganaNivel && claseNueva" [ngSwitch]="paso">
+            <ng-container *ngIf="(ganaNivel && claseNueva) || renumerado" [ngSwitch]="paso">
                 <button *ngSwitchCase="'habilidades'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades()" (click)="cerrarHabilidades()">Continuar</button>
                 <button *ngSwitchCase="'conjuros'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarSesionConjuros()" (click)="cerrarConjuros()">Continuar</button>
             </ng-container>

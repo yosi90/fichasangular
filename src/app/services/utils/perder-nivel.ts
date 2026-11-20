@@ -12,6 +12,7 @@ import { CARACTERISTICAS_DEL_ALTA, sacarDoteDeLaFicha, sacarPrimero } from './co
 import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
 import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
+import { mismoExtraDeHabilidad } from './habilidad-extra-visible';
 import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 
 /*
@@ -331,12 +332,12 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
                     break;
                 }
                 case 'rangos': {
-                    const h = col.habilidades.base.find((x: any) => toInt(x?.idHabilidad) === id && Math.max(0, toInt(x?.idExtra)) === Math.max(0, toInt(e.idExtra)));
+                    const h = col.habilidades.base.find((x: any) => toInt(x?.idHabilidad) === id && mismoExtraDeHabilidad(x?.idExtra, e.idExtra));
                     if (h) {
                         const quita = Math.min(toInt(h.rangos), Math.max(0, toInt(e.valor)));
                         h.rangos = toInt(h.rangos) - quita;
                         if (quita > 0)
-                            quitado.rangos.push({ idHabilidad: id, idExtra: toInt(e.idExtra), rangos: quita });
+                            quitado.rangos.push({ idHabilidad: id, idExtra: Math.max(0, toInt(e.idExtra)), rangos: quita });
                     }
                     break;
                 }
@@ -368,11 +369,11 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
             if (!h)
                 break;
             h.rangos = toInt(h.rangos) - 1;
-            const ya = quitado.rangos.find((r) => r.idHabilidad === toInt(h.idHabilidad) && r.idExtra === toInt(h.idExtra));
+            const ya = quitado.rangos.find((r) => r.idHabilidad === toInt(h.idHabilidad) && mismoExtraDeHabilidad(r.idExtra, h.idExtra));
             if (ya)
                 ya.rangos += 1;
             else
-                quitado.rangos.push({ idHabilidad: toInt(h.idHabilidad), idExtra: toInt(h.idExtra), rangos: 1 });
+                quitado.rangos.push({ idHabilidad: toInt(h.idHabilidad), idExtra: Math.max(0, toInt(h.idExtra)), rangos: 1 });
         }
         if (clase?.Conjuros?.Conocidos_total || clase?.Conjuros?.Conocidos_nivel_a_nivel || (entrada.colecciones?.conjurosConocidos ?? []).some((c) => toInt(c.idClase) === idClase))
             avisos.push('No se sabe qué conjuros conocidos ganó en ese nivel: quita los que toquen con «Corregir la ficha».');

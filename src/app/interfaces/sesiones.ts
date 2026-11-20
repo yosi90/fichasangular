@@ -358,6 +358,11 @@ export interface RespuestaVuelta extends RespuestaSesion {
         constitucion: { antes: number; despues: number; } | null;
         /** Sin ningún DG, el 1.er nivel que gana (su clase); `null` si no. */
         nivelNuevo: { clase: { id: number; nombre: string; }; } | null;
+        /**
+         * Con niveles de otra clase después, los puestos que bajan y el nivel que pasa a ser su primer DG (o `null`); `null`
+         * sin niveles después.
+         */
+        renumerado: { puestos: number; primerDg: { clase: { id: number; nombre: string; }; nivelClase: number; } | null; } | null;
         nepAntes: number | null;
         nepDespues: number | null;
         pxAntes: number;

@@ -252,7 +252,7 @@ describe('SesionesService', () => {
             expect(respuesta.vuelta).toEqual({
                 idEvento: 103, numeroSesion: 1, pierdeNivel: true, razaAntes: { id: 1009, nombre: 'Engendro vampírico' }, raza: { id: 2, nombre: 'Enano' },
                 claseDeMonstruo: { id: 482, nombre: 'Engendro vampírico' }, nivelesQuitados: 1, perdida: { clase: { id: 7, nombre: 'Guerrero' }, nivelClase: 4 },
-                constitucion: { antes: 14, despues: 14 }, nivelNuevo: null, nepAntes: 5, nepDespues: 3, pxAntes: 8000, pxDespues: 4500,
+                constitucion: { antes: 14, despues: 14 }, nivelNuevo: null, renumerado: null, nepAntes: 5, nepDespues: 3, pxAntes: 8000, pxDespues: 4500,
             });
             const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
             expect([ultimo.tipo, ultimo.texto, ultimo.px, ultimo.idClase, ultimo.deshacible]).toEqual(['vuelta_a_la_vida', texto, -3500, 482, true]);
@@ -270,6 +270,17 @@ describe('SesionesService', () => {
             }));
             const sinDg = (await servicio.devolverLaVida(129, cuerpo)).vuelta;
             expect([sinDg.nivelNuevo, sinDg.pxDespues]).toEqual([{ clase: { id: 9, nombre: 'Guerrero' } }, 500]);
+
+            // Con niveles de otra clase después: los puestos que bajan y el nivel que pasa a ser su primer DG.
+            http.request.and.returnValue(of({
+                ...venta, reglasIgnoradas: [],
+                vuelta: { idEvento: 106, pierdeNivel: false, perdida: null, nivelesQuitados: 4, renumerado: { puestos: 4, primerDg: { clase: { id: 9, nombre: 'Guerrero' }, nivelClase: 1 } } },
+            }));
+            expect((await servicio.devolverLaVida(129, cuerpo)).vuelta.renumerado).toEqual({ puestos: 4, primerDg: { clase: { id: 9, nombre: 'Guerrero' }, nivelClase: 1 } });
+            http.request.and.returnValue(of({
+                ...venta, reglasIgnoradas: [], vuelta: { idEvento: 107, pierdeNivel: false, perdida: null, nivelesQuitados: 4, renumerado: { puestos: 2, primerDg: null } },
+            }));
+            expect((await servicio.devolverLaVida(129, cuerpo)).vuelta.renumerado).toEqual({ puestos: 2, primerDg: null });
 
             // Lo que pierde va a `nivelesPerdidos` con la causa `revivir` y sin restablecimiento.
             http.request.and.returnValue(of({

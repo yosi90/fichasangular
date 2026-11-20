@@ -73,7 +73,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
-import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
+import { extraHabilidadElegido, idExtraHabilidadParaGuardar, mismoExtraDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { ajustesCaracteristicaDeRaciales, caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -103,7 +103,8 @@ import {
 } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
 import {
-    apuntarEleccion, construirNivelesCreacion, nivelDelOrden, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_IDIOMAS_INICIALES, RefNivelTomado,
+    apuntarEleccion, construirNivelesCreacion, nivelDelOrden, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
+    origenDotePorNivelDePersonaje, RefNivelTomado,
 } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
@@ -2538,11 +2539,12 @@ export class NuevoPersonajeService {
      * de monstruo, *Libris Mortis*, pág. 35) no da puntos de habilidad, tampoco los extra de la raza: van con los DG.
      */
     iniciarDistribucionHabilidadesPorClase(clase: Clase,
-        nivel: { nivelClase?: number; primerNivel?: boolean; modInteligencia?: number; } = {}): boolean {
+        nivel: { nivelClase?: number; primerNivel?: boolean; modInteligencia?: number; puntos?: number; } = {}): boolean {
         // Sin `nivel`, el nivel que se acaba de aplicar; la corrección de la ficha (`abrirPasoDelRepartoDeRangos`) da el
-        // de un nivel de antes, con la Inteligencia que tenía entonces.
+        // de un nivel de antes, con la Inteligencia que tenía entonces, y la vuelta a la vida (`abrirRepartoEnNivel`), los
+        // puntos que se reparten en él (`puntos`).
         const daDg = daDgEnNivel(clase, nivel.nivelClase ?? this.obtenerNivelActualClase(clase?.Nombre ?? ''));
-        const total = !daDg ? 0 : puntosHabilidadNivelClase({
+        const total = nivel.puntos !== undefined ? Math.max(0, toInt(nivel.puntos)) : !daDg ? 0 : puntosHabilidadNivelClase({
             puntosClase: toNumber(clase?.Puntos_habilidad?.Valor),
             modInteligencia: nivel.modInteligencia ?? toNumber(this.personajeCreacion?.ModInteligencia),
             primerNivelPersonaje: nivel.primerNivel ?? this.esPrimerNivelDelPersonaje(),
@@ -5238,11 +5240,11 @@ export class NuevoPersonajeService {
         if (pendiente.fuente === 'nivel') {
             const nivelProgresion = Math.max(0, toInt(pendiente?.nivelProgresion));
             if (nivelProgresion > 0)
-                return `Dote adicional por nivel ${nivelProgresion}`;
+                return origenDotePorNivelDePersonaje(nivelProgresion);
         }
 
         const prefijos: Record<DoteFuentePendiente, string> = {
-            nivel: 'Dote por nivel',
+            nivel: ORIGEN_DOTE_POR_NIVEL,
             adicional: 'Dote adicional',
             raza: ORIGEN_DOTE_ADICIONAL_DE_RAZA,
             raza_dg: 'DGs de raza',
@@ -11919,6 +11921,9 @@ export class NuevoPersonajeService {
             .find((d) => toInt(d?.Dote?.Id) === toInt(q.idDote) && toInt(d?.Contexto?.Id_extra) === toInt(q.idExtra)))
             .filter((d): d is DoteContextual => !!d);
         this.quitarLoDelNivelPerdido(cambios, this.caracteristicaQueBajaLaPerdida(cambios));
+        const clase = cambios.idClase ? this.claseDelCatalogo(cambios.idClase) : null;
+        if (clase && !(pj.desgloseClases ?? []).some((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre ?? '')))
+            this.olvidarHabilidadesDeClase(clase);
         dotes.forEach((quitada) => this.quitarDeLaListaDeDotes(quitada));
         (cambios.especialesQuitados ?? []).forEach((q) => {
             const i = (pj.Claseas ?? []).findIndex((e) => toInt(e?.Id) === toInt(q.idEspecial) && toInt(e?.Id_extra) === toInt(q.idExtra));
@@ -11945,6 +11950,23 @@ export class NuevoPersonajeService {
         this.recalcularDerivadasPorCombate();
     }
 
+    /**
+     * Sin ningún nivel de `clase` (los perdió todos): sus habilidades dejan de ser de clase por ella, y las que solo lo eran
+     * por ella dejan de serlo del todo, con su tope a la mitad (*Manual del jugador*, pág. 62: es de clase si lo es de
+     * cualquiera de las clases que tiene). El Esconderse del engendro vampírico que vuelve a la vida.
+     */
+    private olvidarHabilidadesDeClase(clase: Clase): void {
+        const origen = origenDeClase(clase?.Nombre);
+        const suyas = this.habilidadesDeClasePorOrigen[origen] ?? [];
+        delete this.habilidadesDeClasePorOrigen[origen];
+        const otras = new Set(Object.values(this.habilidadesDeClasePorOrigen).flat());
+        (this.personajeCreacion?.Habilidades ?? []).forEach((habilidad) => {
+            const clave = claveHabilidad(habilidad);
+            if (suyas.includes(clave) && !otras.has(clave))
+                habilidad.Clasea = false;
+        });
+    }
+
     /** La característica que baja el incremento del nivel perdido, con su base de ahora (sin la raza), o `null`. */
     private caracteristicaQueBajaLaPerdida(cambios: CambiosDePerdidaDeNivel): { clave: Caracteristica; valor: number; } | null {
         const base = this.estadoFlujo.ventajas.baseCaracteristicas;
@@ -11964,8 +11986,9 @@ export class NuevoPersonajeService {
                 .map((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre ?? '') ? { ...c, Nivel: toNumber(c.Nivel) - 1 } : c)
                 .filter((c) => toNumber(c.Nivel) > 0);
         (cambios.rangos ?? []).forEach((r) => {
+            // Sin extra, la habilidad guarda -1 y la elección no lo lleva (0): son la misma.
             const h = (pj.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(r.idHabilidad)
-                && idExtraHabilidadParaGuardar(x) === toInt(r.idExtra));
+                && mismoExtraDeHabilidad(idExtraHabilidadParaGuardar(x), r.idExtra));
             if (h)
                 h.Rangos = Math.max(0, toNumber(h.Rangos) - toInt(r.rangos));
         });
@@ -12225,8 +12248,11 @@ export class NuevoPersonajeService {
             (e) => ({ id: toInt(e?.Id), extra: Math.max(0, toInt(e?.Id_extra)) }));
     }
 
-    /** El modificador de Inteligencia al tomar el nivel `indice` de su orden (sin los incrementos de después); −1, antes del primero. */
-    private modInteligenciaAlNivel(indice: number): number {
+    /**
+     * El modificador de Inteligencia al tomar el nivel `indice` de su orden (sin los incrementos de después); −1, antes del
+     * primero. Lo usan el reparto de la corrección y la vuelta a la vida (los ×4 del nivel que pasa a ser su primer DG).
+     */
+    modInteligenciaAlNivel(indice: number): number {
         const orden = this.personajeCreacion?.Orden_niveles ?? [];
         const idInteligencia = CARACTERISTICAS.indexOf('Inteligencia') + 1;
         const despues = orden.slice(Math.max(0, indice + 1)).flatMap((n) => n?.elecciones ?? [])
@@ -12291,6 +12317,57 @@ export class NuevoPersonajeService {
         if (abierto)
             this.estadoFlujo.habilidades.nivelPersonajeReferencia = Math.max(1, toInt(paso.nivelPersonaje));
         return abierto && toInt(this.estadoFlujo.habilidades.puntosTotales) > 0;
+    }
+
+    // --- Lo que cambia en un nivel ya hecho (la vuelta a la vida con niveles después) -----------------------------------
+
+    /**
+     * Abre el reparto de `puntos` en el nivel `indice` de su orden, ya hecho: con el coste de la clase de ese nivel y el tope
+     * de su nivel de personaje de ahora; los rangos se apuntan en ese nivel al cerrarlo (`cerrarDistribucionHabilidades`).
+     * Lo usa la vuelta a la vida con niveles después (los puntos que vuelven de los rangos que pasan del máximo y los ×4
+     * del nivel que pasa a ser su primer DG). `false` sin ese nivel, sin su clase o sin puntos.
+     */
+    abrirRepartoEnNivel(indice: number, puntos: number): boolean {
+        const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(indice)];
+        const clase = nivel ? this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel.idClase)) : undefined;
+        if (!nivel || !clase || toInt(puntos) < 1)
+            return false;
+        this.nivelEnCurso = { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) };
+        return this.iniciarDistribucionHabilidadesPorClase(clase, { nivelClase: toInt(nivel.nivelClase), puntos: toInt(puntos) });
+    }
+
+    /**
+     * Si un rango de la habilidad comprado en un nivel de `clase` costó 1 punto (es de esa clase, o de todas: los raciales)
+     * o 2. Sin lo anotado de esa clase (un borrador de antes), si la tiene marcada de clase.
+     */
+    esHabilidadDeClaseDe(habilidad: Personaje['Habilidades'][number], clase: Clase): boolean {
+        const clave = claveHabilidad(habilidad);
+        const deLaClase = this.habilidadesDeClasePorOrigen[origenDeClase(clase?.Nombre)];
+        return this.habilidadesSiempreDeClase().includes(clave) || (Array.isArray(deLaClase) ? deLaClase.includes(clave) : !!habilidad?.Clasea);
+    }
+
+    /**
+     * Un incremento de característica (+1) pendiente, apuntado en el nivel `indice` de su orden, ya hecho: el que le falta al
+     * volver a contar los de cada 4 niveles de personaje (la vuelta a la vida con niveles después). Se resuelve con
+     * `aplicarAumentosCaracteristica`, que lo apunta en ese nivel. `false` sin ese nivel.
+     */
+    registrarIncrementoEnNivel(indice: number): boolean {
+        const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(indice)];
+        if (!nivel)
+            return false;
+        const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel.idClase));
+        this.aumentosPendientesCaracteristica = [...this.aumentosPendientesCaracteristica, {
+            ...this.crearPendienteAumento(1, `${clase?.Nombre ?? 'Clase'} nivel ${toInt(nivel.nivelClase)}`, 'Aumento por progresion cada 4 niveles efectivos'),
+            nivel: { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) },
+        }];
+        return true;
+    }
+
+    /** Lo elegido en el nivel `indice` de su orden (su registro), cambiado: sin el incremento que pierde, con los rangos que quedan. */
+    fijarEleccionesDelNivel(indice: number, elecciones: PersonajeCreateNivelEleccionDto[]): void {
+        const nivel = this.personajeCreacion?.Orden_niveles?.[toInt(indice)];
+        if (nivel)
+            nivel.elecciones = (elecciones ?? []).map((e) => ({ ...e }));
     }
 
     /** El estado del motor para el borrador de la subida (el mismo que el de la creación, sin la cuenta). */

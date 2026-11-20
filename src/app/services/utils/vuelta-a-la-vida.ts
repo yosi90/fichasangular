@@ -1,15 +1,20 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { NivelPerdido } from 'src/app/interfaces/sesiones';
-import { EspecialSustituido } from 'src/app/interfaces/raza';
+import { EspecialSustituido, Raza } from 'src/app/interfaces/raza';
 import { CambioPlantilla, filasDeCaracteristicas, filasDeRasgosRaciales, filasDelTipo, filasSinPoderUsar } from './adquirir-plantilla';
-import { LISTAS_DE_LA_RAZA, nepTrasLaMutacion, RazaDelNep, SE_CONSERVAN_EN_MUTACION } from './adquirir-raza-mutada';
+import { LISTAS_DE_LA_RAZA, nepTrasLaMutacion, RangosQuitados, RazaDelNep, SE_CONSERVAN_EN_MUTACION } from './adquirir-raza-mutada';
 import { modificadorCaracteristica } from './caracteristicas';
 import { ContextoCompatibles, esClaseCompatibleConRestringida } from './clase-elegibilidad';
-import { dgsDeClase, filaDeNivel } from './clase-niveles';
+import {
+    ClaseConTabla, daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje, dgsDeClase, filaDeNivel, tieneTablaPorNivel,
+} from './clase-niveles';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
+import { mismoExtraDeHabilidad } from './habilidad-extra-visible';
+import { esDotePorNivelDePersonaje } from './niveles-creacion';
 import { toInt } from './normalizacion';
+import { puntosHabilidadNivelClase } from './puntos-habilidad';
 import {
     CONSTITUCION_PERDIDA, FilaPerdida, marcarDotesSinPrerrequisitos, ordenConocido, ordenPorConocer, pxTrasPerder, quitadoVacio, ResultadoPerdida,
 } from './perder-nivel';
@@ -25,7 +30,9 @@ import { diferencia, fichaConLoDelMotor, pgTrasCambioDeCon, PgSubida, puntosGolp
  * con *resurrección*, *deseo* o *milagro*, pierde además el último nivel de clase que le queda, como en «Perder un nivel»
  * (`perder-nivel.ts`). Si sin la clase de monstruo no le queda ningún DG, gana el 1.er nivel de una clase básica, como al
  * crear (decisión del propietario del 2026-11-20; «Sin ningún DG» del contrato), y con *resurrección* paga con 2 puntos de
- * Constitución. Todo sale de los datos de la raza y de sus clases, nunca de su nombre. Lo usa
+ * Constitución. Si después de la clase de monstruo tomó niveles de otra clase, con el orden conocido, se renumeran y lo que
+ * va por nivel de personaje se vuelve a contar («Con niveles de otra clase después» del contrato; abajo, «la
+ * renumeración»). Todo sale de los datos de la raza y de sus clases, nunca de su nombre. Lo usa
  * `components/sesiones/devolver-la-vida`.
  */
 
@@ -55,7 +62,7 @@ export const NO_SIRVEN_PARA_LA_VUELTA = 'Revivir a los muertos y reencarnar no s
 
 /** Las frases de los `409` del contrato (`docs/publica/ERRORES.md`), para enseñarlo deshabilitado antes de mandarlo. */
 export const MOTIVO_VUELTA_SIN_CLASE_DE_MONSTRUO = 'Solo se devuelve así la vida a quien se convirtió en muerto viviente con una clase de monstruo.';
-export const MOTIVO_VUELTA_NIVELES_DESPUES = 'Después de la clase de monstruo tomó niveles de otra clase: por ahora, eso lo corrige el máster.';
+export const MOTIVO_VUELTA_NIVELES_DESPUES = 'Después de la clase de monstruo tomó niveles de otra clase y el orden de sus niveles está por conocer: eso lo corrige el máster.';
 /** `409 perdida_sin_niveles_de_clase`, con resurrección: el nivel de más sería un DG racial. */
 export const MOTIVO_VUELTA_NIVEL_DE_MAS_RACIAL = 'Sin la clase de monstruo no tiene niveles de clase: con resurrección, deseo o milagro perdería un DG racial, y eso aún no se puede apuntar. Con resurrección verdadera, sí.';
 
@@ -67,21 +74,27 @@ export function motivoSinConstitucionParaVolver(constitucion: number | null): st
 }
 
 /**
- * Si después de la clase de monstruo tomó niveles de otra clase (`409 vuelta_niveles_despues`): con el orden real, un nivel
- * de otra clase detrás del primero de la de monstruo; con el orden por conocer, si la terminó (`Nivel_max_claseo`) y tiene
- * otras (se termina antes de tomar otra, así que fueron después).
+ * Si después de la clase de monstruo tomó niveles de otra clase: `ninguno`; `conocidos`, con el orden conocido en los de la
+ * clase de monstruo y en todos los de después (se puede: contrato, «Con niveles de otra clase después»); o `por_conocer`, si
+ * alguno lo tiene por conocer (`409 vuelta_niveles_despues`: no se sabe qué nivel de personaje era cada uno). Con el orden
+ * real, un nivel de otra clase detrás del primero de la de monstruo; con todo el orden por conocer, si la terminó
+ * (`Nivel_max_claseo`) y tiene otras (se termina antes de tomar otra, así que fueron después).
  */
-export function tomoNivelesDespues(niveles: PersonajeCreateNivelDto[] | undefined, idClase: number,
-    clase: Pick<Clase, 'Nivel_max_claseo'> | null | undefined, clases: ReadonlyArray<{ idClase: number; nivel: number; }>): boolean {
+export function nivelesDespuesDeLaClase(niveles: PersonajeCreateNivelDto[] | undefined, idClase: number,
+    clase: Pick<Clase, 'Nivel_max_claseo'> | null | undefined, clases: ReadonlyArray<{ idClase: number; nivel: number; }>)
+    : 'ninguno' | 'conocidos' | 'por_conocer' {
     const id = toInt(idClase);
     const lista = niveles ?? [];
     if (ordenPorConocer(lista)) {
         const nivel = toInt(clases.find((c) => toInt(c.idClase) === id)?.nivel);
         const terminada = toInt(clase?.Nivel_max_claseo) > 0 && nivel >= toInt(clase?.Nivel_max_claseo);
-        return terminada && clases.some((c) => toInt(c.idClase) !== id && toInt(c.nivel) > 0);
+        return terminada && clases.some((c) => toInt(c.idClase) !== id && toInt(c.nivel) > 0) ? 'por_conocer' : 'ninguno';
     }
     const primera = lista.findIndex((n) => toInt(n?.idClase) === id);
-    return primera >= 0 && lista.slice(primera).some((n) => toInt(n?.idClase) !== id && ordenConocido(n));
+    const desde = primera >= 0 ? lista.slice(primera) : [];
+    if (!desde.some((n) => toInt(n?.idClase) !== id && ordenConocido(n)))
+        return 'ninguno';
+    return desde.every((n) => ordenConocido(n)) ? 'conocidos' : 'por_conocer';
 }
 
 /** Lo que se puede hacer: por qué no se puede (`motivo`), por qué no con *resurrección* (`motivoConResurreccion`) y sus DG. */
@@ -96,6 +109,11 @@ export interface EstadoDeLaVuelta {
     conOtrasClases: boolean;
     /** Si sin la clase de monstruo no le queda ningún DG: gana el 1.er nivel de una clase básica (contrato, «Sin ningún DG»). */
     ganaNivel: boolean;
+    /**
+     * Si después de la clase de monstruo tomó niveles de otra clase, con su orden conocido: se renumeran (contrato, «Con
+     * niveles de otra clase después»).
+     */
+    conNivelesDespues: boolean;
 }
 
 /**
@@ -113,6 +131,7 @@ export function estadoDeLaVuelta(d: {
 }): EstadoDeLaVuelta {
     const vacio: EstadoDeLaVuelta = {
         motivo: null, motivoConResurreccion: null, nivelesDeLaClase: 0, dgsSinLaClase: Math.max(0, toInt(d.dgs)), conOtrasClases: false, ganaNivel: false,
+        conNivelesDespues: false,
     };
     const clase = d.claseDeMonstruo;
     if (!clase || toInt(clase.Id) < 1)
@@ -121,8 +140,11 @@ export function estadoDeLaVuelta(d: {
     const nivelesDeLaClase = toInt(d.clases.find((c) => toInt(c.idClase) === id)?.nivel);
     const conOtrasClases = d.clases.some((c) => toInt(c.idClase) !== id && toInt(c.nivel) > 0);
     const dgsSinLaClase = Math.max(0, toInt(d.dgs) - dgsDeClase(clase, nivelesDeLaClase));
-    const estado: EstadoDeLaVuelta = { ...vacio, nivelesDeLaClase, dgsSinLaClase, conOtrasClases, ganaNivel: dgsSinLaClase < 1 };
-    if (tomoNivelesDespues(d.niveles, id, clase, d.clases))
+    const despues = nivelesDespuesDeLaClase(d.niveles, id, clase, d.clases);
+    const estado: EstadoDeLaVuelta = {
+        ...vacio, nivelesDeLaClase, dgsSinLaClase, conOtrasClases, ganaNivel: dgsSinLaClase < 1, conNivelesDespues: despues === 'conocidos',
+    };
+    if (despues === 'por_conocer')
         return { ...estado, motivo: MOTIVO_VUELTA_NIVELES_DESPUES };
     // Sin una puntuación guardada no vuelve con ninguna (`409 perdida_sin_constitucion`).
     if (d.constitucion === null)
@@ -292,6 +314,11 @@ export interface EntradaFichaVuelta {
     /** Las dotes que se quedan sin un prerrequisito (`sinPrerrequisitos`) y las que lo vuelven a cumplir (sin la marca). */
     marcar: ReadonlyArray<{ idDote: number; idExtra: number; origen?: string; }>;
     desmarcar: ReadonlyArray<{ idDote: number; idExtra: number; origen?: string; }>;
+    /**
+     * Con niveles de otra clase después, la dote por nivel de personaje que le faltaba (como la da el cuerpo del motor): la
+     * única que se añade (contrato, «Con niveles de otra clase después»).
+     */
+    dotesNuevas?: ReadonlyArray<Record<string, any>>;
 }
 
 /**
@@ -330,7 +357,7 @@ export function fichaDeLaVuelta(d: EntradaFichaVuelta): PersonajeCreateRequestDt
     const dotes: any[] = [...(colSin.dotes ?? [])].map((x) => ({ ...x }));
     diferencia(colA.dotes ?? [], colD.dotes ?? []).quitados
         .forEach((q) => sacarDoteDeLaFicha(dotes, toInt(q['idDote']), toInt(q['idExtra']), `${q['origen'] ?? ''}`.trim() || null));
-    col.dotes = dotes;
+    col.dotes = [...dotes, ...(d.dotesNuevas ?? []).map((x) => ({ ...x }))];
     // Los idiomas: los que le quedan, sin los que solo traía la raza mutada.
     const idiomasQuitados = diferencia(colA.idiomas ?? [], colD.idiomas ?? []).quitados.map((i) => toInt(i['idIdioma']));
     const idiomas = [...(colSin.idiomas ?? [])];
@@ -341,8 +368,275 @@ export function fichaDeLaVuelta(d: EntradaFichaVuelta): PersonajeCreateRequestDt
     col.especiales = especialesDevueltos(colSin.especiales ?? [], d.sustituidos, d.deLasTablas,
         (e: any) => ({ id: toInt(e?.idEspecial), extra: Math.max(0, toInt(e?.idExtra)) }));
     if (ficha.decisionesHomebrew)
-        ficha.decisionesHomebrew = sinDecisionesDeDotesQueNoTiene(ficha.decisionesHomebrew, dotes);
+        ficha.decisionesHomebrew = sinDecisionesDeDotesQueNoTiene(ficha.decisionesHomebrew, col.dotes);
     return marcarDotesSinPrerrequisitos(ficha, d.marcar, d.desmarcar);
+}
+
+// --- Con niveles de otra clase después: la renumeración -------------------------------------------------------------
+//
+// Contrato, «Con niveles de otra clase después», y dictamen del máster de Rol del 2026-11-20, parte B: quitar los niveles de
+// la clase de monstruo, que no son los últimos, baja el nivel de personaje de los de después, y con él lo que va por nivel
+// de personaje (las dotes y los incrementos, el máximo de rangos y el primer DG). El nivel de personaje son los DG totales,
+// sin el ajuste de nivel; un nivel sin DG (*Libris Mortis*) no lo sube.
+
+/** La clave de un nivel de su registro (su clase y su nivel en ella), que no cambia al quitar otros. */
+export function claveDelNivel(nivel: Pick<PersonajeCreateNivelDto, 'idClase' | 'nivelClase'>): string {
+    return `${toInt(nivel?.idClase)}:${toInt(nivel?.nivelClase)}`;
+}
+
+/** Un nivel de su registro con su nivel de personaje. */
+export interface NivelDePersonaje {
+    /** Su lugar en el registro. */
+    indice: number;
+    idClase: number;
+    nivelClase: number;
+    /** Los DG hasta él, con los de antes de su primer nivel (raciales que cuentan y de plantilla). */
+    nivelPersonaje: number;
+    daDg: boolean;
+    /** Si su clase tiene tabla por nivel (las de monstruo): sus dotes van por su tabla, no cada 3 niveles de personaje. */
+    conTabla: boolean;
+}
+
+/** Los DG de antes de su primer nivel de clase (los raciales que cuentan y los de plantilla): los suyos sin los de sus niveles. */
+export function dgsAntesDeSusNiveles(dgs: number, niveles: PersonajeCreateNivelDto[] | undefined,
+    clase: (idClase: number) => ClaseConTabla | null | undefined): number {
+    const deSusNiveles = (niveles ?? []).filter((n) => daDgEnNivel(clase(toInt(n?.idClase)), toInt(n?.nivelClase))).length;
+    return Math.max(0, toInt(dgs) - deSusNiveles);
+}
+
+/** Cada nivel de su registro con su nivel de personaje (`dgsAntes`, los DG de antes del primero: `dgsAntesDeSusNiveles`). */
+export function nivelesDePersonaje(niveles: PersonajeCreateNivelDto[] | undefined, clase: (idClase: number) => ClaseConTabla | null | undefined,
+    dgsAntes: number): NivelDePersonaje[] {
+    let nivelPersonaje = Math.max(0, toInt(dgsAntes));
+    return (niveles ?? []).map((n, indice) => {
+        const deLaClase = clase(toInt(n?.idClase));
+        const daDg = daDgEnNivel(deLaClase, toInt(n?.nivelClase));
+        if (daDg)
+            nivelPersonaje++;
+        return { indice, idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase), nivelPersonaje, daDg, conTabla: tieneTablaPorNivel(deLaClase) };
+    });
+}
+
+/** Una dote o un incremento por nivel de personaje apuntado en un nivel: su lugar en el registro y lo elegido. */
+export interface Apuntado {
+    indice: number;
+    eleccion: PersonajeCreateNivelEleccionDto;
+}
+
+/** Lo que sobra (el apuntado en el nivel más reciente) o el hito que se queda sin el suyo, de una cuenta por nivel de personaje. */
+export interface RecuentoDeHitos {
+    sobra: Apuntado | null;
+    falta: { indice: number; nivelPersonaje: number; } | null;
+}
+
+/**
+ * Lo apuntado (`apuntados`) comparado con lo que dan los hitos con el nivel nuevo (`hitos`): si sobra, el del nivel más
+ * reciente (*Guía del DM*, pág. 295); si falta, el hito que se queda sin él. Cada apuntado cubre el hito más alto que no pasa
+ * de su nivel, del más reciente al primero, y falta el más bajo sin cubrir (en el 1.er nivel, una dote «solo a 1.er nivel»).
+ * Las cuentas solo dejan sobrar o faltar uno (dictamen, punto 6).
+ */
+export function recontarHitos(hitos: ReadonlyArray<NivelDePersonaje>, apuntados: ReadonlyArray<Apuntado>): RecuentoDeHitos {
+    if (apuntados.length > hitos.length)
+        return { sobra: apuntados.reduce((ultimo, a) => a.indice >= ultimo.indice ? a : ultimo), falta: null };
+    if (apuntados.length === hitos.length)
+        return { sobra: null, falta: null };
+    const libres = [...hitos].sort((a, b) => a.indice - b.indice);
+    [...apuntados].sort((a, b) => b.indice - a.indice).forEach((a) => {
+        const i = libres.map((h) => h.indice <= a.indice).lastIndexOf(true);
+        if (i >= 0)
+            libres.splice(i, 1);
+    });
+    const hito = libres[0] ?? hitos[hitos.length - 1];
+    return { sobra: null, falta: { indice: hito.indice, nivelPersonaje: hito.nivelPersonaje } };
+}
+
+/**
+ * Las dotes y los incrementos por nivel de personaje vueltos a contar con el nivel nuevo (*Manual del jugador*, pág. 22,
+ * tabla 3-2): `niveles`, los que se quedan con sus elecciones; `ahora`, su nivel de personaje nuevo (`nivelesDePersonaje`), y
+ * `antes`, el que tenía cada uno (por `claveDelNivel`). Las dotes, las de nivel de personaje (`esDotePorNivelDePersonaje`)
+ * de los niveles sin tabla, con un hito en el 1.º y cada 3; en una clase con tabla van por su tabla y no cuentan. Los
+ * incrementos, cada 4: el último apuntado en un nivel que lo daba por su nivel de personaje de antes (el de una aptitud de
+ * su clase se apunta antes y no cuenta).
+ */
+export function recuentoPorNivelDePersonaje(niveles: PersonajeCreateNivelDto[], ahora: ReadonlyArray<NivelDePersonaje>,
+    antes: ReadonlyMap<string, NivelDePersonaje>): { dotes: RecuentoDeHitos; incrementos: RecuentoDeHitos; } {
+    const dotes: Apuntado[] = [];
+    const incrementos: Apuntado[] = [];
+    ahora.forEach((n) => {
+        const elecciones = niveles[n.indice]?.elecciones ?? [];
+        if (!n.conTabla)
+            elecciones.filter((e) => esDotePorNivelDePersonaje(e)).forEach((eleccion) => dotes.push({ indice: n.indice, eleccion }));
+        const previo = antes.get(claveDelNivel(n));
+        const incremento = [...elecciones].reverse().find((e) => e.tipo === 'incremento');
+        if (incremento && previo?.daDg && daIncrementoPorNivelDePersonaje(previo.nivelPersonaje))
+            incrementos.push({ indice: n.indice, eleccion: incremento });
+    });
+    return {
+        dotes: recontarHitos(ahora.filter((n) => n.daDg && !n.conTabla && daDotePorNivelDePersonaje(n.nivelPersonaje)), dotes),
+        incrementos: recontarHitos(ahora.filter((n) => n.daDg && daIncrementoPorNivelDePersonaje(n.nivelPersonaje)), incrementos),
+    };
+}
+
+/**
+ * El nivel que pasa a ser su primer DG (sin DG raciales ni de plantilla antes): el primero con DG, si ahora es su 1.er nivel
+ * de personaje y antes no lo era (`antes`, por `claveDelNivel`); `null` si no.
+ */
+export function primerDgTrasRenumerar(ahora: ReadonlyArray<NivelDePersonaje>, antes: ReadonlyMap<string, NivelDePersonaje>): NivelDePersonaje | null {
+    const primero = ahora.find((n) => n.daDg);
+    return primero && primero.nivelPersonaje === 1 && toInt(antes.get(claveDelNivel(primero))?.nivelPersonaje) > 1 ? primero : null;
+}
+
+/**
+ * Los puntos de habilidad que gana el nivel que pasa a ser su primer DG: la diferencia hasta ×4, 3 × (la base de su clase +
+ * el modificador de Inteligencia que tenía en ese nivel), y lo que su raza da de más en el primero (el humano, 4 en vez de
+ * 1: 3 más; *Manual del jugador*, págs. 13 y 62). La misma cuenta que al crear (`puntosHabilidadNivelClase`).
+ */
+export function puntosDelPrimerDg(clase: Pick<Clase, 'Puntos_habilidad'> | null | undefined, modInteligencia: number,
+    raza: Pick<Raza, 'Puntos_habilidad_extra_primer_nivel' | 'Puntos_habilidad_extra_por_nivel'> | null | undefined): number {
+    const comun = {
+        puntosClase: toInt(clase?.Puntos_habilidad?.Valor), modInteligencia: toInt(modInteligencia),
+        extraPrimerNivel: toInt(raza?.Puntos_habilidad_extra_primer_nivel), extraPorNivel: toInt(raza?.Puntos_habilidad_extra_por_nivel),
+    };
+    return Math.max(0, puntosHabilidadNivelClase({ ...comun, primerNivelPersonaje: true }) - puntosHabilidadNivelClase({ ...comun, primerNivelPersonaje: false }));
+}
+
+/**
+ * Lo que suben los PG del nivel que pasa a ser su primer DG: su dado al máximo (*Manual del jugador*, pág. 23) en lugar de
+ * lo que salió (su tirada guardada; sin ella, la media, y no es exacto), con la Constitución de ahora y al menos 1 cada uno.
+ */
+export function pgDelPrimerDg(pg: PersonajeCreateNivelDto['pg'] | null | undefined, caras: number, modConstitucion: number)
+    : { suma: number; exacto: boolean; } {
+    if (pg?.maximo)
+        return { suma: 0, exacto: true };
+    const dado = Math.max(1, toInt(caras));
+    const tirada = toInt(pg?.tirada);
+    const salio = tirada > 0 ? tirada : Math.floor(dado / 2) + 1;
+    const mod = toInt(modConstitucion);
+    return { suma: Math.max(1, dado + mod) - Math.max(1, salio + mod), exacto: tirada > 0 };
+}
+
+/** Unos rangos quitados de lo comprado en un nivel: su lugar en el registro, la habilidad, cuántos y lo que costó cada uno. */
+export interface RangosDelNivel extends RangosQuitados {
+    indice: number;
+    idHabilidad: number;
+    idExtra: number;
+}
+
+/**
+ * Los rangos que pasan del máximo con el nivel de personaje nuevo (`habilidades`, cada una con los que tiene y su máximo
+ * final: nivel + 3, la mitad si no es de ninguna de sus clases; *Manual del jugador*, pág. 62), quitados de lo comprado en
+ * sus niveles (sus elecciones `rangos`) desde el último hacia atrás, con lo que costó cada rango en ese nivel (`coste`). Da
+ * los niveles con sus elecciones cambiadas y lo quitado de cada uno: sus puntos vuelven a ese nivel (`puntosDevueltos`). Lo
+ * que no se compró en un nivel (los DG raciales) no se toca.
+ */
+export function rangosQueSobran(niveles: PersonajeCreateNivelDto[],
+    habilidades: ReadonlyArray<{ idHabilidad: number; idExtra: number; rangos: number; maximo: number; }>,
+    coste: (indice: number, idHabilidad: number, idExtra: number) => number): { niveles: PersonajeCreateNivelDto[]; quitados: RangosDelNivel[]; } {
+    const lista = niveles.map((n) => ({ ...n, elecciones: (n.elecciones ?? []).map((e) => ({ ...e })) }));
+    const quitados: RangosDelNivel[] = [];
+    habilidades.forEach((h) => {
+        const idHabilidad = toInt(h.idHabilidad);
+        const idExtra = Math.max(0, toInt(h.idExtra));
+        let sobra = toInt(h.rangos) - Math.max(0, toInt(h.maximo));
+        for (let i = lista.length - 1; i >= 0 && sobra > 0; i--) {
+            const elecciones = lista[i].elecciones;
+            for (let k = elecciones.length - 1; k >= 0 && sobra > 0; k--) {
+                const e = elecciones[k];
+                if (e.tipo !== 'rangos' || toInt(e.idElemento) !== idHabilidad || !mismoExtraDeHabilidad(e.idExtra, idExtra))
+                    continue;
+                const quita = Math.min(sobra, Math.max(0, toInt(e.valor)));
+                if (quita < 1)
+                    continue;
+                sobra -= quita;
+                if (quita >= toInt(e.valor))
+                    elecciones.splice(k, 1);
+                else
+                    e.valor = toInt(e.valor) - quita;
+                const ya = quitados.find((q) => q.indice === i && q.idHabilidad === idHabilidad && q.idExtra === idExtra);
+                if (ya)
+                    ya.rangos += quita;
+                else
+                    quitados.push({ indice: i, idHabilidad, idExtra, rangos: quita, coste: Math.max(1, toInt(coste(i, idHabilidad, idExtra))) });
+            }
+        }
+    });
+    return { niveles: lista, quitados };
+}
+
+/** Lo que el motor ha apuntado en cada nivel de su registro entre `antes` y `despues` (`getOrdenNiveles`), por su lugar. */
+export function eleccionesApuntadas(antes: ReadonlyArray<Pick<PersonajeCreateNivelDto, 'elecciones'>>,
+    despues: ReadonlyArray<Pick<PersonajeCreateNivelDto, 'elecciones'>>): PersonajeCreateNivelEleccionDto[][] {
+    return despues.map((n, i) => (n.elecciones ?? []).slice((antes[i]?.elecciones ?? []).length).map((e) => ({ ...e })));
+}
+
+/** Lo que enseña «Lo que cambia» de la renumeración. */
+export interface ResumenRenumerado {
+    /** Los puestos que bajan los niveles de después (los DG de la clase de monstruo). */
+    puestos: number;
+    /** El nivel de personaje del primero y del último de los de después que le quedan, antes y ahora (`null` sin ninguno). */
+    niveles: { desde: { antes: number; ahora: number; }; hasta: { antes: number; ahora: number; }; } | null;
+    /** El nivel que pasa a ser su primer DG: su clase, su nivel en ella y su lugar en el registro, su dado y los puntos ×4 que gana. */
+    primerDg: { clase: string; nivelClase: number; indice: number; caras: number; modConstitucion: number; puntos: number; } | null;
+    dotePerdida: string | null;
+    doteElegida: { nombre: string; nivelPersonaje: number; } | null;
+    incrementoPerdido: { nombre: string; antes: number; ahora: number; inteligencia: boolean; } | null;
+    incrementoElegido: { nombre: string; nivelPersonaje: number; } | null;
+    /** El máximo de rangos de una habilidad de clase con el nivel nuevo, lo que pasaba de él y lo repartido otra vez. */
+    maximoDeRangos: number;
+    rangosQuitados: Array<{ nombre: string; rangos: number; nivel: string; }>;
+    rangosRepartidos: Array<{ nombre: string; rangos: number; nivel: string; }>;
+    /** Las de prestigio que dejan de cumplir lo que piden (un ataque base, unos rangos, una dote de los niveles quitados). */
+    prestigio: Array<{ nombre: string; razones: string[]; }>;
+}
+
+/** Las filas de «Lo que cambia» de la renumeración (contrato, «Con niveles de otra clase después»). */
+export function filasDeLaRenumeracion(r: ResumenRenumerado): CambioPlantilla[] {
+    const filas: CambioPlantilla[] = [];
+    if (r.niveles) {
+        const { desde, hasta } = r.niveles;
+        const tramo = (k: 'antes' | 'ahora') => `Nivel de personaje ${desde[k] === hasta[k] ? `${desde[k]}.º` : `${desde[k]}.º a ${hasta[k]}.º`}`;
+        filas.push({
+            que: 'Niveles de después', antes: tramo('antes'), ahora: tramo('ahora'),
+            porque: `Bajan ${r.puestos} ${r.puestos === 1 ? 'puesto' : 'puestos'}: los DG de la clase de monstruo ya no cuentan. Lo de su clase (el ataque base, las salvaciones, su tabla) no cambia`,
+        });
+    }
+    if (r.primerDg) {
+        const p = r.primerDg;
+        const mod = `${p.modConstitucion < 0 ? '−' : '+'} ${Math.abs(p.modConstitucion)}`;
+        filas.push({
+            que: 'Primer DG', antes: `${p.clase} ${p.nivelClase}`, ahora: 'Pasa a ser su primer DG',
+            porque: `PG al máximo (${p.caras} ${mod} Con) y ${p.puntos} puntos de habilidad más (×4), que reparte en ese nivel (Manual del jugador, págs. 23 y 62)`,
+        });
+    }
+    const hito = 'Con su nivel de personaje nuevo';
+    if (r.dotePerdida)
+        filas.push({ que: 'Dote por nivel de personaje', antes: r.dotePerdida, ahora: '—', porque: `${hito} le sobra una: pierde la del nivel más reciente (Guía del DM, pág. 295)` });
+    if (r.doteElegida)
+        filas.push({ que: 'Dote por nivel de personaje', antes: '—', ahora: r.doteElegida.nombre, porque: `${hito} le falta la de su ${r.doteElegida.nivelPersonaje}.º nivel` });
+    if (r.incrementoPerdido) {
+        const i = r.incrementoPerdido;
+        filas.push({
+            que: `${i.nombre} (incremento)`, antes: `${i.antes}`, ahora: `${i.ahora}`,
+            porque: `${hito} le sobra un incremento: pierde el del nivel más reciente${i.inteligencia ? '; no quita puntos de habilidad, que no eran retroactivos' : ''}`,
+        });
+    }
+    if (r.incrementoElegido)
+        filas.push({ que: 'Incremento', antes: '—', ahora: `+1 ${r.incrementoElegido.nombre}`, porque: `${hito} le falta el de su ${r.incrementoElegido.nivelPersonaje}.º nivel` });
+    if (r.rangosQuitados.length)
+        filas.push({
+            que: 'Rangos que pasan del máximo', antes: r.rangosQuitados.map((q) => `${q.nombre} −${q.rangos} (${q.nivel})`).join(', '), ahora: '—',
+            porque: `El máximo, con su nivel de personaje nuevo, es ${r.maximoDeRangos} (la mitad si no es de ninguna de sus clases): se quitan desde los últimos niveles y sus puntos vuelven a ese nivel (Manual del jugador, pág. 62)`,
+        });
+    if (r.rangosRepartidos.length)
+        filas.push({
+            que: 'Rangos repartidos', antes: '—', ahora: r.rangosRepartidos.map((q) => `${q.nombre} +${q.rangos} (${q.nivel})`).join(', '),
+            porque: 'Los puntos que vuelven y los de su primer DG, en el nivel del que salen, con el coste de su clase',
+        });
+    r.prestigio.forEach((c) => filas.push({
+        que: c.nombre, antes: 'Cumple lo que pide', ahora: c.razones.join(' · ') || 'Ya no lo cumple', aviso: true,
+        porque: 'Conserva sus niveles, pero pierde sus aptitudes y no sube en ella mientras no lo cumpla (El arcano completo, pág. 17)',
+    }));
+    return filas;
 }
 
 // --- El resumen ---------------------------------------------------------------------------------------------------------
@@ -374,6 +668,8 @@ export interface EntradaCambiosVuelta {
      * sin la de la clase); `null` (o sin él) si no.
      */
     nivelNuevo?: { clase: string; caras: number; filas: CambioPlantilla[]; } | null;
+    /** Con niveles de otra clase después, lo que cambia al renumerarlos (`filasDeLaRenumeracion`); `null` (o sin él) si no. */
+    renumerado?: ResumenRenumerado | null;
 }
 
 /**
@@ -395,6 +691,8 @@ export function cambiosDeLaVuelta(e: EntradaCambiosVuelta): CambioPlantilla[] {
         filas.push({ ...e.nivelDeMas.fila, que: 'Nivel de más', porque: 'Con resurrección, deseo o milagro pierde además el último nivel de clase que le queda (Manual del jugador, pág. 285)' });
         e.nivelDeMas.loQueDaba.forEach((f) => filas.push({ ...f, porque: 'Lo daba el nivel de más' }));
     }
+    if (e.renumerado)
+        filas.push(...filasDeLaRenumeracion(e.renumerado));
     const nuevo = e.nivelNuevo ?? null;
     if (nuevo) {
         filas.push({
