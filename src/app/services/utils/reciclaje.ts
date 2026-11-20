@@ -415,6 +415,11 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
     }
 }
 
+/** Por qué no se recicla lo que necesita lo que tiene (`loQueDejariaDeCumplir`): «Lo necesita lo que tiene: …»; `null` si nada. */
+function motivoDeLoQueLoNecesita(rotas: readonly string[], articulo: 'Lo' | 'La' = 'Lo'): string | null {
+    return rotas.length > 0 ? `${articulo} necesita lo que tiene: ${rotas.join('; ')}.` : null;
+}
+
 /**
  * Las dotes del personaje (no las de su raza ni sus plantillas) y si se pueden reciclar: solo las elegidas en un hueco
  * (de nivel, adicional de una clase o de la raza: `esDoteElegida`) y que nada de lo que tiene necesite. Una que ya no
@@ -438,7 +443,7 @@ export function dotesParaReciclar(motor: NuevoPersonajeService, rasgos: HuecoDeR
         if (!motor.esDoteElegida(origen))
             return { ...fila, motivo: origen.trim() ? `No se eligió: la da ${origen.trim()}.` : 'No se eligió en ningún nivel.' };
         const rotas = loQueDejariaDeCumplir(motor, { dote: { idDote, idExtra, origen } });
-        return { ...fila, motivo: rotas.length > 0 ? `La necesita lo que tiene: ${rotas.join('; ')}.` : null };
+        return { ...fila, motivo: motivoDeLoQueLoNecesita(rotas, 'La') };
     }).filter((d) => d.idDote > 0);
 }
 
@@ -481,7 +486,8 @@ export function rasgosParaReciclar(motor: NuevoPersonajeService, aptitudes: Read
                 ...derivadas.filter((c) => c.tipo === 'especial' && !c.conservar).map((c) => ({ id: c.quita!.id, idExtra: c.quita!.idExtra })),
             ],
         });
-        return rotas.length > 0 ? { ...hueco, motivo: `Lo necesita lo que tiene: ${rotas.join('; ')}.` } : hueco;
+        const motivo = motivoDeLoQueLoNecesita(rotas);
+        return motivo ? { ...hueco, motivo } : hueco;
     });
 }
 
@@ -503,7 +509,8 @@ export function dominiosParaReciclar(motor: NuevoPersonajeService, entrada: Pers
             dotes: da.dotes.map(({ idDote, idExtra, origen }) => ({ idDote, idExtra, origen })),
             aptitudes: da.aptitudes.filter((a) => !deOtros.has(normalizarTexto(a.nombre))).map(({ id, idExtra }) => ({ id, idExtra })),
         });
-        return rotas.length > 0 ? { ...hueco, motivo: `Lo necesita lo que tiene: ${rotas.join('; ')}.` } : hueco;
+        const motivo = motivoDeLoQueLoNecesita(rotas);
+        return motivo ? { ...hueco, motivo } : hueco;
     });
 }
 
@@ -513,8 +520,7 @@ export function dominiosParaReciclar(motor: NuevoPersonajeService, entrada: Pers
  * quita en cascada; el motor se queda como estaba. `null` si no rompe nada.
  */
 export function motivoDeLaEscuela(motor: NuevoPersonajeService, plan: PlanEscuela): string | null {
-    const rotas = loQueDejariaDeCumplir(motor, { escuela: especializacionDelPlan(plan) });
-    return rotas.length > 0 ? `Lo necesita lo que tiene: ${rotas.join('; ')}.` : null;
+    return motivoDeLoQueLoNecesita(loQueDejariaDeCumplir(motor, { escuela: especializacionDelPlan(plan) }));
 }
 
 /**
@@ -531,7 +537,7 @@ export function idiomasParaReciclar(motor: NuevoPersonajeService, entrada: Perso
         if (idioma?.Secreto)
             return { idIdioma: toInt(i.idIdioma), nombre, motivo: 'Es un idioma secreto: no se recicla.' };
         const rotas = loQueDejariaDeCumplir(motor, { idioma: nombre });
-        return { idIdioma: toInt(i.idIdioma), nombre, motivo: rotas.length > 0 ? `Lo necesita lo que tiene: ${rotas.join('; ')}.` : null };
+        return { idIdioma: toInt(i.idIdioma), nombre, motivo: motivoDeLoQueLoNecesita(rotas) };
     });
     const aprendibles = catalogo
         .filter((c) => toInt(c?.Id) > 0 && !c.Secreto && !conoce.has(toInt(c.Id)) && (conHomebrew || c.Oficial !== false))
@@ -619,7 +625,7 @@ export function conocidosParaReciclar(motor: NuevoPersonajeService, entrada: Per
                     if (nivel < 0)
                         return { idConjuro: toInt(x.idConjuro), nombre, nivel, motivo: `No está en la lista de ${clase.nombre.toLowerCase()}.` };
                     const rotas = loQueDejariaDeCumplir(motor, { conjuros: [{ idConjuro: toInt(x.idConjuro), clase: clase.nombre }] });
-                    return { idConjuro: toInt(x.idConjuro), nombre, nivel, motivo: rotas.length > 0 ? `Lo necesita lo que tiene: ${rotas.join('; ')}.` : null };
+                    return { idConjuro: toInt(x.idConjuro), nombre, nivel, motivo: motivoDeLoQueLoNecesita(rotas) };
                 })
                 .sort((a, b) => a.nivel - b.nivel || a.nombre.localeCompare(b.nombre, 'es'));
             return { ...clase, conocidos };
