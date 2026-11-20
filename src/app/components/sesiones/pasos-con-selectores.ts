@@ -28,7 +28,8 @@ import { HuecoDeSelectores } from './hueco-selectores';
  * propia instancia y sus selectores en el hueco común (`HuecoDeSelectores`): el incremento de característica y las dotes
  * pendientes, las tiradas de PG que deja la campaña y el aviso de un paso que no se puede cerrar. La corrección de la ficha
  * usa además la dote que queda en un hueco (`doteElegidaEnElHueco`). Tomar un nivel de una clase con sus selectores
- * (`tomarNivelDeClase`) lo comparten la subida y la conversión en muerto viviente (el 1.er nivel de su clase de monstruo).
+ * (`tomarNivelDeClase`) lo comparten la subida, la conversión en muerto viviente (el 1.er nivel de su clase de monstruo) y
+ * la vuelta a la vida sin ningún DG (el 1.er nivel de una clase básica, elegida de `clasesParaElNivel`).
  */
 
 /** El aviso de algo que no se puede aplicar en un paso (una clase, una dote, un incremento que falta), con «Entendido». */
@@ -128,6 +129,48 @@ export function doteElegidaEnElHueco(svc: NuevoPersonajeService, pendiente: Dote
         .find((d) => toInt(d?.Dote?.Id) === toInt(seleccion.idDote) && `${(d?.Contexto as any)?.Origen ?? ''}` === `${pendiente.origenFijo}`);
     const idExtra = toInt(elegida?.Contexto?.Id_extra ?? seleccion.idExtra);
     return { idDote: toInt(seleccion.idDote), idExtra, nombre: `${elegida?.Dote?.Nombre ?? ''}`, extra: idExtra > 0 ? `${elegida?.Contexto?.Extra ?? ''}` : '' };
+}
+
+/** Una clase de la lista «Elige la clase de este nivel»: su siguiente nivel y, si no la puede tomar, por qué. */
+export interface ClaseDelNivel {
+    clase: Clase;
+    siguienteNivel: number;
+    elegible: boolean;
+    motivo: string;
+    /** Si ya tiene niveles de ella. */
+    tiene: boolean;
+    /** Si solo la impide su alineamiento y se puede tomar como homebrew («Elegir igualmente», la decisión `alineamiento_clase`). */
+    soloAlineamiento?: boolean;
+}
+
+/**
+ * Las clases que puede tomar en el nivel que gana, con el motor de la creación (`evaluarClaseParaSeleccion`: su
+ * alineamiento, sus prerrequisitos, el paladín y el monje cerrados, las clases de monstruo): las que puede tomar y, de las
+ * suyas, también las que no, con su motivo. Las homebrew, solo si la ficha ya lo es (`oficial` `false`) o ya tiene niveles
+ * de ella. Primero las suyas y después por nombre. Con `saltarAlineamiento`, también las que solo impide su alineamiento
+ * (`soloAlineamiento`), como al crear: se eligen como homebrew. La usan la subida de nivel y la vuelta a la vida sin ningún DG
+ * (el 1.er nivel de una clase básica, como al crear).
+ */
+export function clasesParaElNivel(svc: NuevoPersonajeService, oficial: boolean | null | undefined,
+    opciones: { saltarAlineamiento?: boolean; } = {}): ClaseDelNivel[] {
+    const propias = new Set((svc.PersonajeCreacion.desgloseClases ?? []).map((c) => normalizarTexto(c?.Nombre ?? '')));
+    return (((svc as any).catalogoClases ?? []) as Clase[])
+        .filter((clase) => oficial === false || clase?.Oficial !== false || propias.has(normalizarTexto(clase.Nombre)))
+        .map((clase) => {
+            const evaluacion = svc.evaluarClaseParaSeleccion(clase);
+            const soloAlineamiento = opciones.saltarAlineamiento === true && svc.esBloqueoSoloPorAlineamiento(evaluacion);
+            return {
+                clase,
+                tiene: propias.has(normalizarTexto(clase.Nombre)),
+                siguienteNivel: toInt((svc.PersonajeCreacion.desgloseClases ?? [])
+                    .find((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre))?.Nivel) + 1,
+                elegible: evaluacion.estado === 'eligible',
+                motivo: evaluacion.razones?.[0] ?? '',
+                ...(soloAlineamiento ? { soloAlineamiento: true } : {}),
+            };
+        })
+        .filter((item) => item.elegible || item.tiene || item.soloAlineamiento)
+        .sort((a, b) => Number(b.tiene) - Number(a.tiene) || a.clase.Nombre.localeCompare(b.clase.Nombre, 'es'));
 }
 
 /** Los catálogos que pide tomar un nivel de clase, solo si hacen falta (la especialización mágica y el enemigo predilecto). */

@@ -8,7 +8,12 @@ import Swal from 'sweetalert2';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
-import { avisarPaso, catalogosDelNivel, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe, tomarNivelDeClase } from 'src/app/components/sesiones/pasos-con-selectores';
+import { ClasesDelNivelComponent } from 'src/app/components/sesiones/clases-del-nivel/clases-del-nivel.component';
+import { ConjurosDelNivelComponent, nombreDeConjuro } from 'src/app/components/sesiones/conjuros-del-nivel/conjuros-del-nivel.component';
+import {
+    avisarPaso, catalogosDelNivel, ClaseDelNivel, clasesParaElNivel, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente,
+    tiradasPermitidasDe, tomarNivelDeClase,
+} from 'src/app/components/sesiones/pasos-con-selectores';
 import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { Clase } from 'src/app/interfaces/clase';
@@ -25,7 +30,7 @@ import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeServic
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { toInt } from 'src/app/services/utils/normalizacion';
 import { marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
 import {
@@ -93,7 +98,7 @@ const CADUCIDAD_BORRADOR_MS = 7 * 24 * 60 * 60 * 1000;
 @Component({
     selector: 'app-subir-nivel',
     standalone: true,
-    imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, PasosSesionComponent, RepartoRangosComponent],
+    imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, ClasesDelNivelComponent, ConjurosDelNivelComponent, PasosSesionComponent, RepartoRangosComponent],
     templateUrl: './subir-nivel.component.html',
     styleUrls: ['./subir-nivel.component.sass'],
     providers: [NuevoPersonajeService],
@@ -121,7 +126,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     private nivelesPerdidos: NivelPerdido[] = [];
     sesion: SesionPersonaje | null = null;
     experiencia: ExperienciaPersonaje | null = null;
-    clases: Array<{ clase: Clase; siguienteNivel: number; elegible: boolean; motivo: string; tiene: boolean; }> = [];
+    clases: ClaseDelNivel[] = [];
     claseElegida: Clase | null = null;
     nivelClase = 0;
 
@@ -135,7 +140,6 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     intercambio: IntercambioConjurosNivel | null = null;
     olvidado: { idConjuro: number; idClase: number; nivel: number; } | null = null;
     idNuevoIntercambio: number | null = null;
-    filtroConjuros = '';
 
     cambios: CambioSubida[] = [];
 
@@ -202,21 +206,12 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         return toInt(this.experiencia?.nivelesPorSubir) > 1;
     }
 
-    get entradaConjuros() {
-        const flujo = this.svc.getConjurosSesionActual();
-        return flujo.activa ? flujo.entradas[flujo.indiceEntradaActual] ?? null : null;
-    }
-
-    get conjurosDisponibles(): Conjuro[] {
-        return this.svc.filtrarConjurosDisponibles(this.filtroConjuros, null, this.pj?.Oficial === false);
-    }
-
     px(valor: number): string {
         return formatoPx(valor);
     }
 
     nombreConjuro(id: number): string {
-        return this.svc.CatalogoConjuros.find((c) => toInt(c?.Id) === toInt(id))?.Nombre ?? `#${id}`;
+        return nombreDeConjuro(this.svc, id);
     }
 
     /** El texto de cada paso en la fila de pasos (`app-pasos-sesion`), con su número. */
@@ -297,27 +292,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     // --- La clase ------------------------------------------------------------------------------------------------------
 
     private recalcularClases(): void {
-        const s: any = this.svc;
-        const propias = new Set((this.svc.PersonajeCreacion.desgloseClases ?? []).map((c) => normalizarTexto(c?.Nombre ?? '')));
-        this.clases = ((s.catalogoClases ?? []) as Clase[])
-            .filter((clase) => this.pj?.Oficial === false || clase?.Oficial !== false || propias.has(normalizarTexto(clase.Nombre)))
-            .map((clase) => {
-                const evaluacion = this.svc.evaluarClaseParaSeleccion(clase);
-                const tiene = propias.has(normalizarTexto(clase.Nombre));
-                return {
-                    clase,
-                    tiene,
-                    siguienteNivel: toInt((this.svc.PersonajeCreacion.desgloseClases ?? [])
-                        .find((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre))?.Nivel) + 1,
-                    elegible: evaluacion.estado === 'eligible',
-                    motivo: evaluacion.razones?.[0] ?? '',
-                };
-            })
-            .filter((item) => item.elegible || item.tiene)
+        this.clases = clasesParaElNivel(this.svc, this.pj?.Oficial)
             .map((item) => this.clasesDelReciclaje && item.elegible && !this.clasesDelReciclaje.includes(toInt(item.clase.Id))
                 ? { ...item, elegible: false, motivo: this.motivoClaseDelReciclaje() }
-                : item)
-            .sort((a, b) => Number(b.tiene) - Number(a.tiene) || a.clase.Nombre.localeCompare(b.clase.Nombre, 'es'));
+                : item);
     }
 
     private motivoClaseDelReciclaje(): string {
@@ -661,15 +639,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         void this.siguiente();
     }
 
-    // Conjuros
-    elegirConjuro(conjuro: Conjuro): void {
-        this.svc.seleccionarConjuroSesion(toInt(conjuro?.Id), this.pj?.Oficial === false);
-    }
-
-    quitarConjuro(id: number): void {
-        this.svc.quitarConjuroSesion(id);
-    }
-
+    // Conjuros (la lista es `app-conjuros-del-nivel`)
     cerrarConjuros(): void {
         if (!this.svc.puedeCerrarSesionConjuros())
             return;

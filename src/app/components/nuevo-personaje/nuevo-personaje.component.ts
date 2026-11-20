@@ -168,6 +168,7 @@ import { esEspecializable, prohibidasAlEspecializarse } from 'src/app/services/u
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
+import { ORIGEN_IDIOMAS_INICIALES } from 'src/app/services/utils/niveles-creacion';
 import { formatoNumero, textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
@@ -6956,7 +6957,7 @@ export class NuevoPersonajeComponent {
                 Descripcion: `${idioma.Descripcion ?? ''}`,
                 Secreto: !!idioma.Secreto,
                 Oficial: !!idioma.Oficial,
-                Origen: 'Idiomas iniciales',
+                Origen: ORIGEN_IDIOMAS_INICIALES,
             },
         ];
         this.recalcularClasesVisibles();

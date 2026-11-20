@@ -133,18 +133,7 @@
 
             <!-- Clase -->
             <ng-container *ngSwitchCase="'clase'">
-                <h2 class="subida__seccion">Elige la clase de este nivel</h2>
-                <p class="subida__nota">Una de las que ya tiene o una nueva a nivel 1. Las que no puede tomar dicen por qué.</p>
-                <ul class="subida__lista">
-                    <li *ngFor="let item of clases" class="subida__fila" [class.subida__fila--bloqueada]="!item.elegible">
-                        <div class="subida__fila-texto">
-                            <span class="subida__fila-nombre">{{item.clase.Nombre}} {{item.siguienteNivel}}</span>
-                            <span *ngIf="!item.elegible" class="subida__fila-motivo">{{item.motivo}}</span>
-                            <span *ngIf="item.clase.Oficial === false" class="subida__etiqueta">Homebrew</span>
-                        </div>
-                        <button mat-flat-button color="primary" type="button" [disabled]="!item.elegible" (click)="elegirClase(item.clase)">Elegir</button>
-                    </li>
-                </ul>
+                <app-clases-del-nivel [clases]="clases" (elegida)="elegirClase($event)"></app-clases-del-nivel>
             </ng-container>
 
             <!-- Incremento: se elige en el selector de la creación -->
@@ -185,22 +174,7 @@
 
             <!-- Conjuros -->
             <ng-container *ngSwitchCase="'conjuros'">
-                <h2 class="subida__seccion">Conjuros nuevos<ng-container *ngIf="entradaConjuros"> de {{entradaConjuros.claseObjetivo.nombre}}</ng-container></h2>
-                <ng-container *ngIf="entradaConjuros as e">
-                    <p class="subida__nota">Te quedan {{e.cupoPendiente.total}} por elegir.</p>
-                    <ul class="subida__chips" *ngIf="e.seleccionadosIds.length || e.autoadicionadosIds.length">
-                        <li *ngFor="let id of e.autoadicionadosIds" class="subida__chip">{{nombreConjuro(id)}} <span class="subida__etiqueta">Automático</span></li>
-                        <li *ngFor="let id of e.seleccionadosIds" class="subida__chip">{{nombreConjuro(id)}}
-                            <button mat-icon-button type="button" [attr.aria-label]="'Quitar ' + nombreConjuro(id)" (click)="quitarConjuro(id)"><mat-icon>close</mat-icon></button></li>
-                    </ul>
-                    <label class="subida__filtro">Buscar <input type="search" [(ngModel)]="filtroConjuros" name="filtroConjuros"></label>
-                    <ul class="subida__lista">
-                        <li *ngFor="let c of conjurosDisponibles" class="subida__fila">
-                            <span class="subida__fila-nombre">{{c.Nombre}}</span>
-                            <button mat-stroked-button type="button" (click)="elegirConjuro(c)">Elegir</button>
-                        </li>
-                    </ul>
-                </ng-container>
+                <app-conjuros-del-nivel [motor]="svc" [homebrew]="pj.Oficial === false"></app-conjuros-del-nivel>
             </ng-container>
 
             <!-- Intercambio -->
