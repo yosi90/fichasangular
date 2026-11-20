@@ -96,7 +96,7 @@ export interface PlanRasgo {
 }
 
 /** El nombre de una aptitud o una dote con su extra, si tiene algo que enseñar (`tieneTextoVisible`): «Dote adicional (Metamágica)». */
-export function nombreConExtra(elemento: ElementoDeRasgo | null | undefined): string {
+export function nombreConExtra(elemento: Pick<ElementoDeRasgo, 'idExtra' | 'nombre' | 'extra'> | null | undefined): string {
     if (!elemento)
         return '';
     const extra = `${elemento.extra ?? ''}`.trim();
@@ -353,7 +353,7 @@ function derivadasDe(filas: FilaConNivel[], opcion: OpcionDeRasgo | null): FilaC
     return salida;
 }
 
-const nombreDeFila = (f: FilaDeTablaDeClase) => nombreConExtra({ id: f.id, idExtra: f.idExtra, nombre: f.nombre, extra: f.extra });
+const nombreDeFila = (f: FilaDeTablaDeClase) => nombreConExtra({ idExtra: f.idExtra, nombre: f.nombre, extra: f.extra });
 
 /**
  * Lo que cambia solo con la opción (págs. 194-195): lo que su tabla da por la antigua (sus dotes y sus aptitudes, en

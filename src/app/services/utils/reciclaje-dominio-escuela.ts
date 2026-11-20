@@ -3,12 +3,14 @@ import { Clase } from 'src/app/interfaces/clase';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import type { EspecialidadArcanaSeleccion, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
-import { esConjuroDeLaClase, nivelesDeDominioDelConjuro } from 'src/app/services/nuevo-personaje.service';
+import { esConjuroDeLaClase, nivelesDeDominioDelConjuro, origenDeDominio } from 'src/app/services/nuevo-personaje.service';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
 import { nombreDeHabilidadConExtra } from './habilidad-extra-visible';
+import { coincideClaveEntidad } from './identidad-prerrequisitos';
 import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
 import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
+import { nombreConExtra } from './reciclaje-rasgos';
 import { esEspecializable, prohibidasAlEspecializarse } from './reglas-magia';
 import { diferencia } from './subida-nivel';
 
@@ -164,11 +166,6 @@ export function huecosDeDominio(motor: NuevoPersonajeService, entrada: Personaje
         });
 }
 
-/** El origen de las dotes de un dominio, como lo pone la creación («Dominio: Guerra»). */
-function origenDelDominio(nombre: string): string {
-    return `Dominio: ${nombre}`;
-}
-
 /**
  * Lo que da el dominio en el motor: sus dotes (las del personaje con su origen), sus aptitudes (las de sus datos que tiene)
  * y, de sus datos, sus habilidades de clase y sus conjuros de dominio (por nivel). Para ver qué deja de cumplir lo que
@@ -177,16 +174,15 @@ function origenDelDominio(nombre: string): string {
 export function loQueDaElDominio(motor: NuevoPersonajeService, dominio: DominioDelRasgo) {
     const pj = motor.PersonajeCreacion;
     const datos = motor.dominioDelCatalogo(dominio.id);
-    const origen = normalizarTexto(origenDelDominio(dominio.nombre));
-    const dotes = (pj.DotesContextuales ?? []).filter((d) => normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === origen)
+    const dotes = motor.dotesDelDominio(dominio.nombre)
         .map((d) => ({
             idDote: toInt(d.Dote?.Id), idExtra: toInt(d.Contexto?.Id_extra), origen: `${(d.Contexto as any)?.Origen ?? ''}`,
-            nombre: `${d.Dote?.Nombre ?? ''}${toInt(d.Contexto?.Id_extra) > 0 && `${d.Contexto?.Extra ?? ''}`.trim() ? ` (${d.Contexto?.Extra})` : ''}`,
+            nombre: nombreConExtra({ nombre: `${d.Dote?.Nombre ?? ''}`, idExtra: toInt(d.Contexto?.Id_extra), extra: `${d.Contexto?.Extra ?? ''}` }),
         }));
     const aptitudes = (datos?.Especiales ?? []).flatMap((e) => (pj.Claseas ?? [])
-        .filter((x) => (toInt(e?.Id) > 0 && toInt(x?.Id) === toInt(e.Id)) || normalizarTexto(x?.Nombre ?? '') === normalizarTexto(e?.Nombre ?? ''))
+        .filter((x) => coincideClaveEntidad({ id: toInt(x?.Id), nombre: `${x?.Nombre ?? ''}` }, e?.Id, e?.Nombre))
         .slice(0, 1).map((x) => ({ id: toInt(x.Id), idExtra: Math.max(0, toInt(x.Id_extra)), nombre: `${x.Nombre ?? ''}`, extra: `${x.Extra ?? ''}` })));
-    const habilidades = (datos?.Habilidades_claseas ?? []).map((h) => `${h.Habilidad}${toInt(h.Id_extra) > 0 && `${h.Extra ?? ''}`.trim() ? ` (${h.Extra})` : ''}`);
+    const habilidades = (datos?.Habilidades_claseas ?? []).map((h) => nombreConExtra({ nombre: `${h.Habilidad ?? ''}`, idExtra: toInt(h.Id_extra), extra: `${h.Extra ?? ''}` }));
     const conjuros = motor.CatalogoConjuros.flatMap((c) => nivelesDeDominioDelConjuro(c)
         .filter((n) => (n.id > 0 ? n.id === dominio.id : n.nombre === normalizarTexto(dominio.nombre)) && n.nivel >= 0)
         .slice(0, 1).map((n) => ({ nombre: `${c.Nombre}`, nivel: n.nivel })))
@@ -249,7 +245,7 @@ export function fichaConElDominio(entrada: PersonajeCreateRequestDto, plan: Plan
 
     const colA: any = motor?.antes.colecciones ?? {};
     const colD: any = motor?.despues.colecciones ?? {};
-    const origenes = new Set([origenDelDominio(hueco.tiene.nombre), origenDelDominio(pone.nombre)].map((n) => normalizarTexto(n)));
+    const origenes = new Set([origenDeDominio(hueco.tiene.nombre), origenDeDominio(pone.nombre)].map((n) => normalizarTexto(n)));
     const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
     const deDotes = diferencia((colA.dotes ?? []).filter((d: any) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`))),
         (colD.dotes ?? []).filter((d: any) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`))));

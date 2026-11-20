@@ -39,7 +39,7 @@ import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
 import { esPlantillaLicantropa, PlantillaEvaluacionContexto, rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
-import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
+import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, coincideClaveEntidad, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { getClaveSeleccionRacial, resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
 import { evaluarGruposParaSelectorRacial } from './utils/racial-prerrequisitos';
@@ -335,6 +335,11 @@ function clavesIdInternoGuardadas(guardados: readonly (string | number)[] | null
     return new Set((guardados ?? [])
         .map((valor) => typeof valor === 'string' && valor.includes('|') ? valor : (toInt(valor) > 0 ? `*|${toInt(valor)}` : ''))
         .filter((clave) => clave.length > 0));
+}
+
+/** El origen de las dotes que da el poder concedido de un dominio («Dominio: Guerra»), como lo guarda la ficha. */
+export function origenDeDominio(nombreDominio: string): string {
+    return `Dominio: ${nombreDominio}`;
 }
 
 /** El origen de `habilidadesDeClasePorOrigen` de una clase, por su nombre (como `desgloseClases`). */
@@ -8046,7 +8051,7 @@ export class NuevoPersonajeService {
     private aplicarPoderConcedidoDominio(dominio: DominioDetalle | null, nombreDominio: string, clase: Clase): void {
         if (!dominio)
             return;
-        const origen = `Dominio: ${nombreDominio}`;
+        const origen = origenDeDominio(nombreDominio);
         const armaDeidad = this.obtenerDeidadSeleccionada()?.Arma ?? null;
         (dominio.Dotes ?? []).forEach((doteDominio) => {
             const conArmaDeidad = !!doteDominio?.Extra_arma_deidad;
@@ -12256,6 +12261,12 @@ export class NuevoPersonajeService {
         return true;
     }
 
+    /** Las dotes del personaje que da el poder concedido del dominio (las de su origen, `origenDeDominio`). */
+    dotesDelDominio(nombreDominio: string): DoteContextual[] {
+        const origen = normalizarTexto(origenDeDominio(nombreDominio));
+        return (this.personajeCreacion.DotesContextuales ?? []).filter((d) => normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === origen);
+    }
+
     /** El id de un dominio del personaje: el suyo o, sin él (los de una ficha de la creación), el del catálogo con su nombre; 0 si no. */
     idDelDominio(dominio: { Id?: number; Nombre?: string; } | null | undefined): number {
         return toInt(dominio?.Id) || toInt(this.resolverIdDominioPorNombre(`${dominio?.Nombre ?? ''}`));
@@ -12322,11 +12333,10 @@ export class NuevoPersonajeService {
         const sinClase = this.habilidadesQueDejanDeSerDeClase(idQuita, idPone);
         const deOtro = new Set(this.dominiosQueLeQuedan(idQuita, idPone).flatMap((d) => d.Especiales ?? []).map((e) => normalizarTexto(e?.Nombre ?? '')));
         const [quitado] = pj.Dominios.splice(i, 1);
-        const origen = normalizarTexto(`Dominio: ${quitado?.Nombre ?? quita.Nombre}`);
-        (pj.DotesContextuales ?? []).filter((d) => normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === origen)
+        this.dotesDelDominio(`${quitado?.Nombre ?? quita.Nombre}`)
             .forEach((d) => this.quitarDoteDeLaFicha(toInt(d.Dote?.Id), toInt(d.Contexto?.Id_extra), `${(d.Contexto as any)?.Origen ?? ''}`));
         (quita.Especiales ?? []).filter((e) => !deOtro.has(normalizarTexto(e?.Nombre ?? ''))).forEach((e) => {
-            const j = (pj.Claseas ?? []).findIndex((x) => (toInt(e?.Id) > 0 && toInt(x?.Id) === toInt(e.Id)) || normalizarTexto(x?.Nombre ?? '') === normalizarTexto(e?.Nombre ?? ''));
+            const j = (pj.Claseas ?? []).findIndex((x) => coincideClaveEntidad({ id: toInt(x?.Id), nombre: `${x?.Nombre ?? ''}` }, e?.Id, e?.Nombre));
             if (j >= 0)
                 pj.Claseas.splice(j, 1);
         });
