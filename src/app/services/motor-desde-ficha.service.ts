@@ -170,6 +170,26 @@ export class MotorDesdeFichaService {
     }
 
     /**
+     * El cuerpo del motor antes y después de quitarle `dotes` (lo que dejan de dar: sus modificadores, sus características y
+     * los rangos varios de sus habilidades) y los PG que dan con `dgs` DG; el motor se queda como estaba. `null` sin dotes.
+     * Lo usan perder un nivel y la conversión en muerto viviente (las dotes del nivel que pierde).
+     */
+    loQueDabanLasDotes(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto,
+        dotes: ReadonlyArray<{ idDote: number; idExtra: number; }>, dgs: number)
+        : { antes: PersonajeCreateRequestDto; despues: PersonajeCreateRequestDto; pg: number; } | null {
+        if (dotes.length < 1)
+            return null;
+        const estado = motor.exportarEstadoSubida();
+        try {
+            const antes = this.cuerpoDelMotor(motor, entrada);
+            dotes.forEach((d) => motor.quitarDotePorId(d.idDote, d.idExtra));
+            return { antes, despues: this.cuerpoDelMotor(motor, entrada), pg: motor.pgQueDanLasDotes(dotes, dgs) };
+        } finally {
+            motor.restaurarEstadoSubida(estado);
+        }
+    }
+
+    /**
      * El motor con el personaje guardado: su raza (y su base), sus plantillas y lo que ya eligió; `nivelesPerdidos`, los
      * que ha perdido (la subida cierra con ellos al paladín y al monje).
      */

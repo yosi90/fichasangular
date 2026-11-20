@@ -127,6 +127,8 @@ describe('conversion-muerto-viviente', () => {
         expect(pgDeLaConversion(perdida.ficha, 0, 12).total).toBe(12);
         const conDureza = fichaSinElNivel({ entrada: { ...entrada, personaje: { ...entrada.personaje, puntosGolpe: 15 } }, indice: 0, clase: claseGuerrero, caras: 10, dgsAntes: 1 });
         expect(pgDeLaConversion(conDureza.ficha, 0, 12).total).toBe(3 + 12);
+        // Como mínimo 1: sin ningún DG ni PG que le queden y sin DG nuevo.
+        expect(pgDeLaConversion(perdida.ficha, 0, null).total).toBe(1);
     });
 
     it('el gnoll sin niveles de clase: los PG de sus 2 DG raciales sin Constitución, con el d12 del engendro', () => {

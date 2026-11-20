@@ -265,7 +265,16 @@ describe('AdquirirRazaMutadaComponent (adquirir una raza mutada, fase 7)', () =>
             componente.antesConversion = antes;
             componente.pj = { Nivel_personaje: 1 };
             componente.primerDg = true;
-            componente.pg = { total: 12, delNivel: 12, retroactivo: 0, exacto: true };
+            // La ficha sin su único nivel se queda con 0 PG (ningún DG): solo es el punto de partida, no se enseña ni se manda.
+            expect(componente.perdida.ficha.personaje.puntosGolpe).toBe(0);
+            componente.calcularPg();
+            expect(componente.pg.total).toBe(12);
+            componente.paso = 'pg';
+            componente.cargando = false;
+            fixture.detectChanges();
+            // El paso de los PG parte de los de su ficha (12) y llega a los del d12 al máximo, sin Constitución.
+            expect(fixture.nativeElement.querySelector('.subida__resultado')?.textContent).toContain('PG 12 → 12');
+            componente.paso = 'resumen';
 
             await componente.guardar();
 

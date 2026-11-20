@@ -9,7 +9,7 @@ import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './cla
 import { CARACTERISTICAS_DEL_ALTA, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
-import { modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
+import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
 import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 
 /*
@@ -384,6 +384,22 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         avisos.push('No se sabe lo que salió en el dado de ese nivel: se quita la media del dado.');
 
     return { ficha, quitado, pg: { antes: pgAntes, despues: pg.total, exacto: exacto && pg.exacto }, ataqueBase: { antes: ataqueAntes, despues: ficha.personaje.ataqueBase }, salvaciones, avisos };
+}
+
+/**
+ * La pérdida sin lo que daban las dotes que se van con el nivel (`dotes`, el cuerpo del motor antes y después de
+ * quitarlas, y sus PG: `MotorDesdeFichaService.loQueDabanLasDotes`): sus modificadores (la iniciativa de Iniciativa
+ * mejorada), sus características, los rangos varios de sus habilidades y sus PG (Dureza). Lo que quita la pérdida lo
+ * guarda la API (`detalle.parche`): un restablecimiento lo devuelve con la dote. Sin `dotes`, la misma.
+ */
+export function sinLoQueDabanLasDotes(resultado: ResultadoPerdida,
+    dotes: { antes: PersonajeCreateRequestDto; despues: PersonajeCreateRequestDto; pg: number; } | null): ResultadoPerdida {
+    if (!dotes)
+        return resultado;
+    const ficha: PersonajeCreateRequestDto = JSON.parse(JSON.stringify(resultado.ficha));
+    aplicarLoQueDanLasDotes(ficha, dotes.antes, dotes.despues);
+    ficha.personaje.puntosGolpe = Math.max(0, toInt(ficha.personaje.puntosGolpe) - Math.max(0, toInt(dotes.pg)));
+    return { ...resultado, ficha, pg: { ...resultado.pg, despues: ficha.personaje.puntosGolpe } };
 }
 
 /**

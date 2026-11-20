@@ -269,6 +269,18 @@ export function aplicarCaracteristicasDelMotor(ficha: PersonajeCreateRequestDto,
 }
 
 /**
+ * Lo que cambia en la ficha al quitar o poner una dote, con el cuerpo del motor antes y después: sus modificadores (CA,
+ * iniciativa, presa, salvaciones), sus características y los rangos varios de sus habilidades (Alerta), sin tocar los
+ * rangos comprados. Lo usan el reciclaje de una dote y la pérdida de un nivel (las dotes que se van con él).
+ */
+export function aplicarLoQueDanLasDotes(ficha: PersonajeCreateRequestDto, antes: PersonajeCreateRequestDto,
+    despues: PersonajeCreateRequestDto): void {
+    aplicarModificadoresDelMotor(ficha, antes, despues);
+    aplicarCaracteristicasDelMotor(ficha, antes, despues);
+    aplicarHabilidadesDelMotor(ficha, antes, despues, true);
+}
+
+/**
  * Las habilidades de `guardadas` con solo lo que cambia el motor en sus rangos varios (lo que suma una dote, como Alerta,
  * o un rasgo), sin tocar los rangos comprados ni si es de clase: lo que cambia al quitar o poner una dote.
  */

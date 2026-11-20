@@ -19,7 +19,7 @@ import { toInt } from 'src/app/services/utils/normalizacion';
 import {
     CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, FilaPerdida, filasDelNivelPerdido,
     indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos, nombresDeLaFicha, ordenConocido, pxTrasPerder, pxTrasPerderExperiencia,
-    quitadoVacio, ResultadoPerdida,
+    quitadoVacio, ResultadoPerdida, sinLoQueDabanLasDotes,
 } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -257,7 +257,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         const nivel = entrada.niveles![indice];
         const clase = this.svc.claseDelCatalogo(nivel.idClase);
         const [idDote, idExtra, ...origen] = this.doteElegida.split('|');
-        const resultado = fichaSinElNivel({
+        const sinElNivel = fichaSinElNivel({
             entrada,
             indice,
             clase,
@@ -266,6 +266,9 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             incrementoSinRegistro: this.incrementoElegido,
             doteSinRegistro: this.pideDote && toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null,
         });
+        // Sin lo que daban las dotes que se van con el nivel (la iniciativa de Iniciativa mejorada, los PG de Dureza).
+        const resultado = sinLoQueDabanLasDotes(sinElNivel,
+            this.motor.loQueDabanLasDotes(this.svc, entrada, sinElNivel.quitado.dotes, this.dgs - 1));
         const caracteristicaQueBaja = resultado.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[resultado.quitado.incremento - 1]?.[1] : null;
         this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({
             idClase: nivel.idClase,

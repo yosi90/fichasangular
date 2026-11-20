@@ -1,7 +1,7 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import {
     caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos,
-    puntoMedioDelNivel, pxTrasPerder, pxTrasPerderExperiencia,
+    puntoMedioDelNivel, pxTrasPerder, pxTrasPerderExperiencia, sinLoQueDabanLasDotes,
 } from './perder-nivel';
 
 /*
@@ -143,6 +143,30 @@ describe('perder-nivel (fase 7, segunda tanda)', () => {
         expect(con.ficha.caracteristicas.constitucion.valor).toBe(10);
         // Con 2 no se le puede devolver la vida.
         expect(fichaConConstitucionPerdida(guerrero([], { caracteristicas: caracteristicas(2) }), 1)).toBeNull();
+    });
+});
+
+describe('perder-nivel: lo que daban las dotes que se van con el nivel', () => {
+    it('quita sus modificadores, los rangos varios de sus habilidades y sus PG (Dureza); sin dotes, la misma', () => {
+        const entrada = guerrero([nivel(1, 10), nivel(2, 6), nivel(3, 7), nivel(4, 4), nivel(5, 8, [{ tipo: 'dote', idElemento: 30, idExtra: 0, origen: 'Guerrero nivel 4' }])]);
+        (entrada.modificadores as any).iniciativa = [{ valor: 4, origen: 'Dote: Iniciativa mejorada' }, { valor: 2, origen: 'Rasgo' }];
+        (entrada.colecciones as any).habilidades.base[0].rangosVarios = 2;
+        const r = fichaSinElNivel({ entrada, indice: 4, clase: claseGuerrero, caras: 10, dgsAntes: 5 });
+        const antes: any = {
+            modificadores: { iniciativa: [{ valor: 4, origen: 'Dote: Iniciativa mejorada' }, { valor: 2, origen: 'Rasgo' }] },
+            colecciones: { habilidades: { base: [{ idHabilidad: 40, idExtra: 0, clasea: true, rangos: 6, rangosVarios: 2 }], custom: [] } },
+        };
+        const despues: any = {
+            modificadores: { iniciativa: [{ valor: 2, origen: 'Rasgo' }] },
+            colecciones: { habilidades: { base: [{ idHabilidad: 40, idExtra: 0, clasea: true, rangos: 6, rangosVarios: 0 }], custom: [] } },
+        };
+        const sin = sinLoQueDabanLasDotes(r, { antes, despues, pg: 3 });
+        expect((sin.ficha.modificadores as any).iniciativa).toEqual([{ valor: 2, origen: 'Rasgo' }]);
+        expect((sin.ficha.colecciones as any).habilidades.base[0].rangosVarios).toBe(0);
+        // Los rangos comprados, sin tocar.
+        expect((sin.ficha.colecciones as any).habilidades.base[0].rangos).toBe(8);
+        expect([sin.ficha.personaje.puntosGolpe, sin.pg.despues]).toEqual([35 - 3, 35 - 3]);
+        expect(sinLoQueDabanLasDotes(r, null)).toBe(r);
     });
 });
 

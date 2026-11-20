@@ -11838,6 +11838,28 @@ export class NuevoPersonajeService {
     }
 
     /**
+     * Los PG que dan esas dotes (`Modificadores.Pg_a`, Dureza +3, y `Pg_a_n`, +N por DG) con `dgs` DG, del catálogo: lo
+     * que se va con ellas al perder el nivel en que se eligieron.
+     */
+    pgQueDanLasDotes(dotes: ReadonlyArray<{ idDote: number; }>, dgs: number): number {
+        return dotes.reduce((suma, d) => {
+            const mods = this.doteDelCatalogo(toInt(d.idDote))?.Modificadores as Record<string, unknown> | undefined;
+            return suma + toInt(mods?.['Pg_a']) + toInt(mods?.['Pg_a_n']) * Math.max(0, toInt(dgs));
+        }, 0);
+    }
+
+    /**
+     * Quita una dote que tiene por su id y su extra (la primera; si no, la primera con ese id), con lo que da
+     * (`quitarDoteDeLaFicha`). `false` si no la tiene.
+     */
+    quitarDotePorId(idDote: number, idExtra: number): boolean {
+        const dotes = this.personajeCreacion.DotesContextuales ?? [];
+        const dote = dotes.find((d) => toInt(d?.Dote?.Id) === toInt(idDote) && toInt(d?.Contexto?.Id_extra) === toInt(idExtra))
+            ?? dotes.find((d) => toInt(d?.Dote?.Id) === toInt(idDote));
+        return !!dote && this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`);
+    }
+
+    /**
      * Las dotes del propio personaje (sin `Entidad` o con la del personaje): las de su raza o sus plantillas no se eligen
      * ni se quitan al corregir la ficha.
      */

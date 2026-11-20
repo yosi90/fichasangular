@@ -49,7 +49,7 @@ import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-p
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import {
     caracteristicaMasAlta, FilaPerdida, fichaSinElNivel, filasDelNivelPerdido, indiceDelNivelQueSePierde, nombresDeLaFicha, ordenConocido,
-    ResultadoPerdida,
+    ResultadoPerdida, sinLoQueDabanLasDotes,
 } from 'src/app/services/utils/perder-nivel';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
@@ -595,11 +595,14 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         const nivel = entrada.niveles![indice];
         const clase = this.svc.claseDelCatalogo(nivel.idClase);
         const [idDote, idExtra, ...origen] = this.doteElegida.split('|');
-        this.perdida = fichaSinElNivel({
+        const sinElNivel = fichaSinElNivel({
             entrada, indice, clase, caras: this.svc.carasDadoGolpeDeClase(clase), dgsAntes: this.dgs,
             incrementoSinRegistro: this.incrementoElegido,
             doteSinRegistro: this.pideDote && toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null,
         });
+        // Sin lo que daban las dotes que se van con el nivel (con el motor antes de perderlo).
+        this.perdida = sinLoQueDabanLasDotes(sinElNivel,
+            this.motor.loQueDabanLasDotes(this.svc, entrada, sinElNivel.quitado.dotes, this.dgs - 1));
         const nombreClase = clase?.Nombre ?? `Clase ${nivel.idClase}`;
         this.filasPerdida = [
             { que: 'Nivel de clase', antes: `${nombreClase} ${nivel.nivelClase}`, ahora: nivel.nivelClase > 1 ? `${nombreClase} ${nivel.nivelClase - 1}` : 'Deja la clase' },

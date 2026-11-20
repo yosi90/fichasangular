@@ -15,6 +15,9 @@ import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from
 import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
 import { fichaDeLaMutacion, loQuePierdeEnSuHueco } from './utils/adquirir-raza-mutada';
 import { fichaDeLaCorreccion } from './utils/correccion-ficha';
+import { fichaDeLaConversion } from './utils/conversion-muerto-viviente';
+import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
+import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import {
     aplicarReciclajeAlMotor, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dotesParaReciclar, fichaConElReciclaje,
     habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, PlanReciclaje, reciclajeDelPlan,
@@ -1034,6 +1037,57 @@ describe('Lo que da una dote, al quitarla y al poner otra en su hueco (el recicl
         expect(deLaDote(ficha.modificadores?.iniciativa, 'Iniciativa mejorada')).toEqual([]);
         expect(deLaDote(ficha.modificadores?.salvaciones?.reflejos?.varios, 'Reflejos rápidos').map((m) => m.valor)).toEqual([2]);
         expect(ficha.colecciones?.dotes?.map((x) => x.idDote)).toEqual([52]);
+    });
+});
+
+describe('Lo que da una dote que se va con el nivel perdido (perder un nivel y convertirse en muerto viviente)', () => {
+    const HUMANO = crearRaza('Humano');
+    const INICIATIVA_MEJORADA = { ...dote(50, 'Iniciativa mejorada'), Modificadores: { Iniciativa: 4 } };
+    const CATALOGO = [INICIATIVA_MEJORADA, ...DOTES.slice(1)];
+    const cuerpo = (motor: NuevoPersonajeService) => new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+        { ...motor.PersonajeCreacion, Nombre: 'Tordek', Campana: 'Sin campaña' } as Personaje, { idAlineamiento: 1, idGenero: 1, idDeidad: 0 } as any);
+    const deLaDote = (lista: any[] | undefined) => (lista ?? []).filter((m) => `${m?.origen ?? m?.Origen ?? ''}` === 'Dote: Iniciativa mejorada');
+    /** `MotorDesdeFichaService.loQueDabanLasDotes` con el cuerpo del motor de estas pruebas. */
+    const loQueDaban = (motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto, dotes: Array<{ idDote: number; idExtra: number; }>, dgs: number) =>
+        MotorDesdeFichaService.prototype.loQueDabanLasDotes.call({ cuerpoDelMotor: (m: NuevoPersonajeService) => cuerpo(m) } as any, motor, entrada, dotes, dgs);
+
+    function perdida() {
+        const svc = crear(HUMANO, {});
+        svc.setCatalogoDotes(CATALOGO);
+        aplicarNivel(svc, GUERRERO);
+        const g = guardar(svc);
+        const motor = subir(g, HUMANO, CLASES, CATALOGO);
+        const sinElNivel = fichaSinElNivel({ entrada: g.entrada, indice: 0, clase: GUERRERO, caras: 10, dgsAntes: 1 });
+        return { g, motor, sinElNivel };
+    }
+
+    it('al perder el nivel, la ficha que se manda se queda sin la iniciativa de Iniciativa mejorada; el motor, como estaba', () => {
+        const { g, motor, sinElNivel } = perdida();
+        expect(sinElNivel.quitado.dotes.map((d) => d.idDote)).toContain(50);
+        // Sin el arreglo, la dote se iba y su iniciativa se quedaba.
+        expect(deLaDote(sinElNivel.ficha.modificadores?.iniciativa).map((m) => m.valor)).toEqual([4]);
+
+        const resultado = sinLoQueDabanLasDotes(sinElNivel, loQueDaban(motor, g.entrada, sinElNivel.quitado.dotes, 0));
+
+        expect(deLaDote(resultado.ficha.modificadores?.iniciativa)).toEqual([]);
+        expect(resultado.ficha.colecciones?.dotes?.map((d) => d.idDote)).not.toContain(50);
+        expect(deLaDote(motor.PersonajeCreacion.Iniciativa_varios).length).toBe(1);
+        expect(motor.PersonajeCreacion.DotesContextuales.some((d) => d.Dote.Id === 50)).toBeTrue();
+    });
+
+    it('en la conversión, tampoco: ni en la ficha sin el nivel ni en lo que compara el motor', () => {
+        const { g, motor, sinElNivel } = perdida();
+        const resultado = sinLoQueDabanLasDotes(sinElNivel, loQueDaban(motor, g.entrada, sinElNivel.quitado.dotes, 0));
+        motor.perderNivelEnElMotor({ idClase: GUERRERO.Id, dotesQuitadas: resultado.quitado.dotes, indiceNivel: 0 });
+        const antes = cuerpo(motor);
+        expect(deLaDote(antes.modificadores?.iniciativa)).toEqual([]);
+
+        const ficha = fichaDeLaConversion({
+            entrada: resultado.ficha, antes, despues: antes, idRaza: 1009, idRazaBase: HUMANO.Id, puntosGolpe: 12,
+            idClaseDeMonstruo: 482, nivel: { idClase: 482, nivelClase: 1, elecciones: [] }, sustituidos: [], sinPrerrequisitos: [],
+        });
+        expect(deLaDote(ficha.modificadores?.iniciativa)).toEqual([]);
+        expect(ficha.colecciones?.dotes?.map((d) => d.idDote)).not.toContain(50);
     });
 });
 
