@@ -28,11 +28,13 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { EspecialService } from 'src/app/services/especial.service';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
-import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import {
+    DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService,
+} from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
-import { toInt } from 'src/app/services/utils/normalizacion';
+import { mismoExtra, toInt } from 'src/app/services/utils/normalizacion';
 import { dotesQueVuelvenACumplir, marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
 import {
@@ -61,7 +63,7 @@ import {
     reciclajeDelPlan,
 } from 'src/app/services/utils/reciclaje';
 import {
-    aptitudesConElegir, cambiosDelRasgo, HuecoDeRasgo, huecoDeLaDoteDelRasgo, mismaFila, nombreConExtra, nombreDeLoQueTiene, nombreDeOpcion, OpcionDeRasgo,
+    aptitudesConElegir, candidatasEnLugarDe, cambiosDelRasgo, HuecoDeRasgo, huecoDeLaDoteDelRasgo, mismaFila, nombreConExtra, nombreDeLoQueTiene, nombreDeOpcion, OpcionDeRasgo,
     PlanRasgo,
 } from 'src/app/services/utils/reciclaje-rasgos';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
@@ -432,20 +434,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             const hueco = huecoDeLaDoteReciclada(this.svc, dote, this.conHomebrew);
             if (!hueco)
                 return;
-            const seleccion = await this.abrirModal<DoteSeleccionConfirmada>(SelectorDotesModalComponent, {
-                titulo: `Reciclar ${dote.nombre}: otra dote en su lugar`, pendiente: hueco.pendiente, candidatos: hueco.candidatos, pendientesRestantes: 1,
-            }, ['confirmar'], ['omitir']);
-            if (!seleccion)
-                return;
-            if (toInt(seleccion.idDote) === dote.idDote && Math.max(0, toInt(seleccion.idExtra)) === dote.idExtra) {
-                await avisarPaso('La misma dote', `Para reciclar ${dote.nombre} hay que elegir otra que no tenga.`);
-                return;
-            }
-            if (!this.svc.aplicarDotePendiente(hueco.pendiente.id, seleccion)) {
-                await avisarPaso('No se puede elegir esa dote', 'Con el personaje de antes de subir, y sin la que se recicla, no la cumple. Elige otra.');
-                return;
-            }
-            this.planDote = { tipo: 'dote', quita: dote, seleccion, pone: doteElegidaEnElHueco(this.svc, hueco.pendiente, seleccion) };
+            const elegida = await this.otraDoteEnElHueco(hueco, `Reciclar ${dote.nombre}: otra dote en su lugar`,
+                { id: dote.idDote, idExtra: dote.idExtra, nombre: dote.nombre }, 'Con el personaje de antes de subir, y sin la que se recicla, no la cumple. Elige otra.');
+            if (elegida)
+                this.planDote = { tipo: 'dote', quita: dote, seleccion: elegida.seleccion, pone: elegida.pone };
         } finally {
             this.svc.restaurarEstadoSubida(estado);
         }
@@ -497,33 +489,48 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const estado = this.svc.exportarEstadoSubida();
         try {
             const delHueco = huecoDeLaDoteDelRasgo(this.svc, hueco, opcion, cambios);
-            const candidatos = (delHueco?.candidatos ?? []).filter((c) => this.conHomebrew || c.dote?.Oficial !== false);
+            const candidatos = candidatasEnLugarDe(delHueco?.candidatos ?? [], null, this.conHomebrew);
             if (!delHueco || !candidatos.some((c) => c.evaluacion?.estado === 'eligible' && c.repeticionValida && !c.restringidaPorTipo)) {
                 await avisarPaso('No hay ninguna dote que elegir', `Con ${nombreDeOpcion(opcion)} no puede elegir ninguna dote: no cumple los prerrequisitos de ninguna en ese nivel.`);
                 return;
             }
-            const seleccion = await this.abrirModal<DoteSeleccionConfirmada>(SelectorDotesModalComponent, {
-                titulo: `${hueco.clase}, nivel ${hueco.nivelClase}: ${nombreDeOpcion(opcion)}`, pendiente: delHueco.pendiente, candidatos, pendientesRestantes: 1,
-            }, ['confirmar'], ['omitir']);
-            if (!seleccion)
+            const elegida = await this.otraDoteEnElHueco({ pendiente: delHueco.pendiente, candidatos }, `${hueco.clase}, nivel ${hueco.nivelClase}: ${nombreDeOpcion(opcion)}`,
+                hueco.tiene.daDote ? hueco.doteQueTiene : null,
+                'Con el personaje de antes de subir, en el nivel del hueco y sin lo que se recicla, no la cumple. Elige otra.');
+            if (!elegida)
                 return;
-            const quitada = hueco.tiene.daDote ? hueco.doteQueTiene : null;
-            if (quitada && toInt(seleccion.idDote) === quitada.id && Math.max(0, toInt(seleccion.idExtra)) === quitada.idExtra) {
-                await avisarPaso('La misma dote', `Para reciclar ${quitada.nombre} hay que elegir otra que no tenga.`);
-                return;
-            }
-            if (!this.svc.aplicarDotePendiente(delHueco.pendiente.id, seleccion)) {
-                await avisarPaso('No se puede elegir esa dote', 'Con el personaje de antes de subir, en el nivel del hueco y sin lo que se recicla, no la cumple. Elige otra.');
-                return;
-            }
-            const elegida = doteElegidaEnElHueco(this.svc, delHueco.pendiente, seleccion);
+            const { seleccion, pone } = elegida;
             this.planRasgo = {
                 tipo: 'rasgo', hueco, pone: opcion, cambios,
-                doteElegida: { seleccion, dote: { id: elegida.idDote, idExtra: elegida.idExtra, nombre: elegida.nombre, extra: elegida.extra, origen: `${delHueco.pendiente.origenFijo ?? ''}` } },
+                doteElegida: { seleccion, dote: { id: pone.idDote, idExtra: pone.idExtra, nombre: pone.nombre, extra: pone.extra, origen: `${delHueco.pendiente.origenFijo ?? ''}` } },
             };
         } finally {
             this.svc.restaurarEstadoSubida(estado);
         }
+    }
+
+    /**
+     * Otra dote en el hueco de una dote que se recicla (la dote reciclada o la que da la aptitud de un rasgo), con el selector
+     * de dotes de la creación: no vale la misma que se va (`quitada`) ni una que el motor no deja poner (`noLaCumple`). La
+     * deja puesta en el motor; quien llama lo deja como estaba. `null` si se cancela o no vale.
+     */
+    private async otraDoteEnElHueco(hueco: { pendiente: DotePendienteState; candidatos: DoteSelectorCandidato[]; }, titulo: string,
+        quitada: { id: number; idExtra: number; nombre: string; } | null, noLaCumple: string)
+        : Promise<{ seleccion: DoteSeleccionConfirmada; pone: ReturnType<typeof doteElegidaEnElHueco>; } | null> {
+        const seleccion = await this.abrirModal<DoteSeleccionConfirmada>(SelectorDotesModalComponent, {
+            titulo, pendiente: hueco.pendiente, candidatos: hueco.candidatos, pendientesRestantes: 1,
+        }, ['confirmar'], ['omitir']);
+        if (!seleccion)
+            return null;
+        if (quitada && toInt(seleccion.idDote) === quitada.id && mismoExtra(seleccion.idExtra, quitada.idExtra)) {
+            await avisarPaso('La misma dote', `Para reciclar ${quitada.nombre} hay que elegir otra que no tenga.`);
+            return null;
+        }
+        if (!this.svc.aplicarDotePendiente(hueco.pendiente.id, seleccion)) {
+            await avisarPaso('No se puede elegir esa dote', noLaCumple);
+            return null;
+        }
+        return { seleccion, pone: doteElegidaEnElHueco(this.svc, hueco.pendiente, seleccion) };
     }
 
     get habilidadOrigen(): HabilidadConRangos | null {

@@ -9,14 +9,14 @@ import { PersonajeCreateRequestDto } from '../interfaces/personajes-api';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { claveDeHabilidad, claveHabilidad } from './utils/habilidad-clave';
-import { toInt, toNumber } from './utils/normalizacion';
+import { mismoExtra, toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
 import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
 import { fichaDeLaMutacion, loQuePierdeEnSuHueco } from './utils/adquirir-raza-mutada';
 import { fichaDeLaCorreccion } from './utils/correccion-ficha';
 import { fichaDeLaConversion } from './utils/conversion-muerto-viviente';
-import { idExtraHabilidadParaGuardar, mismoExtraDeHabilidad } from './utils/habilidad-extra-visible';
+import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import {
@@ -844,9 +844,9 @@ describe('Los rangos del nivel que se pierde, también los de una habilidad sin 
         expect(toInt(trepar().Rangos)).toBe(0);
     });
 
-    it('mismoExtraDeHabilidad: -1 (sin extra), 0 («Elegir») y sin él son el mismo; un extra elegido, solo el suyo', () => {
-        expect([mismoExtraDeHabilidad(-1, 0), mismoExtraDeHabilidad(-1, undefined), mismoExtraDeHabilidad(0, null)]).toEqual([true, true, true]);
-        expect([mismoExtraDeHabilidad(4, 4), mismoExtraDeHabilidad(4, 0), mismoExtraDeHabilidad(-1, 4)]).toEqual([true, false, false]);
+    it('mismoExtra: -1 (sin extra), 0 («Elegir») y sin él son el mismo; un extra elegido, solo el suyo', () => {
+        expect([mismoExtra(-1, 0), mismoExtra(-1, undefined), mismoExtra(0, null)]).toEqual([true, true, true]);
+        expect([mismoExtra(4, 4), mismoExtra(4, 0), mismoExtra(-1, 4)]).toEqual([true, false, false]);
     });
 });
 

@@ -1,9 +1,13 @@
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import type { CambioDeRasgoEnElMotor, DoteSeleccionConfirmada, FilaDeTablaDeClase, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import type {
+    CambioDeRasgoEnElMotor, DoteSeleccionConfirmada, DoteSelectorCandidato, FilaDeTablaDeClase, NuevoPersonajeService,
+} from 'src/app/services/nuevo-personaje.service';
 import { extrasElegiblesEspecial } from './aptitudes-clase';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
-import { normalizarTexto, toInt } from './normalizacion';
+import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
+import { mismoExtra, normalizarTexto, toInt } from './normalizacion';
+import { tieneTextoVisible } from './texto-visible';
 
 /*
  * El reciclaje de un rasgo de clase (R3; *Manual del jugador II*, págs. 194-195, tabla 8-2; contrato en
@@ -91,12 +95,12 @@ export interface PlanRasgo {
     cambios: CambioDeRasgo[];
 }
 
-/** El nombre de una aptitud o una dote con su extra («Dote adicional (Metamágica)»). */
+/** El nombre de una aptitud o una dote con su extra, si tiene algo que enseñar (`tieneTextoVisible`): «Dote adicional (Metamágica)». */
 export function nombreConExtra(elemento: ElementoDeRasgo | null | undefined): string {
     if (!elemento)
         return '';
     const extra = `${elemento.extra ?? ''}`.trim();
-    return elemento.idExtra > 0 && extra && normalizarTexto(extra) !== normalizarTexto('No aplica') ? `${elemento.nombre} (${extra})` : elemento.nombre;
+    return elemento.idExtra > 0 && tieneTextoVisible(extra) ? `${elemento.nombre} (${extra})` : elemento.nombre;
 }
 
 /**
@@ -117,11 +121,12 @@ export function nombreDeLoQueTiene(hueco: HuecoDeRasgo): string {
 interface EspecialQueTiene extends ElementoDeRasgo { usada: boolean; }
 interface DoteQueTiene extends DoteDelRasgo { usada: boolean; }
 
-const mismoExtra = (a: number, b: number) => Math.max(0, toInt(a)) === Math.max(0, toInt(b));
-
-/** Si una dote del catálogo es del tipo (`null`, cualquiera). */
+/** Si una dote del catálogo es del tipo (`null`, cualquiera), como en el selector de dotes (`cumpleRestriccionTipoDote`). */
 function esDelTipo(motor: NuevoPersonajeService, idDote: number, tipo: string | null): boolean {
-    return tipo === null || (motor.doteDelCatalogo(idDote)?.Tipos ?? []).some((t) => normalizarTexto(`${t?.Nombre ?? ''}`) === normalizarTexto(tipo));
+    if (tipo === null)
+        return true;
+    const dote = motor.doteDelCatalogo(idDote);
+    return !!dote && motor.cumpleRestriccionTipoDote(dote, tipo);
 }
 
 /** La opción de una fila (con «Elegir», la de un extra). */
@@ -452,6 +457,17 @@ export function origenDeLaDoteNueva(motor: NuevoPersonajeService, hueco: HuecoDe
 }
 
 /**
+ * Las candidatas del selector en el hueco de una dote que se va (`quitada`; la dote reciclada, `huecoDeLaDoteReciclada`, o
+ * la que se eligió con la aptitud de un rasgo): sin ella, si no tiene extra (con extra, otra especialidad suya sí vale), y
+ * sin `conHomebrew`, solo las oficiales.
+ */
+export function candidatasEnLugarDe(candidatos: DoteSelectorCandidato[], quitada: { id: number; idExtra: number; } | null,
+    conHomebrew: boolean = true): DoteSelectorCandidato[] {
+    return candidatos.filter((c) => !(quitada && toInt(c.dote?.Id) === quitada.id && quitada.idExtra <= 0)
+        && (conHomebrew || c.dote?.Oficial !== false));
+}
+
+/**
  * La dote pendiente del hueco para el selector de dotes de la creación, con la opción nueva ya puesta (sin la antigua ni
  * lo derivado de ella): de su tipo, en el nivel del hueco y juzgada con el personaje de ese nivel. Cambia el motor: quien
  * llama lo deja como estaba. `null` si la opción no da dote o no se puede poner.
@@ -464,9 +480,7 @@ export function huecoDeLaDoteDelRasgo(motor: NuevoPersonajeService, hueco: Hueco
         origen: `${hueco.clase} nivel ${hueco.nivelClase}`, tipoPermitido: pone.daDote.tipo,
         nivel: { idClase: hueco.idClase, nivelClase: hueco.nivelClase }, alNivel: hueco.indiceNivel, origenFijo: origenDeLaDoteNueva(motor, hueco),
     });
-    const quitada = hueco.tiene.daDote ? hueco.doteQueTiene : null;
-    const candidatos = motor.obtenerCandidatosDotePendiente(pendiente.id)
-        .filter((c) => !(quitada && toInt(c.dote?.Id) === quitada.id && quitada.idExtra <= 0));
+    const candidatos = candidatasEnLugarDe(motor.obtenerCandidatosDotePendiente(pendiente.id), hueco.tiene.daDote ? hueco.doteQueTiene : null);
     return { pendiente, candidatos };
 }
 
@@ -499,8 +513,7 @@ export function fichaConElRasgo(entrada: PersonajeCreateRequestDto, plan: PlanRa
     const especiales: any[] = col.especiales = [...(col.especiales ?? [])];
     const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
     ficha.niveles = (ficha.niveles ?? []).map((n) => ({ ...n, elecciones: [...(n.elecciones ?? [])] }));
-    const nivel = (nivelClase: number) => (ficha.niveles ?? []).find((n) => toInt(n.idClase) === plan.hueco.idClase && toInt(n.nivelClase) === nivelClase);
-    const es = (e: any, tipo: string, id: number, idExtra: number) => e?.tipo === tipo && toInt(e?.idElemento) === id && mismoExtra(toInt(e?.idExtra), idExtra);
+    const nivel = (nivelClase: number) => nivelDelOrden(ficha.niveles, { idClase: plan.hueco.idClase, nivelClase });
     cambiosEnLaFicha(plan).forEach((c) => {
         const elecciones = nivel(c.nivelClase)?.elecciones;
         if (c.quita) {
@@ -508,7 +521,7 @@ export function fichaConElRasgo(entrada: PersonajeCreateRequestDto, plan: PlanRa
                 sacarPrimero(especiales, (x) => toInt(x?.idEspecial) === c.quita!.id && mismoExtra(toInt(x?.idExtra), c.quita!.idExtra));
             if (c.tipo === 'dote')
                 sacarDoteDeLaFicha(dotes, c.quita.id, c.quita.idExtra, c.quita.origen);
-            sacarPrimero(elecciones, (e) => es(e, c.tipo, c.quita!.id, c.quita!.idExtra));
+            sacarPrimero(elecciones, (e) => esLaEleccion(e, c.tipo, c.quita!.id, c.quita!.idExtra));
         }
         if (c.pone) {
             const idExtra = Math.max(0, toInt(c.pone.idExtra));

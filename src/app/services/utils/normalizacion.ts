@@ -30,6 +30,14 @@ export function toIntOrNull(value: unknown): number | null {
     return parsed === null ? null : Math.trunc(parsed);
 }
 
+/**
+ * Si dos `idExtra` son el mismo: sin extra, unos guardan -1 (las habilidades del motor, `idExtraHabilidadParaGuardar`) y
+ * otros 0 o nada (la ficha, sus elecciones), y son el mismo. Para comparar el extra de una dote, una aptitud o una habilidad.
+ */
+export function mismoExtra(a: unknown, b: unknown): boolean {
+    return Math.max(0, toInt(a)) === Math.max(0, toInt(b));
+}
+
 /** El entero (truncado) que representa `value` si es mayor que 0 (los ids), o `null` si no lo es o no es un número. */
 export function toPositiveInt(value: unknown): number | null {
     const parsed = Math.trunc(Number(value));

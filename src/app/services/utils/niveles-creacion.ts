@@ -4,7 +4,7 @@ import {
     PersonajeCreateRequestDto,
     PersonajeProgresionLanzadorSeleccionDto,
 } from 'src/app/interfaces/personajes-api';
-import { toInt } from 'src/app/services/utils/normalizacion';
+import { mismoExtra, toInt } from 'src/app/services/utils/normalizacion';
 import { DadoDeGolpe } from 'src/app/services/utils/puntos-golpe';
 
 /*
@@ -109,6 +109,12 @@ export function nivelDelOrden(orden: NivelTomado[] | null | undefined, nivel: Re
     return nivel
         ? (orden ?? []).find((n) => toInt(n?.idClase) === toInt(nivel.idClase) && toInt(n?.nivelClase) === toInt(nivel.nivelClase))
         : undefined;
+}
+
+/** Si una elección de un nivel es la de ese tipo y ese elemento, con su extra (`mismoExtra`: sin extra, 0 o -1). */
+export function esLaEleccion(eleccion: PersonajeCreateNivelEleccionDto | null | undefined, tipo: PersonajeCreateNivelEleccionDto['tipo'],
+    idElemento: unknown, idExtra: unknown): boolean {
+    return eleccion?.tipo === tipo && toInt(eleccion?.idElemento) === toInt(idElemento) && mismoExtra(eleccion?.idExtra, idExtra);
 }
 
 /** Apunta una elección en su nivel del orden (si el nivel no está, no se apunta: no es de ningún nivel de clase). */

@@ -1,6 +1,6 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { toInt } from './normalizacion';
+import { mismoExtra, toInt } from './normalizacion';
 import { DecisionHomebrew } from './personaje-oficialidad';
 import { aplicarHabilidadesDelMotor, aplicarModificadoresDelMotor } from './subida-nivel';
 
@@ -89,8 +89,7 @@ export function sacarPrimero<T>(lista: T[] | undefined, es: (x: T) => boolean): 
  */
 export function sacarDoteDeLaFicha(dotes: any[] | undefined, idDote: number, idExtra: number, origen?: string | null,
     opciones: { cualquierExtra?: boolean; } = {}): any | undefined {
-    const extra = (valor: unknown) => Math.max(0, toInt(valor));
-    const es = (x: any) => toInt(x?.idDote) === toInt(idDote) && extra(x?.idExtra) === extra(idExtra);
+    const es = (x: any) => toInt(x?.idDote) === toInt(idDote) && mismoExtra(x?.idExtra, idExtra);
     return (origen ? sacarPrimero(dotes, (x) => es(x) && `${x?.origen ?? ''}` === origen) : undefined)
         ?? sacarPrimero(dotes, es)
         ?? (opciones.cualquierExtra ? sacarPrimero(dotes, (x) => toInt(x?.idDote) === toInt(idDote)) : undefined);
