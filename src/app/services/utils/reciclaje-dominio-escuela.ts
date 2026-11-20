@@ -97,7 +97,7 @@ export interface PlanEscuela {
     tipo: 'escuela';
     hueco: HuecoDeEscuela;
     pone: EspecializacionDelMago;
-    /** Lo elegido en el selector de la creación, para volver a aplicarlo en el motor (`aplicarEspecialidadMagicaClase`). */
+    /** Lo elegido en el selector de la creación, para volver a aplicarlo en el motor (`aplicarEspecializacion`). */
     seleccion: EspecialidadArcanaSeleccion;
     /** Las escuelas del catálogo que intervienen (la nueva y sus prohibidas), para el motor. */
     escuelas: EscuelaConjuros[];
@@ -405,14 +405,13 @@ export function planDeLaEscuela(motor: NuevoPersonajeService, hueco: HuecoDeEscu
     const ilegal = motivoDeLegalidad(pone, hueco, escuelas);
     if (ilegal)
         return { plan: null, motivo: ilegal };
-    const clase = motor.claseDelCatalogo(hueco.idClase);
     const pj = motor.PersonajeCreacion;
     const guardado = { especialista: pj.Escuela_especialista, prohibidas: pj.Escuelas_prohibidas };
     const intervienen = [pone.especialista, ...pone.prohibidas].filter((e): e is EscuelaDelRasgo => !!e)
         .map((e) => escuelaDelCatalogo(escuelas, { Id: e.id })).filter((e): e is EscuelaConjuros => !!e);
     let idEspArcana = toInt(pone.especialista?.id);
     try {
-        if (!clase || !motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: seleccion }, intervienen, []).aplicado)
+        if (!aplicarEspecializacion(motor, { idClase: hueco.idClase, seleccion, escuelas: intervienen }))
             return { plan: null, motivo: 'No se ha podido aplicar esa especialización.' };
         if (!pone.especialista)
             idEspArcana = toInt(escuelaDelCatalogo(escuelas, pj.Escuela_especialista)?.Id);
@@ -446,10 +445,25 @@ export function fichaConLaEscuela(entrada: PersonajeCreateRequestDto, plan: Plan
     return ficha;
 }
 
-/** En el motor (antes del nivel): la especialización nueva, con el selector de la creación ya resuelto. */
-export function aplicarEscuelaAlMotor(motor: NuevoPersonajeService, plan: PlanEscuela): boolean {
-    const clase = motor.claseDelCatalogo(plan.hueco.idClase);
-    return !!clase && motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: plan.seleccion }, plan.escuelas, []).aplicado;
+/** Lo elegido en el selector de la creación para la clase que da la especialización, con las escuelas que intervienen. */
+export interface EspecializacionElegida {
+    idClase: number;
+    seleccion: EspecialidadArcanaSeleccion;
+    escuelas: EscuelaConjuros[];
+}
+
+/**
+ * En el motor: la especialización elegida, como al crear (`aplicarEspecialidadMagicaClase` del 1.er nivel de su clase).
+ * La usan el plan, lo que dejaría de cumplir (`loQueDejariaDeCumplir`) y el reciclaje antes del nivel. `false` si no se aplica.
+ */
+export function aplicarEspecializacion(motor: NuevoPersonajeService, { idClase, seleccion, escuelas }: EspecializacionElegida): boolean {
+    const clase = motor.claseDelCatalogo(idClase);
+    return !!clase && motor.aplicarEspecialidadMagicaClase(clase, 1, { arcana: seleccion }, escuelas, []).aplicado;
+}
+
+/** Lo elegido en el plan de la escuela, para el motor (`aplicarEspecializacion`). */
+export function especializacionDelPlan(plan: PlanEscuela): EspecializacionElegida {
+    return { idClase: plan.hueco.idClase, seleccion: plan.seleccion, escuelas: plan.escuelas };
 }
 
 /** El cuerpo `reciclaje` de un dominio o de la escuela (contrato, «Un dominio» y «La escuela del mago»). */
