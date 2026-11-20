@@ -16,6 +16,7 @@ import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
 import { fichaDeLaMutacion, loQuePierdeEnSuHueco } from './utils/adquirir-raza-mutada';
 import { fichaDeLaCorreccion } from './utils/correccion-ficha';
 import { fichaDeLaConversion } from './utils/conversion-muerto-viviente';
+import { idExtraHabilidadParaGuardar, mismoExtraDeHabilidad } from './utils/habilidad-extra-visible';
 import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import {
@@ -803,6 +804,32 @@ describe('Las dotes que se quedan sin un prerrequisito al perder un nivel (MJ p�
         // Una que se va con el nivel no cuenta.
         expect(motor.dotesSinPrerrequisitosTrasPerder({ caracteristica: { clave: 'Fuerza', menos: 1 }, dotesQuitadas: [{ idDote: 62, idExtra: 0 }] })).toEqual([]);
         expect((motor.PersonajeCreacion.DotesContextuales ?? []).some((d) => toInt(d.Dote?.Id) === 62)).toBeTrue();
+    });
+});
+
+describe('Los rangos del nivel que se pierde, también los de una habilidad sin extra (-1 en el motor, 0 en la elección)', () => {
+    const HUMANO = crearRaza('Humano');
+
+    it('el motor los quita al perder el nivel (y los cuenta al ver qué dotes se quedan sin sus prerrequisitos)', () => {
+        const svc = crear(HUMANO, { Fuerza: 13, Constitucion: 13 });
+        aplicarNivel(svc, GUERRERO);
+        const guardado = guardar(svc);
+        const motor = subir(guardado, HUMANO);
+        const trepar = () => motor.PersonajeCreacion.Habilidades.find((h) => toInt(h.Id) === 2)!;
+        const antes = toInt(trepar().Rangos);
+        expect(antes).toBeGreaterThan(0);
+        expect(idExtraHabilidadParaGuardar(trepar())).toBe(-1);
+        // La ficha sin el nivel quita sus rangos con el extra de la elección (sin él, 0).
+        const sinElNivel = fichaSinElNivel({ entrada: guardado.entrada, indice: 0, clase: GUERRERO, caras: 10, dgsAntes: 1 });
+        const deTrepar = sinElNivel.quitado.rangos.find((r) => r.idHabilidad === 2)!;
+        expect(deTrepar).toEqual({ idHabilidad: 2, idExtra: 0, rangos: antes });
+        motor.perderNivelEnElMotor({ idClase: GUERRERO.Id, rangos: sinElNivel.quitado.rangos, indiceNivel: 0 });
+        expect(toInt(trepar().Rangos)).toBe(0);
+    });
+
+    it('mismoExtraDeHabilidad: -1 (sin extra), 0 («Elegir») y sin él son el mismo; un extra elegido, solo el suyo', () => {
+        expect([mismoExtraDeHabilidad(-1, 0), mismoExtraDeHabilidad(-1, undefined), mismoExtraDeHabilidad(0, null)]).toEqual([true, true, true]);
+        expect([mismoExtraDeHabilidad(4, 4), mismoExtraDeHabilidad(4, 0), mismoExtraDeHabilidad(-1, 4)]).toEqual([true, false, false]);
     });
 });
 

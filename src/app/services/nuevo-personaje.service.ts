@@ -73,7 +73,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
-import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
+import { extraHabilidadElegido, idExtraHabilidadParaGuardar, mismoExtraDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { ajustesCaracteristicaDeRaciales, caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -11988,7 +11988,7 @@ export class NuevoPersonajeService {
         (cambios.rangos ?? []).forEach((r) => {
             // Sin extra, la habilidad guarda -1 y la elección no lo lleva (0): son la misma.
             const h = (pj.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(r.idHabilidad)
-                && Math.max(0, idExtraHabilidadParaGuardar(x)) === Math.max(0, toInt(r.idExtra)));
+                && mismoExtraDeHabilidad(idExtraHabilidadParaGuardar(x), r.idExtra));
             if (h)
                 h.Rangos = Math.max(0, toNumber(h.Rangos) - toInt(r.rangos));
         });

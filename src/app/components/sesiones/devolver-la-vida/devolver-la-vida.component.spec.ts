@@ -435,13 +435,17 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
             expect(svc.getDotesPendientes().some((d) => d.estado === 'pendiente')).toBeFalse();
         });
 
-        it('el humano engendro 2 / guerrero 2: le sobra el incremento de su 4.º nivel; su dote de humano pasa a guerrero 1 y los ×4, con los 3 del humano', async () => {
+        it('el humano engendro 2 / guerrero 2: le sobra el incremento de su 4.º nivel; su dote de humano y sus idiomas por Inteligencia pasan a guerrero 1; los ×4, con los 3 del humano', async () => {
             const componente = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
             const { guerrero } = conNivelesDespues(componente, {
                 raza: 'humano', engendro: 2, inteligencia: 10, px: 6000, nep: 4, pierdeNivel: false, doteDeRaza: 52,
                 guerrero: [{ dote: 50 }, { incremento: 'Inteligencia' }],
             });
             const entrada: any = componente.entrada;
+            // Su idioma por Inteligencia, elegido en su 1.er nivel (el del engendro).
+            const IDIOMA = { tipo: 'idioma', idElemento: 77, origen: 'Idiomas iniciales' };
+            entrada.niveles[0].elecciones = [...entrada.niveles[0].elecciones, { ...IDIOMA }];
+            entrada.colecciones.idiomas = [...(entrada.colecciones.idiomas ?? []), { idIdioma: 77 }];
             expect(entrada.niveles[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 52, origen: 'Dote adicional de raza: Humano' }));
             expect(entrada.niveles[3].elecciones).toContain(jasmine.objectContaining({ tipo: 'incremento', idElemento: 4 }));
             expect(entrada.caracteristicas.inteligencia.valor).toBe(11);
@@ -459,6 +463,10 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
             expect(ficha.colecciones.dotes.filter((d: any) => d.idDote === 52).length).toBe(1);
             expect(ficha.niveles[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 52, origen: 'Dote adicional de raza: Humano' }));
             expect(ficha.niveles[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'dote', idElemento: 50 }));
+            // Sus idiomas por Inteligencia, igual: se quedan en la ficha y pasan a guerrero 1, con su origen.
+            expect(ficha.niveles[0].elecciones).toContain(IDIOMA);
+            expect(ficha.niveles[1].elecciones).not.toContain(IDIOMA);
+            expect(ficha.colecciones.idiomas.filter((i: any) => i.idIdioma === 77).length).toBe(1);
             const fila = (que: string) => componente.cambios.find((c) => c.que === que);
             expect([fila('Inteligencia (incremento)')?.antes, fila('Inteligencia (incremento)')?.ahora]).toEqual(['11', '10']);
             expect(fila('Inteligencia (incremento)')?.porque).toContain('no quita puntos de habilidad');

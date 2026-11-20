@@ -33,7 +33,7 @@ import { MOMENTO_DESPUES, puntosDevueltos } from 'src/app/services/utils/adquiri
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje, dgsDeClase } from 'src/app/services/utils/clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA } from 'src/app/services/utils/correccion-ficha';
-import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
+import { idExtraHabilidadParaGuardar, mismoExtraDeHabilidad, nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import { limiteRangosHabilidad } from 'src/app/services/utils/puntos-habilidad';
 import { clasesQueDejanDeCumplir, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
@@ -499,14 +499,12 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
             ficha = resultado.ficha;
         }
 
-        // Lo del 1.er nivel del personaje no se va con los niveles de la clase de monstruo: la dote adicional de su raza pasa
-        // al que es ahora su 1.er nivel; sus idiomas por Inteligencia se quedan en la ficha, sin moverlos (el contrato no deja
-        // cambiar en los niveles que se quedan más que las dotes, los incrementos y los rangos).
-        const dotesDelPrimerNivel = sin.delPrimerNivel.filter((e) => e.tipo === 'dote');
-        if (dotesDelPrimerNivel.length > 0 && (ficha.niveles ?? []).length > 0) {
+        // Lo del 1.er nivel del personaje no se va con los niveles de la clase de monstruo (`esDelPrimerNivelDelPersonaje`: la
+        // dote adicional de su raza y sus idiomas por Inteligencia): pasa al que es ahora su 1.er nivel, con su origen.
+        if (sin.delPrimerNivel.length > 0 && (ficha.niveles ?? []).length > 0) {
             ficha = JSON.parse(JSON.stringify(ficha));
-            ficha.niveles![0].elecciones = [...(ficha.niveles![0].elecciones ?? []), ...dotesDelPrimerNivel];
-            svc.fijarEleccionesDelNivel(0, [...(svc.getOrdenNiveles()[0]?.elecciones ?? []), ...dotesDelPrimerNivel]);
+            ficha.niveles![0].elecciones = [...(ficha.niveles![0].elecciones ?? []), ...sin.delPrimerNivel];
+            svc.fijarEleccionesDelNivel(0, [...(svc.getOrdenNiveles()[0]?.elecciones ?? []), ...sin.delPrimerNivel]);
         }
         const tras: TrasQuitar = { sin, ficha, exacto, nivelDeMas, avisos };
         // Con niveles de otra clase después, lo que cambia al renumerarlos; si queda algo por elegir, la ficha espera al resumen.
@@ -762,7 +760,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         // Los rangos que pasan del máximo con el nivel nuevo, desde los últimos niveles hacia atrás: sus puntos vuelven a ese nivel.
         const habilidades = (svc.PersonajeCreacion.Habilidades ?? []).filter((h) => toInt(h?.Id) > 0 && !h?.Custom && toInt(h?.Rangos) > 0);
         const extraDe = (h: (typeof habilidades)[number]) => Math.max(0, idExtraHabilidadParaGuardar(h));
-        const habilidadDe = (id: number, idExtra: number) => habilidades.find((h) => toInt(h.Id) === id && extraDe(h) === idExtra);
+        const habilidadDe = (id: number, idExtra: number) => habilidades.find((h) => toInt(h.Id) === id && mismoExtraDeHabilidad(extraDe(h), idExtra));
         const coste = (indice: number, id: number, idExtra: number) => {
             const h = habilidadDe(id, idExtra);
             const clase = claseDe(toInt(ficha.niveles?.[indice]?.idClase));
@@ -864,7 +862,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const reparto = r.repartos[r.reparto];
         (nuevas[reparto.indice] ?? []).filter((e) => e.tipo === 'rangos').forEach((e) => {
             const h = (svc.PersonajeCreacion.Habilidades ?? []).find((x) => toInt(x?.Id) === toInt(e.idElemento) && !x?.Custom
-                && Math.max(0, idExtraHabilidadParaGuardar(x)) === Math.max(0, toInt(e.idExtra)));
+                && mismoExtraDeHabilidad(idExtraHabilidadParaGuardar(x), e.idExtra));
             r.resumen.rangosRepartidos.push({ nombre: h ? nombreDeHabilidadConExtra(h) : `Habilidad ${toInt(e.idElemento)}`, rangos: toInt(e.valor), nivel: reparto.etiqueta });
         });
         r.empezado = true;

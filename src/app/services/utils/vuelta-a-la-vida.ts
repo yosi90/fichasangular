@@ -11,6 +11,7 @@ import {
     ClaseConTabla, daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje, dgsDeClase, filaDeNivel, tieneTablaPorNivel,
 } from './clase-niveles';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
+import { mismoExtraDeHabilidad } from './habilidad-extra-visible';
 import { esDotePorNivelDePersonaje } from './niveles-creacion';
 import { toInt } from './normalizacion';
 import { puntosHabilidadNivelClase } from './puntos-habilidad';
@@ -541,7 +542,7 @@ export function rangosQueSobran(niveles: PersonajeCreateNivelDto[],
             const elecciones = lista[i].elecciones;
             for (let k = elecciones.length - 1; k >= 0 && sobra > 0; k--) {
                 const e = elecciones[k];
-                if (e.tipo !== 'rangos' || toInt(e.idElemento) !== idHabilidad || Math.max(0, toInt(e.idExtra)) !== idExtra)
+                if (e.tipo !== 'rangos' || toInt(e.idElemento) !== idHabilidad || !mismoExtraDeHabilidad(e.idExtra, idExtra))
                     continue;
                 const quita = Math.min(sobra, Math.max(0, toInt(e.valor)));
                 if (quita < 1)
