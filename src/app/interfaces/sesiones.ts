@@ -158,7 +158,20 @@ export type ReciclajeSubidaDto =
     | { tipo: 'dote'; quita: { idDote: number; idExtra: number; orden: number | null; }; pone: { idDote: number; idExtra: number; }; }
     | { tipo: 'idioma'; quita: { idIdioma: number; }; pone: { idIdioma: number; }; }
     | { tipo: 'rangos'; quita: { idHabilidad: number; idExtra: number; }; pone: { idHabilidad: number; idExtra: number; }; rangos: number; }
-    | { tipo: 'conjuros'; cambios: Array<{ idClase: number; olvida: number; aprende: number; }>; };
+    | { tipo: 'conjuros'; cambios: Array<{ idClase: number; olvida: number; aprende: number; }>; }
+    | {
+        tipo: 'rasgo';
+        /** Un grupo opcional de la tabla de la clase (`grupo`) o una aptitud suya con «Elegir» (`idEspecial`). */
+        hueco: { idClase: number; nivelClase: number; grupo: number; } | { idClase: number; nivelClase: number; idEspecial: number; };
+        quita: OpcionRasgoDto;
+        pone: OpcionRasgoDto;
+    };
+
+/** Una opción de un hueco de rasgo de clase: su aptitud, su dote o las dos (la aptitud que da a elegir una dote). */
+export interface OpcionRasgoDto {
+    especial: { id: number; idExtra: number; } | null;
+    dote: { id: number; idExtra: number; } | null;
+}
 
 /** El cuerpo de `POST /personajes/{id}/niveles`: la ficha completa con un nivel más, la clase y la tirada de PG. */
 export interface SubidaNivelDto {

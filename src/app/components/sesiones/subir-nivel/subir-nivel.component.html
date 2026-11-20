@@ -128,6 +128,34 @@
                         </div>
                         <button *ngIf="cambiosConjuros.length < maximoConjuros" mat-stroked-button type="button" (click)="anadirCambioConjuro()">Cambiar otro conjuro</button>
                     </ng-container>
+
+                    <!-- Un rasgo de clase (MJ II, págs. 194-195): otra opción del mismo hueco de su tabla -->
+                    <ng-container *ngIf="tipoReciclaje === 'rasgo'">
+                        <p class="subida__nota">Cambia lo que elegiste en un rasgo de clase por otra opción del mismo hueco (la misma clase y el mismo nivel). Lo que su tabla da por esa opción cambia solo; lo que elegiste después y la necesita no deja cambiarla.</p>
+                        <ul class="subida__lista">
+                            <li *ngFor="let h of rasgosReciclables" class="subida__fila" [class.subida__fila--bloqueada]="!!h.motivo">
+                                <div class="subida__fila-texto">
+                                    <span class="subida__fila-nombre">{{nombreDeLoQueTiene(h)}}
+                                        <ng-container *ngIf="planRasgo?.hueco === h"> → <strong>{{nombreDeOpcion(planRasgo!.pone, planRasgo!.doteElegida?.dote)}}</strong></ng-container>
+                                    </span>
+                                    <span class="subida__etiqueta">{{h.clase}}, nivel {{h.nivelClase}}</span>
+                                    <span *ngIf="h.motivo" class="subida__fila-motivo">{{h.motivo}}</span>
+                                </div>
+                                <button *ngIf="!h.motivo" mat-stroked-button type="button" [attr.aria-expanded]="rasgoElegido === h" (click)="elegirRasgo(h)">{{rasgoElegido === h ? 'Eligiendo' : 'Cambiar'}}</button>
+                            </li>
+                        </ul>
+                        <ng-container *ngIf="rasgoElegido as h">
+                            <h3 class="subida__seccion">En lugar de {{nombreDeLoQueTiene(h)}} ({{h.clase.toLowerCase()}}, nivel {{h.nivelClase}})</h3>
+                            <div class="subida__opciones" role="radiogroup" [attr.aria-label]="'Otra opción en lugar de ' + nombreDeLoQueTiene(h)">
+                                <label *ngFor="let o of h.opciones" class="subida__opcion" [class.subida__opcion--bloqueada]="!!o.motivo">
+                                    <input type="radio" name="opcionRasgo" [checked]="planRasgo?.pone === o" [disabled]="!!o.motivo" (change)="elegirOpcionRasgo(o)">
+                                    <span class="subida__opcion-texto">{{textoDeOpcion(h, o)}}</span>
+                                    <span *ngIf="o.motivo" class="subida__fila-motivo">{{o.motivo}}</span>
+                                </label>
+                            </div>
+                            <p *ngIf="derivadosDelRasgo" class="subida__nota">Cambia solo: {{derivadosDelRasgo}}.</p>
+                        </ng-container>
+                    </ng-container>
                 </ng-container>
             </ng-container>
 

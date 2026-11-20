@@ -11,6 +11,7 @@ import { DominioService } from 'src/app/services/dominio.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
+import { EspecialService } from 'src/app/services/especial.service';
 import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
@@ -65,7 +66,7 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
                 { provide: SubidaNivelPuertaService, useValue: new SubidaNivelPuertaService() },
                 ...[CampanaService, ClaseService, DoteService, ConjuroService, HabilidadService, IdiomaService, DominioService, RazaService,
                     PlantillaService, EscuelaConjurosService, DisciplinaConjurosService, EnemigoPredilectoService, ArmaService, ArmaduraService,
-                    GrupoArmaService, GrupoArmaduraService, SubtipoService].map((provide) => ({ provide, useValue: {} })),
+                    GrupoArmaService, GrupoArmaduraService, SubtipoService, EspecialService].map((provide) => ({ provide, useValue: {} })),
                 ...(motor ? [{ provide: MotorDesdeFichaService, useValue: motor }] : []),
             ],
         }).compileComponents();
@@ -117,11 +118,15 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             const texto = fixture.nativeElement.textContent;
             expect(texto).toContain('Reciclar (opcional)');
             const radios = Array.from(fixture.nativeElement.querySelectorAll('input[name="tipoReciclaje"]') as NodeListOf<HTMLInputElement>);
-            expect(radios.length).toBe(5);
+            expect(radios.length).toBe(6);
             expect(radios[0].checked).toBeTrue();
             expect(texto).toContain('No reciclar nada');
             expect(texto).toContain('Reciclar una dote');
             expect(texto).toContain('Reciclar habilidades');
+            // Sin clases que den a elegir en su tabla, el rasgo de clase sale desactivado, con su motivo.
+            expect(texto).toContain('Reciclar un rasgo de clase');
+            expect(radios[5].disabled).toBeTrue();
+            expect(texto).toContain('Ninguna de sus clases le ha dado a elegir entre opciones de su tabla.');
             expect(texto).toContain('Continuar sin reciclar');
         });
 
@@ -163,6 +168,44 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             expect(texto).toContain('El druídico es un idioma secreto');
             expect(texto).toContain('Reciclaje: idioma: Orco → Gnomo');
             expect(texto).toContain('Volver al resumen');
+        });
+
+        it('un rasgo de clase va en el cuerpo con su hueco, lo que quita y lo que pone; el resumen dice lo que cambia solo', async () => {
+            const componente = await crear({}, { pj: { PoliticaCompra: null } });
+            const opcion = (id: number, nombre: string, idInterno: number) => ({
+                clave: `especial:${id}`, tipoFila: 'especial' as const, especial: { id, idExtra: 0, nombre, extra: '' }, dote: null, daDote: null, idInterno, motivo: null,
+            });
+            const tiene = opcion(39, 'Estilo de combate (Combate con dos armas)', 2);
+            const pone = opcion(156, 'Estilo de combate (Tiro con arco)', 3);
+            const plan: PlanReciclaje = {
+                tipo: 'rasgo', pone, doteElegida: null,
+                hueco: {
+                    clave: '6:2:g1', idClase: 6, clase: 'Explorador', nivelClase: 2, grupo: 1, idEspecial: null, tiene, doteQueTiene: null,
+                    aptitudCompartida: false, opciones: [pone], indiceNivel: 1, motivo: null,
+                },
+                cambios: [
+                    { nivelClase: 2, tipo: 'especial', derivado: false, quita: { id: 39, idExtra: 0, idInterno: 2 }, pone: { ...pone.especial, idInterno: 3 }, nombreQuita: tiene.especial.nombre, nombrePone: pone.especial.nombre },
+                    { nivelClase: 2, tipo: 'dote', derivado: true, quita: { id: 11, idExtra: 0, origen: 'Explorador nivel 2', idInterno: 3 },
+                        pone: { id: 52, idExtra: 0, nombre: 'Disparo rápido', extra: '', origen: 'Explorador nivel 2', idInterno: 2 }, nombreQuita: 'Combate con dos armas', nombrePone: 'Disparo rápido' },
+                ],
+            };
+            const c = componente as any;
+            c.plan = plan;
+            c.entradaReciclada = JSON.parse(JSON.stringify(ENTRADA_ENANO_CLERIGO_1));
+            componente.claseElegida = { Id: 4, Nombre: 'Clérigo' } as any;
+            componente.daDg = false;
+            componente.pasos = ['reciclar', 'clase', 'resumen'];
+            c.prepararResumen();
+            expect(componente.cambios.slice(0, 2)).toEqual([
+                jasmine.objectContaining({ que: 'Reciclaje: rasgo de clase', antes: 'Estilo de combate (Combate con dos armas)', ahora: 'Estilo de combate (Tiro con arco)' }),
+                jasmine.objectContaining({ que: 'Reciclaje: lo que cambia solo', antes: 'Combate con dos armas', ahora: 'Disparo rápido' }),
+            ]);
+            sesiones.subirNivel.and.resolveTo({ subida: { nivelesPorSubir: 0 } } as any);
+            await componente.guardar(false);
+            expect(sesiones.subirNivel.calls.mostRecent().args[1].reciclaje).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 6, nivelClase: 2, grupo: 1 },
+                quita: { especial: { id: 39, idExtra: 0 }, dote: null }, pone: { especial: { id: 156, idExtra: 0 }, dote: null },
+            });
         });
     });
 });

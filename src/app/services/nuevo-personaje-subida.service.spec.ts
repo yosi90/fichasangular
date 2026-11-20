@@ -21,8 +21,12 @@ import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import {
     aplicarReciclajeAlMotor, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dotesParaReciclar, fichaConElReciclaje,
-    habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, PlanReciclaje, reciclajeDelPlan,
+    filasDelReciclaje, habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, PlanReciclaje, rasgosParaReciclar,
+    reciclajeDelPlan,
 } from './utils/reciclaje';
+import {
+    aptitudesConElegir, cambiosDelRasgo, huecoDeLaDoteDelRasgo, nombreDeLoQueTiene, nombreDeOpcion, PlanRasgo,
+} from './utils/reciclaje-rasgos';
 
 // La subida de nivel con el motor de la creación (roadmap de sesiones, fase 4; estudio de reglas, apartado 1): personajes
 // de referencia de los manuales creados nivel a nivel, guardados como el cuerpo del alta (con sus `niveles` y las
@@ -147,11 +151,17 @@ function crear(raza: Raza, caracteristicas: Partial<Record<Car, number>>): Nuevo
     return svc;
 }
 
-/** Un nivel como lo hace la creación (y la subida): la clase, el incremento, los rangos, las dotes y los conjuros. */
-function aplicarNivel(svc: NuevoPersonajeService, c: Clase, incremento: Car = 'Fuerza', antesDeLosRangos?: () => void): void {
-    const r = svc.aplicarSiguienteNivelClase(c);
+/**
+ * Un nivel como lo hace la creación (y la subida): la clase, el incremento, los rangos, las dotes y los conjuros. Con
+ * `opciones`: lo elegido en los grupos opcionales de la tabla y en sus aptitudes con «Elegir», y las dotes entre las que
+ * elegir las pendientes (la primera que se pueda; sin ellas, la primera de `DOTES` que no tenga, o ninguna).
+ */
+function aplicarNivel(svc: NuevoPersonajeService, c: Clase, incremento: Car = 'Fuerza', antesDeLosRangos?: () => void,
+    opciones: { grupos?: Record<number, string>; extras?: Record<string, { idExtra: number; extra: string; }>; dotes?: any[]; } = {}): void {
+    const r = svc.aplicarSiguienteNivelClase(c, opciones.grupos ?? null, null, false, null, opciones.extras ?? null);
     expect(r.aplicado).withContext(`${c.Nombre}: ${r.razon}`).toBeTrue();
     const contexto = `${c.Nombre} nivel ${r.nivelAplicado}`;
+    svc.registrarDotesPendientesPorEspeciales(r.especialesAplicados ?? [], contexto);
     svc.registrarAumentosPendientesPorProgresion(contexto);
     const aumentos = svc.getAumentosCaracteristicaPendientes();
     if (aumentos.length)
@@ -169,8 +179,15 @@ function aplicarNivel(svc: NuevoPersonajeService, c: Clase, incremento: Car = 'F
             svc.ajustarRangoHabilidad(claveHabilidad(habilidad), 1);
     expect(svc.cerrarDistribucionHabilidades()).not.toBeNull();
     for (let p = svc.getSiguienteDotePendiente(), i = 0; p && i < 10; p = svc.getSiguienteDotePendiente(), i++) {
-        const libre = DOTES.find((d) => !(svc.PersonajeCreacion.DotesContextuales ?? []).some((x) => x?.Dote?.Id === d.Id));
-        if (!libre || !svc.aplicarDotePendiente(p.id, { idDote: libre.Id, idExtra: 0, extra: '' }))
+        const tiene = (d: any) => (svc.PersonajeCreacion.DotesContextuales ?? []).some((x) => x?.Dote?.Id === d.Id);
+        const pendiente = p;
+        const aplicada = opciones.dotes
+            ? opciones.dotes.some((d) => !tiene(d) && svc.aplicarDotePendiente(pendiente.id, { idDote: d.Id, idExtra: 0, extra: '' }))
+            : (() => {
+                const libre = DOTES.find((d) => !tiene(d));
+                return !!libre && svc.aplicarDotePendiente(pendiente.id, { idDote: libre.Id, idExtra: 0, extra: '' });
+            })();
+        if (!aplicada)
             svc.omitirDotePendiente(p.id);
     }
     if (svc.getConjurosSesionActual().activa) {
@@ -1204,5 +1221,443 @@ describe('Adquirir una raza mutada con el motor de la creación (sesiones, fase 
         expect(dotes).toContain([53, rota.origen]);
         expect(dotes.some(([id]) => id === 50)).toBeFalse();
         expect(dotes.length).toBe((g.entrada.colecciones?.dotes ?? []).length);
+    });
+});
+
+describe('El reciclaje de un rasgo de clase (R3; Manual del jugador II, págs. 194-195: los grupos de su tabla y «Elegir»)', () => {
+    const HUMANO = crearRaza('Humano');
+    const requisitos = { Id_especial_requerido: -1, Id_dote_requerida: -1 };
+    const filaDote = (d: any, opcional: number, idInterno: number, extra: Record<string, any> = {}) => ({
+        Dote: d, Nivel: 0, Id_extra: null, Extra: '', Opcional: opcional, Id_interno: idInterno, ...requisitos, ...extra });
+    const filaEspecial = (especial: Record<string, any>, opcional: number, idInterno: number, extra: Record<string, any> = {}) => ({
+        Especial: especial, Nivel: 0, Id_extra: null, Extra: '', Opcional: opcional, Id_interno: idInterno, ...requisitos, ...extra });
+    const deTipo = (d: any, tipo: string) => ({ ...d, Tipos: [{ Id: 9, Nombre: tipo, Usado: 1 }] });
+    const pide = (id: number, nombre: string) => ({ dote: [{ Id_dote_prerrequisito: id, Dote_prerrequisito: nombre, Opcional: 0, Frase: nombre }] });
+    const ataque = (n: number) => ({ ataque_base: [{ Ataque_base: n, Opcional: 0, Frase: `Ataque base +${n}` }] });
+    const DOTE_ADICIONAL = { Id: 5, Nombre: 'Dote adicional', Otorga_dote: true };
+    const dotesDe = (motor: NuevoPersonajeService) => motor.PersonajeCreacion.DotesContextuales.map((d) => [toInt(d.Dote?.Id), `${(d.Contexto as any)?.Origen ?? ''}`]);
+    const aptitudesDe = (motor: NuevoPersonajeService) => motor.PersonajeCreacion.Claseas.map((e) => [toInt(e.Id), Math.max(0, toInt(e.Id_extra))]);
+    type OpcionesDeNivel = Parameters<typeof aplicarNivel>[4];
+
+    /** Crea el personaje nivel a nivel (con lo que elige en cada nivel de su clase) y lo prepara para subir. */
+    function crearYSubir(c: Clase, niveles: number, catalogo: any[], porNivel: Record<number, OpcionesDeNivel> = {}) {
+        const svc = crear(HUMANO, { Destreza: 15 });
+        svc.setCatalogoClases([...CLASES, c]);
+        svc.setCatalogoDotes(catalogo);
+        for (let n = 1; n <= niveles; n++)
+            aplicarNivel(svc, c, 'Destreza', undefined, porNivel[n] ?? {});
+        const guardado = guardar(svc);
+        return { guardado, motor: subir(guardado, HUMANO, [...CLASES, c], catalogo) };
+    }
+
+    describe('el estilo de combate del explorador (MJ pág. 40)', () => {
+        const CDA = dote(11, 'Combate con dos armas');
+        const DR = dote(52, 'Disparo rápido');
+        const CDAM = dote(12, 'Combate con dos armas mejorado');
+        const DM = dote(323, 'Disparos múltiples');
+        const DEFENSA = { ...dote(70, 'Defensa con dos armas'), Prerrequisitos: pide(11, 'Combate con dos armas') };
+        const CATALOGO = [...DOTES, CDA, DR, CDAM, DM, DEFENSA];
+        // Los datos de rol_dev: el estilo es el grupo 1 de su nivel 2 y sus dotes, de los grupos que piden su `id_interno`.
+        const EXPLORADOR = clase({
+            Id: 6, Nombre: 'Explorador', Tipo_dado: { Id: 3, Nombre: 'd8' }, Puntos_habilidad: { Id: 1, Valor: 6 },
+            Habilidades: { Base: [ref(2, 'Trepar')], Custom: [] },
+            Desglose_niveles: [1, 2, 3, 4, 5, 6].map((n) => nivel(n, n === 2 ? {
+                Dotes: [filaDote(CDA, 2, 3, { Id_especial_requerido: 2 }), filaDote(DR, 2, 2, { Id_especial_requerido: 3 })],
+                Especiales: [filaEspecial({ Id: 39, Nombre: 'Estilo de combate (Combate con dos armas)' }, 1, 2),
+                    filaEspecial({ Id: 156, Nombre: 'Estilo de combate (Tiro con arco)' }, 1, 3)],
+            } : n === 6 ? {
+                Dotes: [filaDote(CDAM, 1, 5, { Id_especial_requerido: 2 }), filaDote(DM, 1, 4, { Id_especial_requerido: 3 })],
+            } : {})),
+        });
+        // En su nivel 2: dote:0 y dote:1 (sus dotes), especial:2 (dos armas) y especial:3 (tiro con arco).
+        const conDosArmas = (niveles: number) => crearYSubir(EXPLORADOR, niveles, CATALOGO, { 2: { grupos: { 1: 'especial:2' } } });
+
+        it('el explorador 6 pasa del combate con dos armas al tiro con arco: Combate con dos armas pasa a Disparo rápido y la mejorada a Disparos múltiples', () => {
+            const { guardado, motor } = conDosArmas(6);
+            expect(dotesDe(motor)).toContain([11, 'Explorador nivel 2']);
+            expect(dotesDe(motor)).toContain([12, 'Explorador nivel 6']);
+            // Las dotes del estilo no son huecos: con un estilo solo hay una posible (la da la tabla).
+            const huecos = rasgosParaReciclar(motor);
+            expect(huecos.length).toBe(1);
+            const [hueco] = huecos;
+            expect(hueco).toEqual(jasmine.objectContaining({ idClase: 6, nivelClase: 2, grupo: 1, motivo: null, indiceNivel: 1 }));
+            expect(nombreDeLoQueTiene(hueco)).toBe('Estilo de combate (Combate con dos armas)');
+            expect(hueco.opciones.map((o) => [nombreDeOpcion(o), o.motivo])).toEqual([['Estilo de combate (Tiro con arco)', null]]);
+
+            const pone = hueco.opciones[0];
+            const plan: PlanRasgo = { tipo: 'rasgo', hueco, pone, doteElegida: null, cambios: cambiosDelRasgo(motor, hueco, pone) };
+            expect(plan.cambios.filter((c) => c.derivado).map((c) => [c.nivelClase, c.nombreQuita, c.nombrePone, c.pone?.origen]))
+                .toEqual([[2, 'Combate con dos armas', 'Disparo rápido', 'Explorador nivel 2'], [6, 'Combate con dos armas mejorado', 'Disparos múltiples', 'Explorador nivel 6']]);
+            expect(reciclajeDelPlan(plan)).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 6, nivelClase: 2, grupo: 1 },
+                quita: { especial: { id: 39, idExtra: 0 }, dote: null }, pone: { especial: { id: 156, idExtra: 0 }, dote: null },
+            });
+            expect(filasDelReciclaje(plan)).toEqual([
+                jasmine.objectContaining({ que: 'Reciclaje: rasgo de clase', antes: 'Estilo de combate (Combate con dos armas)', ahora: 'Estilo de combate (Tiro con arco)' }),
+                jasmine.objectContaining({ que: 'Reciclaje: lo que cambia solo', antes: 'Combate con dos armas, Combate con dos armas mejorado', ahora: 'Disparo rápido, Disparos múltiples' }),
+            ]);
+
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(aptitudesDe(motor)).toContain([156, 0]);
+            expect(aptitudesDe(motor)).not.toContain([39, 0]);
+            expect(dotesDe(motor)).toContain([52, 'Explorador nivel 2']);
+            expect(dotesDe(motor)).toContain([323, 'Explorador nivel 6']);
+            expect(dotesDe(motor).some(([id]) => id === 11 || id === 12)).toBeFalse();
+            const elecciones = (i: number) => motor.getOrdenNiveles()[i].elecciones.map((e) => [e.tipo, toInt(e.idElemento)]);
+            expect(elecciones(1)).toContain(['especial', 156]);
+            expect(elecciones(1)).toContain(['dote', 52]);
+            expect(elecciones(1)).not.toContain(['especial', 39]);
+            expect(elecciones(1)).not.toContain(['dote', 11]);
+            expect(elecciones(5)).toContain(['dote', 323]);
+
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan });
+            const especiales = (ficha.colecciones?.especiales ?? []).map((e) => e.idEspecial);
+            expect(especiales).toContain(156);
+            expect(especiales).not.toContain(39);
+            const dotes = (ficha.colecciones?.dotes ?? []).map((d) => [d.idDote, d.origen]);
+            expect(dotes).toContain([52, 'Explorador nivel 2']);
+            expect(dotes).toContain([323, 'Explorador nivel 6']);
+            expect(dotes.some(([id]) => id === 11 || id === 12)).toBeFalse();
+            expect(ficha.niveles?.[1].elecciones?.map((e) => [e.tipo, e.idElemento])).toContain(['dote', 52]);
+            expect(ficha.niveles?.[5].elecciones?.map((e) => [e.tipo, e.idElemento])).toContain(['dote', 323]);
+            expect(ficha.niveles?.length).toBe(guardado.entrada.niveles?.length);
+        });
+
+        it('con Defensa con dos armas, elegida después, no cambia de estilo (MJ II, pág. 195); el motor se queda como estaba', () => {
+            const { motor } = conDosArmas(3);
+            motor.PersonajeCreacion.DotesContextuales.push({
+                Dote: DEFENSA, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel 3' },
+            } as any);
+            expect(motor.dotesSinSusPrerrequisitos()).toEqual([]);
+            const [hueco] = rasgosParaReciclar(motor);
+            expect(hueco.motivo).toBe('Lo necesita lo que tiene: Defensa con dos armas (No cumple: Combate con dos armas).');
+            expect(aptitudesDe(motor)).toContain([39, 0]);
+            expect(dotesDe(motor)).toContain([11, 'Explorador nivel 2']);
+            // Las dotes del estilo no se reciclan como dote: las da la tabla.
+            expect(dotesParaReciclar(motor, [hueco]).find((d) => d.idDote === 11)?.motivo).toBe('No se eligió: la da Explorador nivel 2.');
+        });
+    });
+
+    describe('las dotes adicionales del monje (MJ pág. 51)', () => {
+        const ISAM = dote(19, 'Impacto sin arma mejorado');
+        const PRESA = dote(32, 'Presa mejorada');
+        const PUNETAZO = { ...dote(33, 'Puñetazo aturdidor'), Prerrequisitos: ataque(8) };
+        const LLAVE = { ...dote(71, 'Llave de presa'), Prerrequisitos: pide(32, 'Presa mejorada') };
+        const CATALOGO = [...DOTES, ISAM, PRESA, PUNETAZO, LLAVE];
+        const MONJE = clase({
+            Id: 10, Nombre: 'Monje', Tipo_dado: { Id: 3, Nombre: 'd8' }, Puntos_habilidad: { Id: 1, Valor: 4 },
+            Habilidades: { Base: [ref(2, 'Trepar')], Custom: [] },
+            Desglose_niveles: [nivel(1, { Dotes: [filaDote(ISAM, 0, 2), filaDote(PRESA, 1, 0), filaDote(PUNETAZO, 1, 1)] }), nivel(2)],
+        });
+        const conPresa = () => crearYSubir(MONJE, 1, CATALOGO, { 1: { grupos: { 1: 'dote:1' } } });
+
+        it('cambia la de su grupo por la otra, sin sus prerrequisitos; no se recicla como dote', () => {
+            const { guardado, motor } = conPresa();
+            const [hueco] = rasgosParaReciclar(motor);
+            expect(hueco).toEqual(jasmine.objectContaining({ idClase: 10, nivelClase: 1, grupo: 1, motivo: null }));
+            expect(hueco.doteQueTiene).toEqual(jasmine.objectContaining({ id: 32, origen: 'Monje nivel 1' }));
+            // Puñetazo aturdidor pide ataque base +8, pero el monje no necesita sus prerrequisitos.
+            expect(hueco.opciones.map((o) => [o.dote?.id, o.motivo])).toEqual([[33, null]]);
+            expect(dotesParaReciclar(motor, [hueco]).find((d) => d.idDote === 32)?.motivo)
+                .toBe('Es de un rasgo de clase (monje, nivel 1): se recicla con «Reciclar un rasgo de clase».');
+
+            const pone = hueco.opciones[0];
+            const plan: PlanRasgo = { tipo: 'rasgo', hueco, pone, doteElegida: null, cambios: cambiosDelRasgo(motor, hueco, pone) };
+            expect(reciclajeDelPlan(plan)).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 10, nivelClase: 1, grupo: 1 },
+                quita: { especial: null, dote: { id: 32, idExtra: 0 } }, pone: { especial: null, dote: { id: 33, idExtra: 0 } },
+            });
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(dotesDe(motor)).toContain([33, 'Monje nivel 1']);
+            expect(dotesDe(motor)).toContain([19, 'Monje nivel 1']);
+            expect(dotesDe(motor).some(([id]) => id === 32)).toBeFalse();
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan });
+            const dotes = (ficha.colecciones?.dotes ?? []).map((d) => [d.idDote, d.origen]);
+            expect(dotes).toContain([33, 'Monje nivel 1']);
+            expect(dotes.some(([id]) => id === 32)).toBeFalse();
+            expect(ficha.niveles?.[0].elecciones?.map((e) => [e.tipo, e.idElemento])).toContain(['dote', 33]);
+        });
+
+        it('si una dote que eligió después pide la de su grupo, no la cambia', () => {
+            const { motor } = conPresa();
+            motor.PersonajeCreacion.DotesContextuales.push({
+                Dote: LLAVE, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel 1' },
+            } as any);
+            expect(rasgosParaReciclar(motor)[0].motivo).toBe('Lo necesita lo que tiene: Llave de presa (No cumple: Presa mejorada).');
+        });
+    });
+
+    describe('la dote adicional del mago (MJ pág. 48): cualquiera de sus opciones', () => {
+        const POTENCIAR = deTipo(dote(80, 'Potenciar conjuro'), 'Metamágica');
+        const MAXIMIZAR = deTipo(dote(81, 'Maximizar conjuro'), 'Metamágica');
+        const VARITA = deTipo(dote(90, 'Crear varita'), 'Creación de objetos');
+        const ANILLO = { ...deTipo(dote(91, 'Forjar anillo'), 'Creación de objetos'), Prerrequisitos: ataque(6) };
+        const MAESTRIA = dote(31, 'Maestría en conjuros');
+        const CATALOGO = [...DOTES, POTENCIAR, MAXIMIZAR, VARITA, ANILLO, MAESTRIA];
+        // Como en rol_dev: el grupo de su nivel 5 junta Maestría en conjuros y la «Dote adicional» metamágica o de creación.
+        const MAGO_5 = clase({
+            Id: 9, Nombre: 'Mago', Tipo_dado: { Id: 1, Nombre: 'd4' }, Puntos_habilidad: { Id: 1, Valor: 2 },
+            Habilidades: { Base: [ref(3, 'Concentración')], Custom: [] },
+            Desglose_niveles: [1, 2, 3, 4, 5, 6].map((n) => nivel(n, n === 5 ? {
+                Dotes: [filaDote(MAESTRIA, 1, 1)],
+                Especiales: [filaEspecial(DOTE_ADICIONAL, 1, 1, { Id_extra: 12, Extra: 'Metamágica' }),
+                    filaEspecial(DOTE_ADICIONAL, 1, 2, { Id_extra: 111, Extra: 'Creación de objetos' })],
+            } : {})),
+        });
+        /** Un mago 6 que eligió a 5 la dote adicional metamágica, con Potenciar conjuro (sin el mago de verdad del catálogo). */
+        function mago() {
+            const svc = crear(HUMANO, {});
+            svc.setCatalogoClases([GUERRERO, MAGO_5]);
+            svc.setCatalogoDotes(CATALOGO);
+            for (let n = 1; n <= 6; n++)
+                aplicarNivel(svc, MAGO_5, 'Inteligencia', undefined, n === 5 ? { grupos: { 1: 'especial:1' }, dotes: [POTENCIAR] } : {});
+            const guardado = guardar(svc);
+            return { guardado, motor: subir(guardado, HUMANO, [GUERRERO, MAGO_5], CATALOGO) };
+        }
+
+        it('lo que tiene: la aptitud y la dote que eligió con ella, y sus opciones (Maestría, otra metamágica o una de creación)', () => {
+            const { motor } = mago();
+            const [hueco] = rasgosParaReciclar(motor);
+            expect(hueco).toEqual(jasmine.objectContaining({ idClase: 9, nivelClase: 5, grupo: 1, motivo: null, indiceNivel: 4 }));
+            expect(nombreDeLoQueTiene(hueco)).toBe('Dote adicional (Potenciar conjuro)');
+            expect(hueco.doteQueTiene?.origen).toBe('Dote adicional: Mago nivel 5');
+            expect(hueco.opciones.map((o) => [nombreDeOpcion(o), o.daDote?.tipo ?? null, o.motivo]))
+                .toEqual([['Maestría en conjuros', null, null], ['Dote adicional (Metamágica)', 'Metamágica', null], ['Dote adicional (Creación de objetos)', 'Creación de objetos', null]]);
+            // La de la dote adicional también se recicla como dote (otra de su lista).
+            expect(dotesParaReciclar(motor, [hueco]).find((d) => d.idDote === 80)?.motivo).toBeNull();
+        });
+
+        it('pasa a una de creación: las de su tipo, con el personaje del nivel 5 (Forjar anillo pide ataque base +6, que no tenía)', () => {
+            const { guardado, motor } = mago();
+            const [hueco] = rasgosParaReciclar(motor);
+            const creacion = hueco.opciones.find((o) => o.especial?.idExtra === 111)!;
+            const estado = motor.exportarEstadoSubida();
+            const delHueco = huecoDeLaDoteDelRasgo(motor, hueco, creacion)!;
+            expect(delHueco.pendiente.tipoPermitido).toBe('Creación de objetos');
+            const candidata = (id: number) => delHueco.candidatos.find((c) => toInt(c.dote?.Id) === id);
+            expect(candidata(90)?.evaluacion.estado).toBe('eligible');
+            expect(candidata(90)?.restringidaPorTipo).toBeFalse();
+            expect(candidata(91)?.evaluacion.estado).not.toBe('eligible');
+            expect(candidata(81)?.restringidaPorTipo).toBeTrue();
+            expect(motor.restaurarEstadoSubida(estado)).toBeTrue();
+            expect(motor.PersonajeCreacion.Ataque_base).toContain('6');
+
+            const plan: PlanRasgo = {
+                tipo: 'rasgo', hueco, pone: creacion, cambios: cambiosDelRasgo(motor, hueco, creacion),
+                doteElegida: { seleccion: { idDote: 90, idExtra: 0, extra: '' }, dote: { id: 90, idExtra: 0, nombre: 'Crear varita', extra: '', origen: 'Dote adicional: Mago nivel 5' } },
+            };
+            expect(reciclajeDelPlan(plan)).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 9, nivelClase: 5, grupo: 1 },
+                quita: { especial: { id: 5, idExtra: 12 }, dote: { id: 80, idExtra: 0 } }, pone: { especial: { id: 5, idExtra: 111 }, dote: { id: 90, idExtra: 0 } },
+            });
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(aptitudesDe(motor)).toContain([5, 111]);
+            expect(aptitudesDe(motor)).not.toContain([5, 12]);
+            expect(dotesDe(motor)).toContain([90, 'Dote adicional: Mago nivel 5']);
+            expect(dotesDe(motor).some(([id]) => id === 80)).toBeFalse();
+            const quinto = motor.getOrdenNiveles()[4].elecciones.map((e) => [e.tipo, toInt(e.idElemento), Math.max(0, toInt(e.idExtra))]);
+            expect(quinto).toContain(['especial', 5, 111]);
+            expect(quinto).toContain(['dote', 90, 0]);
+            expect(quinto).not.toContain(['dote', 80, 0]);
+
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan });
+            expect(ficha.colecciones?.especiales).toContain({ idEspecial: 5, idExtra: 111 });
+            expect(ficha.colecciones?.especiales).not.toContain({ idEspecial: 5, idExtra: 12 });
+            expect((ficha.colecciones?.dotes ?? []).map((d) => [d.idDote, d.origen])).toContain([90, 'Dote adicional: Mago nivel 5']);
+            expect((ficha.colecciones?.dotes ?? []).some((d) => d.idDote === 80)).toBeFalse();
+        });
+
+        it('pasa a Maestría en conjuros (la dote de su tabla) o a otra metamágica (en el selector, sin la que tenía)', () => {
+            const { motor } = mago();
+            const [hueco] = rasgosParaReciclar(motor);
+            const maestria = hueco.opciones.find((o) => o.dote?.id === 31)!;
+            const plan: PlanRasgo = { tipo: 'rasgo', hueco, pone: maestria, doteElegida: null, cambios: cambiosDelRasgo(motor, hueco, maestria) };
+            expect(reciclajeDelPlan(plan)).toEqual(jasmine.objectContaining({
+                quita: { especial: { id: 5, idExtra: 12 }, dote: { id: 80, idExtra: 0 } }, pone: { especial: null, dote: { id: 31, idExtra: 0 } },
+            }));
+            const estado = motor.exportarEstadoSubida();
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(dotesDe(motor)).toContain([31, 'Mago nivel 5']);
+            expect(dotesDe(motor).some(([id]) => id === 80)).toBeFalse();
+            expect(aptitudesDe(motor)).not.toContain([5, 12]);
+            expect(motor.restaurarEstadoSubida(estado)).toBeTrue();
+
+            const metamagica = hueco.opciones.find((o) => o.especial?.idExtra === 12)!;
+            const delHueco = huecoDeLaDoteDelRasgo(motor, hueco, metamagica)!;
+            expect(delHueco.candidatos.some((c) => toInt(c.dote?.Id) === 80)).toBeFalse();
+            expect(delHueco.candidatos.find((c) => toInt(c.dote?.Id) === 81)?.evaluacion.estado).toBe('eligible');
+            expect(motor.restaurarEstadoSubida(estado)).toBeTrue();
+            const otra: PlanRasgo = {
+                tipo: 'rasgo', hueco, pone: metamagica, cambios: cambiosDelRasgo(motor, hueco, metamagica),
+                doteElegida: { seleccion: { idDote: 81, idExtra: 0, extra: '' }, dote: { id: 81, idExtra: 0, nombre: 'Maximizar conjuro', extra: '', origen: 'Dote adicional: Mago nivel 5' } },
+            };
+            expect(reciclajeDelPlan(otra)).toEqual(jasmine.objectContaining({
+                quita: { especial: { id: 5, idExtra: 12 }, dote: { id: 80, idExtra: 0 } }, pone: { especial: { id: 5, idExtra: 12 }, dote: { id: 81, idExtra: 0 } },
+            }));
+            expect(aplicarReciclajeAlMotor(motor, otra)).toBeTrue();
+            expect(aptitudesDe(motor)).toContain([5, 12]);
+            expect(dotesDe(motor)).toContain([81, 'Dote adicional: Mago nivel 5']);
+        });
+        it('con la misma dote adicional a 5 y a 10, la aptitud se queda al cambiar la de 5 (la ficha la tiene una vez)', () => {
+            const delGrupo = (n: number, grupo: number) => ({
+                Dotes: [filaDote(MAESTRIA, grupo, grupo)],
+                Especiales: [filaEspecial(DOTE_ADICIONAL, grupo, 2 * grupo - 1, { Id_extra: 12, Extra: 'Metamágica' }),
+                    filaEspecial(DOTE_ADICIONAL, grupo, 2 * grupo, { Id_extra: 111, Extra: 'Creación de objetos' })],
+                Nivel: n,
+            });
+            const MAGO_10 = clase({
+                ...MAGO_5, Desglose_niveles: Array.from({ length: 10 }, (_, i) => nivel(i + 1, i + 1 === 5 ? delGrupo(5, 1) : i + 1 === 10 ? delGrupo(10, 2) : {})),
+            });
+            const svc = crear(HUMANO, {});
+            svc.setCatalogoClases([GUERRERO, MAGO_10]);
+            svc.setCatalogoDotes(CATALOGO);
+            for (let n = 1; n <= 10; n++)
+                aplicarNivel(svc, MAGO_10, 'Inteligencia', undefined, n === 5 ? { grupos: { 1: 'especial:1' }, dotes: [POTENCIAR] }
+                    : n === 10 ? { grupos: { 2: 'especial:1' }, dotes: [MAXIMIZAR] } : {});
+            const guardado = guardar(svc);
+            const motor = subir(guardado, HUMANO, [GUERRERO, MAGO_10], CATALOGO);
+            const huecos = rasgosParaReciclar(motor);
+            expect(huecos.map((h) => [h.nivelClase, nombreDeLoQueTiene(h), h.aptitudCompartida]))
+                .toEqual([[5, 'Dote adicional (Potenciar conjuro)', true], [10, 'Dote adicional (Maximizar conjuro)', true]]);
+            const [quinto] = huecos;
+            const maestria = quinto.opciones.find((o) => o.dote?.id === 31)!;
+            const plan: PlanRasgo = { tipo: 'rasgo', hueco: quinto, pone: maestria, doteElegida: null, cambios: cambiosDelRasgo(motor, quinto, maestria) };
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(aptitudesDe(motor)).toContain([5, 12]);
+            expect(dotesDe(motor)).toContain([81, 'Dote adicional: Mago nivel 10']);
+            expect(dotesDe(motor)).toContain([31, 'Mago nivel 5']);
+            expect(dotesDe(motor).some(([id]) => id === 80)).toBeFalse();
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan });
+            expect(ficha.colecciones?.especiales).toContain({ idEspecial: 5, idExtra: 12 });
+            // En el registro, la del nivel 5 sale de su nivel y la del 10 se queda en el suyo.
+            expect(ficha.niveles?.[4].elecciones).not.toContain(jasmine.objectContaining({ tipo: 'especial', idElemento: 5 }));
+            expect(ficha.niveles?.[9].elecciones).toContain(jasmine.objectContaining({ tipo: 'especial', idElemento: 5, idExtra: 12 }));
+        });
+    });
+
+    describe('la aptitud especial del pícaro, como grupo opcional de su tabla (MJ págs. 57-58; datos simulados)', () => {
+        const PICARO = clase({
+            Id: 12, Nombre: 'Pícaro', Tipo_dado: { Id: 2, Nombre: 'd6' }, Puntos_habilidad: { Id: 1, Valor: 8 },
+            Habilidades: { Base: [ref(2, 'Trepar')], Custom: [] },
+            Desglose_niveles: Array.from({ length: 10 }, (_, i) => nivel(i + 1, i + 1 === 10 ? {
+                Especiales: [filaEspecial({ Id: 57, Nombre: 'Evasión mejorada' }, 1, 12), filaEspecial({ Id: 2247, Nombre: 'Oportunismo' }, 1, 13),
+                    filaEspecial({ Id: 2265, Nombre: 'Rodar a la defensiva' }, 1, 14),
+                    filaEspecial(DOTE_ADICIONAL, 1, 15, { Id_extra: 300, Extra: 'Cualquiera', Extra_comodin: 'cualquiera' })],
+            } : {})),
+        });
+
+        it('el pícaro 10 cambia evasión mejorada por oportunismo; con la dote adicional, una de cualquier tipo', () => {
+            const { guardado, motor } = crearYSubir(PICARO, 10, DOTES, { 10: { grupos: { 1: 'especial:0' } } });
+            const [hueco] = rasgosParaReciclar(motor);
+            expect(hueco).toEqual(jasmine.objectContaining({ idClase: 12, nivelClase: 10, grupo: 1, motivo: null }));
+            expect(nombreDeLoQueTiene(hueco)).toBe('Evasión mejorada');
+            expect(hueco.opciones.map((o) => [nombreDeOpcion(o), o.daDote, o.motivo]))
+                .toEqual([['Oportunismo', null, null], ['Rodar a la defensiva', null, null], ['Dote adicional (Cualquiera)', { tipo: null }, null]]);
+            const estado = motor.exportarEstadoSubida();
+            expect(huecoDeLaDoteDelRasgo(motor, hueco, hueco.opciones[2])?.pendiente.tipoPermitido).toBeNull();
+            expect(motor.restaurarEstadoSubida(estado)).toBeTrue();
+
+            const pone = hueco.opciones[0];
+            const plan: PlanRasgo = { tipo: 'rasgo', hueco, pone, doteElegida: null, cambios: cambiosDelRasgo(motor, hueco, pone) };
+            expect(reciclajeDelPlan(plan)).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 12, nivelClase: 10, grupo: 1 },
+                quita: { especial: { id: 57, idExtra: 0 }, dote: null }, pone: { especial: { id: 2247, idExtra: 0 }, dote: null },
+            });
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(aptitudesDe(motor)).toContain([2247, 0]);
+            expect(aptitudesDe(motor)).not.toContain([57, 0]);
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan });
+            expect(ficha.colecciones?.especiales).toContain({ idEspecial: 2247, idExtra: 0 });
+            expect(ficha.niveles?.[9].elecciones?.map((e) => [e.tipo, e.idElemento])).toContain(['especial', 2247]);
+            expect(ficha.niveles?.[9].elecciones?.map((e) => [e.tipo, e.idElemento])).not.toContain(['especial', 57]);
+        });
+
+        it('al crearlo, la dote adicional con el comodín «Cualquiera» deja elegir cualquier dote, también una de dos tipos', () => {
+            const ESQUIVA = { ...dote(60, 'Esquiva'), Tipos: [{ Id: 1, Nombre: 'General', Usado: 1 }, { Id: 4, Nombre: 'Guerrero', Usado: 1 }] };
+            const svc = crear(HUMANO, { Destreza: 13 });
+            svc.setCatalogoDotes([...DOTES, ESQUIVA]);
+            const [pendiente] = svc.registrarDotesPendientesPorEspeciales(PICARO.Desglose_niveles[9].Especiales.slice(3), 'Pícaro nivel 10');
+            expect(pendiente.tipoPermitido).toBeNull();
+            expect(svc.obtenerCandidatosDotePendiente(pendiente.id).find((c) => toInt(c.dote?.Id) === 60)?.restringidaPorTipo).toBeFalse();
+            expect(svc.aplicarDotePendiente(pendiente.id, { idDote: 60, idExtra: 0, extra: '' })).toBeTrue();
+            // Con el mismo texto sin la marca del comodín, sí es un tipo (el dato manda, no el texto).
+            const [conTipo] = svc.registrarDotesPendientesPorEspeciales([{ ...PICARO.Desglose_niveles[9].Especiales[3], Extra_comodin: null }], 'Pícaro nivel 10');
+            expect(conTipo.tipoPermitido).toBe('Cualquiera');
+        });
+    });
+
+    describe('lo que su tabla da por la opción, también aptitudes y en cadena (el convocador divino; datos simulados)', () => {
+        const SENDA_A = { Id: 2593, Nombre: 'Senda del esandy' };
+        const SENDA_B = { Id: 2594, Nombre: 'Senda del uzurna' };
+        const CONVOCADOR = clase({
+            Id: 419, Nombre: 'Convocador divino', Tipo_dado: { Id: 3, Nombre: 'd8' }, Puntos_habilidad: { Id: 1, Valor: 2 },
+            Habilidades: { Base: [ref(3, 'Concentración')], Custom: [] },
+            Desglose_niveles: [
+                nivel(1, { Especiales: [filaEspecial(SENDA_A, 1, 18), filaEspecial(SENDA_B, 1, 1)] }),
+                nivel(2, { Especiales: [filaEspecial({ Id: 2598, Nombre: 'Plegaria del deva astral' }, 2, 5, { Id_especial_requerido: 18 }),
+                    filaEspecial({ Id: 2599, Nombre: 'Contrato del babau' }, 2, 6, { Id_especial_requerido: 1 })] }),
+                nivel(3, { Especiales: [filaEspecial({ Id: 2700, Nombre: 'Plegaria mayor' }, 0, 7, { Id_especial_requerido: 5 }),
+                    filaEspecial({ Id: 2701, Nombre: 'Contrato mayor' }, 0, 8, { Id_especial_requerido: 6 })] }),
+            ],
+        });
+
+        it('al cambiar de senda, sus plegarias pasan a contratos en su nivel, también la que pide la plegaria', () => {
+            const { guardado, motor } = crearYSubir(CONVOCADOR, 3, DOTES, { 1: { grupos: { 1: 'especial:0' } } });
+            expect(aptitudesDe(motor)).toEqual(jasmine.arrayWithExactContents([[2593, 0], [2598, 0], [2700, 0]]));
+            const huecos = rasgosParaReciclar(motor);
+            expect(huecos.map((h) => [h.nivelClase, h.grupo, nombreDeLoQueTiene(h)])).toEqual([[1, 1, 'Senda del esandy']]);
+            const [hueco] = huecos;
+            const pone = hueco.opciones[0];
+            const plan: PlanRasgo = { tipo: 'rasgo', hueco, pone, doteElegida: null, cambios: cambiosDelRasgo(motor, hueco, pone) };
+            expect(plan.cambios.filter((c) => c.derivado).map((c) => [c.nivelClase, c.tipo, c.nombreQuita, c.nombrePone]))
+                .toEqual([[2, 'especial', 'Plegaria del deva astral', 'Contrato del babau'], [3, 'especial', 'Plegaria mayor', 'Contrato mayor']]);
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(aptitudesDe(motor)).toEqual(jasmine.arrayWithExactContents([[2594, 0], [2599, 0], [2701, 0]]));
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan });
+            expect((ficha.colecciones?.especiales ?? []).map((e) => e.idEspecial)).toEqual(jasmine.arrayWithExactContents([2594, 2599, 2701]));
+            expect(ficha.niveles?.[2].elecciones).toContain(jasmine.objectContaining({ tipo: 'especial', idElemento: 2701 }));
+        });
+    });
+
+    describe('una aptitud con «Elegir» (el gran arcano del archimago)', () => {
+        const GRAN_ARCANO = { Id: 107, Nombre: 'Gran arcano' };
+        const ARCHIMAGO = clase({
+            Id: 15, Nombre: 'Archimago', Tipo_dado: { Id: 1, Nombre: 'd4' }, Puntos_habilidad: { Id: 1, Valor: 2 },
+            Habilidades: { Base: [ref(3, 'Concentración')], Custom: [] },
+            Desglose_niveles: [1, 2].map((n) => nivel(n, {
+                Especiales: [filaEspecial(GRAN_ARCANO, 0, n - 1, { Id_extra: 110, Extra: 'Elegir', Extra_comodin: 'elegir' })],
+            })),
+        });
+        const DETALLE = {
+            Id: 107, Nombre: 'Gran arcano', Extras: [
+                { Id_extra: 110, Extra: 'Elegir', Extra_comodin: 'elegir', Orden: 0 }, { Id_extra: 201, Extra: 'Dominio de los elementos', Orden: 1 },
+                { Id_extra: 202, Extra: 'Conjuro poderoso', Orden: 2 }, { Id_extra: 203, Extra: 'Maestría arcana', Orden: 3 },
+            ],
+        } as any;
+        const elegido = (idExtra: number, extra: string): OpcionesDeNivel => ({ extras: { 'especial:0': { idExtra, extra } } });
+
+        it('cambia el extra elegido por otro que no tenga, en el nivel de su hueco', () => {
+            const { guardado, motor } = crearYSubir(ARCHIMAGO, 2, DOTES, { 1: elegido(201, 'Dominio de los elementos'), 2: elegido(202, 'Conjuro poderoso') });
+            expect(aptitudesConElegir(motor)).toEqual([107]);
+            expect(rasgosParaReciclar(motor)[0].motivo).toBe('No se han podido leer las opciones de Gran arcano.');
+            const huecos = rasgosParaReciclar(motor, new Map([[107, DETALLE]]));
+            expect(huecos.map((h) => [h.nivelClase, h.idEspecial, nombreDeLoQueTiene(h)]))
+                .toEqual([[1, 107, 'Gran arcano (Dominio de los elementos)'], [2, 107, 'Gran arcano (Conjuro poderoso)']]);
+            const [hueco] = huecos;
+            expect(hueco.opciones.map((o) => nombreDeOpcion(o))).toEqual(['Gran arcano (Maestría arcana)']);
+
+            const pone = hueco.opciones[0];
+            const plan: PlanRasgo = { tipo: 'rasgo', hueco, pone, doteElegida: null, cambios: cambiosDelRasgo(motor, hueco, pone) };
+            expect(reciclajeDelPlan(plan)).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 15, nivelClase: 1, idEspecial: 107 },
+                quita: { especial: { id: 107, idExtra: 201 }, dote: null }, pone: { especial: { id: 107, idExtra: 203 }, dote: null },
+            });
+            expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+            expect(aptitudesDe(motor)).toEqual(jasmine.arrayWithExactContents([[107, 202], [107, 203]]));
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclajeDelPlan(plan), { rasgo: plan });
+            expect(ficha.colecciones?.especiales).toEqual(jasmine.arrayWithExactContents([{ idEspecial: 107, idExtra: 202 }, { idEspecial: 107, idExtra: 203 }]));
+            expect(ficha.niveles?.[0].elecciones).toContain(jasmine.objectContaining({ tipo: 'especial', idElemento: 107, idExtra: 203 }));
+            expect(ficha.niveles?.[0].elecciones).not.toContain(jasmine.objectContaining({ tipo: 'especial', idElemento: 107, idExtra: 201 }));
+        });
     });
 });
