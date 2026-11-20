@@ -1,3 +1,4 @@
+import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { Clase } from 'src/app/interfaces/clase';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
@@ -9,7 +10,6 @@ import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
 import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import { esEspecializable, prohibidasAlEspecializarse } from './reglas-magia';
-import { unirConY } from './sesiones-texto';
 import { diferencia } from './subida-nivel';
 
 /*
@@ -155,7 +155,7 @@ export function huecosDeDominio(motor: NuevoPersonajeService, entrada: Personaje
                     return {
                         id: o.id, nombre: o.nombre, oficial: o.oficial,
                         motivo: pasan.length > 0
-                            ? `Con ${o.nombre}, ${unirConY(nombres)} ${pasan.length > 1 ? 'dejarían' : 'dejaría'} de ser de clase y tiene más de ${tope} rangos, el tope de una transclásea a su nivel (${toInt(nivelPersonaje)}).`
+                            ? `Con ${o.nombre}, ${unirLista(nombres, 'y')} ${pasan.length > 1 ? 'dejarían' : 'dejaría'} de ser de clase y tiene más de ${tope} rangos, el tope de una transclásea a su nivel (${toInt(nivelPersonaje)}).`
                             : null,
                     };
                 });
@@ -379,7 +379,7 @@ export function nombreDeLaEspecializacion(e: EspecializacionDelMago): string {
     if (!e.especialista)
         return 'Generalista';
     const nombres = e.prohibidas.map((p) => p.nombre.toLowerCase());
-    return nombres.length > 0 ? `${e.especialista.nombre} (prohibidas: ${unirConY(nombres)})` : e.especialista.nombre;
+    return nombres.length > 0 ? `${e.especialista.nombre} (prohibidas: ${unirLista(nombres, 'y')})` : e.especialista.nombre;
 }
 
 /**

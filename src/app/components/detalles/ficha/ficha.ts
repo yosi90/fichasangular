@@ -1,6 +1,7 @@
 import { analizarTextoManual } from 'src/app/components/shared/texto-manual/texto-manual';
 import { Alineamiento } from 'src/app/interfaces/alineamiento';
 import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /**
@@ -123,11 +124,20 @@ export function etiquetaTraducido(item: ConNombreOriginal | null | undefined): E
     return item?.Traducido && item.Nombre_original ? { texto: 'Traducido', ayuda: `Nombre original: ${item.Nombre_original}` } : null;
 }
 
-/** Los nombres unidos con comas y la conjunción antes del último: «Corona o Pies», «brazos, manos y pies». */
-export function unirLista(nombres: string[], conjuncion: 'o' | 'y'): string {
+/**
+ * Los nombres unidos con comas y la conjunción antes del último: «Corona o Pies», «brazos, manos y pies»; «e» ante el
+ * sonido i («evocación e ilusión», pero «agua y hielo») y «u» ante el sonido o («siete u ocho»), como `enumerar` de la API
+ * (`utils/Text.py`).
+ */
+export function unirLista(nombres: readonly string[], conjuncion: 'o' | 'y'): string {
     if (nombres.length < 2)
         return nombres.join('');
-    return `${nombres.slice(0, -1).join(', ')} ${conjuncion} ${nombres[nombres.length - 1]}`;
+    const ultimo = nombres[nombres.length - 1];
+    const inicio = normalizarTexto(ultimo);
+    const ante = conjuncion === 'y' && /^h?i/.test(inicio) && !/^h?i[aeou]/.test(inicio) ? 'e'
+        : conjuncion === 'o' && /^h?o/.test(inicio) ? 'u'
+            : conjuncion;
+    return `${nombres.slice(0, -1).join(', ')} ${ante} ${ultimo}`;
 }
 
 /**

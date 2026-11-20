@@ -66,6 +66,11 @@ describe('ficha/incarnum', () => {
         expect(unirLista(['Corona'], 'o')).toBe('Corona');
         expect(unirLista(['Brazos', 'Manos', 'Pies'], 'o')).toBe('Brazos, Manos o Pies');
         expect(unirLista(['brazos', 'pies'], 'y')).toBe('brazos y pies');
+        // «e» ante el sonido i y «u» ante el sonido o; no ante «hie» ni «ia», como `enumerar` de la API.
+        expect(['evocación e ilusión', 'agua e Hidra', 'agua y hielo', 'cobre y iambo', 'siete u ocho', 'luz u hojas', 'luz o agua'])
+            .toEqual([unirLista(['evocación', 'ilusión'], 'y'), unirLista(['agua', 'Hidra'], 'y'), unirLista(['agua', 'hielo'], 'y'),
+                unirLista(['cobre', 'iambo'], 'y'), unirLista(['siete', 'ocho'], 'o'), unirLista(['luz', 'hojas'], 'o'),
+                unirLista(['luz', 'agua'], 'o')]);
         expect(textoSalvacionFusion({ Salvacion: { Tipo: 'Reflejos', Efecto: 'Mitad' } })).toBe('Reflejos mitad');
         expect(textoSalvacionFusion({ Salvacion: null })).toBeNull();
     });
