@@ -560,7 +560,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
             pg: { antes: toInt(entrada.personaje.puntosGolpe), despues: toInt(ficha.personaje.puntosGolpe), exacto: tras.exacto },
             renumerado: r?.resumen ?? null,
         });
-        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(entrada, () => this.ficha!, estadoMascotas)];
+        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(entrada, () => this.ficha!, estadoMascotas, this.svc.nombresDeLoQueEligeLaMascota())];
         this.avisos = Array.from(new Set(tras.avisos));
     }
 

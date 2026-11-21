@@ -189,6 +189,8 @@ export function normalizeDoteApi(raw: any): Dote {
         // Las dotes a las que sustituye en los prerrequisitos.
         Cuenta_como: idNombres(raw?.Cuenta_como),
         Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
+        // Los trucos de más de su criatura (Truco adicional, 3; sin el dato, 0).
+        Trucos_extra: Math.max(0, toNumber(raw?.Trucos_extra, 0)),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
 }
@@ -243,6 +245,7 @@ export function normalizeDoteLegacy(raw: any): Dote {
         // Las dotes a las que sustituye en los prerrequisitos.
         Cuenta_como: idNombres(raw?.Cuenta_como),
         Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
+        Trucos_extra: Math.max(0, toNumber(raw?.Trucos_extra, 0)),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
 }

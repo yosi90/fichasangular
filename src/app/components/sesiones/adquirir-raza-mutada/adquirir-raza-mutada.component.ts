@@ -854,7 +854,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         });
         // Sus mascotas, con los valores de su nivel nuevo o inactivas hasta que vuelvan a cumplir (la conversión pierde un nivel;
         // las dos cambian los PG y el ataque base del amo): contrato, «La mascota inactiva…».
-        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(this.entrada!, () => this.fichaParaGuardar(), this.estadoMascotas)];
+        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(this.entrada!, () => this.fichaParaGuardar(), this.estadoMascotas, this.svc.nombresDeLoQueEligeLaMascota())];
     }
 
     /** Lo propio de la conversión en el resumen: el nivel perdido y el ganado, los PX, las dotes sin usar y las aptitudes. */

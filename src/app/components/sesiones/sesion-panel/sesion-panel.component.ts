@@ -7,6 +7,8 @@ import Swal from 'sweetalert2';
 import { TiendaSesionComponent } from 'src/app/components/sesiones/tienda-sesion/tienda-sesion.component';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { Dote } from 'src/app/interfaces/dote';
+import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraRequestDto, PersonajeEquipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import {
@@ -21,14 +23,19 @@ import {
     SesionEvento,
     SesionPersonaje,
 } from 'src/app/interfaces/sesiones';
+import { Truco } from 'src/app/interfaces/truco';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DeidadService } from 'src/app/services/deidad.service';
+import { DoteService } from 'src/app/services/dote.service';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { SesionesService, esSesionDesactualizada } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { TrucoService } from 'src/app/services/truco.service';
+import { contextoDelTrucoEnsenado, motivoTrucoEnsenado, textoDeLoQueSustituye, trucosQueSeEnsenan } from 'src/app/services/utils/companero-trucos';
+import { nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { nivelLanzadorMinimo, precioCopiaLibro } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
@@ -45,7 +52,7 @@ import {
 } from 'src/app/services/utils/tienda-equipo';
 
 /** Los tipos de lo que se apunta (lienzo de sesiones, pantalla 2), cada uno con su formulario corto; «Comprar» abre la tienda. */
-export type TipoApunte = 'experiencia' | 'dinero' | 'objeto' | 'comprar' | 'vender' | 'libro' | 'alineamiento' | 'nota';
+export type TipoApunte = 'experiencia' | 'dinero' | 'objeto' | 'comprar' | 'vender' | 'libro' | 'alineamiento' | 'truco' | 'nota';
 
 /** Lo que apunta el máster en «Alineamiento y expiación»: el cambio en juego, la caída por conducta o la expiación. */
 export type ModoAlineamiento = 'cambio' | 'caida' | 'expiacion';
@@ -74,9 +81,16 @@ interface ConjuroLibroPanel {
     precio: number;
 }
 
+/** Un truco que se le puede enseñar al compañero, con por qué no (`null` si se puede) y lo que sustituye. */
+export interface TrucoEnsenablePanel {
+    truco: Truco;
+    motivo: string | null;
+    sustituye: string | null;
+}
+
 const MAXIMO_CONJUROS_LISTA = 30;
 /** Los eventos del panel que cambian la ficha (su alineamiento, su deidad o sus ex clases): al apuntarlos o deshacerlos se vuelve a leer. */
-const CAMBIAN_LA_FICHA: ReadonlySet<string> = new Set(['cambio_alineamiento', 'caida', 'expiacion']);
+const CAMBIAN_LA_FICHA: ReadonlySet<string> = new Set(['cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado']);
 const AVISO_DESACTUALIZADA = 'Otra persona ha apuntado algo en esta sesión mientras la tenías abierta. Ya está al día: '
     + 'revisa lo que ha cambiado y, si hace falta, vuelve a apuntarlo.';
 
@@ -161,6 +175,12 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     basicos: OpcionPanel[] = [];
     deidades: OpcionPanel[] = [];
     cargandoAlineamiento = false;
+    /** El truco que se le enseña al compañero, y su concepto. */
+    trucoElegido: Truco | null = null;
+    trucoConcepto = '';
+    cargandoTrucos = false;
+    private trucosCatalogo: Truco[] | null = null;
+    private dotesCatalogo: Dote[] | null = null;
 
     cargandoTienda = false;
     cargandoConjuros = false;
@@ -179,6 +199,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         private conjuroSvc: ConjuroService,
         private alineamientoSvc: AlineamientoService,
         private deidadSvc: DeidadService,
+        private trucoSvc: TrucoService,
+        private doteSvc: DoteService,
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -228,6 +250,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             { id: 'vender', nombre: 'Vender' },
             ...(this.libros.length > 0 && this.politica.copiarConjuros ? [{ id: 'libro' as const, nombre: 'Conjuro al libro' }] : []),
             ...(this.controlaAlineamiento ? [{ id: 'alineamiento' as const, nombre: 'Alineamiento y expiación' }] : []),
+            ...(this.companero ? [{ id: 'truco' as const, nombre: 'Enseñar un truco' }] : []),
             { id: 'nota', nombre: 'Nota' },
         ];
     }
@@ -336,6 +359,40 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         return this.alineamientoModo === 'caida' ? this.clasesQuePuedenCaer : this.alineamientoModo === 'expiacion' ? this.clasesCaidas : [];
     }
 
+    /** Su compañero animal (uno solo por personaje), si lo tiene. */
+    get companero(): CompaneroMonstruoDetalle | null {
+        return (this.pj?.Companeros ?? [])[0] ?? null;
+    }
+
+    get nombreCompanero(): string {
+        return nombreDelCompanero(this.companero);
+    }
+
+    /**
+     * Los trucos y los fines que se le pueden enseñar con Trato con animales (evento `truco_ensenado`): primero los que puede
+     * aprender, después los demás con su motivo (`motivoTrucoEnsenado`, el mismo criterio que la API), y lo que sustituyen.
+     */
+    get trucosEnsenables(): TrucoEnsenablePanel[] {
+        if (!this.companero || !this.trucosCatalogo)
+            return [];
+        const catalogo = this.trucosCatalogo;
+        const contexto = contextoDelTrucoEnsenado(this.companero, catalogo, this.dotesCatalogo ?? []);
+        return trucosQueSeEnsenan(catalogo, this.pj?.Oficial === false && !this.soloOficial)
+            .map((truco) => ({ truco, motivo: motivoTrucoEnsenado(truco, contexto), sustituye: textoDeLoQueSustituye(truco, contexto) }))
+            .sort((a, b) => Number(a.motivo !== null) - Number(b.motivo !== null) || a.truco.Nombre.localeCompare(b.truco.Nombre, 'es'));
+    }
+
+    /** Lo que sabe ya y cuántos puede aprender: «Sabe 3 de 6 (3 por punto de Inteligencia y lo de sus dotes).» */
+    get notaTrucos(): string {
+        if (!this.companero || !this.trucosCatalogo)
+            return '';
+        const contexto = contextoDelTrucoEnsenado(this.companero, this.trucosCatalogo, this.dotesCatalogo ?? []);
+        if (contexto.inteligencia === null || contexto.inteligencia >= 3)
+            return '';
+        return `Ha aprendido ${contexto.cuenta} de ${contexto.limite} (3 por punto de Inteligencia, más lo que dan sus dotes). `
+            + 'Rol no tira la prueba de Trato con animales ni cuenta las semanas: apúntalo cuando lo haya aprendido.';
+    }
+
     /** Por qué no se puede apuntar aún lo del formulario abierto, o `null` si se puede. */
     get motivoNoApuntar(): string | null {
         switch (this.tipo) {
@@ -368,6 +425,16 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
                 return this.libroElegido && this.conjuroElegido ? null : 'Elige el libro y el conjuro.';
             case 'alineamiento':
                 return this.motivoNoApuntarAlineamiento();
+            case 'truco': {
+                if (this.cargandoTrucos)
+                    return 'Cargando los trucos…';
+                const elegido = this.trucosEnsenables.find((o) => o.truco.Id === this.trucoElegido?.Id);
+                if (!elegido)
+                    return 'Elige el truco.';
+                if (elegido.motivo)
+                    return elegido.motivo;
+                return this.trucoConcepto.length > MAXIMO_CONCEPTO_EVENTO ? `El concepto puede tener como mucho ${MAXIMO_CONCEPTO_EVENTO} caracteres.` : null;
+            }
             case 'nota': {
                 const texto = this.notaTexto.trim();
                 if (texto.length < 1)
@@ -402,6 +469,13 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         }
         if (this.tipo === 'alineamiento')
             void this.cargarAlineamientos();
+        if (this.tipo === 'truco')
+            void this.cargarTrucos();
+    }
+
+    elegirTruco(opcion: TrucoEnsenablePanel): void {
+        if (opcion.motivo === null)
+            this.trucoElegido = opcion.truco;
     }
 
     cancelarFormulario(): void {
@@ -640,6 +714,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
                     : null;
             case 'alineamiento':
                 return this.eventoDeAlineamiento();
+            case 'truco':
+                return this.trucoElegido ? { tipo: 'truco_ensenado', idTruco: this.trucoElegido.Id, ...concepto(this.trucoConcepto) } : null;
             case 'nota':
                 return { tipo: 'nota', texto: this.notaTexto.trim() };
             default:
@@ -732,6 +808,27 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         this.clasesAlineamiento = new Set();
         this.voluntaria = false;
         this.lanzador = '';
+        this.trucoElegido = null;
+        this.trucoConcepto = '';
+    }
+
+    /** El catálogo de trucos y el de dotes (lo que dan sus dotes al límite: `Trucos_extra`), al abrir el formulario (una vez). */
+    private async cargarTrucos(): Promise<void> {
+        if (this.trucosCatalogo || this.cargandoTrucos)
+            return;
+        this.cargandoTrucos = true;
+        try {
+            const [trucos, dotes] = await Promise.all([
+                firstValueFrom(this.trucoSvc.getTrucos().pipe(take(1))),
+                firstValueFrom(this.doteSvc.getDotes().pipe(take(1), catchError(() => of([] as Dote[])))),
+            ]);
+            this.trucosCatalogo = trucos ?? [];
+            this.dotesCatalogo = dotes ?? [];
+        } catch (error: any) {
+            this.error = this.mensaje(error);
+        } finally {
+            this.cargandoTrucos = false;
+        }
     }
 
     /** La compra paga del saldo (sin tope: la regla «libre» con el saldo de sugerido); el botín no se paga. */

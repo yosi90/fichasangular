@@ -874,6 +874,13 @@ describe('dote-elegibilidad', () => {
             expect(evaluarElegibilidadDote({ dote: truco, contexto: crearContextoBase({ trucosConocidos: 1 }) }).estado).toBe('eligible');
         });
 
+        it('las claves que el contrato no recoge (`Minimo`, `nivel_lanzador`) no valen: el prerrequisito no se puede evaluar', () => {
+            const flotar = crearDoteBase({ Prerrequisitos: { volar: [{ Minimo: 1, Opcional: 0, Frase: 'Velocidad de vuelo' }] } as any });
+            expect(evaluarElegibilidadDote({ dote: flotar, contexto: crearContextoBase({ velocidadVuelo: 60 }) }).estado).toBe('blocked_unknown');
+            const apresurar = crearDoteBase({ Prerrequisitos: { sortilega: [{ nivel_lanzador: 10, Opcional: 0, Frase: 'Una aptitud sortílega' }] } as any });
+            expect(evaluarElegibilidadDote({ dote: apresurar, contexto: crearContextoBase({ nivelLanzadorSortilegas: 12 }) }).estado).toBe('blocked_unknown');
+        });
+
         it('la característica con un máximo: entre `Cantidad` y `Maximo` (Truco adicional, Int 1 a 2)', () => {
             const dote = crearDoteBase({ Prerrequisitos: { caracteristica: [{ Id_caracteristica: 4, Caracteristica: 'Inteligencia', Cantidad: 1, Maximo: 2, Opcional: 0 }] } as any });
             const conInt = (Inteligencia: number) => crearContextoBase({ caracteristicas: { ...crearContextoBase().caracteristicas, Inteligencia } });

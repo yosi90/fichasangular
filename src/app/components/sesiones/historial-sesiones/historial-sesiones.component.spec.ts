@@ -6,6 +6,8 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DeidadService } from 'src/app/services/deidad.service';
+import { DoteService } from 'src/app/services/dote.service';
+import { TrucoService } from 'src/app/services/truco.service';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { SesionesService, leerHistorial, leerRespuestaSesion } from 'src/app/services/sesiones.service';
@@ -57,6 +59,8 @@ describe('HistorialSesionesComponent', () => {
                 { provide: ConjuroService, useValue: { getConjuros: () => of([]) } },
                 { provide: AlineamientoService, useValue: { getAlineamientosBasicosCatalogo: () => of([]) } },
                 { provide: DeidadService, useValue: { getDeidades: () => of([]) } },
+                { provide: TrucoService, useValue: { getTrucos: () => of([]) } },
+                { provide: DoteService, useValue: { getDotes: () => of([]) } },
             ],
         }).compileComponents();
         puerta = TestBed.inject(SubidaNivelPuertaService);

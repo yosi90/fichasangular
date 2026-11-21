@@ -1075,7 +1075,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const entrada = this.entradaDelNivel;
         if (entrada.companero || entrada.familiar) {
             const estado = this.svc.ponerMascotasAlDia();
-            this.cambios = [...this.cambios, ...cambiosDeLasMascotas(entrada, () => this.fichaDeLaSubidaSinMarcas(this.svc.getEleccionesDelNivelEnCurso()), estado)];
+            this.cambios = [...this.cambios, ...cambiosDeLasMascotas(entrada,
+                () => this.fichaDeLaSubidaSinMarcas(this.svc.getEleccionesDelNivelEnCurso()), estado, this.svc.nombresDeLoQueEligeLaMascota())];
         }
     }
 
