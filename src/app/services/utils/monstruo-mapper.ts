@@ -350,6 +350,8 @@ export function normalizeFamiliarMonstruoDetalle(raw: any, depth = 1): FamiliarM
         },
         Especiales: toArray(raw?.Especiales).map((item) => normalizeEspecialContextual(item)),
         Personajes: toArray(raw?.Personajes).map((item) => normalizePersonajeRef(item)),
+        // La de una ficha, inactiva hasta que vuelva a cumplir (`Inactiva`, desde el 2026-11-21); sin él, activa.
+        ...(raw?.Inactiva === true ? { Inactiva: true } : {}),
     };
 }
 
@@ -371,6 +373,8 @@ export function normalizeCompaneroMonstruoDetalle(raw: any, depth = 1): Companer
         },
         Especiales: toArray(raw?.Especiales).map((item) => normalizeEspecialContextual(item)),
         Personajes: toArray(raw?.Personajes).map((item) => normalizePersonajeRef(item)),
+        // La de una ficha, inactiva hasta que vuelva a cumplir (`Inactiva`, desde el 2026-11-21); sin él, activa.
+        ...(raw?.Inactiva === true ? { Inactiva: true } : {}),
     };
 }
 

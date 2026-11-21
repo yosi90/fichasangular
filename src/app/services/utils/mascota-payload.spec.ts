@@ -73,3 +73,20 @@ describe('puntos de golpe medios de unos DG', () => {
         expect(mitadDeLosPg(0)).toBe(1);
     });
 });
+
+describe('el familiar inactivo para guardar (contrato, «La mascota inactiva…»)', () => {
+    const progresion = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
+    const gato = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR).find((f) => f.Id_familiar === GATO && f.Plantilla.Id === BASICA)!;
+    const amo = { vida: 30, ataqueBase: 5, salvacionesBase: { fortaleza: 4, reflejos: 4, voluntad: 6 }, habilidades: [{ idHabilidad: 7, idExtra: -1, rangos: 8 }] };
+
+    it('vale su criatura tal cual: sin los PG, el ataque, las salvaciones ni los rangos de su amo, ni la tabla, y con `inactiva`', () => {
+        const inactivo = construirFamiliarParaGuardar({ ...gato, Inactiva: true }, amo, tablaDelFamiliar(progresion, BASICA, 11));
+        expect([inactivo.vida, inactivo.ataqueBase, inactivo.armaduraNatural, inactivo.inteligencia, inactivo.rc, inactivo.inactiva])
+            .toEqual([vidaMediaDelMonstruo(gato), 0, 0, 2, undefined, true]);
+        expect([inactivo.fortaleza, inactivo.reflejos, inactivo.voluntad]).toEqual([2, 4, 1]);
+        expect(inactivo.habilidades).toEqual([]);
+        // Activo, con lo de su amo y sin `inactiva`.
+        const activo = construirFamiliarParaGuardar(gato, amo, tablaDelFamiliar(progresion, BASICA, 11));
+        expect([activo.vida, activo.ataqueBase, activo.rc, activo.inactiva]).toEqual([15, 5, '16', undefined]);
+    });
+});

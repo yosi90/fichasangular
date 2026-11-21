@@ -18,7 +18,8 @@ import { fichaDeLaMutacion, loQuePierdeEnSuHueco } from './utils/adquirir-raza-m
 import { fichaDeLaCorreccion } from './utils/correccion-ficha';
 import { fichaDeLaConversion } from './utils/conversion-muerto-viviente';
 import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
-import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
+import { fichaSinElNivel, quitarElNivelDelMotor, sinLoQueDabanLasDotes } from './utils/perder-nivel';
+import { filasDeLasMascotas, perdidaConSusMascotas, sinLoQueYaNoDaLaMascota } from './utils/mascota-al-dia';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import { construirCatalogoCompanerosDesdeMonstruos, claveCompanero } from './utils/companero-reglas';
 import { leerCompaneroProgresion, leerFamiliarProgresion } from './utils/monstruo-mapper';
@@ -2279,6 +2280,198 @@ describe('El reciclaje de la mascota (R3, tercera tanda; Manual del jugador II, 
             expect(subida.familiarParaGuardar()!.idMonstruo).toBe(GATO);
             // Con otro que también le da el vínculo, sí.
             expect(motivoDeLaMascota(subida, planDeLaMascota(subida, hueco, delCatalogo(LECHUZA, FAMILIAR_BASICO), '').plan!)).toBeNull();
+        });
+    });
+});
+
+describe('La mascota en los cambios de la ficha: con los valores de su nivel o inactiva hasta que vuelva a cumplir (contrato, «La mascota inactiva…»)', () => {
+    const HUMANO = crearRaza('Humano');
+    const PROGRESION = leerCompaneroProgresion(PROGRESION_API);
+    const PROGRESION_FAMILIAR = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
+    /** Una clase de muerto viviente simulada, sin `Mascota` (*Libris Mortis*): la conversión gana su 1.er nivel. */
+    const ENGENDRO = clase({
+        Id: 482, Nombre: 'Engendro', Tipo_dado: { Id: 5, Nombre: 'd12' }, Puntos_habilidad: { Id: 1, Valor: 2 },
+        Habilidades: { Base: [], Custom: [] }, Desglose_niveles: [nivel(1)],
+    });
+    const CLASES_DRUIDA_Y_ENGENDRO = [...CLASES_DRUIDA, ENGENDRO];
+    const catalogoDeClases = { clases: CLASES_DRUIDA_Y_ENGENDRO.map((c) => ({ id: c.Id, nombre: c.Nombre })) };
+    /** `MotorDesdeFichaService`, con el cuerpo del motor de estas pruebas. */
+    const motorDesdeFicha = { cuerpoDelMotor } as unknown as MotorDesdeFichaService;
+    const bisonte = () => JSON.parse(JSON.stringify(construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_COMPANERO)
+        .find((c) => claveCompanero(c) === `${BISONTE}:0`)!));
+
+    function hidratado(guardado: ReturnType<typeof guardar>): NuevoPersonajeService {
+        const motor = subir(guardado, HUMANO, CLASES_DRUIDA_Y_ENGENDRO);
+        motor.setProgresionCompanero(PROGRESION);
+        motor.setProgresionFamiliar(PROGRESION_FAMILIAR);
+        return motor;
+    }
+
+    /** El druida `niveles` con su bisonte (Lomo), guardado, y el motor hidratado desde su ficha (la sesión). */
+    function druidaConBisonte(niveles: number) {
+        const svc = crear(HUMANO, { Sabiduria: 15 });
+        svc.setCatalogoClases(CLASES_DRUIDA_Y_ENGENDRO);
+        svc.setProgresionCompanero(PROGRESION);
+        for (let i = 0; i < niveles; i++)
+            aplicarNivel(svc, DRUIDA);
+        expect(svc.registrarCompaneroSeleccionado(bisonte(), 'Lomo').registrado).toBeTrue();
+        const guardado = guardar(svc, catalogoDeClases);
+        guardado.entrada.companero = svc.companeroParaGuardar();
+        return { guardado, motor: hidratado(guardado) };
+    }
+
+    /** Perder el último nivel de druida, como `PerderNivelComponent` (sin lo que daban sus dotes: aquí, nada). */
+    function perderElUltimo(guardado: ReturnType<typeof guardar>, motor: NuevoPersonajeService) {
+        const indice = guardado.entrada.niveles!.length - 1;
+        const sinElNivel = fichaSinElNivel({ entrada: guardado.entrada, indice, clase: DRUIDA, caras: 8, dgsAntes: indice + 1 });
+        return perdidaConSusMascotas(motor, motorDesdeFicha, guardado.entrada, sinElNivel, { idClase: DRUIDA.Id, indice });
+    }
+
+    const ids = (lista: Array<{ idEspecial: number; }> | undefined) => (lista ?? []).map((e) => toInt(e.idEspecial));
+
+    it('el druida 5 con un bisonte (−3) pierde un nivel: a druida 4 sigue activo, con los valores de druida 1', () => {
+        const { guardado, motor } = druidaConBisonte(5);
+        const { resultado, estado } = perderElUltimo(guardado, motor);
+        const companero = resultado.ficha.companero!;
+        expect(companero.inactiva).toBeUndefined();
+        expect([companero.dgAdi, companero.trucosAdi, companero.fuerza, companero.destreza, companero.armaduraNatural]).toEqual([0, 1, 22, 10, 4]);
+        expect(ids(resultado.ficha.colecciones?.especiales)).toEqual(jasmine.arrayContaining([VINCULO, COMPARTIR_CONJUROS]));
+        expect(estado.companero).toEqual({ nombre: 'Lomo', inactiva: false, motivo: '' });
+        expect(filasDeLasMascotas(guardado.entrada, resultado.ficha, estado)).toEqual([]);
+    });
+
+    it('el druida 4 con un bisonte pierde un nivel: queda inactivo, con los valores de su monstruo, y el druida pierde el vínculo', () => {
+        const { guardado, motor } = druidaConBisonte(4);
+        expect(guardado.entrada.companero!.trucosAdi).toBe(1);
+        const { resultado, estado } = perderElUltimo(guardado, motor);
+        const companero = resultado.ficha.companero!;
+        expect(companero.inactiva).toBeTrue();
+        expect([companero.dgAdi, companero.trucosAdi, companero.fuerza, companero.destreza, companero.armaduraNatural]).toEqual([0, 0, 22, 10, 4]);
+        expect(ids(companero.especiales)).not.toContain(VINCULO);
+        expect(ids(resultado.ficha.colecciones?.especiales)).not.toContain(VINCULO);
+        expect(ids(resultado.ficha.colecciones?.especiales)).not.toContain(COMPARTIR_CONJUROS);
+        expect(resultado.ficha.colecciones?.clases).toEqual([{ idClase: DRUIDA.Id, nivel: 3 }]);
+        expect(estado.companero).toEqual({ nombre: 'Lomo', inactiva: true, motivo: 'Pide un nivel efectivo de druida 4, y tienes 3.' });
+        const [fila] = filasDeLasMascotas(guardado.entrada, resultado.ficha, estado);
+        expect(fila.que).toBe('Compañero animal (Lomo)');
+        expect(fila.antes).toBe('+0 DG, 1 truco, Fue 22, Des 10, armadura natural 4, 13 PG');
+        expect(fila.ahora).toMatch(/^Queda inactivo hasta que vuelva a cumplir: pide un nivel efectivo de druida 4, y tienes 3\./);
+        // El motor de la sesión, como estaba.
+        expect(motor.PersonajeCreacion.Companeros[0].Inactiva).toBeUndefined();
+        expect(motor.PersonajeCreacion.Claseas.some((e) => toInt(e.Id) === VINCULO)).toBeTrue();
+    });
+
+    it('el inactivo vuelve a cumplir al subir a druida 4: activo otra vez, con su vínculo (como al restablecer el nivel, que hace la API)', () => {
+        const { guardado, motor } = druidaConBisonte(4);
+        const indice = guardado.entrada.niveles!.length - 1;
+        const sinElNivel = fichaSinElNivel({ entrada: guardado.entrada, indice, clase: DRUIDA, caras: 8, dgsAntes: 4 });
+        quitarElNivelDelMotor(motor, sinElNivel, DRUIDA.Id, indice);
+        expect(motor.ponerMascotasAlDia().companero?.inactiva).toBeTrue();
+        const druida3 = guardar(motor, catalogoDeClases);
+        druida3.entrada.companero = motor.companeroParaGuardar();
+        expect(druida3.entrada.companero!.inactiva).toBeTrue();
+
+        const subida = hidratado(druida3);
+        expect(subida.PersonajeCreacion.Companeros[0].Inactiva).toBeTrue();
+        const antes = cuerpoDelMotor(subida, druida3.entrada);
+        aplicarNivel(subida, DRUIDA);
+        const ficha = fichaDeLaSubida({
+            entrada: druida3.entrada, antes, despues: cuerpoDelMotor(subida, druida3.entrada), idClase: DRUIDA.Id,
+            nivel: { idClase: DRUIDA.Id, nivelClase: 4, elecciones: subida.getEleccionesDelNivelEnCurso() }, puntosGolpe: 30,
+        });
+        expect(ficha.companero!.inactiva).toBeUndefined();
+        expect([ficha.companero!.dgAdi, ficha.companero!.trucosAdi]).toEqual([0, 1]);
+        expect(ids(ficha.companero!.especiales)).toContain(VINCULO);
+        expect(ids(ficha.colecciones?.especiales)).toContain(VINCULO);
+        expect(filasDeLasMascotas(druida3.entrada, ficha, {})[0].ahora).toMatch(/^Vuelve a cumplir su fila y está activo otra vez/);
+    });
+
+    it('el mago 3 pierde un nivel: su familiar, con la tabla de 2, sin transmitir conjuros de toque y la mitad de los PG nuevos', () => {
+        const svc = crear(HUMANO, { Inteligencia: 15 });
+        svc.setCatalogoClases(CLASES_MAGO);
+        svc.setProgresionFamiliar(PROGRESION_FAMILIAR);
+        aplicarNivel(svc, MAGO_CON_FAMILIAR);
+        const gato = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR).find((f) => claveFamiliar(f) === `${GATO}:${FAMILIAR_BASICO}`)!;
+        expect(svc.registrarFamiliarSeleccionado(JSON.parse(JSON.stringify(gato)), 'Bigotes').registrado).toBeTrue();
+        aplicarNivel(svc, MAGO_CON_FAMILIAR);
+        aplicarNivel(svc, MAGO_CON_FAMILIAR);
+        const guardado = guardar(svc, { clases: CLASES_MAGO.map((c) => ({ id: c.Id, nombre: c.Nombre })) });
+        guardado.entrada.familiar = svc.familiarParaGuardar();
+        expect(ids(guardado.entrada.familiar!.especiales)).toContain(TRANSMITIR);
+        const motor = subir(guardado, HUMANO, CLASES_MAGO);
+        motor.setProgresionFamiliar(PROGRESION_FAMILIAR);
+
+        const sinElNivel = fichaSinElNivel({ entrada: guardado.entrada, indice: 2, clase: MAGO_CON_FAMILIAR, caras: 4, dgsAntes: 3 });
+        const { resultado, estado } = perdidaConSusMascotas(motor, motorDesdeFicha, guardado.entrada, sinElNivel, { idClase: 9, indice: 2 });
+        const familiar = resultado.ficha.familiar!;
+        expect(familiar.inactiva).toBeUndefined();
+        expect(ids(familiar.especiales)).not.toContain(TRANSMITIR);
+        expect([familiar.armaduraNatural, familiar.inteligencia, familiar.ataqueBase]).toEqual([1, 6, 2]);
+        expect(familiar.vida).toBe(Math.max(1, Math.floor(toInt(resultado.ficha.personaje.puntosGolpe) / 2)));
+        expect(estado.familiar?.inactiva).toBeFalse();
+        expect(filasDeLasMascotas(guardado.entrada, resultado.ficha, estado).map((f) => f.que)).toEqual(['Familiar (Bigotes)']);
+    });
+
+    it('el druida que se convierte en muerto viviente conserva su compañero: a druida 4, activo; a druida 3, inactivo', () => {
+        const convertir = (niveles: number) => {
+            const { guardado, motor } = druidaConBisonte(niveles);
+            const indice = niveles - 1;
+            const sinElNivel = fichaSinElNivel({ entrada: guardado.entrada, indice, clase: DRUIDA, caras: 8, dgsAntes: niveles });
+            quitarElNivelDelMotor(motor, sinElNivel, DRUIDA.Id, indice);
+            const antes = cuerpoDelMotor(motor, guardado.entrada);
+            aplicarNivel(motor, ENGENDRO);
+            motor.ponerMascotasAlDia();
+            const despues = cuerpoDelMotor(motor, guardado.entrada);
+            return sinLoQueYaNoDaLaMascota(fichaDeLaConversion({
+                entrada: sinElNivel.ficha, antes, despues, idRaza: 1009, idRazaBase: HUMANO.Id, puntosGolpe: 30,
+                idClaseDeMonstruo: ENGENDRO.Id, nivel: { idClase: ENGENDRO.Id, nivelClase: 1, elecciones: [] }, sustituidos: [], sinPrerrequisitos: [],
+            }), antes, despues, motor.loQueDanLasMascotasAlAmo());
+        };
+        const deCinco = convertir(5);
+        expect(deCinco.companero!.inactiva).toBeUndefined();
+        expect(deCinco.companero!.trucosAdi).toBe(1);
+        expect(ids(deCinco.colecciones?.especiales)).toContain(VINCULO);
+        expect(deCinco.colecciones?.clases).toEqual([{ idClase: DRUIDA.Id, nivel: 4 }, { idClase: ENGENDRO.Id, nivel: 1 }]);
+
+        const deCuatro = convertir(4);
+        expect(deCuatro.companero!.inactiva).toBeTrue();
+        expect([deCuatro.companero!.dgAdi, deCuatro.companero!.trucosAdi]).toEqual([0, 0]);
+        expect(ids(deCuatro.colecciones?.especiales)).not.toContain(VINCULO);
+    });
+
+    describe('«poder adquirir un compañero nuevo» solo vale al elegir la dote (Libro de obras elevadas, pág. 41)', () => {
+        const ELEVADO = { ...dote(COMPANERO_ELEVADO, 'Compañero elevado'), Prerrequisitos: { poder_seleccionar_companero: [{ Activo: true }] } };
+        const DOTES_ELEVADO = [ELEVADO, ...DOTES.filter((d) => d.Id !== COMPANERO_ELEVADO)];
+        const loboCelestial = () => JSON.parse(JSON.stringify(construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_COMPANERO)
+            .find((c) => claveCompanero(c) === `${LOBO}:${CELESTIAL_COMPANERO}`)!));
+
+        function druidaConLoboCelestial(): NuevoPersonajeService {
+            const svc = crear(HUMANO, { Sabiduria: 15 });
+            svc.setCatalogoClases(CLASES_DRUIDA);
+            svc.setCatalogoDotes(DOTES_ELEVADO);
+            svc.setProgresionCompanero(PROGRESION);
+            aplicarNivel(svc, DRUIDA, 'Fuerza', undefined, { dotes: [ELEVADO] });
+            aplicarNivel(svc, DRUIDA);
+            expect(svc.dotesDelPersonaje().map((d) => toInt(d.Dote?.Id))).toContain(COMPANERO_ELEVADO);
+            expect(svc.registrarCompaneroSeleccionado(loboCelestial(), 'Aurora').registrado).toBeTrue();
+            return svc;
+        }
+
+        it('con su lobo celestial ya elegido, Compañero elevado no sale «sin prerrequisitos» al volver a juzgar sus dotes', () => {
+            const svc = druidaConLoboCelestial();
+            expect(svc.getEstadoCuposCompanero().cuposDisponibles).toBe(0);
+            expect(svc.dotesSinSusPrerrequisitos()).toEqual([]);
+            // Y la mascota sigue activa al volver a juzgarla: la dote que abre su fila vale.
+            expect(svc.ponerMascotasAlDia().companero).toEqual({ nombre: 'Aurora', inactiva: false, motivo: '' });
+        });
+
+        it('si la dote que abre su fila se conserva sin sus prerrequisitos, el lobo celestial queda inactivo', () => {
+            const svc = druidaConLoboCelestial();
+            const elevado = svc.PersonajeCreacion.DotesContextuales.find((d) => toInt(d.Dote?.Id) === COMPANERO_ELEVADO)!;
+            (elevado.Contexto as any).Sin_prerrequisitos = true;
+            const estado = svc.ponerMascotasAlDia();
+            expect(estado.companero?.inactiva).toBeTrue();
+            expect(estado.companero?.motivo).toBe('Hace falta la dote «Compañero elevado» para tenerlo como compañero animal.');
         });
     });
 });

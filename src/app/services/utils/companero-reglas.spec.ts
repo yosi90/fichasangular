@@ -17,6 +17,8 @@ import {
     EstadoCuposCompanero,
     evaluarCompanerosElegibilidad,
     filtrarCompanerosElegibles,
+    puntosPorDgDelCompanero,
+    rangosDelCompaneroQueCaben,
     resolverEstadoCuposCompanero,
     resolverFilaCompanero,
     resolverNivelesCompaneroDisponibles,
@@ -231,5 +233,30 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
             // Si su monstruo ya la tiene, no se le vuelve a dar.
             expect(aptitudesCompaneroDelNivel(PROGRESION, 9, { cumpleDote: () => true, monstruoTieneDote: () => true }).dotes).toEqual([]);
         });
+    });
+});
+
+describe('los rangos del compañero al bajar sus DG adicionales, «todo o nada» (como la herramienta de la API)', () => {
+    const habilidad = (id: number, rangos: number, extra = -1) => ({
+        Id_habilidad: id, Habilidad: `H${id}`, Id_caracteristica: 1, Caracteristica: '', Descripcion: '', Soporta_extra: false,
+        Entrenada: false, Id_extra: extra, Extra: '', Rangos: rangos,
+    });
+    // Su monstruo: Escuchar 4 y Avistar 4. Con Int 2 (−4), un punto por DG adicional.
+    const DEL_MONSTRUO = [habilidad(1, 4), habilidad(2, 4)];
+
+    it('un punto por DG adicional (máx(1, 2 + mod. de Int))', () => {
+        expect([puntosPorDgDelCompanero(2), puntosPorDgDelCompanero(10), puntosPorDgDelCompanero(14), puntosPorDgDelCompanero(null)]).toEqual([1, 2, 4, 1]);
+    });
+
+    it('si lo que pasa de su monstruo cabe en los puntos de sus DG de ahora, se queda; si no, vuelve a su monstruo y las demás a 0', () => {
+        const suyas = [habilidad(1, 6), habilidad(2, 4), habilidad(3, 1)];
+        // +2 en Escuchar (1 cada uno) y 1 rango de Saltar (2): 4 puntos; con 4 DG adicionales caben.
+        expect(rangosDelCompaneroQueCaben(suyas, DEL_MONSTRUO, 4, 2).map((h) => h.Rangos)).toEqual([6, 4, 1]);
+        // Con 2 DG adicionales, 2 puntos: no caben, todo vuelve a su monstruo.
+        expect(rangosDelCompaneroQueCaben(suyas, DEL_MONSTRUO, 2, 2).map((h) => h.Rangos)).toEqual([4, 4, 0]);
+        // Sin DG adicionales (el compañero inactivo), lo de su monstruo.
+        expect(rangosDelCompaneroQueCaben(suyas, DEL_MONSTRUO, 0, 2).map((h) => h.Rangos)).toEqual([4, 4, 0]);
+        // Un rango más que sus DG adicionales en una de su monstruo no cabe aunque sobren puntos.
+        expect(rangosDelCompaneroQueCaben([habilidad(1, 7)], DEL_MONSTRUO, 2, 18).map((h) => h.Rangos)).toEqual([4]);
     });
 });

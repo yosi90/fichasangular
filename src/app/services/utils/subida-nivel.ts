@@ -331,9 +331,11 @@ const CIFRAS_COMPANERO_DEL_MOTOR = ['vida', 'dgAdi', 'trucosAdi', 'fuerza', 'des
 
 /**
  * El compañero de la `entrada` con lo que cambia el motor entre `antes` y `despues` (la web lo pone al día en cada nivel
- * de clase: `docs/publica/endpoints/personajes.md`, «El compañero, comprobado por la API»): sus cifras y, por id, las
- * aptitudes y las dotes que gana o pierde. Lo demás (el nombre, el animal, la plantilla, las habilidades) se queda como
- * estaba, y lo que guardaba la ficha con otra forma (el extra de antes) también.
+ * de clase y en los demás cambios de la ficha: `docs/publica/endpoints/personajes.md`, «El compañero, comprobado por la
+ * API» y «La mascota inactiva…»): sus cifras, si está inactivo (`inactiva`) y, por id, las aptitudes y las dotes que gana
+ * o pierde; sus rangos, si bajan sus DG adicionales y el motor los cambia («todo o nada»: `rangosDelCompaneroQueCaben`).
+ * Lo demás (el nombre, el animal, la plantilla) se queda como estaba, y lo que guardaba la ficha con otra forma (el extra
+ * de antes) también.
  */
 export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, antes: PersonajeCreateCompaneroDto | undefined,
     despues: PersonajeCreateCompaneroDto): PersonajeCreateCompaneroDto {
@@ -344,7 +346,19 @@ export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, an
     });
     resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
     resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
+    // Los rangos, solo si bajan sus DG adicionales (la subida no los cambia: se reparten aparte) y el motor los cambia.
+    if (toInt(despues.dgAdi) < toInt(antes?.dgAdi) && claveElemento(antes?.habilidades ?? []) !== claveElemento(despues.habilidades ?? []))
+        resultado.habilidades = JSON.parse(JSON.stringify(despues.habilidades ?? []));
+    conSuActividad(resultado, despues);
     return resultado;
+}
+
+/** Activa o inactiva como la deja el motor (`despues`): la ficha lleva `inactiva` solo si lo está. */
+function conSuActividad(resultado: { inactiva?: boolean; }, despues: { inactiva?: boolean; }): void {
+    if (despues.inactiva)
+        resultado.inactiva = true;
+    else
+        delete resultado.inactiva;
 }
 
 /**
@@ -376,7 +390,8 @@ export function familiarConLoDelMotor(guardado: PersonajeCreateFamiliarDto, ante
     resultado.armaduraNatural = toInt(despues.armaduraNatural);
     resultado.inteligencia = toInt(despues.inteligencia);
     resultado.ataqueBase = toInt(despues.ataqueBase);
-    resultado.vida = Math.max(mitadDeLosPg(puntosGolpe), toInt(despues.vida));
+    // Inactivo, los PG de su criatura, no los de su amo (contrato, «La mascota inactiva…»).
+    resultado.vida = despues.inactiva ? toInt(despues.vida) : Math.max(mitadDeLosPg(puntosGolpe), toInt(despues.vida));
     if (despues.rc !== undefined)
         resultado.rc = despues.rc;
     else if (/\d/.test(`${guardado.rc ?? ''}`))
@@ -387,7 +402,25 @@ export function familiarConLoDelMotor(guardado: PersonajeCreateFamiliarDto, ante
     });
     resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
     resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
+    // Al quedar inactivo o activarse, sus rangos: los de su criatura o los mejores entre los suyos y los de su amo.
+    if (!!guardado.inactiva !== !!despues.inactiva)
+        resultado.habilidades = JSON.parse(JSON.stringify(despues.habilidades ?? []));
+    conSuActividad(resultado, despues);
     return resultado;
+}
+
+/**
+ * La `ficha` con sus mascotas puestas al día por el motor (sus cuerpos `antes` y `despues`): el compañero, si cambia
+ * (`companeroConLoDelMotor`), y el familiar siempre que lo tenga, porque sus PG siguen a los del amo
+ * (`familiarConLoDelMotor`, con los `puntosGolpe` de la ficha). Lo usan la ficha del motor (`fichaConLoDelMotor`) y la
+ * pérdida de un nivel (`perdidaConSusMascotas`, en `mascota-al-dia.ts`).
+ */
+export function conLasMascotasDelMotor(ficha: PersonajeCreateRequestDto, antes: PersonajeCreateRequestDto,
+    despues: PersonajeCreateRequestDto): void {
+    if (ficha.companero && despues.companero && claveElemento(antes.companero ?? null) !== claveElemento(despues.companero))
+        ficha.companero = companeroConLoDelMotor(ficha.companero, antes.companero, despues.companero);
+    if (ficha.familiar && despues.familiar)
+        ficha.familiar = familiarConLoDelMotor(ficha.familiar, antes.familiar, despues.familiar, toInt(ficha.personaje?.puntosGolpe));
 }
 
 export interface EntradaFichaDelMotor {
@@ -494,12 +527,8 @@ export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreate
                 despues.progresionLanzador?.selecciones as any, false) as any,
         };
 
-    // El compañero animal, puesto al día por el motor (la tabla y las aptitudes de su nivel).
-    if (ficha.companero && despues.companero && claveElemento(antes.companero ?? null) !== claveElemento(despues.companero))
-        ficha.companero = companeroConLoDelMotor(ficha.companero, antes.companero, despues.companero);
-    // El familiar, siempre que lo tenga: sus PG siguen a los del amo y lo demás, a la tabla al nivel de su amo.
-    if (ficha.familiar && despues.familiar)
-        ficha.familiar = familiarConLoDelMotor(ficha.familiar, antes.familiar, despues.familiar, ficha.personaje.puntosGolpe);
+    // El compañero animal y el familiar, puestos al día por el motor (la tabla y las aptitudes de su nivel, o inactivos).
+    conLasMascotasDelMotor(ficha, antes, despues);
 
     ficha.niveles = (datos.entrada.niveles ?? []).map((n) => ({ ...n }));
     return ficha;

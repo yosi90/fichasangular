@@ -233,9 +233,10 @@ export function entradasDelSelectorFamiliar(input: FiltroFamiliaresElegiblesInpu
 
 /**
  * El familiar de una ficha guardada con los valores de su criatura (`monstruo`, su `Monstruo_origen`): la ficha trae sus
- * totales (la armadura natural, la Inteligencia y el ataque con lo del nivel de su amo) y lo de su nivel se le suma al
- * guardar, como en la creación. También las filas de la lista y las dotes de su criatura (las suyas, las de la creación,
- * se quedan). Lo usa la carga de las sesiones antes de hidratar el motor.
+ * totales (la armadura natural, la Inteligencia, el ataque, las salvaciones y los rangos con lo de su amo) y lo de su nivel
+ * se le suma al guardar, como en la creación: así bajan con el amo al perder un nivel, y el inactivo vale lo de su criatura.
+ * También las filas de la lista y las dotes de su criatura (las suyas, las de la creación, se quedan). Lo usa la carga de
+ * las sesiones antes de hidratar el motor.
  */
 export function familiarConSuCriatura(familiar: FamiliarMonstruoDetalle, monstruo: MonstruoDetalle): FamiliarMonstruoDetalle {
     const caracteristicas = { ...(familiar?.Caracteristicas ?? {}) } as Record<string, number | null>;
@@ -249,6 +250,8 @@ export function familiarConSuCriatura(familiar: FamiliarMonstruoDetalle, monstru
         Dados_golpe: monstruo?.Dados_golpe ?? familiar?.Dados_golpe,
         Defensa: { ...(familiar?.Defensa ?? monstruo?.Defensa), Armadura_natural: toInt(monstruo?.Defensa?.Armadura_natural) },
         Ataque: { ...(familiar?.Ataque ?? monstruo?.Ataque), Ataque_base: toInt(monstruo?.Ataque?.Ataque_base) },
+        Salvaciones: monstruo?.Salvaciones ?? familiar?.Salvaciones,
+        Habilidades: monstruo?.Habilidades ? [...monstruo.Habilidades] : familiar?.Habilidades,
         Caracteristicas: caracteristicas as FamiliarMonstruoDetalle['Caracteristicas'],
         Niveles_clase: [...(monstruo?.Niveles_clase ?? [])],
         Dotes: [

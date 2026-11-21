@@ -5,6 +5,7 @@ import {
     CompaneroMonstruoDetalle,
     CompaneroProgresion,
     MonstruoDetalle,
+    MonstruoHabilidad,
 } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { normalizarTexto, primerEntero, toInt } from 'src/app/services/utils/normalizacion';
@@ -24,6 +25,7 @@ import {
 } from 'src/app/services/utils/mascota-cupos';
 import { contarArmasNaturales } from 'src/app/services/utils/armas-naturales';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
 
 /*
  * El compañero animal, de los datos (contrato: `docs/publica/endpoints/catalogos.md`, «El compañero animal, de los
@@ -88,6 +90,40 @@ export function dadosGolpeCompanero(companero: CompaneroMonstruoDetalle | null |
 export function esDotePropiaDelCompanero(item: { Contexto?: Record<string, any> | null; } | null | undefined): boolean {
     const entidad = normalizarTexto(`${item?.Contexto?.['Entidad'] ?? ''}`);
     return entidad === 'personaje' || entidad === 'companero';
+}
+
+/** Los puntos de habilidad de cada DG adicional del compañero, un animal: máx(1, 2 + mod. de Int) (MM, pág. 290). */
+export function puntosPorDgDelCompanero(inteligencia: number | null | undefined): number {
+    return Math.max(1, 2 + (inteligencia === null || inteligencia === undefined ? -5 : modificadorCaracteristica(toInt(inteligencia))));
+}
+
+/**
+ * Los rangos del compañero con los DG adicionales que tiene ahora, «todo o nada», con el criterio de la herramienta de las
+ * fichas guardadas de la API (`scripts/companeros_guardados.py`; contrato: `personajes.md`, «La mascota inactiva, y la
+ * mascota en los cambios de la ficha»). Sus DG adicionales dan `puntosPorDgDelCompanero` cada uno; lo que pasa de su
+ * monstruo (`delMonstruo`) cuesta 1 por rango en las habilidades de su monstruo y 2 en las demás, y no pasa de sus DG
+ * adicionales (la mitad en las demás). Si cabe, se queda; si no, sus habilidades vuelven a las de su monstruo y las demás,
+ * a 0. Al perder un nivel (o quedar inactivo, sin DG adicionales) pierde así los rangos de sus puntos.
+ */
+export function rangosDelCompaneroQueCaben(habilidades: readonly MonstruoHabilidad[], delMonstruo: readonly MonstruoHabilidad[],
+    dgAdicionales: number, inteligencia: number | null | undefined): MonstruoHabilidad[] {
+    const dg = Math.max(0, toInt(dgAdicionales));
+    const base = new Map((delMonstruo ?? []).map((h) => [toInt(h?.Id_habilidad), h] as const));
+    let coste = 0;
+    let cabe = true;
+    (habilidades ?? []).forEach((h) => {
+        const suya = base.get(toInt(h?.Id_habilidad));
+        const exceso = Math.max(0, toInt(h?.Rangos) - toInt(suya?.Rangos));
+        coste += exceso * (suya ? 1 : 2);
+        if (exceso > (suya ? dg : dg / 2))
+            cabe = false;
+    });
+    if (cabe && coste <= puntosPorDgDelCompanero(inteligencia) * dg)
+        return (habilidades ?? []).map((h) => ({ ...h }));
+    return (habilidades ?? []).map((h) => {
+        const suya = base.get(toInt(h?.Id_habilidad));
+        return suya ? { ...h, Id_extra: suya.Id_extra, Extra: suya.Extra, Rangos: toInt(suya.Rangos) } : { ...h, Rangos: 0 };
+    });
 }
 
 /** Las armas naturales del compañero (las de su monstruo), para los prerrequisitos de sus dotes (Ataque múltiple). */

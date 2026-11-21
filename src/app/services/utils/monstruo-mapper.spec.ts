@@ -233,6 +233,13 @@ describe("monstruo-mapper", () => {
         expect(normalized.Plantilla.Nombre).toBe("Companero animal");
     });
 
+    it("lee la mascota inactiva de la ficha (`Inactiva`); sin él, activa y sin el campo", () => {
+        expect(normalizeCompaneroMonstruoDetalle(createRawCompanero({ Inactiva: true }), 1).Inactiva).toBeTrue();
+        expect(normalizeFamiliarMonstruoDetalle(createRawFamiliar({ Inactiva: true }), 1).Inactiva).toBeTrue();
+        expect("Inactiva" in normalizeCompaneroMonstruoDetalle(createRawCompanero(), 1)).toBeFalse();
+        expect("Inactiva" in normalizeFamiliarMonstruoDetalle(createRawFamiliar({ Inactiva: false }), 1)).toBeFalse();
+    });
+
     it("acepta entrada array y entrada objeto-map", () => {
         const arrayInput = [createRawMonstruo({ Id: 11 }), createRawMonstruo({ Id: 12 })];
         const mapInput = {

@@ -222,7 +222,25 @@ export class MotorDesdeFichaService {
         const plantillas = (await Promise.all((entrada.colecciones?.plantillas ?? [])
             .map((p) => this.primero(this.plantillaSvc.getPlantilla(toInt(p.idPlantilla))))))
             .filter((p): p is NonNullable<typeof p> => !!p);
-        motor.iniciarSubidaDesdeFicha({ personaje: await this.conLaCriaturaDelFamiliar(pj), entrada, raza, razaBase, plantillas, nivelesPerdidos });
+        const personaje = await this.conLaCriaturaDelCompanero(await this.conLaCriaturaDelFamiliar(pj));
+        motor.iniciarSubidaDesdeFicha({ personaje, entrada, raza, razaBase, plantillas, nivelesPerdidos });
+    }
+
+    /**
+     * El personaje con las habilidades del monstruo de su compañero (`Habilidades_monstruo`): sus rangos siguen el criterio
+     * «todo o nada» al bajar sus DG adicionales (al perder un nivel o quedar inactivo). Sin el monstruo, sus rangos se quedan
+     * como están.
+     */
+    private async conLaCriaturaDelCompanero(pj: Personaje): Promise<Personaje> {
+        const companeros = pj?.Companeros ?? [];
+        if (companeros.length < 1)
+            return pj;
+        const conSuCriatura = await Promise.all(companeros.map(async (companero) => {
+            const id = toInt(companero?.Monstruo_origen?.Id) || toInt(companero?.Id);
+            const monstruo = id > 0 ? await this.primero(Promise.resolve().then(() => this.monstruoSvc.getMonstruo(id))) : null;
+            return monstruo && toInt(monstruo.Id) > 0 ? { ...companero, Habilidades_monstruo: [...(monstruo.Habilidades ?? [])] } : companero;
+        }));
+        return { ...pj, Companeros: conSuCriatura };
     }
 
     /**

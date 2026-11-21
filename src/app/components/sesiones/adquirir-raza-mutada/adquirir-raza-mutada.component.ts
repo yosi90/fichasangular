@@ -62,6 +62,9 @@ import { agruparRacialesPorOpcional, SeleccionRacialesOpcionales } from 'src/app
 import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
 import { clasesQueDejanDeCumplir, DoteReciclable, dotesParaReciclar, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import {
+    EstadoDeLasMascotas, filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota,
+} from 'src/app/services/utils/mascota-al-dia';
 import { pgTrasCambioDeCon, PgSubida } from 'src/app/services/utils/subida-nivel';
 
 /**
@@ -193,6 +196,8 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     tiradaElegida: number | null = null;
     /** Las dotes que dejan de cumplir un prerrequisito: las conserva sin poder usarlas. */
     sinPrerrequisitos: Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> = [];
+    /** Cómo quedan sus mascotas, juzgadas otra vez antes del resumen (`ponerMascotasAlDia`). */
+    private estadoMascotas: EstadoDeLasMascotas = {};
     /** Si su campaña no permite las clases de monstruo (y no se la salta: el máster, un PNJ). */
     private sinClasesDeMonstruo = false;
     private seleccionMutacion: SeleccionRacialesOpcionales | null = null;
@@ -825,6 +830,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
     }
 
     private prepararResumen(): void {
+        this.estadoMascotas = this.svc.ponerMascotasAlDia();
         if (this.conversion) {
             this.calcularPg();
             this.sinPrerrequisitos = this.svc.dotesSinSusPrerrequisitos().filter((d) => !this.claveRotasAntes.has(claveDoteDeLaFicha(d)))
@@ -846,6 +852,11 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
             alineamientoExigido: this.alineamientoExigido(),
             conversion: this.conversion ? this.resumenDeLaConversion() : null,
         });
+        // Sus mascotas, con los valores de su nivel nuevo o inactivas hasta que vuelvan a cumplir (la conversión pierde un nivel;
+        // las dos cambian los PG y el ataque base del amo): contrato, «La mascota inactiva…».
+        const conMascota = !!this.entrada?.companero || !!this.entrada?.familiar;
+        const mascotas = conMascota ? filasDeLasMascotas(this.entrada!, this.fichaParaGuardar(), this.estadoMascotas) : [];
+        this.cambios = [...this.cambios, ...mascotas.map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
     }
 
     /** Lo propio de la conversión en el resumen: el nivel perdido y el ganado, los PX, las dotes sin usar y las aptitudes. */
@@ -866,7 +877,13 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         };
     }
 
+    /** La ficha que se manda, sin lo que el amo pierde por su mascota si queda inactiva (`sinLoQueYaNoDaLaMascota`). */
     private fichaParaGuardar(): PersonajeCreateRequestDto {
+        const antes = this.conversion ? this.antesConversion! : this.antes!;
+        return sinLoQueYaNoDaLaMascota(this.fichaDelMotor(), antes, this.motor.cuerpoDelMotor(this.svc, this.entrada!), this.svc.loQueDanLasMascotasAlAmo());
+    }
+
+    private fichaDelMotor(): PersonajeCreateRequestDto {
         if (this.conversion)
             return fichaDeLaConversion({
                 entrada: this.perdida?.ficha ?? this.entrada!,

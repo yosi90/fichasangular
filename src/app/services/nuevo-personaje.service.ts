@@ -23,6 +23,7 @@ import {
     MascotaAptitudNivel,
 } from '../interfaces/monstruo';
 import { AptitudesMascotaDelNivel } from './utils/mascota-cupos';
+import type { EstadoDeLasMascotas, LoQueDanLasMascotasAlAmo } from './utils/mascota-al-dia';
 import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
@@ -3687,13 +3688,58 @@ export class NuevoPersonajeService {
      */
     quitarFamiliar(): void {
         this.personajeCreacion.Familiares = [];
-        this.personajeCreacion.Claseas = (this.personajeCreacion.Claseas ?? [])
-            .filter((especial) => normalizarTexto(especial?.Extra ?? '') !== normalizarTexto(EXTRA_ESPECIAL_FAMILIAR));
-        (this.personajeCreacion.DotesContextuales ?? [])
-            .filter((dote) => esOrigenDelFamiliar((dote?.Contexto as any)?.Origen))
-            .forEach((dote) => this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`));
+        this.quitarLoQueLeDaSuMascota('familiar');
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
+    }
+
+    /**
+     * Lo que el personaje lleva por su mascota (`tipo`): las aptitudes de su vínculo (las del amo en la tabla de la mascota,
+     * por su id, o con el extra de la mascota) y, del familiar, las dotes con su origen (Alerta). Lo quitan quitar la mascota
+     * y dejarla inactiva (`ponerMascotasAlDia`). Una aptitud que también da la otra mascota, si la tiene activa, se queda.
+     */
+    private quitarLoQueLeDaSuMascota(tipo: 'companero' | 'familiar'): void {
+        const pj = this.personajeCreacion;
+        const otra = tipo === 'companero' ? (pj.Familiares ?? [])[0] : (pj.Companeros ?? [])[0];
+        const deLaOtra = otra && !otra.Inactiva ? this.loQueDaLaMascotaAlAmo(tipo === 'companero' ? 'familiar' : 'companero').especiales : new Set<number>();
+        const suyas = this.loQueDaLaMascotaAlAmo(tipo).especiales;
+        const extra = normalizarTexto(tipo === 'companero' ? EXTRA_ESPECIAL_COMPANERO : EXTRA_ESPECIAL_FAMILIAR);
+        pj.Claseas = (pj.Claseas ?? []).filter((especial) => {
+            const id = toInt(especial?.Id);
+            return !((suyas.has(id) && !deLaOtra.has(id)) || normalizarTexto(especial?.Extra ?? '') === extra);
+        });
+        if (tipo === 'familiar')
+            (pj.DotesContextuales ?? [])
+                .filter((dote) => esOrigenDelFamiliar((dote?.Contexto as any)?.Origen))
+                .forEach((dote) => this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`));
+    }
+
+    /**
+     * Lo que da al amo la tabla de su mascota (`tipo`), a cualquier nivel (`Destinatario` `amo` o `ambos` de
+     * `GET /companeros/progresion` o de las tablas de `GET /familiares/progresion`): los ids de las aptitudes y de las dotes.
+     */
+    private loQueDaLaMascotaAlAmo(tipo: 'companero' | 'familiar'): LoQueDanLasMascotasAlAmo {
+        const aptitudes: MascotaAptitudNivel[] = tipo === 'companero'
+            ? [...(this.progresionCompanero?.Aptitudes ?? [])]
+            : (this.progresionFamiliar?.Tablas ?? []).flatMap((tabla) => tabla?.Aptitudes ?? []);
+        const delAmo = aptitudes.filter((a) => a?.Destinatario === 'amo' || a?.Destinatario === 'ambos');
+        return {
+            especiales: new Set(delAmo.map((a) => toInt(a?.Especial?.Id)).filter((id) => id > 0)),
+            dotes: new Set(delAmo.map((a) => toInt(a?.Dote?.Id)).filter((id) => id > 0)),
+        };
+    }
+
+    /**
+     * Lo que dan al amo las tablas de sus mascotas (`loQueDaLaMascotaAlAmo` de las dos): lo que la ficha de una sesión pierde
+     * si el motor se lo quita al poner al día la mascota (`sinLoQueYaNoDaLaMascota`, en `mascota-al-dia.ts`).
+     */
+    loQueDanLasMascotasAlAmo(): LoQueDanLasMascotasAlAmo {
+        const companero = this.loQueDaLaMascotaAlAmo('companero');
+        const familiar = this.loQueDaLaMascotaAlAmo('familiar');
+        return {
+            especiales: new Set([...companero.especiales, ...familiar.especiales]),
+            dotes: new Set([...companero.dotes, ...familiar.dotes]),
+        };
     }
 
     /**
@@ -3751,8 +3797,7 @@ export class NuevoPersonajeService {
      */
     quitarCompanero(): void {
         this.personajeCreacion.Companeros = [];
-        this.personajeCreacion.Claseas = (this.personajeCreacion.Claseas ?? [])
-            .filter((especial) => normalizarTexto(especial?.Extra ?? '') !== normalizarTexto(EXTRA_ESPECIAL_COMPANERO));
+        this.quitarLoQueLeDaSuMascota('companero');
         this.dgsCompaneroRepartidos = 0;
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
@@ -4142,7 +4187,8 @@ export class NuevoPersonajeService {
      * Los prerrequisitos de una dote con lo que tiene el personaje; con `alNivel` (un índice de `Orden_niveles`), con lo
      * que tenía al tomar ese nivel (`contextoAlNivel`: la corrección de la ficha, MJ pág. 87).
      */
-    private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string, alNivel: number | null = null): DoteEvaluacionResultado {
+    private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string, alNivel: number | null = null,
+        yaLaTiene = false): DoteEvaluacionResultado {
         const identidad = this.identidadPrerrequisitosActual();
 
         const nivelesClase = this.nivelesDeClaseParaPrerrequisitos();
@@ -4335,8 +4381,10 @@ export class NuevoPersonajeService {
             },
             salvacionesBase: this.resolverSalvacionesBaseClase(),
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`.trim(),
-            puedeSeleccionarCompanero: estadoCuposCompanero.cuposDisponibles > 0,
-            puedeSeleccionarFamiliar: estadoCuposFamiliar.cuposDisponibles > 0,
+            // «Poder adquirir un compañero (o un familiar) nuevo» solo vale al elegir la dote (Libro de obras elevadas, pág. 41;
+            // GDM, pág. 200): al volver a juzgar una que ya tiene (`yaLaTiene`), con su mascota ya elegida, se cumple.
+            puedeSeleccionarCompanero: yaLaTiene || estadoCuposCompanero.cuposDisponibles > 0,
+            puedeSeleccionarFamiliar: yaLaTiene || estadoCuposFamiliar.cuposDisponibles > 0,
             // Las de su raza (resuelta a su edad), sus aptitudes de clase (el golpetazo y las garras de una clase de
             // monstruo) y sus plantillas, en la forma en que más tiene (el licántropo: la animal o la híbrida).
             armasNaturales: contarArmasNaturales(this.razaSeleccionada, this.estadoFlujo.plantillas.seleccionadas ?? [],
@@ -4879,26 +4927,101 @@ export class NuevoPersonajeService {
     /**
      * Los bonos por nivel del compañero y del familiar siguen al nivel del amo: al aplicar un nivel de clase, el compañero
      * pasa a la fila de la tabla de su nivel efectivo con el ajuste de su lista (`ponerCompaneroAlDia`) y el familiar gana
-     * las aptitudes que tocan al nivel de su amo (`ponerFamiliarAlDia`; sus cifras, al guardar).
+     * las aptitudes que tocan al nivel de su amo (`ponerFamiliarAlDia`; sus cifras, al guardar). La inactiva que vuelve a
+     * cumplir se activa; con `desactivar` (`ponerMascotasAlDia`), la que no cumple queda inactiva.
      */
-    private actualizarMascotasPorNivel(): void {
+    private actualizarMascotasPorNivel(dotes: ReadonlySet<number> = this.idsDotesDelPersonaje(), desactivar = false): void {
         const estadoCompanero = this.getEstadoCuposCompanero();
-        const dotes = this.idsDotesDelPersonaje();
-        (this.personajeCreacion.Companeros ?? []).forEach((companero) => this.ponerCompaneroAlDia(companero, estadoCompanero, dotes));
+        (this.personajeCreacion.Companeros ?? []).forEach((companero) => this.ponerCompaneroAlDia(companero, estadoCompanero, dotes, desactivar));
 
         const estadoFamiliar = this.getEstadoCuposFamiliar();
-        (this.personajeCreacion.Familiares ?? []).forEach((familiar) => this.ponerFamiliarAlDia(familiar, estadoFamiliar, dotes));
+        (this.personajeCreacion.Familiares ?? []).forEach((familiar) => this.ponerFamiliarAlDia(familiar, estadoFamiliar, dotes, desactivar));
     }
 
     /**
-     * El familiar con las aptitudes de su tabla al nivel de su amo. Sin su fila en la lista (o sin la tabla), se queda como
-     * está: al guardar, la API dice por qué.
+     * Vuelve a juzgar las mascotas con lo que tiene ahora el personaje (contrato: `personajes.md`, «La mascota inactiva, y la
+     * mascota en los cambios de la ficha»; dictamen del máster de Rol del 2026-11-21): las vías de la sesión que cambian el
+     * nivel o las clases (perder un nivel, convertirse en muerto viviente, devolver la vida, adquirir una plantilla o una
+     * raza mutada) lo hacen antes de armar la ficha. La que cumple su fila (sus listas, su nivel, su ajuste, su ataque base y
+     * la dote que la abre, sin la que se tiene sin sus prerrequisitos: `idsDotesQueValen`) lleva los valores de su nivel; la
+     * que no, queda inactiva (`Inactiva`) con los de su monstruo, y su amo pierde lo que le daba. Devuelve cómo queda cada una.
      */
-    private ponerFamiliarAlDia(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>): void {
-        const resuelta = resolverFilaFamiliar(familiar, estado, dotes);
-        if (!resuelta.fila || (this.progresionFamiliar?.Tablas ?? []).length < 1)
+    ponerMascotasAlDia(): EstadoDeLasMascotas {
+        const pj = this.personajeCreacion;
+        if ((pj.Companeros ?? []).length < 1 && (pj.Familiares ?? []).length < 1)
+            return {};
+        const dotes = this.idsDotesQueValen();
+        const actividad = () => [...(pj.Companeros ?? []), ...(pj.Familiares ?? [])].map((m) => !!m?.Inactiva).join();
+        const antes = actividad();
+        this.actualizarMascotasPorNivel(dotes, true);
+        // Lo que gana o pierde el amo con ella (Alerta y sus rangos varios, el vínculo), como al elegirla o quitarla.
+        if (actividad() !== antes) {
+            this.recalcularDerivadasPorCaracteristicas();
+            this.recalcularDerivadasPorCombate();
+        }
+        return this.estadoDeLasMascotas(dotes);
+    }
+
+    /** Cómo está cada mascota (la primera de cada clase) y, si está inactiva, por qué (la frase de su fila). */
+    private estadoDeLasMascotas(dotes: ReadonlySet<number>): EstadoDeLasMascotas {
+        const estado: EstadoDeLasMascotas = {};
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        if (companero)
+            estado.companero = {
+                nombre: `${companero.Nombre ?? ''}`.trim(), inactiva: !!companero.Inactiva,
+                motivo: companero.Inactiva ? resolverFilaCompanero(companero, this.getEstadoCuposCompanero(), dotes).razones[0] ?? '' : '',
+            };
+        const familiar = (this.personajeCreacion.Familiares ?? [])[0];
+        if (familiar)
+            estado.familiar = {
+                nombre: `${familiar.Nombre ?? ''}`.trim(), inactiva: !!familiar.Inactiva,
+                motivo: familiar.Inactiva ? resolverFilaFamiliar(familiar, this.getEstadoCuposFamiliar(), dotes).razones[0] ?? '' : '',
+            };
+        return estado;
+    }
+
+    /**
+     * Las dotes del personaje que abren una fila de su mascota: las que tiene y puede usar, sin las que conserva sin sus
+     * prerrequisitos (`Sin_prerrequisitos` de su ficha) ni las que ya no los cumplen (`dotesSinSusPrerrequisitos`, donde no
+     * cuenta «poder adquirir una mascota nueva»: MJ pág. 87).
+     */
+    private idsDotesQueValen(): Set<number> {
+        const sin = new Set(this.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
+        const ids = new Set<number>();
+        (this.personajeCreacion.DotesContextuales ?? []).forEach((d) => {
+            const clave = claveDoteDeLaFicha({ idDote: toInt(d?.Dote?.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${(d?.Contexto as any)?.Origen ?? ''}` });
+            if (!(d?.Contexto as any)?.Sin_prerrequisitos && !sin.has(clave))
+                ids.add(toInt(d?.Dote?.Id));
+        });
+        (this.personajeCreacion.Dotes ?? []).forEach((item) => ids.add(toNumber((item as any)?.Id)));
+        ids.delete(0);
+        return ids;
+    }
+
+    /** Si se puede juzgar la mascota: trae las filas de las listas de su monstruo (`Niveles_clase`). */
+    private seJuzgaLaMascota(mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle): boolean {
+        return (mascota?.Niveles_clase ?? []).length > 0;
+    }
+
+    /**
+     * El familiar con las aptitudes de su tabla al nivel de su amo (y activo, si estaba inactivo). Sin su fila en la lista
+     * (o sin la tabla), se queda como está: al guardar, la API dice por qué; con `desactivar`, queda inactivo, sin las
+     * aptitudes de su tabla y sin lo que le daba a su amo (sus cifras, las de su criatura, al guardar).
+     */
+    private ponerFamiliarAlDia(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>, desactivar = false): void {
+        if ((this.progresionFamiliar?.Tablas ?? []).length < 1)
             return;
-        this.ponerAptitudesFamiliar(familiar, resuelta.nivelTabla);
+        const resuelta = resolverFilaFamiliar(familiar, estado, dotes);
+        if (resuelta.fila) {
+            delete familiar.Inactiva;
+            this.ponerAptitudesFamiliar(familiar, resuelta.nivelTabla);
+            return;
+        }
+        if (!desactivar || !this.seJuzgaLaMascota(familiar))
+            return;
+        this.ponerAptitudesFamiliar(familiar, 0);
+        familiar.Inactiva = true;
+        this.quitarLoQueLeDaSuMascota('familiar');
     }
 
     /** La tabla que sigue el familiar con su pseudoplantilla y su fila al nivel de su amo. */
@@ -4923,15 +5046,21 @@ export class NuevoPersonajeService {
 
     /**
      * El compañero en la fila de la tabla de su nivel efectivo con el ajuste de su lista: la diferencia de Fuerza, Destreza
-     * y armadura natural con la fila que llevaba (por sus DG adicionales), sus DG adicionales, sus trucos y las aptitudes
-     * de ese nivel. Sin su fila en la lista (o sin la tabla), se queda como está: al guardar, la API dice por qué.
+     * y armadura natural con la fila que llevaba (por sus DG adicionales; inactivo, ninguna), sus DG adicionales, sus trucos
+     * y las aptitudes de ese nivel, y activo. Sin su fila en la lista (o sin la tabla), se queda como está: al guardar, la
+     * API dice por qué; con `desactivar`, queda inactivo: sin lo de su fila (vale su monstruo), sin las aptitudes de su
+     * tabla y sin lo que le daba a su amo.
      */
-    private ponerCompaneroAlDia(companero: CompaneroMonstruoDetalle, estado: EstadoCuposCompanero, dotes: ReadonlySet<number>): void {
-        const resuelta = resolverFilaCompanero(companero, estado, dotes);
-        if (!resuelta.fila || (this.progresionCompanero?.Bonos ?? []).length < 1)
+    private ponerCompaneroAlDia(companero: CompaneroMonstruoDetalle, estado: EstadoCuposCompanero, dotes: ReadonlySet<number>, desactivar = false): void {
+        if ((this.progresionCompanero?.Bonos ?? []).length < 1)
             return;
-        const anterior = bonosCompaneroPorDgAdicionales(this.progresionCompanero, toInt(companero?.Dg_adi));
-        const nueva = bonosCompaneroDelNivel(this.progresionCompanero, resuelta.nivelTabla);
+        const resuelta = resolverFilaCompanero(companero, estado, dotes);
+        if (!resuelta.fila && (!desactivar || !this.seJuzgaLaMascota(companero)))
+            return;
+        const anterior = companero.Inactiva
+            ? bonosCompaneroDelNivel(null, 0)
+            : bonosCompaneroPorDgAdicionales(this.progresionCompanero, toInt(companero?.Dg_adi));
+        const nueva = resuelta.fila ? bonosCompaneroDelNivel(this.progresionCompanero, resuelta.nivelTabla) : bonosCompaneroDelNivel(null, 0);
         const caracteristicas = companero.Caracteristicas as Record<string, any>;
         if (caracteristicas) {
             caracteristicas['Fuerza'] = toNumber(caracteristicas['Fuerza']) + nueva.Fuerza_destreza - anterior.Fuerza_destreza;
@@ -4941,7 +5070,14 @@ export class NuevoPersonajeService {
             companero.Defensa.Armadura_natural = toNumber(companero.Defensa.Armadura_natural) + nueva.Armadura_natural - anterior.Armadura_natural;
         companero.Dg_adi = nueva.Dg_adicionales;
         companero.Trucos_adi = nueva.Trucos_adicionales;
-        this.ponerAptitudesCompanero(companero, resuelta.nivelTabla);
+        if (resuelta.fila) {
+            delete companero.Inactiva;
+            this.ponerAptitudesCompanero(companero, resuelta.nivelTabla);
+            return;
+        }
+        this.ponerAptitudesCompanero(companero, 0);
+        companero.Inactiva = true;
+        this.quitarLoQueLeDaSuMascota('companero');
     }
 
     /**
@@ -12041,7 +12177,7 @@ export class NuevoPersonajeService {
             if (!dote)
                 return [];
             const indice = this.indiceNivelDeLaDote(toInt(dote.Id), toInt(d?.Contexto?.Id_extra));
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, toInt(d?.Contexto?.Id_extra), `${d?.Contexto?.Extra ?? ''}`, indice);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, toInt(d?.Contexto?.Id_extra), `${d?.Contexto?.Extra ?? ''}`, indice, true);
             return evaluacion.estado === 'blocked_failed'
                 ? [{ idDote: toInt(dote.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${(d?.Contexto as any)?.Origen ?? ''}`,
                     nombre: `${dote.Nombre ?? ''}`, razones: evaluacion.razones ?? [], nivel: indice === null ? null : indice + 1 }]
