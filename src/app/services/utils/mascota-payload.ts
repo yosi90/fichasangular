@@ -9,6 +9,7 @@ import { primerEntero, toInt, toNumber } from './normalizacion';
 import { carasDado } from './puntos-golpe';
 import { dadosGolpeCompanero, rangosDelCompaneroQueCaben } from './companero-reglas';
 import { TablaDelFamiliar } from './familiar-reglas';
+import { idDelMonstruo } from './mascota-cupos';
 
 /**
  * El familiar y el compañero animal de la creación, en la forma de `POST /personajes/add` (bloques `familiar` y
@@ -71,10 +72,6 @@ export function vidaMediaDelMonstruo(monstruo: Pick<FamiliarMonstruoDetalle, 'Da
 function nombreMascota(nombre: unknown, porDefecto: string): string {
     const texto = `${nombre ?? ''}`.trim();
     return (texto.length > 0 ? texto : porDefecto).slice(0, LONGITUD_NOMBRE_MASCOTA);
-}
-
-function idMonstruo(mascota: FamiliarMonstruoDetalle | CompaneroMonstruoDetalle): number {
-    return toInt(mascota?.Monstruo_origen?.Id) || toInt(mascota?.Id);
 }
 
 function habilidadesDelMonstruo(habilidades: MonstruoHabilidad[] | null | undefined): PersonajeCreateHabilidadMascotaDto[] {
@@ -152,7 +149,7 @@ export function construirFamiliarParaGuardar(
     const mitad = mitadDeLosPg(amo.vida);
     const dto: PersonajeCreateFamiliarDto = {
         nombre: nombreMascota(familiar?.Nombre, 'Familiar'),
-        idMonstruo: idMonstruo(familiar),
+        idMonstruo: idDelMonstruo(familiar),
         idPlantilla: Math.max(0, toInt(familiar?.Plantilla?.Id)),
         vida: mayores ? Math.max(mitad, vidaMediaDelMonstruo(familiar)) : mitad,
         ataqueBase: mayores ? Math.max(toInt(amo.ataqueBase), toInt(familiar?.Ataque?.Ataque_base)) : toInt(amo.ataqueBase),
@@ -182,7 +179,7 @@ function familiarInactivoParaGuardar(familiar: FamiliarMonstruoDetalle): Persona
     const caracteristicas = (familiar?.Caracteristicas ?? {}) as Record<string, number | null>;
     return {
         nombre: nombreMascota(familiar?.Nombre, 'Familiar'),
-        idMonstruo: idMonstruo(familiar),
+        idMonstruo: idDelMonstruo(familiar),
         idPlantilla: Math.max(0, toInt(familiar?.Plantilla?.Id)),
         vida: vidaMediaDelMonstruo(familiar),
         ataqueBase: toInt(familiar?.Ataque?.Ataque_base),
@@ -226,7 +223,7 @@ export function construirCompaneroParaGuardar(
         : companero?.Habilidades;
     return {
         nombre: nombreMascota(companero?.Nombre, 'Compañero'),
-        idMonstruo: idMonstruo(companero),
+        idMonstruo: idDelMonstruo(companero),
         idPlantilla: Math.max(0, toInt(companero?.Plantilla?.Id)),
         vida: vidaMediaPorDados(dados, caras, toNumber(caracteristicas['Constitucion_modificador'])),
         dgAdi,

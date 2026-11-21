@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { firstValueFrom, Observable, take } from 'rxjs';
+import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeContextoIdsDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { HistorialSesiones, NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
@@ -24,6 +25,7 @@ import { SesionesService } from './sesiones.service';
 import { SubtipoService } from './subtipo.service';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
 import { familiarConSuCriatura } from './utils/familiar-reglas';
+import { idDelMonstruo } from './utils/mascota-cupos';
 import { toInt } from './utils/normalizacion';
 
 /** Lo que da `cargarSesion`: la sesión abierta, su `entrada`, su ficha normalizada y los niveles que ha perdido. */
@@ -236,9 +238,8 @@ export class MotorDesdeFichaService {
         if (companeros.length < 1)
             return pj;
         const conSuCriatura = await Promise.all(companeros.map(async (companero) => {
-            const id = toInt(companero?.Monstruo_origen?.Id) || toInt(companero?.Id);
-            const monstruo = id > 0 ? await this.primero(Promise.resolve().then(() => this.monstruoSvc.getMonstruo(id))) : null;
-            return monstruo && toInt(monstruo.Id) > 0 ? { ...companero, Habilidades_monstruo: [...(monstruo.Habilidades ?? [])] } : companero;
+            const monstruo = await this.monstruoDeLaMascota(companero);
+            return monstruo ? { ...companero, Habilidades_monstruo: [...(monstruo.Habilidades ?? [])] } : companero;
         }));
         return { ...pj, Companeros: conSuCriatura };
     }
@@ -252,12 +253,18 @@ export class MotorDesdeFichaService {
         if (familiares.length < 1)
             return pj;
         const conSuCriatura = await Promise.all(familiares.map(async (familiar) => {
-            const id = toInt(familiar?.Monstruo_origen?.Id) || toInt(familiar?.Id);
-            const monstruo = id > 0 ? await this.primero(this.monstruoSvc.getMonstruo(id)) : null;
-            if (!monstruo || toInt(monstruo.Id) <= 0)
+            const monstruo = await this.monstruoDeLaMascota(familiar);
+            if (!monstruo)
                 throw new Error('No se ha podido cargar la criatura del familiar. Vuelve a intentarlo en unos segundos.');
             return familiarConSuCriatura(familiar, monstruo);
         }));
         return { ...pj, Familiares: conSuCriatura };
+    }
+
+    /** El monstruo de una mascota de la ficha (`idDelMonstruo`), o `null` si no se puede cargar. */
+    private async monstruoDeLaMascota(mascota: { Id?: number; Monstruo_origen?: { Id?: number; } | null; }): Promise<MonstruoDetalle | null> {
+        const id = idDelMonstruo(mascota);
+        const monstruo = id > 0 ? await this.primero(Promise.resolve().then(() => this.monstruoSvc.getMonstruo(id))) : null;
+        return monstruo && toInt(monstruo.Id) > 0 ? monstruo : null;
     }
 }

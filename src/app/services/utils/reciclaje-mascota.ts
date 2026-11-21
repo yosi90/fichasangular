@@ -11,7 +11,7 @@ import {
 } from './familiar-reglas';
 import { doteDeNivelClase } from './nivel-clase-monstruo';
 import { nivelesDeClaseHasta } from './niveles-creacion';
-import { aportaAlDarLaMascota, EstadoMascota, filasDeSusListas, OtorgaMascota, TextosMascota } from './mascota-cupos';
+import { aportaAlDarLaMascota, EstadoMascota, filasDeSusListas, idDelMonstruo, OtorgaMascota, TextosMascota } from './mascota-cupos';
 import { normalizarTexto, toInt } from './normalizacion';
 import { conLasAptitudesYDotesDelMotor, DerivadoDelRasgo } from './reciclaje-dominio-escuela';
 import { textoVisible } from './texto-visible';
@@ -132,7 +132,7 @@ function estadoDe(motor: NuevoPersonajeService, tipo: TipoDeMascota): EstadoMasc
 export function criaturaDelRasgo(criatura: CriaturaDeMascota): CriaturaDelRasgo {
     const idPlantilla = Math.max(0, toInt(criatura?.Plantilla?.Id));
     return {
-        idMonstruo: toInt(criatura?.Monstruo_origen?.Id) || toInt(criatura?.Id),
+        idMonstruo: idDelMonstruo(criatura),
         idPlantilla,
         nombre: `${criatura?.Nombre ?? ''}`.trim(),
         plantilla: idPlantilla > 0 ? `${criatura?.Plantilla?.Nombre ?? ''}`.trim() : '',

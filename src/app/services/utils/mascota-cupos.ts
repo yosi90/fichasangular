@@ -360,6 +360,11 @@ function filaDeMenosNivel(filas: MonstruoNivelClase[]): MonstruoNivelClase {
     return filas.reduce((a, b) => toInt(b.Nivel) < toInt(a.Nivel) ? b : a);
 }
 
+/** El id del monstruo de una mascota: el de su `Monstruo_origen` (la de una ficha) o su `Id` (la del catálogo). */
+export function idDelMonstruo(mascota: { Id?: number; Monstruo_origen?: { Id?: number; } | null; } | null | undefined): number {
+    return toInt(mascota?.Monstruo_origen?.Id) || toInt(mascota?.Id);
+}
+
 /** El nombre de la criatura de una mascota en las frases de la que ya tiene: el de su monstruo, como la API («Lobo»). */
 export function criaturaDeLaMascota(mascota: { Nombre?: string; Monstruo_origen?: { Nombre?: string; } | null; }): string {
     return `${mascota?.Monstruo_origen?.Nombre ?? ''}`.trim() || `${mascota?.Nombre ?? ''}`.trim();
