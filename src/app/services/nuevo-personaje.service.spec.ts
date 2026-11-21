@@ -24,7 +24,13 @@ import {
     EVASION, LOBO, MONSTRUOS_COMPANERO, PELEA_SUCIA, PROGRESION_API, SEGUNDO_ATAQUE_NATURAL, TEJON, VINCULO,
 } from 'src/testing/companero-animal-api';
 import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos } from './utils/companero-reglas';
-import { leerCompaneroProgresion } from './utils/monstruo-mapper';
+import { leerCompaneroProgresion, leerFamiliarProgresion } from './utils/monstruo-mapper';
+import {
+    ALERTA, BASICA, CLASES_CON_FAMILIAR, COMPARTIR, CON_ANIMALES, CON_SU_AMO, DRACONICO, DRAGON_FAMILIAR, DRAGON_NEGRO,
+    ESCUDRINAR, EVASION_MEJORADA as EVASION_MEJORADA_FAMILIAR, FAMILIAR_MEJORADO, GATO, MEJORADO, MONSTRUOS_FAMILIAR,
+    PERRO_INTERMITENTE, PROGRESION_FAMILIAR_API, RC, TRANSMITIR, VINCULO as VINCULO_FAMILIAR,
+} from 'src/testing/familiar-api';
+import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos, listasDeFamiliarDelCatalogo } from './utils/familiar-reglas';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -1990,13 +1996,15 @@ describe('NuevoPersonajeService (clases)', () => {
     it('un mago guarda su familiar con los datos de su amo y la tabla del familiar por nivel (MJ cap. 3)', () => {
         const mago = crearClaseBase({ Id: 10, Nombre: 'Mago', Desglose_niveles: [nivelConEspecial(47, 'Convocar a un familiar')] });
         service.setCatalogoClases([mago]);
+        service.setProgresionFamiliar(leerFamiliarProgresion(PROGRESION_FAMILIAR_API));
         service.setCatalogoHabilidades([
             { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
         ]);
         service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 5 }] as any;
         const gato = {
             Id: 20, Id_familiar: 20, Nombre: 'Gato', Monstruo_origen: { Id: 20, Nombre: 'Gato' },
-            Plantilla: { Id: 1, Nombre: 'Básica' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [],
+            Plantilla: { Id: 1, Nombre: 'Básica' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Niveles_clase: [{ Clase: { Id: 10, Nombre: 'Mago' }, Nivel: 0, Ajuste: 0, Plantilla: { Id: 1, Nombre: 'Básica' }, Preferencia_legal: { Id: 0, Nombre: '' }, Preferencia_moral: { Id: 0, Nombre: '' }, Dote: { Id: 0, Nombre: '' } }],
             Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
             Salvaciones: { Fortaleza: 2, Reflejos: 4, Voluntad: 1 },
             Caracteristicas: { Fuerza: 3, Destreza: 15, Destreza_modificador: 2, Constitucion: 10, Constitucion_modificador: 0, Inteligencia: 2, Sabiduria: 12, Sabiduria_modificador: 1, Carisma: 7 },
@@ -2005,7 +2013,7 @@ describe('NuevoPersonajeService (clases)', () => {
             Dotes: [], Especiales: [],
         } as any;
 
-        expect(service.registrarFamiliarSeleccionado(gato, 1, { 81: 'Empatía', 82: 'Alerta', 83: 'Mensajero' }, 'Bigotes').registrado).toBeTrue();
+        expect(service.registrarFamiliarSeleccionado(gato, 'Bigotes').registrado).toBeTrue();
         service.PersonajeCreacion.Vida = 21;
         service.PersonajeCreacion.Ataque_base = '+2';
         service.PersonajeCreacion.Salvaciones.fortaleza.modsClaseos = [{ valor: 1, origen: 'Mago' }];
@@ -2021,7 +2029,9 @@ describe('NuevoPersonajeService (clases)', () => {
         expect([familiar.armaduraNatural, familiar.inteligencia]).toEqual([3, 8]);
         expect(familiar.rc).toBeUndefined();
         expect(familiar.habilidades).toEqual([{ idHabilidad: 6, idExtra: -1, rangos: 4 }]);
-        expect(familiar.especiales.map((especial) => especial.idEspecial).sort((a, b) => a - b)).toEqual([81, 82, 83]);
+        // Las del familiar a nivel 5 (MJ pág. 45): compartir conjuros, evasión mejorada, el vínculo, transmitir conjuros de
+        // toque y comunicarse con su amo; las del amo van en el personaje.
+        expect(familiar.especiales.map((especial) => especial.idEspecial).sort((a, b) => a - b)).toEqual([57, 81, 82, 83, 84]);
     });
 
     it('aplicarSiguienteNivelClase crea entrada de clase a nivel 1', () => {
@@ -5775,7 +5785,7 @@ describe('NuevoPersonajeService (familiar)', () => {
         };
     }
 
-    it('getEstadoCuposFamiliarEspecial47 calcula fuentes, cupos y nivel lanzador', () => {
+    it('getEstadoCuposFamiliar calcula fuentes, cupos y el nivel del amo', () => {
         const svc = new NuevoPersonajeService();
         const claseMago = crearClaseBase({
             Id: 10,
@@ -5805,158 +5815,12 @@ describe('NuevoPersonajeService (familiar)', () => {
         ];
         svc.PersonajeCreacion.Familiares = [crearFamiliarSeleccionable(900)];
 
-        const estado = svc.getEstadoCuposFamiliarEspecial47();
+        const estado = svc.getEstadoCuposFamiliar();
         expect(estado.fuentesClaseIds).toEqual([10]);
         expect(estado.fuentesTotales).toBe(1);
         expect(estado.cuposConsumidos).toBe(1);
         expect(estado.cuposDisponibles).toBe(0);
-        expect(estado.nivelLanzadorFamiliar).toBe(5);
-    });
-
-    it('registrarFamiliarSeleccionado agrega familiar y aplica 17, 81, 82 y 83 si corresponde', () => {
-        const svc = new NuevoPersonajeService();
-        const claseMago = crearClaseBase({
-            Id: 10,
-            Nombre: 'Mago',
-            Desglose_niveles: [
-                {
-                    Nivel: 1,
-                    Ataque_base: '+0',
-                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
-                    Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: crearConjurosDiariosMock(),
-                    Conjuros_conocidos_nivel_a_nivel: {},
-                    Conjuros_conocidos_total: 0,
-                    Dotes: [],
-                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
-                },
-            ],
-        });
-        svc.setCatalogoClases([claseMago]);
-        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 4 } as any];
-
-        const resultado = svc.registrarFamiliarSeleccionado(
-            crearFamiliarSeleccionable(1001, 'Cuervo'),
-            1,
-            {
-                81: 'Empatia vinculada',
-                82: 'Vinculo de alerta',
-                83: 'Mensajero',
-                87: 'Transferencia de hechizo',
-            },
-            'Familiar de Aldric'
-        );
-
-        expect(resultado.registrado).toBeTrue();
-        expect(resultado.dote17Agregada).toBeTrue();
-        expect(resultado.especialesAgregadosIds).toContain(81);
-        expect(resultado.especialesAgregadosIds).toContain(82);
-        expect(resultado.especialesAgregadosIds).toContain(83);
-        expect(resultado.especialesAgregadosIds).not.toContain(87);
-        expect(svc.PersonajeCreacion.Familiares.length).toBe(1);
-        expect(svc.PersonajeCreacion.Familiares[0].Plantilla.Id).toBe(1);
-        expect(svc.PersonajeCreacion.Familiares[0].Nombre).toBe('Familiar de Aldric');
-        expect(svc.PersonajeCreacion.DotesContextuales.some((d) => d.Dote?.Id === 17)).toBeTrue();
-    });
-
-    it('registrarFamiliarSeleccionado respeta umbrales de plantilla draconica', () => {
-        const svc = new NuevoPersonajeService();
-        const claseMago = crearClaseBase({
-            Id: 10,
-            Nombre: 'Mago',
-            Desglose_niveles: [
-                {
-                    Nivel: 1,
-                    Ataque_base: '+0',
-                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
-                    Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: crearConjurosDiariosMock(),
-                    Conjuros_conocidos_nivel_a_nivel: {},
-                    Conjuros_conocidos_total: 0,
-                    Dotes: [],
-                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
-                },
-            ],
-        });
-        svc.setCatalogoClases([claseMago]);
-        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 9 } as any];
-
-        const resultado = svc.registrarFamiliarSeleccionado(
-            crearFamiliarSeleccionable(1002, 'Pseudodragon'),
-            2,
-            { 81: 'E81', 82: 'E82', 83: 'E83', 87: 'E87' }
-        );
-
-        expect(resultado.registrado).toBeTrue();
-        expect(resultado.especialesAgregadosIds).toContain(83);
-        expect(resultado.especialesAgregadosIds).not.toContain(87);
-    });
-
-    it('registrarFamiliarSeleccionado: un solo familiar aunque lo den dos clases, y sin fuente no hay cupo', () => {
-        const svc = new NuevoPersonajeService();
-        const claseMago = crearClaseBase({
-            Id: 10,
-            Nombre: 'Mago',
-            Desglose_niveles: [
-                {
-                    Nivel: 1,
-                    Ataque_base: '+0',
-                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
-                    Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: crearConjurosDiariosMock(),
-                    Conjuros_conocidos_nivel_a_nivel: {},
-                    Conjuros_conocidos_total: 0,
-                    Dotes: [],
-                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
-                },
-            ],
-        });
-        const claseBrujo = crearClaseBase({
-            Id: 11,
-            Nombre: 'Brujo',
-            Desglose_niveles: [
-                {
-                    Nivel: 1,
-                    Ataque_base: '+0',
-                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
-                    Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: crearConjurosDiariosMock(),
-                    Conjuros_conocidos_nivel_a_nivel: {},
-                    Conjuros_conocidos_total: 0,
-                    Dotes: [],
-                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
-                },
-            ],
-        });
-        svc.setCatalogoClases([claseMago, claseBrujo]);
-        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 5 } as any];
-        svc.PersonajeCreacion.desgloseClases.push({ Nombre: 'Brujo', Nivel: 1 } as any);
-        const familiar = crearFamiliarSeleccionable(1003, 'Huron');
-
-        const primera = svc.registrarFamiliarSeleccionado(familiar, 1, {});
-        const segunda = svc.registrarFamiliarSeleccionado(familiar, 1, {});
-
-        expect(primera.registrado).toBeTrue();
-        expect(segunda.registrado).toBeFalse();
-        // Mago y brujo dan un solo familiar (MJ, cap. 3): el segundo ya no tiene cupo.
-        expect((segunda.razon ?? '').toLowerCase()).toContain('cupos');
-
-        const svcSinFuente = new NuevoPersonajeService();
-        const sinCupo = svcSinFuente.registrarFamiliarSeleccionado(
-            crearFamiliarSeleccionable(1004, 'Sapo'),
-            1,
-            {}
-        );
-        expect(sinCupo.registrado).toBeFalse();
-        expect((sinCupo.razon ?? '').toLowerCase()).toContain('cupos');
+        expect(estado.nivelEfectivo).toBe(5);
     });
 
     it('tieneCompaneroPendienteSinSelector depende de cupos reales', () => {
@@ -6035,7 +5899,7 @@ describe('NuevoPersonajeService (familiar)', () => {
         expect(estado.fuentesTotales).toBe(2);
         // Druida y explorador dan un solo compañero, con sus niveles sumados (MJ, cap. 3).
         expect(estado.cuposDisponibles).toBe(1);
-        expect(estado.nivelEfectivoCompanero).toBe(6); // 4 + floor(5/2), por el `Divisor` 2 de su tabla
+        expect(estado.nivelEfectivo).toBe(6); // 4 + floor(5/2), por el `Divisor` 2 de su tabla
         expect(estado.listasIds).toEqual([5]);
     });
 
@@ -6137,7 +6001,7 @@ describe('NuevoPersonajeService (el compañero animal, de los datos)', () => {
 
     it('druida 4 / explorador 4 (nivel efectivo 6): Devoción y los valores de druida 6', () => {
         const svc = motor([['Druida', 4], ['Explorador', 4]]);
-        expect(svc.getEstadoCuposCompanero().nivelEfectivoCompanero).toBe(6);
+        expect(svc.getEstadoCuposCompanero().nivelEfectivo).toBe(6);
         expect(svc.registrarCompaneroSeleccionado(companero(LOBO)).registrado).toBeTrue();
         const dto = guardado(svc);
         expect([dto.dgAdi, dto.trucosAdi, dto.fuerza, dto.destreza, dto.armaduraNatural]).toEqual([4, 3, 15, 17, 6]);
@@ -9508,5 +9372,135 @@ describe('NuevoPersonajeService (Magic of Incarnum)', () => {
         } as any;
         expect((service as any).doteTieneExtrasSoportados(dote)).toBeTrue();
         expect((service as any).resolverExtrasDisponiblesDote(dote).map((e: any) => e.Nombre)).toEqual(['Brazos', 'Frente']);
+    });
+});
+
+describe('NuevoPersonajeService (el familiar, de los datos)', () => {
+    const PROGRESION = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
+    const CATALOGO = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR, listasDeFamiliarDelCatalogo(CLASES_CON_FAMILIAR));
+    const familiar = (idMonstruo: number, idPlantilla: number) => JSON.parse(JSON.stringify(
+        CATALOGO.find((f) => claveFamiliar(f) === `${idMonstruo}:${idPlantilla}`)));
+    const ALERTA_DOTE = { Id: ALERTA, Nombre: 'Alerta', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'MJ', Pagina: 89 }, Modificadores: {} } as any;
+
+    function motor(clases: Array<[string, number]>, dotes: number[] = []): NuevoPersonajeService {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoClases(CLASES_CON_FAMILIAR);
+        svc.setCatalogoDotes([ALERTA_DOTE]);
+        svc.setProgresionFamiliar(PROGRESION);
+        svc.PersonajeCreacion.desgloseClases = clases.map(([Nombre, Nivel]) => ({ Nombre, Nivel })) as any;
+        svc.PersonajeCreacion.DotesContextuales = dotes.map((Id) => ({ Dote: { Id, Nombre: `Dote ${Id}` }, Contexto: { Entidad: 'personaje', Id_extra: 0, Extra: '', Origen: 'Dote' } })) as any;
+        return svc;
+    }
+
+    function delFamiliar(svc: NuevoPersonajeService): number[] {
+        return (svc.familiarParaGuardar()?.especiales ?? []).map((e) => e.idEspecial).sort((a, b) => a - b);
+    }
+
+    function delAmo(svc: NuevoPersonajeService): number[] {
+        return svc.PersonajeCreacion.Claseas.filter((e) => e.Extra === 'Familiar').map((e) => Number(e.Id)).sort((a, b) => a - b);
+    }
+
+    it('el mago 1: Alerta como dote del amo con origen «Familiar» y su nota, y lo del vínculo con el extra «Familiar» (D4)', () => {
+        const svc = motor([['Mago', 1]]);
+        const r = svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA), 'Bigotes');
+        expect(r.registrado).toBeTrue();
+        expect(r.nivel).toBe(1);
+        expect(r.dotesAgregadasIds).toEqual([ALERTA]);
+        const alerta = svc.PersonajeCreacion.DotesContextuales.find((d) => d.Dote?.Id === ALERTA)!;
+        expect((alerta.Contexto as any).Origen).toBe('Familiar (solo mientras el familiar esté al alcance de la mano del amo)');
+        expect(svc.PersonajeCreacion.Dotes.some((d) => d.Nombre === 'Alerta' && d.Origen === (alerta.Contexto as any).Origen)).toBeTrue();
+        expect(delAmo(svc)).toEqual([COMPARTIR, VINCULO_FAMILIAR]);
+        expect(delFamiliar(svc)).toEqual([EVASION_MEJORADA_FAMILIAR, COMPARTIR, VINCULO_FAMILIAR].sort((a, b) => a - b));
+        // Alerta va en el personaje, con su origen, y no en el familiar.
+        expect(svc.familiarParaGuardar()!.dotes).toEqual([]);
+    });
+
+    it('el mago 3 transmite conjuros de toque con su familiar; el mago 2, no (F5)', () => {
+        const svc3 = motor([['Mago', 3]]);
+        svc3.registrarFamiliarSeleccionado(familiar(GATO, BASICA));
+        expect(delFamiliar(svc3)).toContain(TRANSMITIR);
+        const svc2 = motor([['Mago', 2]]);
+        svc2.registrarFamiliarSeleccionado(familiar(GATO, BASICA));
+        expect(delFamiliar(svc2)).not.toContain(TRANSMITIR);
+    });
+
+    it('el mago 11: la aptitud de resistencia a conjuros y su RC, su nivel +5 (F6)', () => {
+        const svc = motor([['Mago', 11]]);
+        svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA));
+        svc.PersonajeCreacion.Vida = 40;
+        const dto = svc.familiarParaGuardar()!;
+        expect(dto.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayContaining([RC, CON_SU_AMO, CON_ANIMALES]));
+        expect([dto.armaduraNatural, dto.inteligencia, dto.rc, dto.vida]).toEqual([6, 11, '16', 20]);
+    });
+
+    it('el mago 13 escudriña por medio de su familiar: es del amo, no del familiar (F5)', () => {
+        const svc = motor([['Mago', 13]]);
+        svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA));
+        expect(delAmo(svc)).toContain(ESCUDRINAR);
+        expect(delFamiliar(svc)).not.toContain(ESCUDRINAR);
+        expect(motor([['Mago', 12]]).registrarFamiliarSeleccionado(familiar(GATO, BASICA)).especialesAgregadosIds).not.toContain(ESCUDRINAR);
+    });
+
+    it('el familiar mejorado transmite conjuros y escudriña, sin comunicarse con los animales de su tipo (F7)', () => {
+        const svc = motor([['Hechicero', 13]], [FAMILIAR_MEJORADO]);
+        expect(svc.registrarFamiliarSeleccionado(familiar(PERRO_INTERMITENTE, MEJORADO)).registrado).toBeTrue();
+        expect(delFamiliar(svc)).toContain(TRANSMITIR);
+        expect(delFamiliar(svc)).not.toContain(CON_ANIMALES);
+        expect(delAmo(svc)).toContain(ESCUDRINAR);
+        // Sin la dote de su fila, no.
+        expect(motor([['Hechicero', 13]]).registrarFamiliarSeleccionado(familiar(PERRO_INTERMITENTE, MEJORADO)).razon)
+            .toBe('Hace falta la dote «Familiar mejorado» para tenerlo como familiar.');
+    });
+
+    it('el dracónico, con su tabla y con los PG y el ataque mayores entre los de su amo y los suyos (F8)', () => {
+        const svc = motor([['Hechicero', 9]], [DRAGON_FAMILIAR]);
+        expect(svc.registrarFamiliarSeleccionado(familiar(DRAGON_NEGRO, DRACONICO)).registrado).toBeTrue();
+        svc.PersonajeCreacion.Vida = 30;
+        svc.PersonajeCreacion.Ataque_base = '+4';
+        const dto = svc.familiarParaGuardar()!;
+        // La tabla dracónica a 9: armadura natural +2, transmitir conjuros de toque y sin RC; la Inteligencia, la suya.
+        expect([dto.armaduraNatural, dto.inteligencia, dto.rc]).toEqual([2, 8, undefined]);
+        expect(dto.especiales.map((e) => e.idEspecial)).toContain(TRANSMITIR);
+        // La cría (30 PG, +4) frente a un amo de 30 PG (15) y +4.
+        expect([dto.vida, dto.ataqueBase]).toEqual([30, 4]);
+        svc.PersonajeCreacion.Ataque_base = '+2';
+        expect(svc.familiarParaGuardar()!.ataqueBase).toBe(4);
+    });
+
+    it('el filo aojador 4 tiene un familiar de nivel 1 de la lista del hechicero (F9)', () => {
+        const svc = motor([['Filo aojador', 4]]);
+        expect(svc.getEstadoCuposFamiliar().nivelEfectivo).toBe(1);
+        const r = svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA));
+        expect(r.registrado).toBeTrue();
+        expect(r.nivel).toBe(1);
+        const dto = svc.familiarParaGuardar()!;
+        expect([dto.armaduraNatural, dto.inteligencia]).toEqual([1, 6]);
+        expect(dto.especiales.map((e) => e.idEspecial)).not.toContain(TRANSMITIR);
+        expect(motor([['Filo aojador', 3]]).getEstadoCuposFamiliar().cuposDisponibles).toBe(0);
+    });
+
+    it('sin la tabla del familiar no se registra: no se sabría qué le toca', () => {
+        const svc = motor([['Mago', 1]]);
+        svc.setProgresionFamiliar(null);
+        expect(svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA)).razon).toContain('tabla del familiar');
+    });
+
+    it('quitarFamiliar quita el familiar, lo de su vínculo y Alerta, para elegir otro', () => {
+        const svc = motor([['Mago', 3]]);
+        svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA));
+        svc.quitarFamiliar();
+        expect(svc.PersonajeCreacion.Familiares).toEqual([]);
+        expect(delAmo(svc)).toEqual([]);
+        expect(svc.PersonajeCreacion.DotesContextuales.some((d) => d.Dote?.Id === ALERTA)).toBeFalse();
+        expect(svc.PersonajeCreacion.Dotes.some((d) => d.Nombre === 'Alerta')).toBeFalse();
+        expect(svc.getEstadoCuposFamiliar().cuposDisponibles).toBe(1);
+    });
+
+    it('un solo familiar aunque lo den dos clases, y sin fuente no hay cupo', () => {
+        const svc = motor([['Mago', 5], ['Hechicero', 1]]);
+        expect(svc.getEstadoCuposFamiliar().nivelEfectivo).toBe(6);
+        expect(svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA)).registrado).toBeTrue();
+        expect((svc.registrarFamiliarSeleccionado(familiar(GATO, BASICA)).razon ?? '').toLowerCase()).toContain('cupos');
+        expect((motor([['Guerrero', 3]]).registrarFamiliarSeleccionado(familiar(GATO, BASICA)).razon ?? '').toLowerCase()).toContain('cupos');
     });
 });

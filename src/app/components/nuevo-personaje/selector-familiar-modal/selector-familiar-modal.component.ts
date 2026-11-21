@@ -1,6 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
-import { FamiliarPlantillaId, FamiliarPlantillaOpcion } from 'src/app/services/utils/familiar-reglas';
+import { claveFamiliar, FamiliarPlantillaId, FamiliarPlantillaOpcion } from 'src/app/services/utils/familiar-reglas';
 import { normalizarTexto, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -34,6 +34,8 @@ export class SelectorFamiliarModalComponent {
     @Input() incluirHomebrew = false;
     @Input() cuposDisponibles = 0;
     @Input() nombreFamiliar = '';
+    /** Por qué la API no ha aceptado el familiar que se mandó (`familiar_no_disponible`, `familiar_no_cuadra`). */
+    @Input() errorApi = '';
 
     @Output() confirmar = new EventEmitter<SelectorFamiliarConfirmacion>();
     @Output() omitir = new EventEmitter<void>();
@@ -181,6 +183,12 @@ export class SelectorFamiliarModalComponent {
         return Math.trunc(nivel);
     }
 
+    /** Qué es el nivel que pide: el del amo, con los niveles de sus clases que dan familiar (el filo aojador, tres menos). */
+    getExplicacionNivel(familiar: FamiliarMonstruoDetalle): string {
+        const nivel = this.getNivelRequerido(familiar);
+        return nivel === null ? '' : `Pide un amo de nivel ${nivel}: se suman los niveles de tus clases que dan familiar, cada una como dice su tabla.`;
+    }
+
     trackByFamiliar(index: number, familiar: FamiliarMonstruoDetalle): string {
         return `${index}:${Number(familiar?.Id_familiar ?? 0)}:${Number(familiar?.Plantilla?.Id ?? 0)}`;
     }
@@ -224,7 +232,7 @@ export class SelectorFamiliarModalComponent {
     }
 
     private getClaveFamiliar(familiar: FamiliarMonstruoDetalle | null | undefined): string {
-        return `${Number(familiar?.Id_familiar ?? 0)}:${Number(familiar?.Plantilla?.Id ?? 0)}`;
+        return claveFamiliar(familiar);
     }
 
     private sonMismoFamiliar(a: FamiliarMonstruoDetalle | null | undefined, b: FamiliarMonstruoDetalle | null | undefined): boolean {

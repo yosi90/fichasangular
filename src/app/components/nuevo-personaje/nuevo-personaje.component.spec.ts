@@ -5695,13 +5695,15 @@ describe('NuevoPersonajeComponent', () => {
 
     it('returnStep dotes en habilidades ejecuta pipeline post-dotes y vuelve a clases', async () => {
         spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
-        spyOn(nuevoPSvc, 'getEstadoCuposFamiliarEspecial47').and.returnValue({
+        spyOn(nuevoPSvc, 'getEstadoCuposFamiliar').and.returnValue({
             fuentes: [],
             fuentesClaseIds: [],
             fuentesTotales: 0,
             cuposConsumidos: 0,
             cuposDisponibles: 0,
-            nivelLanzadorFamiliar: 0,
+            nivelEfectivo: 0,
+            fuentesMascota: [],
+            listasIds: [],
         } as any);
         spyOn(nuevoPSvc, 'tieneCompaneroPendienteSinSelector').and.returnValue(false);
         spyOn(nuevoPSvc, 'cerrarDistribucionHabilidades').and.returnValue('dotes');
@@ -5750,7 +5752,7 @@ describe('NuevoPersonajeComponent', () => {
             fuentesTotales: 1,
             cuposConsumidos: 0,
             cuposDisponibles: 1,
-            nivelEfectivoCompanero: 6,
+            nivelEfectivo: 6,
         } as any;
         spyOn(nuevoPSvc, 'getEstadoCuposCompanero').and.returnValue(estadoMock);
         const companero = {
@@ -5780,7 +5782,7 @@ describe('NuevoPersonajeComponent', () => {
     });
 
     it('si la API no acepta el compañero, lo quita y vuelve a abrir su selector con el motivo', async () => {
-        const estadoMock = { fuentes: [], fuentesClaseIds: [5], fuentesTotales: 1, cuposConsumidos: 0, cuposDisponibles: 1, nivelEfectivoCompanero: 6, fuentesCompanero: [], listasIds: [5] } as any;
+        const estadoMock = { fuentes: [], fuentesClaseIds: [5], fuentesTotales: 1, cuposConsumidos: 0, cuposDisponibles: 1, nivelEfectivo: 6, fuentesMascota: [], listasIds: [5] } as any;
         const quitarSpy = spyOn(nuevoPSvc, 'quitarCompanero');
         spyOn(nuevoPSvc, 'getEstadoCuposCompanero').and.returnValue(estadoMock);
         const companero = { Id: 110, Id_companero: 10, Nombre: 'Bisonte', Plantilla: { Id: 0, Nombre: '' } } as any;
@@ -5793,6 +5795,33 @@ describe('NuevoPersonajeComponent', () => {
         expect(abrirSpy).toHaveBeenCalledWith(estadoMock, motivo);
     });
 
+    it('resolverFamiliarPendienteFinNivel registra el familiar elegido, con su plantilla dentro (la de su fila)', async () => {
+        const estadoMock = { fuentes: [], fuentesClaseIds: [9], fuentesTotales: 1, cuposConsumidos: 0, cuposDisponibles: 1, nivelEfectivo: 3, fuentesMascota: [], listasIds: [9] } as any;
+        spyOn(nuevoPSvc, 'getEstadoCuposFamiliar').and.returnValue(estadoMock);
+        const familiar = { Id: 11, Id_familiar: 11, Nombre: 'Gato', Plantilla: { Id: 1, Nombre: 'Básica' } } as any;
+        spyOn<any>(component, 'abrirSelectorFamiliar').and.resolveTo({ familiar, plantilla: 1, nombre: 'Bigotes' });
+        const registrarSpy = spyOn(nuevoPSvc, 'registrarFamiliarSeleccionado').and.returnValue({
+            registrado: true, familiarAgregado: familiar, dotesAgregadasIds: [17], especialesAgregadosIds: [81, 82, 57, 83], nivel: 3,
+        });
+
+        expect(await (component as any).resolverFamiliarPendienteFinNivel()).toBeTrue();
+        expect(registrarSpy).toHaveBeenCalledWith(familiar, 'Bigotes');
+    });
+
+    it('si la API no acepta el familiar, lo quita y vuelve a abrir su selector con el motivo', async () => {
+        const estadoMock = { fuentes: [], fuentesClaseIds: [9], fuentesTotales: 1, cuposConsumidos: 0, cuposDisponibles: 1, nivelEfectivo: 3, fuentesMascota: [], listasIds: [9] } as any;
+        const quitarSpy = spyOn(nuevoPSvc, 'quitarFamiliar');
+        spyOn(nuevoPSvc, 'getEstadoCuposFamiliar').and.returnValue(estadoMock);
+        const familiar = { Id: 11, Id_familiar: 11, Nombre: 'Gato', Plantilla: { Id: 1, Nombre: 'Básica' } } as any;
+        const abrirSpy = spyOn<any>(component, 'abrirSelectorFamiliar').and.resolveTo({ familiar, plantilla: 1, nombre: '' });
+        spyOn(nuevoPSvc, 'registrarFamiliarSeleccionado').and.returnValue({ registrado: true } as any);
+        const motivo = 'El familiar es el de un amo de nivel 3: le falta «Transmitir conjuros de toque».';
+
+        expect(await (component as any).volverAElegirFamiliar(motivo)).toBeTrue();
+        expect(quitarSpy).toHaveBeenCalled();
+        expect(abrirSpy).toHaveBeenCalledWith(estadoMock, motivo);
+    });
+
     it('resolverCompaneroPendienteFinNivel permite omitir y continuar', async () => {
         const estadoMock = {
             fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
@@ -5800,7 +5829,7 @@ describe('NuevoPersonajeComponent', () => {
             fuentesTotales: 1,
             cuposConsumidos: 0,
             cuposDisponibles: 1,
-            nivelEfectivoCompanero: 6,
+            nivelEfectivo: 6,
         } as any;
         spyOn(nuevoPSvc, 'getEstadoCuposCompanero').and.returnValue(estadoMock);
         spyOn<any>(component, 'abrirSelectorCompanero').and.resolveTo('omitir');

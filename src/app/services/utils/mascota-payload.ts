@@ -5,18 +5,21 @@ import {
     PersonajeCreateHabilidadMascotaDto,
 } from 'src/app/interfaces/personajes-api';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
-import { toInt, toNumber } from './normalizacion';
+import { primerEntero, toInt, toNumber } from './normalizacion';
 import { carasDado } from './puntos-golpe';
 import { dadosGolpeCompanero } from './companero-reglas';
+import { TablaDelFamiliar } from './familiar-reglas';
 
 /**
  * El familiar y el compañero animal de la creación, en la forma de `POST /personajes/add` (bloques `familiar` y
  * `companero`, que la API guarda como un familiar o un compañero propios con sus habilidades, dotes y especiales).
  *
- * Familiar (Manual del jugador, cap. 3, «Familiares»): la mitad de los puntos de golpe de su amo, el ataque base del amo,
- * en cada salvación la base mejor (la suya o la del amo) con sus modificadores, en cada habilidad los rangos mejores (los
- * suyos o los del amo), y por el nivel de las clases que le dan el familiar: ajuste de armadura natural, Inteligencia y,
- * desde el nivel 11, resistencia a conjuros de nivel + 5.
+ * Familiar (Manual del jugador, págs. 44-45; contrato: `docs/publica/endpoints/personajes.md`, «El familiar, comprobado
+ * por la API»): la mitad de los puntos de golpe de su amo y el ataque base del amo (con `Pg_ataque_mayores` en su
+ * pseudoplantilla, los mayores entre esos y los suyos: el dracónico, el celestial), en cada salvación la base mejor (la
+ * suya o la del amo) con sus modificadores, en cada habilidad los rangos mejores (los suyos o los del amo), y la fila de su
+ * tabla al nivel de su amo (`tablaDelFamiliar`): armadura natural, Inteligencia y resistencia a conjuros. Lleva los
+ * valores de su monstruo; lo de su nivel se le suma aquí.
  */
 
 const LONGITUD_NOMBRE_MASCOTA = 50;
@@ -28,27 +31,41 @@ export interface AmoDelFamiliar {
     ataqueBase: number;
     /** Las salvaciones base del amo por sus clases. */
     salvacionesBase: { fortaleza: number; reflejos: number; voluntad: number; };
-    /** Nivel de las clases que le dan el familiar. */
-    nivelFamiliar: number;
     /** Las habilidades del amo, ya en la forma del contrato. */
     habilidades: PersonajeCreateHabilidadMascotaDto[];
 }
 
-export interface BonosFamiliarPorNivel {
-    ajusteArmaduraNatural: number;
-    inteligencia: number;
-    resistenciaConjuros: number | null;
+/** La mitad de los puntos de golpe del amo, hacia abajo y como mínimo 1: los del familiar (MJ, pág. 44). */
+export function mitadDeLosPg(vidaAmo: number): number {
+    return Math.max(1, Math.floor(toNumber(vidaAmo) / 2));
 }
 
-/** La tabla del familiar por nivel del amo (MJ, cap. 3): +1 a la armadura natural y +1 de Int cada dos niveles. */
-export function bonosFamiliarPorNivel(nivelAmo: number): BonosFamiliarPorNivel {
-    const nivel = Math.max(0, toInt(nivelAmo));
-    const tramo = Math.ceil(nivel / 2);
-    return {
-        ajusteArmaduraNatural: tramo,
-        inteligencia: nivel > 0 ? 5 + tramo : 0,
-        resistenciaConjuros: nivel >= 11 ? nivel + 5 : null,
-    };
+/**
+ * Los DG de un monstruo como número (`Dados_golpe.Cantidad`: «4», «1/2», «1/4»), como fracción `[numerador,
+ * denominador]`; sin número, 0.
+ */
+function dadosComoFraccion(cantidad: unknown): [number, number] {
+    const texto = `${cantidad ?? ''}`;
+    const fraccion = /(\d+)\s*\/\s*(\d+)/.exec(texto);
+    if (fraccion)
+        return [toInt(fraccion[1]), Math.max(1, toInt(fraccion[2]))];
+    return [Math.max(0, primerEntero(texto) ?? 0), 1];
+}
+
+/**
+ * Los puntos de golpe medios de los DG de un monstruo (`vidaMediaPorDados`), también con menos de un DG (el gato, ½ DG:
+ * 2; la rata, ¼: 1), como la API (`utils/mascotas.pg_medios`).
+ */
+export function vidaMediaDelMonstruo(monstruo: Pick<FamiliarMonstruoDetalle, 'Dados_golpe' | 'Caracteristicas'> | null | undefined): number {
+    const [numerador, denominador] = dadosComoFraccion(monstruo?.Dados_golpe?.Cantidad);
+    const caras = carasDado(monstruo?.Dados_golpe?.Tipo_dado?.Nombre);
+    const modConstitucion = toInt((monstruo?.Caracteristicas as Record<string, number | null> | undefined)?.['Constitucion_modificador']);
+    if (denominador === 1)
+        return vidaMediaPorDados(numerador, caras, modConstitucion);
+    if (numerador < 1)
+        return 1;
+    // ⌊DG × (caras + 1) / 2 + DG × mod. de Con⌋ con la fracción exacta.
+    return Math.max(1, Math.trunc((numerador * (Math.max(1, caras) + 1) + 2 * numerador * modConstitucion) / (2 * denominador)));
 }
 
 function nombreMascota(nombre: unknown, porDefecto: string): string {
@@ -111,12 +128,17 @@ function sinRepetidos<T>(items: T[], clave: (item: T) => string): T[] {
     });
 }
 
+/**
+ * El familiar para guardar con su amo y la fila de su tabla al nivel de su amo (`tablaDelFamiliar`). Sus aptitudes son las
+ * que ya lleva (las de su monstruo y las de su nivel, que le pone la creación); las del amo van en el personaje.
+ */
 export function construirFamiliarParaGuardar(
     familiar: FamiliarMonstruoDetalle,
     amo: AmoDelFamiliar,
-    idsEspecialesDelVinculo: number[] = []
+    tabla: TablaDelFamiliar,
 ): PersonajeCreateFamiliarDto {
-    const bonos = bonosFamiliarPorNivel(amo.nivelFamiliar);
+    const bonos = tabla.bonos;
+    const mayores = !!tabla.plantilla?.Pg_ataque_mayores;
     const caracteristicas = (familiar?.Caracteristicas ?? {}) as Record<string, number | null>;
     const salvacion = (clave: 'Fortaleza' | 'Reflejos' | 'Voluntad', caracteristica: string): number => {
         const total = toNumber(familiar?.Salvaciones?.[clave]);
@@ -124,28 +146,28 @@ export function construirFamiliarParaGuardar(
         const base = amo.salvacionesBase[clave.toLowerCase() as keyof AmoDelFamiliar['salvacionesBase']];
         return Math.max(total, toNumber(base) + modificador);
     };
+    const inteligenciaMonstruo = toInt(caracteristicas['Inteligencia']);
+    const mitad = mitadDeLosPg(amo.vida);
     const dto: PersonajeCreateFamiliarDto = {
         nombre: nombreMascota(familiar?.Nombre, 'Familiar'),
         idMonstruo: idMonstruo(familiar),
         idPlantilla: Math.max(0, toInt(familiar?.Plantilla?.Id)),
-        vida: Math.max(1, Math.floor(toNumber(amo.vida) / 2)),
-        ataqueBase: toInt(amo.ataqueBase),
+        vida: mayores ? Math.max(mitad, vidaMediaDelMonstruo(familiar)) : mitad,
+        ataqueBase: mayores ? Math.max(toInt(amo.ataqueBase), toInt(familiar?.Ataque?.Ataque_base)) : toInt(amo.ataqueBase),
         fortaleza: salvacion('Fortaleza', 'Constitucion'),
         reflejos: salvacion('Reflejos', 'Destreza'),
         voluntad: salvacion('Voluntad', 'Sabiduria'),
-        armaduraNatural: toInt(familiar?.Defensa?.Armadura_natural) + bonos.ajusteArmaduraNatural,
-        inteligencia: Math.max(bonos.inteligencia, toInt(caracteristicas['Inteligencia'])),
+        armaduraNatural: toInt(familiar?.Defensa?.Armadura_natural) + toInt(bonos.Armadura_natural),
+        inteligencia: bonos.Inteligencia === null ? inteligenciaMonstruo : Math.max(toInt(bonos.Inteligencia), inteligenciaMonstruo),
         habilidades: unirHabilidadesConRangosMayores(habilidadesDelMonstruo(familiar?.Habilidades), amo.habilidades),
         especiales: sinRepetidos(
-            [...especialesDe(familiar).map(({ idEspecial }) => idEspecial), ...idsEspecialesDelVinculo]
-                .filter((id) => id > 0)
-                .map((idEspecial) => ({ idEspecial })),
+            especialesDe(familiar).map(({ idEspecial }) => ({ idEspecial })),
             (item) => `${item.idEspecial}`
         ),
         dotes: dotesPropias(familiar),
     };
-    if (bonos.resistenciaConjuros !== null)
-        dto.rc = `${bonos.resistenciaConjuros}`;
+    if (bonos.Rc_sobre_nivel !== null)
+        dto.rc = `${tabla.nivel + toInt(bonos.Rc_sobre_nivel)}`;
     return dto;
 }
 

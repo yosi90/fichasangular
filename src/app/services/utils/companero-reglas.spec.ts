@@ -52,7 +52,7 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
     describe('el nivel efectivo de druida', () => {
         it('druida 4 / explorador 4 es 6: el explorador aporta la mitad (MJ pág. 39)', () => {
             const estado = estadoDe([['Druida', 4], ['Explorador', 4]]);
-            expect(estado.nivelEfectivoCompanero).toBe(6);
+            expect(estado.nivelEfectivo).toBe(6);
             expect(estado.fuentesClaseIds.sort((a, b) => a - b)).toEqual([DRUIDA, EXPLORADOR]);
             // Las dos eligen de la lista del druida; un solo compañero.
             expect(estado.listasIds).toEqual([DRUIDA]);
@@ -60,13 +60,13 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
         });
 
         it('druida 5 / señor de las bestias 2 es 10, el ejemplo del libro (El aventurero completo, pág. 78)', () => {
-            expect(estadoDe([['Druida', 5], ['Señor de las bestias', 2]]).nivelEfectivoCompanero).toBe(10);
+            expect(estadoDe([['Druida', 5], ['Señor de las bestias', 2]]).nivelEfectivo).toBe(10);
         });
 
         it('el explorador cuenta desde el nivel en que su tabla da la aptitud, y la mitad hacia abajo', () => {
             expect(estadoDe([['Explorador', 3]]).fuentesTotales).toBe(0);
-            expect(estadoDe([['Explorador', 5]]).nivelEfectivoCompanero).toBe(2);
-            expect(estadoDe([['Explorador', 8]]).nivelEfectivoCompanero).toBe(4);
+            expect(estadoDe([['Explorador', 5]]).nivelEfectivo).toBe(2);
+            expect(estadoDe([['Explorador', 8]]).nivelEfectivo).toBe(4);
         });
 
         it('el pirata que elige Pelea sucia no tiene compañero; con El mejor amigo del pirata, la mitad (F11)', () => {
@@ -75,7 +75,7 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
             expect(conPeleaSucia.cuposDisponibles).toBe(0);
             const conAmigo = estadoDe([['Pirata', 4]], { Claseas: [{ Id: MEJOR_AMIGO_DEL_PIRATA, Nombre: 'El mejor amigo del pirata', Extra: '' }] as any });
             expect(conAmigo.fuentesClaseIds).toEqual([PIRATA]);
-            expect(conAmigo.nivelEfectivoCompanero).toBe(2);
+            expect(conAmigo.nivelEfectivo).toBe(2);
         });
 
         it('cuenta el compañero que ya tiene', () => {

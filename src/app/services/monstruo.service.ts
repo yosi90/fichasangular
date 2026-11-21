@@ -8,6 +8,7 @@ import {
     CompaneroMonstruoDetalle,
     CompaneroProgresion,
     FamiliarMonstruoDetalle,
+    FamiliarProgresion,
     LicantroposDelMonstruo,
     MonstruoCreateRequest,
     MonstruoDetalle,
@@ -21,6 +22,7 @@ import { leerRespuestaDeEscritura } from "./utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import {
     leerCompaneroProgresion,
+    leerFamiliarProgresion,
     normalizeCompaneroMonstruoDetalle,
     normalizeFamiliarMonstruoDetalle,
     normalizeMonstruoDetalle,
@@ -168,6 +170,22 @@ export class MonstruoService {
             cacheIncompleta: (progresion) => progresion.Bonos.length < 1,
             pedir: () => this.http.get(`${environment.apiUrl}companeros/progresion`),
             desdeApi: (raw) => leerCompaneroProgresion(raw),
+            unaPeticionALaVez: true,
+        });
+    }
+
+    /**
+     * Las tablas del familiar, lo que da cada nivel y lo que sigue cada pseudoplantilla (Manual del jugador, pág. 45;
+     * Draconomicon, pág. 141; Guía del DM, pág. 200): la caché `FamiliaresProgresion` o, si no está o le faltan las tablas,
+     * `GET /familiares/progresion`.
+     */
+    getFamiliaresProgresion(): Observable<FamiliarProgresion> {
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, "FamiliaresProgresion"),
+            desdeCache: (snapshot) => leerFamiliarProgresion(snapshot.val()),
+            cacheIncompleta: (progresion) => progresion.Tablas.length < 1,
+            pedir: () => this.http.get(`${environment.apiUrl}familiares/progresion`),
+            desdeApi: (raw) => leerFamiliarProgresion(raw),
             unaPeticionALaVez: true,
         });
     }

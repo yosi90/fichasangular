@@ -13,7 +13,14 @@ import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
-import { CompaneroBonosNivel, CompaneroMonstruoDetalle, CompaneroProgresion, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
+import {
+    CompaneroBonosNivel,
+    CompaneroMonstruoDetalle,
+    CompaneroProgresion,
+    FamiliarAptitudNivel,
+    FamiliarMonstruoDetalle,
+    FamiliarProgresion,
+} from '../interfaces/monstruo';
 import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
@@ -24,7 +31,7 @@ import { NivelPerdido } from '../interfaces/sesiones';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
-import { PersonajeCreateColeccionesDto, PersonajeCreateCompaneroDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
+import { PersonajeCreateColeccionesDto, PersonajeCreateCompaneroDto, PersonajeCreateFamiliarDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional, parteCondicionalVarios } from './utils/habilidad-raza-condicional';
 import {
     bonificadoresCondicionalesDeRaciales,
@@ -57,9 +64,13 @@ import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarn
 import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 import {
+    aptitudesFamiliarDelNivel,
     EstadoCuposFamiliar as EstadoCuposFamiliarUtil,
-    FamiliarPlantillaId as FamiliarPlantillaIdUtil,
-    resolverEstadoCuposFamiliarEspecial47
+    listasDeFamiliarDelCatalogo,
+    resolverEstadoCuposFamiliar,
+    resolverFilaFamiliar,
+    TablaDelFamiliar,
+    tablaDelFamiliar,
 } from './utils/familiar-reglas';
 import {
     aptitudesCompaneroDelNivel,
@@ -131,7 +142,6 @@ export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' 
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel' | 'companero_dg';
 export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'mixto';
-export type FamiliarPlantillaId = FamiliarPlantillaIdUtil;
 export type EstadoCuposFamiliar = EstadoCuposFamiliarUtil;
 export type EstadoCuposCompanero = EstadoCuposCompaneroUtil;
 export type GeneradorAutoRespuestaQ1 =
@@ -284,19 +294,6 @@ const NUEVO_PERSONAJE_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const SALVACION_POR_ID: Record<number, SalvacionKey> = { 1: 'fortaleza', 2: 'reflejos', 3: 'voluntad' };
 const EXTRA_IDIOMAS_INICIALES = 0;
 const GENERADOR_AUTO_Q4_THRESHOLD = 1;
-const DOTE_FAMILIAR_ID = 17;
-
-const ESPECIALES_BONUS_FAMILIAR_FIJOS = [81, 82];
-const ESPECIAL_BONUS_FAMILIAR_MENSAJERO = 83;
-const ESPECIAL_BONUS_FAMILIAR_HECHIZO = 87;
-/**
- * Las dos pseudoplantillas de familiar con otra tabla de aptitudes del amo: la dracónica (mensajero a nivel 9 y
- * transferencia de hechizo a 17) y la mejorada (sin ellas). El contrato no dice qué tabla sigue cada pseudoplantilla
- * (hueco anotado en el bugs.md de las clases de Rol mapa mundi), así que solo estas dos van por id; las demás, las que
- * dé el catálogo, siguen la del Manual del jugador.
- */
-const PSEUDOPLANTILLA_FAMILIAR_DRACONICA = 2;
-const PSEUDOPLANTILLA_FAMILIAR_MEJORADA = 5;
 /** Lo que dan los DG de una plantilla (`Licantronia_dg`): el ataque base y las tres salvaciones base. */
 interface BasesDeDgs {
     ataqueBase: number;
@@ -349,6 +346,29 @@ function origenDeClase(nombreClase: string | null | undefined): string {
 /** El extra con el que el personaje lleva las aptitudes de su vínculo con el familiar o el compañero. */
 const EXTRA_ESPECIAL_FAMILIAR = 'Familiar';
 const EXTRA_ESPECIAL_COMPANERO = 'Compañero animal';
+/** El origen de las dotes que el amo gana con su familiar (Alerta), al que se suma la nota de su tabla. */
+const ORIGEN_DOTE_FAMILIAR = 'Familiar';
+/** Lo que cabe en el `origen` de una dote del alta (`colecciones.dotes[].origen`). */
+const LONGITUD_ORIGEN_DOTE = 100;
+
+/**
+ * El origen de una dote que el amo gana con su familiar, con la nota de su tabla si cabe: «Familiar (solo mientras el
+ * familiar esté al alcance de la mano del amo)». Es lo que la ficha enseña junto a la dote.
+ */
+function origenDeDoteDelFamiliar(nota: string | null | undefined): string {
+    const texto = `${nota ?? ''}`.trim().replace(/\.$/, '');
+    if (texto.length < 1)
+        return ORIGEN_DOTE_FAMILIAR;
+    const origen = `${ORIGEN_DOTE_FAMILIAR} (${texto.charAt(0).toLocaleLowerCase('es')}${texto.slice(1)})`;
+    return origen.length <= LONGITUD_ORIGEN_DOTE ? origen : ORIGEN_DOTE_FAMILIAR;
+}
+
+/** Si el origen de una dote es el de las que da el familiar (con su nota o sin ella). */
+function esOrigenDelFamiliar(origen: string | null | undefined): boolean {
+    const texto = normalizarTexto(`${origen ?? ''}`);
+    const base = normalizarTexto(ORIGEN_DOTE_FAMILIAR);
+    return texto === base || texto.startsWith(`${base} (`);
+}
 const GENERADOR_AUTO_CON_FLOOR = 1;
 const GENERADOR_AUTO_RECOMENDACION_UMBRAL_TOP3 = 1;
 const GENERADOR_AUTO_PESOS_POR_POSICION: number[] = [60, 50, 40, 30, 20, 10];
@@ -857,8 +877,12 @@ export interface RegistroFamiliarResultado {
     registrado: boolean;
     razon?: string;
     familiarAgregado?: FamiliarMonstruoDetalle;
-    dote17Agregada: boolean;
+    /** Las dotes que gana el amo con su familiar (Alerta). */
+    dotesAgregadasIds: number[];
+    /** Las aptitudes que ganan el amo y el familiar por el nivel del amo. */
     especialesAgregadosIds: number[];
+    /** El nivel del amo: el de la tabla del familiar. */
+    nivel: number;
 }
 
 export interface RegistroCompaneroResultado {
@@ -1239,6 +1263,8 @@ export class NuevoPersonajeService {
     private catalogoSubtipos: SubtipoResumen[] = [];
     /** La tabla del compañero animal y lo que da cada nivel (`GET /companeros/progresion`); `null` sin cargar. */
     private progresionCompanero: CompaneroProgresion | null = null;
+    /** Las tablas del familiar y lo que sigue cada pseudoplantilla (`GET /familiares/progresion`); `null` sin cargar. */
+    private progresionFamiliar: FamiliarProgresion | null = null;
     /** Las caras de los tipos de dado del catálogo: la escalera de los cambios de dado de las plantillas. */
     private escaleraDados: number[] = [];
     /** La tabla 9-1 de la carga por Fuerza y los tamaños con sus multiplicadores (`GET /capacidades-carga`, `/tamanos`). */
@@ -2033,6 +2059,11 @@ export class NuevoPersonajeService {
     /** La tabla del compañero animal y sus aptitudes por nivel (`GET /companeros/progresion` o su caché). */
     setProgresionCompanero(progresion: CompaneroProgresion | null): void {
         this.progresionCompanero = progresion;
+    }
+
+    /** Las tablas del familiar, sus aptitudes por nivel y sus pseudoplantillas (`GET /familiares/progresion` o su caché). */
+    setProgresionFamiliar(progresion: FamiliarProgresion | null): void {
+        this.progresionFamiliar = progresion;
     }
 
     setCatalogoSubtipos(subtipos: SubtipoResumen[]): void {
@@ -3578,8 +3609,14 @@ export class NuevoPersonajeService {
         }, 0);
     }
 
-    getEstadoCuposFamiliarEspecial47(): EstadoCuposFamiliar {
-        return resolverEstadoCuposFamiliarEspecial47(this.personajeCreacion, this.catalogoClases);
+    /** Las clases que le dan el familiar, su cupo y el nivel del amo (de los datos de sus clases). */
+    getEstadoCuposFamiliar(): EstadoCuposFamiliar {
+        return resolverEstadoCuposFamiliar(this.personajeCreacion, this.catalogoClases);
+    }
+
+    /** Las listas de familiares de las clases del catálogo (para quedarse con las filas de familiar de los monstruos). */
+    getListasDeFamiliar(): Set<number> {
+        return listasDeFamiliarDelCatalogo(this.catalogoClases);
     }
 
     /** Las clases que le dan el compañero animal, su cupo y su nivel efectivo de druida (de los datos de sus clases). */
@@ -3605,61 +3642,36 @@ export class NuevoPersonajeService {
         return ids;
     }
 
+    /**
+     * Le da al personaje el familiar elegido (un monstruo con su pseudoplantilla, de `construirCatalogoFamiliaresDesdeMonstruos`):
+     * con la fila de su lista que le vale y las aptitudes de su tabla al nivel de su amo (`GET /familiares/progresion`), las
+     * del amo al personaje (Alerta, como dote con origen «Familiar» y su nota). Lleva los valores de su monstruo: lo que le
+     * da el nivel de su amo (armadura natural, Inteligencia, resistencia a conjuros, PG y ataque) se le suma al guardar.
+     */
     registrarFamiliarSeleccionado(
         familiar: FamiliarMonstruoDetalle | null | undefined,
-        plantillaSeleccionada: FamiliarPlantillaId,
-        nombresEspecialesPorId: Record<number, string> = {},
         nombrePersonalizado: string = ''
     ): RegistroFamiliarResultado {
-        const estado = this.getEstadoCuposFamiliarEspecial47();
-        if (estado.cuposDisponibles < 1) {
-            return {
-                registrado: false,
-                razon: 'No hay cupos disponibles de familiar',
-                dote17Agregada: false,
-                especialesAgregadosIds: [],
-            };
-        }
+        const fallo = (razon: string): RegistroFamiliarResultado => ({
+            registrado: false, razon, dotesAgregadasIds: [], especialesAgregadosIds: [], nivel: 0,
+        });
+        const estado = this.getEstadoCuposFamiliar();
+        if (estado.cuposDisponibles < 1)
+            return fallo('No hay cupos disponibles de familiar');
+        if (!familiar || toNumber(familiar?.Id_familiar) <= 0)
+            return fallo('Familiar inválido');
+        if ((this.progresionFamiliar?.Tablas ?? []).length < 1)
+            return fallo('No se ha podido cargar la tabla del familiar. Vuelve a intentarlo en unos segundos.');
+        const resuelta = resolverFilaFamiliar(familiar, estado, this.idsDotesDelPersonaje());
+        if (!resuelta.fila)
+            return fallo(resuelta.razones[0] ?? 'No puede tener este familiar.');
 
-        const idFamiliar = toNumber(familiar?.Id_familiar);
-        if (idFamiliar <= 0 || !familiar) {
-            return {
-                registrado: false,
-                razon: 'Familiar inválido',
-                dote17Agregada: false,
-                especialesAgregadosIds: [],
-            };
-        }
-
-        const plantillaId = this.plantillaFamiliar(plantillaSeleccionada);
-        const yaExiste = (this.personajeCreacion.Familiares ?? []).some((item) =>
-            toNumber(item?.Id_familiar) === idFamiliar
-            && toNumber(item?.Plantilla?.Id) === plantillaId
-        );
-        if (yaExiste) {
-            return {
-                registrado: false,
-                razon: 'Ese familiar con la misma plantilla ya está seleccionado',
-                dote17Agregada: false,
-                especialesAgregadosIds: [],
-            };
-        }
-
-        const familiarGuardar = this.clonarFamiliarParaPersonaje(familiar, plantillaId, nombrePersonalizado);
+        const familiarGuardar = this.clonarFamiliarParaPersonaje(familiar, nombrePersonalizado);
         this.personajeCreacion.Familiares = [
             ...(this.personajeCreacion.Familiares ?? []),
             familiarGuardar,
         ];
-
-        const dote17Agregada = this.asegurarDoteFamiliar17();
-        const especialesAgregadosIds: number[] = [];
-        ESPECIALES_BONUS_FAMILIAR_FIJOS.forEach((idEspecial) => {
-            if (this.asegurarEspecialFamiliar(idEspecial, nombresEspecialesPorId))
-                especialesAgregadosIds.push(idEspecial);
-        });
-
-        especialesAgregadosIds.push(...this.asegurarBonosFamiliarPorNivel(
-            plantillaId, Math.max(0, toNumber(estado.nivelLanzadorFamiliar)), nombresEspecialesPorId));
+        const { especialesAgregadosIds, dotesAgregadasIds } = this.ponerAptitudesFamiliar(familiarGuardar, resuelta.nivelTabla);
 
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
@@ -3667,9 +3679,25 @@ export class NuevoPersonajeService {
         return {
             registrado: true,
             familiarAgregado: familiarGuardar,
-            dote17Agregada,
+            dotesAgregadasIds,
             especialesAgregadosIds,
+            nivel: resuelta.nivelTabla,
         };
+    }
+
+    /**
+     * Quita el familiar y lo que el personaje lleva por él (las aptitudes de su vínculo, con el extra «Familiar», y las
+     * dotes con su origen: Alerta): para elegir otro cuando la API no acepta el que se mandó.
+     */
+    quitarFamiliar(): void {
+        this.personajeCreacion.Familiares = [];
+        this.personajeCreacion.Claseas = (this.personajeCreacion.Claseas ?? [])
+            .filter((especial) => normalizarTexto(especial?.Extra ?? '') !== normalizarTexto(EXTRA_ESPECIAL_FAMILIAR));
+        (this.personajeCreacion.DotesContextuales ?? [])
+            .filter((dote) => esOrigenDelFamiliar((dote?.Contexto as any)?.Origen))
+            .forEach((dote) => this.quitarDoteDeLaFicha(toInt(dote.Dote?.Id), toInt(dote.Contexto?.Id_extra), `${(dote.Contexto as any)?.Origen ?? ''}`));
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasPorCombate();
     }
 
     /**
@@ -4262,7 +4290,7 @@ export class NuevoPersonajeService {
         const nivelLanzadorDivino = this.resolverNivelLanzadorMaximoPorTipo('divino');
         const nivelLanzadorPsionico = this.resolverNivelLanzadorMaximoPorTipo('psionico');
         const estadoCuposCompanero = this.getEstadoCuposCompanero();
-        const estadoCuposFamiliar = this.getEstadoCuposFamiliarEspecial47();
+        const estadoCuposFamiliar = this.getEstadoCuposFamiliar();
 
         const contexto: DoteEvaluacionContexto = {
             deidad: this.deidadParaPrerrequisitos(),
@@ -4838,36 +4866,82 @@ export class NuevoPersonajeService {
         );
     }
 
-    private clonarFamiliarParaPersonaje(
-        familiar: FamiliarMonstruoDetalle,
-        plantillaSeleccionada: FamiliarPlantillaId,
-        nombrePersonalizado: string = ''
-    ): FamiliarMonstruoDetalle {
+    private clonarFamiliarParaPersonaje(familiar: FamiliarMonstruoDetalle, nombrePersonalizado: string = ''): FamiliarMonstruoDetalle {
         const nombreVisible = `${nombrePersonalizado ?? ''}`.trim();
         return {
             ...familiar,
             Nombre: nombreVisible.length > 0 ? nombreVisible : `${familiar?.Nombre ?? ''}`.trim(),
             Plantilla: {
-                Id: plantillaSeleccionada,
+                Id: Math.max(0, toInt(familiar?.Plantilla?.Id)),
                 Nombre: `${familiar?.Plantilla?.Nombre ?? ''}`.trim(),
             },
+            Especiales: [...(familiar?.Especiales ?? [])],
+            Dotes: [...(familiar?.Dotes ?? [])],
         };
     }
 
     /**
      * Los bonos por nivel del compañero y del familiar siguen al nivel del amo: al aplicar un nivel de clase, el compañero
      * pasa a la fila de la tabla de su nivel efectivo con el ajuste de su lista (`ponerCompaneroAlDia`) y el familiar gana
-     * las aptitudes que tocan a su nivel.
+     * las aptitudes que tocan al nivel de su amo (`ponerFamiliarAlDia`; sus cifras, al guardar).
      */
     private actualizarMascotasPorNivel(): void {
-        const nombresEspeciales = this.nombresEspecialesConocidos();
         const estadoCompanero = this.getEstadoCuposCompanero();
         const dotes = this.idsDotesDelPersonaje();
         (this.personajeCreacion.Companeros ?? []).forEach((companero) => this.ponerCompaneroAlDia(companero, estadoCompanero, dotes));
 
-        const nivelFamiliar = Math.max(0, toNumber(this.getEstadoCuposFamiliarEspecial47()?.nivelLanzadorFamiliar));
-        (this.personajeCreacion.Familiares ?? []).forEach((familiar) =>
-            this.asegurarBonosFamiliarPorNivel(this.plantillaFamiliar(familiar?.Plantilla?.Id), nivelFamiliar, nombresEspeciales));
+        const estadoFamiliar = this.getEstadoCuposFamiliar();
+        (this.personajeCreacion.Familiares ?? []).forEach((familiar) => this.ponerFamiliarAlDia(familiar, estadoFamiliar, dotes));
+    }
+
+    /**
+     * El familiar con las aptitudes de su tabla al nivel de su amo. Sin su fila en la lista (o sin la tabla), se queda como
+     * está: al guardar, la API dice por qué.
+     */
+    private ponerFamiliarAlDia(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>): void {
+        const resuelta = resolverFilaFamiliar(familiar, estado, dotes);
+        if (!resuelta.fila || (this.progresionFamiliar?.Tablas ?? []).length < 1)
+            return;
+        this.ponerAptitudesFamiliar(familiar, resuelta.nivelTabla);
+    }
+
+    /** La tabla que sigue el familiar con su pseudoplantilla y su fila al nivel de su amo. */
+    private tablaDelFamiliar(familiar: FamiliarMonstruoDetalle, nivel: number): TablaDelFamiliar {
+        return tablaDelFamiliar(this.progresionFamiliar, toInt(familiar?.Plantilla?.Id), nivel);
+    }
+
+    /**
+     * Las aptitudes de la tabla del familiar al nivel de su amo (`GET /familiares/progresion`), sin las que excluye su
+     * pseudoplantilla: las del amo, al personaje (con el extra «Familiar»; Alerta, como dote con origen «Familiar» y la nota
+     * de su tabla); las suyas, al familiar; y fuera del familiar las que aún no le tocan. Devuelve lo que añade.
+     */
+    private ponerAptitudesFamiliar(familiar: FamiliarMonstruoDetalle, nivel: number): { especialesAgregadosIds: number[]; dotesAgregadasIds: number[]; } {
+        const aptitudes = aptitudesFamiliarDelNivel(this.tablaDelFamiliar(familiar, nivel), (idDote) => (familiar?.Dotes ?? [])
+            .some((item) => toNumber(item?.Dote?.Id) === idDote && item?.Contexto?.Entidad !== 'personaje'));
+        const especialesAgregadosIds: number[] = [];
+        aptitudes.delAmo.forEach((especial) => {
+            if (this.asegurarEspecialDelVinculo(especial.Id, especial.Nombre, EXTRA_ESPECIAL_FAMILIAR))
+                especialesAgregadosIds.push(especial.Id);
+        });
+        aptitudes.especiales.forEach((especial) => {
+            if (this.asegurarEspecialMascota(familiar, especial.Id, especial.Nombre, 'familiar'))
+                especialesAgregadosIds.push(especial.Id);
+        });
+        const dotesAgregadasIds = aptitudes.dotesDelAmo
+            .filter((aptitud) => this.asegurarDoteDelAmoPorSuFamiliar(aptitud))
+            .map((aptitud) => toInt(aptitud.Dote?.Id));
+        aptitudes.dotes.forEach((dote) => {
+            if (this.asegurarDoteMascota(familiar, dote.Id, dote.Nombre, 'Familiar'))
+                dotesAgregadasIds.push(dote.Id);
+        });
+        const tiene = new Set(aptitudes.especiales.map((especial) => especial.Id));
+        const quitarEspeciales = new Set(aptitudes.especialesQueNo.filter((id) => !tiene.has(id)));
+        const quitarDotes = new Set(aptitudes.dotesQueNo);
+        familiar.Especiales = (familiar.Especiales ?? [])
+            .filter((item) => !quitarEspeciales.has(toNumber((item?.Especial as any)?.Id)));
+        familiar.Dotes = (familiar.Dotes ?? [])
+            .filter((item) => !(item?.Contexto?.Entidad === 'personaje' && quitarDotes.has(toNumber(item?.Dote?.Id))));
+        return { especialesAgregadosIds, dotesAgregadasIds };
     }
 
     /**
@@ -4911,15 +4985,15 @@ export class NuevoPersonajeService {
         });
         const especialesAgregadosIds: number[] = [];
         aptitudes.delAmo.forEach((especial) => {
-            if (this.asegurarEspecialPersonajeCompanero(especial.Id, especial.Nombre))
+            if (this.asegurarEspecialDelVinculo(especial.Id, especial.Nombre, EXTRA_ESPECIAL_COMPANERO))
                 especialesAgregadosIds.push(especial.Id);
         });
         aptitudes.especiales.forEach((especial) => {
-            if (this.asegurarEspecialCompanero(companero, especial.Id, especial.Nombre))
+            if (this.asegurarEspecialMascota(companero, especial.Id, especial.Nombre, 'companero'))
                 especialesAgregadosIds.push(especial.Id);
         });
         const dotesAgregadasIds = aptitudes.dotes
-            .filter((dote) => this.asegurarDoteCompanero(companero, dote.Id, dote.Nombre))
+            .filter((dote) => this.asegurarDoteMascota(companero, dote.Id, dote.Nombre, EXTRA_ESPECIAL_COMPANERO))
             .map((dote) => dote.Id);
         const tiene = new Set(aptitudes.especiales.map((especial) => especial.Id));
         const quitarEspeciales = new Set(aptitudes.especialesQueNo.filter((id) => !tiene.has(id)));
@@ -4931,42 +5005,6 @@ export class NuevoPersonajeService {
         return { especialesAgregadosIds, dotesAgregadasIds };
     }
 
-    /** Las aptitudes que el personaje gana con su familiar por el nivel de lanzador; devuelve las que añade. */
-    private asegurarBonosFamiliarPorNivel(
-        plantilla: FamiliarPlantillaId,
-        nivelLanzador: number,
-        nombresEspecialesPorId: Record<number, string>
-    ): number[] {
-        const agregados: number[] = [];
-        if (this.debeAgregarEspecialFamiliar83(plantilla, nivelLanzador)
-            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_MENSAJERO, nombresEspecialesPorId))
-            agregados.push(ESPECIAL_BONUS_FAMILIAR_MENSAJERO);
-        if (this.debeAgregarEspecialFamiliar87(plantilla, nivelLanzador)
-            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_HECHIZO, nombresEspecialesPorId))
-            agregados.push(ESPECIAL_BONUS_FAMILIAR_HECHIZO);
-        return agregados;
-    }
-
-    /** La pseudoplantilla de un familiar (su id del catálogo), de la elegida o de la que ya lleva. */
-    private plantillaFamiliar(valor: unknown): FamiliarPlantillaId {
-        return Math.max(0, toInt(valor));
-    }
-
-    /** Los nombres de las aptitudes especiales que ya conoce la creación (las del catálogo de clases y las del personaje). */
-    private nombresEspecialesConocidos(): Record<number, string> {
-        const nombres: Record<number, string> = {};
-        this.especialesDeLasTablasDeClases().forEach(({ id, nombre }) => {
-            if (nombre.length > 0)
-                nombres[id] = nombre;
-        });
-        (this.personajeCreacion.Claseas ?? []).forEach((especial) => {
-            const id = toNumber(especial?.Id);
-            if (id > 0 && !nombres[id])
-                nombres[id] = `${especial?.Nombre ?? ''}`.trim();
-        });
-        return nombres;
-    }
-
     /**
      * El familiar y el compañero animal para `POST /personajes/add` (uno de cada, como el manual y el contrato: los
      * cupos no dejan elegir más). El familiar se monta con los datos de su amo. Las aptitudes de su vínculo, que el personaje lleva con el
@@ -4974,27 +5012,38 @@ export class NuevoPersonajeService {
      */
     construirMascotasParaGuardar(): PersonajeCreateMascotasDto {
         const mascotas: PersonajeCreateMascotasDto = {};
-        const familiar = (this.personajeCreacion.Familiares ?? [])[0];
-        if (familiar) {
-            mascotas.familiar = construirFamiliarParaGuardar(familiar, {
-                vida: toNumber(this.personajeCreacion.Vida),
-                ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
-                salvacionesBase: this.resolverSalvacionesBaseClase(),
-                nivelFamiliar: toNumber(this.getEstadoCuposFamiliarEspecial47()?.nivelLanzadorFamiliar),
-                habilidades: (this.personajeCreacion.Habilidades ?? [])
-                    .filter((habilidad) => !habilidad?.Custom && toNumber(habilidad?.Id) > 0 && toNumber(habilidad?.Rangos) > 0)
-                    .map((habilidad) => ({
-                        idHabilidad: toNumber(habilidad.Id),
-                        idExtra: idExtraHabilidadParaGuardar(habilidad),
-                        rangos: toNumber(habilidad.Rangos),
-                    })),
-            }, this.idsDelVinculo(EXTRA_ESPECIAL_FAMILIAR));
-        }
+        const familiar = this.familiarParaGuardar();
+        if (familiar)
+            mascotas.familiar = familiar;
 
         const companero = this.companeroParaGuardar();
         if (companero)
             mascotas.companero = companero;
         return mascotas;
+    }
+
+    /**
+     * El familiar en la forma del alta (`familiar`), o `undefined` sin él: con los PG y el ataque base de su amo (por
+     * defecto, los del personaje: `vidaAmo` para otros) y la fila de su tabla al nivel de su amo. Lo usan el alta y las
+     * pantallas de la sesión (`MotorDesdeFichaService.cuerpoDelMotor`), que ponen en la ficha lo que cambia al subir.
+     */
+    familiarParaGuardar(opciones: { vidaAmo?: number; } = {}): PersonajeCreateFamiliarDto | undefined {
+        const familiar = (this.personajeCreacion.Familiares ?? [])[0];
+        if (!familiar)
+            return undefined;
+        const nivel = this.getEstadoCuposFamiliar().nivelEfectivo;
+        return construirFamiliarParaGuardar(familiar, {
+            vida: opciones.vidaAmo ?? toNumber(this.personajeCreacion.Vida),
+            ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
+            salvacionesBase: this.resolverSalvacionesBaseClase(),
+            habilidades: (this.personajeCreacion.Habilidades ?? [])
+                .filter((habilidad) => !habilidad?.Custom && toNumber(habilidad?.Id) > 0 && toNumber(habilidad?.Rangos) > 0)
+                .map((habilidad) => ({
+                    idHabilidad: toNumber(habilidad.Id),
+                    idExtra: idExtraHabilidadParaGuardar(habilidad),
+                    rangos: toNumber(habilidad.Rangos),
+                })),
+        }, this.tablaDelFamiliar(familiar, nivel));
     }
 
     /**
@@ -5108,49 +5157,37 @@ export class NuevoPersonajeService {
         };
     }
 
-    private asegurarDoteFamiliar17(): boolean {
-        const yaExiste = (this.personajeCreacion.DotesContextuales ?? []).some((item) =>
-            toNumber(item?.Dote?.Id) === DOTE_FAMILIAR_ID
-        ) || (this.personajeCreacion.Dotes ?? []).some((item) =>
-            normalizarTexto(item?.Nombre ?? '') === normalizarTexto('Alerta')
-            || toNumber((item as Record<string, any>)?.['Id']) === DOTE_FAMILIAR_ID
-        );
+    /**
+     * Una dote que el amo gana con su familiar (Alerta, MJ pág. 44), con origen «Familiar» y la nota de su tabla («solo
+     * mientras el familiar esté al alcance de la mano del amo»: D4 del roadmap), y sus modificadores; `false` si ya la
+     * tiene (por el familiar o por otra cosa: no se suma dos veces).
+     */
+    private asegurarDoteDelAmoPorSuFamiliar(aptitud: FamiliarAptitudNivel): boolean {
+        const idDote = toInt(aptitud?.Dote?.Id);
+        const nombre = `${aptitud?.Dote?.Nombre ?? ''}`.trim();
+        if (idDote <= 0)
+            return false;
+        const yaExiste = (this.personajeCreacion.DotesContextuales ?? []).some((item) => toNumber(item?.Dote?.Id) === idDote)
+            || (this.personajeCreacion.Dotes ?? []).some((item) =>
+                toNumber((item as Record<string, any>)?.['Id']) === idDote
+                || (nombre.length > 0 && normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)));
         if (yaExiste)
             return false;
-
-        const dote = this.doteDelCatalogo(DOTE_FAMILIAR_ID)
-            ?? this.crearDotePlaceholder(DOTE_FAMILIAR_ID, 'Alerta');
-        const origen = 'Familiar';
-        const agregado = this.agregarDoteAlPersonaje(dote, origen, 0, 'No aplica');
-        if (!agregado)
+        const dote = this.doteDelCatalogo(idDote) ?? this.crearDotePlaceholder(idDote, nombre);
+        const origen = origenDeDoteDelFamiliar(aptitud?.Nota);
+        if (!this.agregarDoteAlPersonaje(dote, origen, 0, 'No aplica'))
             return false;
         this.aplicarModificadoresDote(dote, origen, 0, 'No aplica');
         return true;
     }
 
-    private asegurarEspecialFamiliar(idEspecial: number, nombresEspecialesPorId: Record<number, string>): boolean {
-        const nombreFallback = `Especial ${idEspecial} (Familiar)`;
-        const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
-        const extra = EXTRA_ESPECIAL_FAMILIAR;
-        const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
-            normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
-            && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
-        );
-        if (duplicado)
-            return false;
-        this.personajeCreacion.Claseas.push({
-            Id: toNumber(idEspecial),
-            Id_extra: 0,
-            Nombre: nombreEspecial,
-            Extra: extra,
-        });
-        return true;
-    }
-
-    /** Una aptitud del amo por su compañero (vínculo, compartir conjuros), con el extra «Compañero animal»; `false` si ya la tiene. */
-    private asegurarEspecialPersonajeCompanero(idEspecial: number, nombre: string): boolean {
+    /**
+     * Una aptitud del amo por su mascota (el vínculo y compartir conjuros del compañero; compartir conjuros, el vínculo de
+     * empatía, comunicarse con su amo y escudriñar del familiar), con el extra de la mascota («Familiar», «Compañero
+     * animal»); `false` si ya la tiene.
+     */
+    private asegurarEspecialDelVinculo(idEspecial: number, nombre: string, extra: string): boolean {
         const nombreEspecial = `${nombre ?? ''}`.trim();
-        const extra = EXTRA_ESPECIAL_COMPANERO;
         const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
             (toNumber(especial?.Id) === toNumber(idEspecial) || normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial))
             && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
@@ -5166,10 +5203,14 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    /** Una aptitud del compañero por su nivel (Evasión, Devoción…); `false` si ya la tiene. */
-    private asegurarEspecialCompanero(companero: CompaneroMonstruoDetalle, idEspecial: number, nombre: string): boolean {
+    /**
+     * Una aptitud de la mascota por su nivel (Evasión y Devoción del compañero; evasión mejorada, transmitir conjuros de
+     * toque o la resistencia a conjuros del familiar), con su `entidad` en el contexto; `false` si ya la tiene.
+     */
+    private asegurarEspecialMascota(mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle, idEspecial: number, nombre: string,
+        entidad: 'companero' | 'familiar'): boolean {
         const nombreEspecial = `${nombre ?? ''}`.trim();
-        const especiales = Array.isArray(companero?.Especiales) ? [...companero.Especiales] : [];
+        const especiales = Array.isArray(mascota?.Especiales) ? [...mascota.Especiales] : [];
         const duplicado = especiales.some((item) =>
             toNumber((item as any)?.Especial?.Id) === idEspecial
             || normalizarTexto((item as any)?.Especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
@@ -5189,18 +5230,18 @@ export class NuevoPersonajeService {
                 Oficial: true,
             } as any,
             Contexto: {
-                Entidad: 'companero',
+                Entidad: entidad,
             },
         });
-        companero.Especiales = especiales;
+        mascota.Especiales = especiales;
         return true;
     }
 
-    /** Una dote adicional del compañero por su nivel (Ataque múltiple); `false` si ya la tiene. */
-    private asegurarDoteCompanero(companero: CompaneroMonstruoDetalle, idDote: number, nombre: string): boolean {
+    /** Una dote adicional de la mascota por su nivel (Ataque múltiple del compañero), con su `origen`; `false` si ya la tiene. */
+    private asegurarDoteMascota(mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle, idDote: number, nombre: string, origen: string): boolean {
         const dote = this.doteDelCatalogo(idDote)
             ?? this.crearDotePlaceholder(idDote, `${nombre ?? ''}`.trim());
-        const dotes = Array.isArray(companero?.Dotes) ? [...companero.Dotes] : [];
+        const dotes = Array.isArray(mascota?.Dotes) ? [...mascota.Dotes] : [];
         const duplicado = dotes.some((item) => toNumber(item?.Dote?.Id) === idDote);
         if (duplicado)
             return false;
@@ -5209,29 +5250,13 @@ export class NuevoPersonajeService {
             Contexto: {
                 Entidad: 'personaje',
                 Id_personaje: toNumber(this.personajeCreacion?.Id),
-                Extra: 'Compañero animal',
+                Extra: origen,
                 Id_extra: 0,
-                Origen: 'Compañero animal',
+                Origen: origen,
             } as any,
         });
-        companero.Dotes = dotes;
+        mascota.Dotes = dotes;
         return true;
-    }
-
-    private debeAgregarEspecialFamiliar83(plantilla: FamiliarPlantillaId, nivelLanzador: number): boolean {
-        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_DRACONICA)
-            return nivelLanzador >= 9;
-        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_MEJORADA)
-            return false;
-        return nivelLanzador >= 4;
-    }
-
-    private debeAgregarEspecialFamiliar87(plantilla: FamiliarPlantillaId, nivelLanzador: number): boolean {
-        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_DRACONICA)
-            return nivelLanzador >= 17;
-        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_MEJORADA)
-            return false;
-        return nivelLanzador >= 14;
     }
 
     private construirOrigenDoteDesdePendiente(pendiente: DotePendienteState): string {

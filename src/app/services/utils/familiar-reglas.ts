@@ -1,10 +1,44 @@
 import { Clase } from 'src/app/interfaces/clase';
-import { FamiliarMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
+import {
+    FamiliarAptitudNivel,
+    FamiliarBonosNivel,
+    FamiliarMonstruoDetalle,
+    FamiliarPlantillaProgresion,
+    FamiliarProgresion,
+    FamiliarTabla,
+    MonstruoDetalle,
+    MonstruoNivelClase,
+} from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, toBoolean, toInt, toNumber, toPositiveInt } from 'src/app/services/utils/normalizacion';
-import { razonesAlineamientoMascota, resolveDoteIdFromNivelClase } from 'src/app/services/utils/nivel-clase-monstruo';
+import { toInt, toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { doteDeNivelClase, idPlantillaDeNivel, razonesAlineamientoMascota } from 'src/app/services/utils/nivel-clase-monstruo';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { CupoMascota, idsClasesFuente, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
+import {
+    AptitudesMascotaDelNivel,
+    aptitudesMascotaDelNivel,
+    EstadoMascota,
+    filaDelNivel,
+    FilaMascotaResuelta,
+    filasDeSusListas,
+    filasPorPlantilla,
+    listasDeMascotaDelCatalogo,
+    resolverEstadoMascota,
+    resolverFilaMascota,
+    TextosMascota,
+} from 'src/app/services/utils/mascota-cupos';
+
+/*
+ * El familiar, de los datos (contrato: `docs/publica/endpoints/catalogos.md`, «El familiar, de los datos»; la API lo
+ * comprueba al guardar con las mismas reglas, `utils/familiar.py`). Sin ids ni nombres fijos; lo común con el compañero,
+ * en `mascota-cupos.ts`:
+ * - **el nivel del amo** suma lo que aporta cada clase cuya tabla da una aptitud con `Otorga_familiar`, según su `Mascota`
+ *   (el filo aojador, −3 y la lista del hechicero: con 4 niveles, un familiar de nivel 1), desde el nivel en que la da;
+ * - **la lista**: las filas de `Niveles_clase` de las clases de su `Mascota.Lista`, con su pseudoplantilla, la dote que la
+ *   abre (Dragón familiar, Familiar mejorado…) y el nivel mínimo del amo;
+ * - **la tabla** de su pseudoplantilla (`GET /familiares/progresion`; sin la suya, la de por defecto, la del Manual del
+ *   jugador): la armadura natural, la Inteligencia y la resistencia a conjuros de su nivel, y lo que da cada nivel, al amo
+ *   o al familiar, sin lo que excluye su plantilla (el mejorado no se comunica con los animales de su mismo tipo).
+ */
 
 /**
  * Id de la pseudoplantilla de un familiar (`Niveles_clase[].Plantilla.Id` de los monstruos, `Pseudoplantillas_familiares`
@@ -15,9 +49,8 @@ export type FamiliarPlantillaId = number;
 /** Una pseudoplantilla de familiar tal como la da el contrato (la `Plantilla` de cada fila de `Niveles_clase`). */
 export type FamiliarPlantillaOpcion = MonstruoNivelClase['Plantilla'];
 
-export interface EstadoCuposFamiliar extends CupoMascota {
-    nivelLanzadorFamiliar: number;
-}
+/** Las clases que le dan el familiar, su cupo, el nivel del amo y las listas de las que elige. */
+export type EstadoCuposFamiliar = EstadoMascota;
 
 export interface FiltroFamiliaresElegiblesInput {
     familiares: FamiliarMonstruoDetalle[];
@@ -25,7 +58,8 @@ export interface FiltroFamiliaresElegiblesInput {
     alineamientoPersonaje: string;
     plantillaSeleccionada: FamiliarPlantillaId | null;
     incluirHomebrew: boolean;
-    dotesActuales?: Array<{ id: number | null; nombre: string; }>;
+    /** Las dotes del personaje (las que abren una fila de la lista: Dragón familiar, Familiar mejorado…). */
+    dotesPersonaje: ReadonlySet<number>;
 }
 
 export interface FamiliarElegibilidadEvaluadaItem {
@@ -35,173 +69,118 @@ export interface FamiliarElegibilidadEvaluadaItem {
     nivelMinimoRequerido: number | null;
 }
 
-function idPlantillaDeNivel(nivel: MonstruoNivelClase | null | undefined): number {
-    return Math.max(0, toInt(nivel?.Plantilla?.Id));
+/** La tabla que sigue un familiar con su pseudoplantilla, y la fila de esa tabla al nivel de su amo. */
+export interface TablaDelFamiliar {
+    /** Su pseudoplantilla en `GET /familiares/progresion` (`null` si no está). */
+    plantilla: FamiliarPlantillaProgresion | null;
+    tabla: FamiliarTabla | null;
+    nivel: number;
+    bonos: FamiliarBonosNivel;
+}
+
+const TEXTOS_FAMILIAR: TextosMascota = { mascota: 'familiar', listaDe: 'familiares', listaPorDefecto: 'su clase' };
+
+const SIN_BONOS: FamiliarBonosNivel = { Nivel: 0, Armadura_natural: 0, Inteligencia: null, Rc_sobre_nivel: null };
+
+/** Las listas de familiares de todas las clases del catálogo (las clases cuyas filas de `Niveles_clase` son de familiar). */
+export function listasDeFamiliarDelCatalogo(catalogoClases: Clase[] | null | undefined): Set<number> {
+    return listasDeMascotaDelCatalogo(catalogoClases, 'Otorga_familiar');
 }
 
 /**
- * Si una fila de `Niveles_clase` de un monstruo es de familiar: la que lleva pseudoplantilla de familiar (`Plantilla.Id`
- * > 0). Son las que ofrece la creación (`construirCatalogoFamiliaresDesdeMonstruos`) y las que el detalle del monstruo
- * enseña como de familiar.
+ * Las fuentes del familiar, su cupo (uno por personaje), el nivel del amo y las listas de las que elige. Sin nivel del amo
+ * (un filo aojador 3), ninguna clase le da un familiar.
  */
-export function esNivelDeFamiliar(nivel: MonstruoNivelClase | null | undefined): boolean {
+export function resolverEstadoCuposFamiliar(personaje: Personaje, catalogoClases: Clase[]): EstadoCuposFamiliar {
+    return resolverEstadoMascota(personaje, catalogoClases, 'Otorga_familiar', personaje?.Familiares, 1);
+}
+
+/**
+ * Si una fila de `Niveles_clase` de un monstruo es de familiar: la de una lista de familiares (`listasFamiliar`, de
+ * `listasDeFamiliarDelCatalogo`). Sin las listas, la que lleva pseudoplantilla (`Plantilla.Id` > 0): no distingue un
+ * animal celestial de Compañero elevado, que es un compañero.
+ */
+export function esNivelDeFamiliar(nivel: MonstruoNivelClase | null | undefined, listasFamiliar?: ReadonlySet<number> | null): boolean {
+    if (listasFamiliar)
+        return listasFamiliar.has(toInt(nivel?.Clase?.Id));
     return idPlantillaDeNivel(nivel) >= 1;
 }
 
-function nombrePlantillaDeNivel(nivel: MonstruoNivelClase | null | undefined): string {
-    return `${nivel?.Plantilla?.Nombre ?? ''}`.trim();
-}
-
 /**
- * Las pseudoplantillas que el catálogo da a las clases con familiar del personaje (todas, si no hay ninguna), una vez
+ * Las pseudoplantillas que el catálogo da en las listas de familiar del personaje (todas, si no hay ninguna), una vez
  * cada una y por nombre: son las opciones del filtro de plantilla del selector.
  */
 export function plantillasFamiliarDisponibles(
     familiares: FamiliarMonstruoDetalle[],
-    fuentesClaseIds: number[] = []
+    listasIds: number[] = []
 ): FamiliarPlantillaOpcion[] {
-    const fuentes = idsClasesFuente(fuentesClaseIds);
+    const listas = new Set(listasIds.map((id) => toInt(id)).filter((id) => id > 0));
     const plantillas = new Map<number, FamiliarPlantillaOpcion>();
     (Array.isArray(familiares) ? familiares : []).forEach((familiar) => {
         (familiar?.Niveles_clase ?? []).forEach((nivel) => {
             const id = idPlantillaDeNivel(nivel);
-            if (id < 1 || (fuentes.size > 0 && !fuentes.has(toNumber(nivel?.Clase?.Id))))
+            if (id < 1 || (listas.size > 0 && !listas.has(toInt(nivel?.Clase?.Id))))
                 return;
             // El primer nombre que no esté vacío, como en el catálogo de familiares.
             if (!plantillas.get(id)?.Nombre)
-                plantillas.set(id, { Id: id, Nombre: nombrePlantillaDeNivel(nivel) });
+                plantillas.set(id, { Id: id, Nombre: `${nivel?.Plantilla?.Nombre ?? ''}`.trim() });
         });
     });
     return Array.from(plantillas.values()).sort(porNombre);
 }
 
-export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDetalle[]): FamiliarMonstruoDetalle[] {
-    const lista = Array.isArray(monstruos) ? monstruos : [];
+/**
+ * Los familiares que se pueden elegir en la creación: uno por monstruo marcado como familiar y pseudoplantilla de sus filas
+ * de `Niveles_clase`, con esas filas. Con `listasFamiliar` (las de `listasDeFamiliarDelCatalogo`), solo las filas de esas
+ * listas: las de un compañero (el animal celestial de Compañero elevado) no hacen un familiar; sin ellas, las que llevan
+ * pseudoplantilla.
+ */
+export function construirCatalogoFamiliaresDesdeMonstruos(
+    monstruos: MonstruoDetalle[],
+    listasFamiliar?: ReadonlySet<number> | null,
+): FamiliarMonstruoDetalle[] {
     const resultado: FamiliarMonstruoDetalle[] = [];
-    const dedupe = new Set<string>();
-
-    lista.forEach((monstruo) => {
-        if (!monstruo?.Familiar)
+    (Array.isArray(monstruos) ? monstruos : []).forEach((monstruo) => {
+        const id = toInt(monstruo?.Id);
+        if (!monstruo?.Familiar || id <= 0)
             return;
-
-        const baseId = toNumber(monstruo?.Id);
-        if (baseId <= 0)
-            return;
-
-        const nivelesClase = Array.isArray(monstruo?.Niveles_clase) ? monstruo.Niveles_clase : [];
-        const plantillas = Array.from(new Set(
-            nivelesClase
-                .map((nivel) => idPlantillaDeNivel(nivel))
-                .filter((id) => id >= 1)
-        ));
-
-        plantillas.forEach((idPlantilla) => {
-            const nivelesPlantilla = nivelesClase.filter((nivel) =>
-                idPlantillaDeNivel(nivel) === idPlantilla
-            );
-            if (nivelesPlantilla.length < 1)
+        filasPorPlantilla(monstruo, listasFamiliar).forEach((filas, idPlantilla) => {
+            if (!listasFamiliar && idPlantilla < 1)
                 return;
-
-            const clave = `${baseId}:${idPlantilla}`;
-            if (dedupe.has(clave))
-                return;
-            dedupe.add(clave);
-
-            const plantillaNombre = nivelesPlantilla
-                .map((nivel) => nombrePlantillaDeNivel(nivel))
-                .find((nombre) => nombre.length > 0) ?? '';
-
             resultado.push({
                 ...monstruo,
-                Id_familiar: baseId,
-                Monstruo_origen: {
-                    Id: baseId,
-                    Nombre: `${monstruo?.Nombre ?? ''}`.trim(),
-                },
+                Id_familiar: id,
+                Monstruo_origen: { Id: id, Nombre: `${monstruo?.Nombre ?? ''}`.trim() },
                 Vida: 0,
                 Plantilla: {
                     Id: idPlantilla,
-                    Nombre: plantillaNombre,
+                    Nombre: filas.map((fila) => `${fila?.Plantilla?.Nombre ?? ''}`.trim()).find((nombre) => nombre.length > 0) ?? '',
                 },
-                Niveles_clase: nivelesPlantilla,
+                Niveles_clase: filas,
                 Especiales: [],
                 Personajes: [],
             });
         });
     });
-
-    return resultado.sort(porNombre);
+    return resultado.sort((a, b) => porNombre(a, b) || toInt(a.Plantilla?.Id) - toInt(b.Plantilla?.Id));
 }
 
-/** El especial que da un familiar lo dice la API (`Otorga_familiar`: «Convocar a un familiar» del hechicero y del mago). */
-function isEspecialConvocarFamiliar(especialRaw: any): boolean {
-    return toBoolean(especialRaw?.Otorga_familiar);
+/** La clave de un familiar del catálogo de la creación: su monstruo y su pseudoplantilla. */
+export function claveFamiliar(familiar: FamiliarMonstruoDetalle | null | undefined): string {
+    return `${toInt(familiar?.Id_familiar)}:${Math.max(0, toInt(familiar?.Plantilla?.Id))}`;
 }
 
-function claseOtorgaFuenteFamiliar(clase: Clase | null | undefined, nivelActual: number): boolean {
-    if (!clase)
-        return false;
-
-    const nivelMaximo = Math.max(0, toInt(nivelActual));
-    if (nivelMaximo < 1)
-        return false;
-
-    const niveles = Array.isArray(clase.Desglose_niveles) ? clase.Desglose_niveles : [];
-    for (let nivel = 1; nivel <= nivelMaximo; nivel++) {
-        const detalle = niveles.find((item) => toNumber(item?.Nivel) === nivel);
-        if (!detalle)
-            continue;
-        const especiales = Array.isArray(detalle.Especiales) ? detalle.Especiales : [];
-        const daFamiliar = especiales.some((especialNivel) =>
-            isEspecialConvocarFamiliar(especialNivel?.Especial)
-        );
-        if (daFamiliar)
-            return true;
-    }
-
-    return false;
-}
-
-function resolveDoteNombreFromNivelClase(nivelClase: MonstruoNivelClase | null | undefined): string {
-    return `${nivelClase?.Dote?.Nombre
-        ?? (nivelClase?.Dote as any)?.nombre
-        ?? (nivelClase as any)?.Dote_nombre
-        ?? (nivelClase as any)?.dote_nombre
-        ?? ''}`.trim();
-}
-
-/** La dote que pide una fila de `Niveles_clase` (la de *Familiar celestial*, por ejemplo); `null` si no pide ninguna. */
-function doteDeNivelClase(nivelClase: MonstruoNivelClase | null | undefined): { id: number; nombre: string; } | null {
-    const id = resolveDoteIdFromNivelClase(nivelClase);
-    if (id <= 0)
-        return null;
-    return {
-        id,
-        nombre: resolveDoteNombreFromNivelClase(nivelClase) || `Dote ${id}`,
-    };
-}
-
-function tieneDoteActual(dotesActuales: Array<{ id: number | null; nombre: string; }>, doteRequerida: { id: number; nombre: string; }): boolean {
-    const nombreRequerido = normalizarTexto(doteRequerida.nombre);
-    return dotesActuales.some((dote) => {
-        const id = toNumber(dote?.id);
-        if (doteRequerida.id > 0 && id === doteRequerida.id)
-            return true;
-        return nombreRequerido.length > 0 && normalizarTexto(dote?.nombre ?? '') === nombreRequerido;
-    });
-}
-
-export function resolverEstadoCuposFamiliarEspecial47(
-    personaje: Personaje,
-    catalogoClases: Clase[]
-): EstadoCuposFamiliar {
-    const cupo = resolverCupoMascota(personaje, catalogoClases, claseOtorgaFuenteFamiliar, personaje?.Familiares);
-    const nivelLanzadorFamiliar = cupo.fuentes.reduce((acc, fuente) => acc + Math.max(0, toNumber(fuente?.nivelActual)), 0);
-
-    return {
-        ...cupo,
-        nivelLanzadorFamiliar,
-    };
+/**
+ * La fila de la lista con la que el personaje tiene a ese familiar (de sus listas, con su pseudoplantilla, con la dote que
+ * la abre y al nivel de su amo) y el nivel de su tabla (el del amo: en el familiar, el ajuste es 0). Si no puede tenerlo,
+ * `fila` es `null` y `razones` dice por qué.
+ */
+export function resolverFilaFamiliar(
+    familiar: FamiliarMonstruoDetalle,
+    estado: EstadoCuposFamiliar,
+    dotesPersonaje: ReadonlySet<number>,
+): FilaMascotaResuelta {
+    return resolverFilaMascota(familiar, estado, dotesPersonaje, TEXTOS_FAMILIAR);
 }
 
 export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput): FamiliarMonstruoDetalle[] {
@@ -210,90 +189,113 @@ export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput
         .map((item) => item.familiar);
 }
 
+/**
+ * Las filas de sus listas con las que se juzga el alineamiento: las que le valen (con su dote y a su nivel) o, si no hay,
+ * las más cercanas. Cada fila es una forma de tenerlo, con su preferencia de alineamiento (en el convocador divino, la de
+ * su senda).
+ */
+function filasParaElAlineamiento(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>): MonstruoNivelClase[] {
+    const deSusListas = filasDeSusListas(familiar, new Set(estado?.listasIds ?? []));
+    const conDote = deSusListas.filter((fila) => {
+        const dote = doteDeNivelClase(fila);
+        return !dote || dotes.has(dote.id);
+    });
+    const aSuNivel = conDote.filter((fila) => toInt(fila.Nivel) <= Math.max(0, toInt(estado?.nivelEfectivo)));
+    return [aSuNivel, conDote, deSusListas, familiar?.Niveles_clase ?? []].find((filas) => filas.length > 0) ?? [];
+}
+
+/** Si un familiar vale con lo que tiene el personaje y, si no, por qué (su lista, su dote, el nivel de su amo, su alineamiento). */
 export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesInput): FamiliarElegibilidadEvaluadaItem[] {
     const familiares = Array.isArray(input?.familiares) ? input.familiares : [];
-    const fuentesClaseIds = idsClasesFuente(input?.estado?.fuentesClaseIds);
-    const nivelLanzadorFamiliar = Math.max(0, toNumber(input?.estado?.nivelLanzadorFamiliar));
     const plantillaSeleccionada: FamiliarPlantillaId | null = toPositiveInt(input?.plantillaSeleccionada);
-    const includeHomebrew = !!input?.incluirHomebrew;
-    const dotesActuales = Array.isArray(input?.dotesActuales) ? input.dotesActuales : [];
-
+    const dotes = input?.dotesPersonaje ?? new Set<number>();
     const dedupe = new Map<string, FamiliarElegibilidadEvaluadaItem>();
 
     familiares.forEach((familiar) => {
-        const idFamiliar = toNumber(familiar?.Id_familiar);
-        const idPlantilla = toNumber(familiar?.Plantilla?.Id);
-        if (idFamiliar <= 0 || idPlantilla <= 0)
+        if (toInt(familiar?.Id_familiar) <= 0)
             return;
-        if (plantillaSeleccionada !== null && idPlantilla !== plantillaSeleccionada)
+        if (plantillaSeleccionada !== null && toInt(familiar?.Plantilla?.Id) !== plantillaSeleccionada)
             return;
-
-        const razones: string[] = [];
-        if (!includeHomebrew && familiar?.Oficial === false)
+        const resuelta = resolverFilaFamiliar(familiar, input.estado, dotes);
+        const razones = [...resuelta.razones];
+        if (!input?.incluirHomebrew && familiar?.Oficial === false)
             razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
-
-        // Cada fila de `Niveles_clase` es una forma de tener esta criatura con esta plantilla: la de una clase, con su
-        // nivel, su dote y su preferencia de alineamiento (en el convocador divino, la de su senda). Vale si una fila de
-        // las clases con familiar del personaje lo cumple todo; la dote de otra clase no se pide.
-        const nivelesClasePlantilla = (familiar?.Niveles_clase ?? []).filter((nivelClase) =>
-            idPlantillaDeNivel(nivelClase) === idPlantilla
-            && toNumber(nivelClase?.Nivel) >= 0
-        );
-        const nivelesClaseFuente = nivelesClasePlantilla.filter((nivelClase) =>
-            fuentesClaseIds.has(toNumber(nivelClase?.Clase?.Id))
-        );
-        const nivelesConDote = nivelesClaseFuente.filter((nivelClase) => {
-            const dote = doteDeNivelClase(nivelClase);
-            return !dote || tieneDoteActual(dotesActuales, dote);
-        });
-        const nivelesConNivel = nivelesConDote.filter((nivelClase) => toNumber(nivelClase?.Nivel) <= nivelLanzadorFamiliar);
-        const nivelesParaMinimo = nivelesConDote.length > 0 ? nivelesConDote : nivelesClaseFuente;
-        const nivelMinimoRequerido = nivelesParaMinimo.length > 0
-            ? Math.min(...nivelesParaMinimo.map((nivelClase) => Math.max(0, toInt(nivelClase?.Nivel))))
-            : null;
-        if (nivelesClaseFuente.length < 1) {
-            razones.push('Esta criatura no tiene progresión válida para tus clases con familiar.');
-        } else {
-            if (nivelesConDote.length < 1) {
-                const dotesFaltantes = new Set(nivelesClaseFuente
-                    .map((nivelClase) => doteDeNivelClase(nivelClase)?.nombre ?? '')
-                    .filter((nombre) => nombre.length > 0));
-                dotesFaltantes.forEach((nombre) => razones.push(`Requiere la dote ${nombre} para esta plantilla.`));
-            }
-            if (nivelMinimoRequerido !== null && nivelMinimoRequerido > nivelLanzadorFamiliar)
-                razones.push(`Necesitas al menos nivel ${nivelMinimoRequerido} de lanzador de familiar para esta opción.`);
-        }
-        const nivelesAlineamiento = [nivelesConNivel, nivelesConDote, nivelesClaseFuente, nivelesClasePlantilla]
-            .find((niveles) => niveles.length > 0) ?? [];
-
         razones.push(...razonesAlineamientoMascota(
             familiar?.Alineamientos_requeridos?.Familiar ?? [],
-            nivelesAlineamiento,
+            filasParaElAlineamiento(familiar, input.estado, dotes),
             input?.alineamientoPersonaje ?? '',
             'familiar'
         ));
 
-        const dedupeKey = `${idFamiliar}:${idPlantilla}`;
         const evaluacion: FamiliarElegibilidadEvaluadaItem = {
             familiar,
             elegible: razones.length < 1,
             razones: Array.from(new Set(razones)),
-            nivelMinimoRequerido,
+            nivelMinimoRequerido: resuelta.nivelMinimo,
         };
-        const previa = dedupe.get(dedupeKey);
-        if (!previa || (!previa.elegible && evaluacion.elegible)) {
-            dedupe.set(dedupeKey, evaluacion);
-            return;
-        }
-        if (!previa.elegible && !evaluacion.elegible) {
-            dedupe.set(dedupeKey, {
-                ...previa,
-                razones: Array.from(new Set([...(previa.razones ?? []), ...(evaluacion.razones ?? [])])),
-                nivelMinimoRequerido: previa.nivelMinimoRequerido ?? evaluacion.nivelMinimoRequerido,
-            });
-        }
+        const clave = claveFamiliar(familiar);
+        const previa = dedupe.get(clave);
+        if (!previa || (!previa.elegible && evaluacion.elegible))
+            dedupe.set(clave, evaluacion);
     });
 
     return Array.from(dedupe.values())
         .sort((a, b) => compararTexto(a?.familiar?.Nombre, b?.familiar?.Nombre));
+}
+
+/**
+ * El familiar de una ficha guardada con los valores de su criatura (`monstruo`, su `Monstruo_origen`): la ficha trae sus
+ * totales (la armadura natural, la Inteligencia y el ataque con lo del nivel de su amo) y lo de su nivel se le suma al
+ * guardar, como en la creación. También las filas de la lista y las dotes de su criatura (las suyas, las de la creación,
+ * se quedan). Lo usa la carga de las sesiones antes de hidratar el motor.
+ */
+export function familiarConSuCriatura(familiar: FamiliarMonstruoDetalle, monstruo: MonstruoDetalle): FamiliarMonstruoDetalle {
+    const caracteristicas = { ...(familiar?.Caracteristicas ?? {}) } as Record<string, number | null>;
+    const delMonstruo = (monstruo?.Caracteristicas ?? {}) as Record<string, number | null>;
+    ['Inteligencia', 'Inteligencia_modificador', 'Constitucion', 'Constitucion_modificador'].forEach((clave) => {
+        caracteristicas[clave] = delMonstruo[clave] ?? null;
+    });
+    return {
+        ...familiar,
+        Monstruo_origen: { Id: toInt(monstruo?.Id), Nombre: `${monstruo?.Nombre ?? familiar?.Monstruo_origen?.Nombre ?? ''}`.trim() },
+        Dados_golpe: monstruo?.Dados_golpe ?? familiar?.Dados_golpe,
+        Defensa: { ...(familiar?.Defensa ?? monstruo?.Defensa), Armadura_natural: toInt(monstruo?.Defensa?.Armadura_natural) },
+        Ataque: { ...(familiar?.Ataque ?? monstruo?.Ataque), Ataque_base: toInt(monstruo?.Ataque?.Ataque_base) },
+        Caracteristicas: caracteristicas as FamiliarMonstruoDetalle['Caracteristicas'],
+        Niveles_clase: [...(monstruo?.Niveles_clase ?? [])],
+        Dotes: [
+            ...(familiar?.Dotes ?? []).filter((item) => item?.Contexto?.Entidad === 'personaje'),
+            ...(monstruo?.Dotes ?? []),
+        ],
+    };
+}
+
+/**
+ * La tabla que sigue un familiar con esa pseudoplantilla (la suya o, sin ella, la de por defecto: la del Manual del
+ * jugador) y su fila al nivel de su amo (sin ninguna, nada: armadura natural 0, la Inteligencia de su monstruo y sin RC).
+ */
+export function tablaDelFamiliar(progresion: FamiliarProgresion | null | undefined, idPlantilla: number, nivel: number): TablaDelFamiliar {
+    const tablas = progresion?.Tablas ?? [];
+    const plantilla = (progresion?.Plantillas ?? []).find((item) => item.Id === toInt(idPlantilla)) ?? null;
+    const tabla = tablas.find((item) => plantilla?.Tabla && item.Id === plantilla.Tabla.Id)
+        ?? tablas.find((item) => item.Por_defecto)
+        ?? null;
+    const nivelAmo = Math.max(0, toInt(nivel));
+    return { plantilla, tabla, nivel: nivelAmo, bonos: filaDelNivel(tabla?.Bonos, nivelAmo) ?? SIN_BONOS };
+}
+
+/**
+ * Lo que da su tabla a ese nivel del amo (Manual del jugador, págs. 44-45), como lo comprueba la API: lo del amo (al
+ * personaje: las aptitudes; Alerta, como dote con su nota) y lo del familiar, sin lo que excluye su plantilla
+ * (`Sin_aptitudes`). Una dote del familiar, si su monstruo no la tiene ya.
+ */
+export function aptitudesFamiliarDelNivel(
+    tabla: TablaDelFamiliar,
+    monstruoTieneDote: (idDote: number) => boolean,
+): AptitudesMascotaDelNivel<FamiliarAptitudNivel> {
+    return aptitudesMascotaDelNivel(tabla.tabla?.Aptitudes, tabla.nivel, {
+        cumpleDote: () => true,
+        monstruoTieneDote,
+        sinAptitudes: new Set(tabla.plantilla?.Sin_aptitudes ?? []),
+    });
 }

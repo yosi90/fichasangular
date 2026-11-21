@@ -3,7 +3,7 @@ import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineam
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 // Lo común de las reglas de compañeros animales (companero-reglas.ts) y familiares (familiar-reglas.ts): leer lo que
-// pide cada nivel de clase del monstruo (especial, dote y alineamiento) y explicarlo.
+// pide cada fila de `Niveles_clase` del monstruo (su plantilla, su dote y su alineamiento) y explicarlo.
 
 export interface AlineamientoRequeridoNormalizado {
     id: number;
@@ -30,6 +30,27 @@ export function resolveDoteIdFromNivelClase(nivelClase: MonstruoNivelClase | nul
         ?? (nivelClase as any)?.Id_dote
         ?? (nivelClase as any)?.id_dote
     );
+}
+
+function resolveDoteNombreFromNivelClase(nivelClase: MonstruoNivelClase | null | undefined): string {
+    return `${nivelClase?.Dote?.Nombre
+        ?? (nivelClase?.Dote as any)?.nombre
+        ?? (nivelClase as any)?.Dote_nombre
+        ?? (nivelClase as any)?.dote_nombre
+        ?? ''}`.trim();
+}
+
+/** La dote que pide una fila de `Niveles_clase` (Dragón familiar, Compañero elevado…); `null` si no pide ninguna. */
+export function doteDeNivelClase(nivelClase: MonstruoNivelClase | null | undefined): { id: number; nombre: string; } | null {
+    const id = resolveDoteIdFromNivelClase(nivelClase);
+    if (id <= 0)
+        return null;
+    return { id, nombre: resolveDoteNombreFromNivelClase(nivelClase) || `Dote ${id}` };
+}
+
+/** La plantilla de una fila de `Niveles_clase` (la pseudoplantilla del familiar o la del compañero); sin ella, 0. */
+export function idPlantillaDeNivel(nivelClase: MonstruoNivelClase | null | undefined): number {
+    return Math.max(0, toInt(nivelClase?.Plantilla?.Id));
 }
 
 function resolveAlineamientoBasicoIdFromRaw(item: any): number {

@@ -82,6 +82,7 @@ import {
 } from 'src/app/services/nuevo-personaje.service';
 import { extrasElegiblesEspecial } from 'src/app/services/utils/aptitudes-clase';
 import {
+    claveFamiliar,
     construirCatalogoFamiliaresDesdeMonstruos,
     evaluarFamiliaresElegibilidad,
     FamiliarPlantillaId,
@@ -384,6 +385,12 @@ const CODIGOS_FALLO_DE_REGLAS: readonly string[] = [
  */
 const CODIGOS_FALLO_COMPANERO: readonly string[] = ['companero_no_disponible', 'companero_no_cuadra'];
 
+/**
+ * Los errores del familiar de `POST /personajes/add` (`docs/publica/endpoints/personajes.md`, «El familiar, comprobado por
+ * la API»): se enseñan en el selector del familiar, para elegir otro.
+ */
+const CODIGOS_FALLO_FAMILIAR: readonly string[] = ['familiar_no_disponible', 'familiar_no_cuadra'];
+
 const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     tiradaMinimaCaracteristica: null,
     nepMaximoPersonajeNuevo: null,
@@ -631,8 +638,9 @@ export class NuevoPersonajeComponent {
     selectorFamiliarElegibles: FamiliarMonstruoDetalle[] = [];
     selectorFamiliarBloqueados: SelectorFamiliarBloqueadoItem[] = [];
     selectorFamiliarNivelesRequeridos: Record<string, number> = {};
+    /** El motivo por el que la API no aceptó el familiar que se mandó (`familiar_no_disponible`, `familiar_no_cuadra`). */
+    selectorFamiliarErrorApi = '';
     private resolverSelectorFamiliar: ((seleccion: SelectorFamiliarConfirmacion | 'omitir' | null) => void) | null = null;
-    private nombresEspecialesFamiliar: Record<number, string> | null = null;
     selectorCompaneroTitulo = 'Seleccionar compañero animal';
     selectorCompaneroIncluirHomebrew = false;
     selectorCompaneroCuposDisponibles = 0;
@@ -4905,7 +4913,7 @@ export class NuevoPersonajeComponent {
     }
 
     private async resolverFamiliarPendienteFinNivel(): Promise<boolean> {
-        const estado = this.nuevoPSvc.getEstadoCuposFamiliarEspecial47();
+        const estado = this.nuevoPSvc.getEstadoCuposFamiliar();
         if (estado.cuposDisponibles < 1)
             return true;
 
@@ -4915,13 +4923,7 @@ export class NuevoPersonajeComponent {
         if (seleccion === 'omitir')
             return true;
 
-        const nombresEspeciales = await this.cargarNombresEspecialesFamiliar();
-        const resultado = this.nuevoPSvc.registrarFamiliarSeleccionado(
-            seleccion.familiar,
-            seleccion.plantilla,
-            nombresEspeciales,
-            seleccion.nombre
-        );
+        const resultado = this.nuevoPSvc.registrarFamiliarSeleccionado(seleccion.familiar, seleccion.nombre);
         if (!resultado.registrado) {
             await Swal.fire({
                 icon: 'warning',
@@ -4995,6 +4997,38 @@ export class NuevoPersonajeComponent {
         if (seleccion === 'omitir')
             return true;
         const resultado = this.nuevoPSvc.registrarCompaneroSeleccionado(seleccion.companero, seleccion.nombre);
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        return resultado.registrado;
+    }
+
+    /**
+     * La API no acepta el familiar que se mandó (`familiar_no_disponible`, `familiar_no_cuadra`): se quita y se vuelve a
+     * abrir su selector con el motivo, como el compañero. `true` si se puede volver a guardar (otro familiar, o ninguno si
+     * lo omite).
+     */
+    private async volverAElegirFamiliar(motivo: string): Promise<boolean> {
+        this.nuevoPSvc.quitarFamiliar();
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        const errorApi = motivo.length > 0 ? motivo : 'El familiar no cuadra con las reglas.';
+        const estado = this.nuevoPSvc.getEstadoCuposFamiliar();
+        if (estado.cuposDisponibles < 1) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo crear el personaje',
+                text: errorApi,
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return true;
+        }
+        const seleccion = await this.abrirSelectorFamiliar(estado, errorApi);
+        if (seleccion === null)
+            return false;
+        if (seleccion === 'omitir')
+            return true;
+        const resultado = this.nuevoPSvc.registrarFamiliarSeleccionado(seleccion.familiar, seleccion.nombre);
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         return resultado.registrado;
     }
@@ -5172,7 +5206,8 @@ export class NuevoPersonajeComponent {
     }
 
     private async abrirSelectorFamiliar(
-        estado: EstadoCuposFamiliar
+        estado: EstadoCuposFamiliar,
+        errorApi: string = ''
     ): Promise<SelectorFamiliarConfirmacion | 'omitir' | null> {
         const catalogoCargado = await this.cargarCatalogoFamiliaresSelector();
         if (!catalogoCargado)
@@ -5184,6 +5219,7 @@ export class NuevoPersonajeComponent {
         this.selectorFamiliarIncluirHomebrew = !this.Personaje.Oficial;
         this.selectorFamiliarNombre = this.getNombreDefectoFamiliar();
         this.selectorFamiliarCuposDisponibles = Math.max(0, Number(estado?.cuposDisponibles ?? 0));
+        this.selectorFamiliarErrorApi = errorApi;
         this.recalcularFamiliaresElegiblesSelector();
         this.modalSelectorFamiliarAbierto = true;
 
@@ -5402,7 +5438,7 @@ export class NuevoPersonajeComponent {
             return;
 
         let etapa: 'sql' | 'navegacion' = 'sql';
-        let reintentarConOtroCompanero = false;
+        let reintentarConOtraMascota = false;
         this.finalizacionEnCurso = true;
         try {
             let idPersonaje = Math.trunc(Number(this.finalizacionState.idPersonaje ?? 0));
@@ -5473,7 +5509,12 @@ export class NuevoPersonajeComponent {
             }
             // La API no acepta el compañero: se vuelve a elegir con su motivo y, elegido (u omitido), se guarda otra vez.
             if (etapa === 'sql' && CODIGOS_FALLO_COMPANERO.includes(codigoDeError(error))) {
-                reintentarConOtroCompanero = await this.volverAElegirCompanero(mensajeDeError(error, ''));
+                reintentarConOtraMascota = await this.volverAElegirCompanero(mensajeDeError(error, ''));
+                return;
+            }
+            // Y lo mismo con el familiar.
+            if (etapa === 'sql' && CODIGOS_FALLO_FAMILIAR.includes(codigoDeError(error))) {
+                reintentarConOtraMascota = await this.volverAElegirFamiliar(mensajeDeError(error, ''));
                 return;
             }
             const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
@@ -5495,7 +5536,7 @@ export class NuevoPersonajeComponent {
             });
         } finally {
             this.finalizacionEnCurso = false;
-            if (reintentarConOtroCompanero)
+            if (reintentarConOtraMascota)
                 void this.finalizarPersonajeCompleto();
         }
     }
@@ -5973,11 +6014,17 @@ export class NuevoPersonajeComponent {
         }
     }
 
+    /** Los familiares de la lista de las clases (de los monstruos marcados como familiar) y las tablas del familiar. */
     private async cargarCatalogoFamiliaresSelector(): Promise<boolean> {
         try {
-            const monstruos = await firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1)));
+            const [monstruos, progresion] = await Promise.all([
+                firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1))),
+                firstValueFrom(this.monstruoSvc.getFamiliaresProgresion().pipe(take(1))),
+            ]);
+            this.nuevoPSvc.setProgresionFamiliar(progresion);
             this.selectorFamiliarCatalogoCompleto = construirCatalogoFamiliaresDesdeMonstruos(
-                Array.isArray(monstruos) ? monstruos : []
+                Array.isArray(monstruos) ? monstruos : [],
+                this.nuevoPSvc.getListasDeFamiliar()
             );
             return true;
         } catch {
@@ -6004,7 +6051,7 @@ export class NuevoPersonajeComponent {
         }
         this.selectorFamiliarPlantillas = plantillasFamiliarDisponibles(
             this.selectorFamiliarCatalogoCompleto,
-            this.selectorFamiliarEstadoCupos.fuentesClaseIds
+            this.selectorFamiliarEstadoCupos.listasIds
         );
         const incluirHomebrewEfectivo = this.selectorFamiliarIncluirHomebrew || !this.Personaje.Oficial;
         const evaluaciones = evaluarFamiliaresElegibilidad({
@@ -6013,14 +6060,14 @@ export class NuevoPersonajeComponent {
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
             plantillaSeleccionada: this.selectorFamiliarPlantillaSeleccionada,
             incluirHomebrew: incluirHomebrewEfectivo,
-            dotesActuales: this.getDotesActualesParaSelectores(),
+            dotesPersonaje: this.nuevoPSvc.idsDotesDelPersonaje(),
         });
         const nivelesRequeridos: Record<string, number> = {};
         evaluaciones.forEach((item) => {
             const nivel = Number(item?.nivelMinimoRequerido ?? 0);
             if (!Number.isFinite(nivel) || nivel <= 0)
                 return;
-            const clave = this.getClaveFamiliarSelector(item.familiar);
+            const clave = claveFamiliar(item.familiar);
             nivelesRequeridos[clave] = Math.trunc(nivel);
         });
         this.selectorFamiliarNivelesRequeridos = nivelesRequeridos;
@@ -6034,63 +6081,6 @@ export class NuevoPersonajeComponent {
                 razones: [...(item.razones ?? [])],
                 nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
             }));
-    }
-
-    private getDotesActualesParaSelectores(): Array<{ id: number | null; nombre: string; }> {
-        const resultado: Array<{ id: number | null; nombre: string; }> = [];
-        const claves = new Set<string>();
-        const registrar = (idRaw: any, nombreRaw: any) => {
-            const id = Math.trunc(Number(idRaw ?? 0));
-            const nombre = `${nombreRaw ?? ''}`.trim();
-            if ((!Number.isFinite(id) || id <= 0) && nombre.length < 1)
-                return;
-            const clave = id > 0
-                ? `id:${id}`
-                : `nombre:${normalizarTexto(nombre)}`;
-            if (claves.has(clave))
-                return;
-            claves.add(clave);
-            resultado.push({
-                id: id > 0 ? id : null,
-                nombre,
-            });
-        };
-
-        (this.nuevoPSvc.PersonajeCreacion.DotesContextuales ?? []).forEach((item) =>
-            registrar(item?.Dote?.Id, item?.Dote?.Nombre)
-        );
-        (this.nuevoPSvc.PersonajeCreacion.Dotes ?? []).forEach((item: any) =>
-            registrar(item?.Id ?? item?.id, item?.Nombre ?? item?.nombre)
-        );
-        return resultado;
-    }
-
-    private async cargarNombresEspecialesFamiliar(): Promise<Record<number, string>> {
-        if (this.nombresEspecialesFamiliar)
-            return { ...this.nombresEspecialesFamiliar };
-
-        const objetivos = [81, 82, 83, 87];
-        const nombres: Record<number, string> = {};
-        objetivos.forEach((id) => {
-            nombres[id] = `Especial ${id} (Familiar)`;
-        });
-
-        try {
-            const especiales = await firstValueFrom(this.especialSvc.getEspeciales().pipe(take(1)));
-            (especiales ?? []).forEach((especial) => {
-                const id = Number(especial?.Id ?? 0);
-                if (!objetivos.includes(id))
-                    return;
-                const nombre = `${especial?.Nombre ?? ''}`.trim();
-                if (nombre.length > 0)
-                    nombres[id] = nombre;
-            });
-        } catch {
-            // fallback ya aplicado
-        }
-
-        this.nombresEspecialesFamiliar = { ...nombres };
-        return { ...nombres };
     }
 
     /** Los compañeros de la lista de las clases (de los monstruos marcados como compañero) y la tabla del compañero. */
@@ -6175,10 +6165,6 @@ export class NuevoPersonajeComponent {
             }));
     }
 
-    private getClaveFamiliarSelector(familiar: FamiliarMonstruoDetalle | null | undefined): string {
-        return `${Number(familiar?.Id_familiar ?? 0)}:${Number(familiar?.Plantilla?.Id ?? 0)}`;
-    }
-
     private cerrarSelectorFamiliarContexto(
         resultado: SelectorFamiliarConfirmacion | 'omitir' | null
     ): void {
@@ -6194,6 +6180,7 @@ export class NuevoPersonajeComponent {
         this.selectorFamiliarElegibles = [];
         this.selectorFamiliarBloqueados = [];
         this.selectorFamiliarNivelesRequeridos = {};
+        this.selectorFamiliarErrorApi = '';
 
         const resolver = this.resolverSelectorFamiliar;
         this.resolverSelectorFamiliar = null;
@@ -7615,6 +7602,10 @@ export class NuevoPersonajeComponent {
         const progresion = this.monstruoSvc?.getCompanerosProgresion?.();
         if (progresion)
             this.catalogosCifrasSubs.push(progresion.subscribe({ next: (valor) => this.nuevoPSvc.setProgresionCompanero(valor), error: () => undefined }));
+        // Y las del familiar, que además dan sus cifras al guardar (la armadura natural, la Inteligencia y la RC de su nivel).
+        const progresionFamiliar = this.monstruoSvc?.getFamiliaresProgresion?.();
+        if (progresionFamiliar)
+            this.catalogosCifrasSubs.push(progresionFamiliar.subscribe({ next: (valor) => this.nuevoPSvc.setProgresionFamiliar(valor), error: () => undefined }));
     }
 
     private cargarTiposCriatura(): void {

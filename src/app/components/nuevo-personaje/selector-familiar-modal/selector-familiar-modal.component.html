@@ -2,6 +2,7 @@
     [cerrable]="false" ancho="ancha" [relleno]="false">
     <div class="creacion-ventana__columnas">
         <div class="creacion-ventana__lista">
+            <p class="bloque-error" role="alert" *ngIf="errorApi">La API no ha aceptado el familiar: {{errorApi}} Elige otro o corrígelo.</p>
             <label class="creacion-buscador">
                 <mat-icon aria-hidden="true">search</mat-icon>
                 <input type="search" [(ngModel)]="filtroTexto" placeholder="Filtrar familiares" aria-label="Filtrar familiares">
@@ -25,7 +26,8 @@
                         (click)="onSeleccionarFamiliar(familiar)">
                         <span class="creacion-opcion__texto">
                             {{familiar.Nombre}}
-                            <span class="creacion-opcion__nota">{{getEtiquetaPlantilla(familiar)}} · {{familiar.Manual.Nombre || '-'}}</span>
+                            <span class="creacion-opcion__nota"><ng-container *ngIf="getEtiquetaPlantilla(familiar) as plantilla">{{plantilla}} · </ng-container><ng-container
+                                    *ngIf="getNivelRequerido(familiar) as nivel">nivel {{nivel}} · </ng-container>{{familiar.Manual.Nombre || '-'}}</span>
                         </span>
                         <span class="creacion-opcion__estado" *ngIf="!esFamiliarElegible(familiar)">{{getEtiquetaEstado(familiar)}}</span>
                     </button>
@@ -45,6 +47,7 @@
                         <h3 class="creacion-ventana__detalle-nombre">{{familiar.Nombre}}</h3>
                         <button type="button" class="creacion-enlace" (click)="onAbrirDetalle(familiar, $event)">Ver su ficha completa</button>
                     </div>
+                    <p class="creacion-texto-suave" *ngIf="getExplicacionNivel(familiar) as explicacion">{{explicacion}}</p>
                     <ul class="creacion-motivos" *ngIf="!esFamiliarElegible(familiar)">
                         <li *ngFor="let motivo of getMotivosBloqueo(familiar)">{{motivo}}</li>
                     </ul>
