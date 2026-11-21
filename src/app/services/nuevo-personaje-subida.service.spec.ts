@@ -20,7 +20,12 @@ import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import { construirCatalogoCompanerosDesdeMonstruos, claveCompanero } from './utils/companero-reglas';
-import { leerCompaneroProgresion } from './utils/monstruo-mapper';
+import { leerCompaneroProgresion, leerFamiliarProgresion } from './utils/monstruo-mapper';
+import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos } from './utils/familiar-reglas';
+import {
+    BASICA as FAMILIAR_BASICO, COMPARTIR as COMPARTIR_FAMILIAR, EVASION_MEJORADA as EVASION_MEJORADA_FAMILIAR, GATO,
+    MONSTRUOS_FAMILIAR, PROGRESION_FAMILIAR_API, TRANSMITIR,
+} from 'src/testing/familiar-api';
 import { COMPARTIR_CONJUROS, DEVOCION, EVASION, LOBO, MONSTRUOS_COMPANERO, PROGRESION_API, VINCULO } from 'src/testing/companero-animal-api';
 import {
     aplicarReciclajeAlMotor, aptitudesDelReciclaje, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dominiosParaReciclar, dotesParaReciclar,
@@ -1987,5 +1992,64 @@ describe('Subida de nivel: el druida pone al día su compañero animal (el compa
         expect(fichaDeLaSubida({
             entrada: guardado.entrada, antes: igual, despues: igual, idClase: 5, nivel: { idClase: 5, nivelClase: 3, elecciones: [] }, puntosGolpe: 20,
         }).companero).toEqual(guardado.entrada.companero);
+    });
+});
+
+describe('Subida de nivel: el mago pone al día su familiar (el familiar, de los datos)', () => {
+    const HUMANO = crearRaza('Humano');
+    const PROGRESION = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
+    const MAGO_CON_FAMILIAR = clase({
+        Id: 9, Nombre: 'Mago', Tipo_dado: { Id: 1, Nombre: 'd4' }, Puntos_habilidad: { Id: 1, Valor: 2 },
+        Habilidades: { Base: [ref(3, 'Concentración')], Custom: [] },
+        Desglose_niveles: [
+            nivel(1, { Especiales: [{
+                Especial: { Id: 47, Nombre: 'Convocar a un familiar', Otorga_familiar: true }, Nivel: 1, Opcional: 0, Id_interno: 471, Mascota: null,
+            }] }),
+            nivel(2), nivel(3), nivel(4),
+        ],
+    });
+    const CLASES_MAGO = [GUERRERO, PALADIN, MAGO_CON_FAMILIAR, HECHICERO];
+    const catalogoDeClases = { clases: CLASES_MAGO.map((c) => ({ id: c.Id, nombre: c.Nombre })) };
+    /** `MotorDesdeFichaService.cuerpoDelMotor` (con el familiar del motor), con el servicio de personajes de estas pruebas. */
+    const cuerpoDelMotor = (motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto) => MotorDesdeFichaService.prototype.cuerpoDelMotor
+        .call({ personajeSvc: new PersonajeService({ currentUser: null } as any, {} as any) } as any, motor, entrada);
+
+    it('la subida a mago 3 manda el familiar con la tabla de 3, transmitir conjuros de toque y la mitad de los PG nuevos', () => {
+        const svc = crear(HUMANO, { Inteligencia: 15 });
+        svc.setCatalogoClases(CLASES_MAGO);
+        svc.setProgresionFamiliar(PROGRESION);
+        aplicarNivel(svc, MAGO_CON_FAMILIAR);
+        aplicarNivel(svc, MAGO_CON_FAMILIAR);
+        const gato = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR)
+            .find((f) => claveFamiliar(f) === `${GATO}:${FAMILIAR_BASICO}`)!;
+        expect(svc.registrarFamiliarSeleccionado(JSON.parse(JSON.stringify(gato)), 'Bigotes').registrado).toBeTrue();
+        const guardado = guardar(svc, catalogoDeClases);
+        guardado.entrada.familiar = svc.familiarParaGuardar();
+        const antesDeSubir = guardado.entrada.familiar!;
+        expect([antesDeSubir.armaduraNatural, antesDeSubir.inteligencia, antesDeSubir.vida]).toEqual([1, 6, Math.max(1, Math.floor(toInt(guardado.entrada.personaje.puntosGolpe) / 2))]);
+        expect(antesDeSubir.especiales.map((e) => e.idEspecial)).not.toContain(TRANSMITIR);
+
+        const subida = subir(guardado, HUMANO, CLASES_MAGO);
+        subida.setProgresionFamiliar(PROGRESION);
+        const antes = cuerpoDelMotor(subida, guardado.entrada);
+        aplicarNivel(subida, MAGO_CON_FAMILIAR);
+        const ficha = fichaDeLaSubida({
+            entrada: guardado.entrada, antes, despues: cuerpoDelMotor(subida, guardado.entrada), idClase: 9,
+            nivel: { idClase: 9, nivelClase: 3, elecciones: subida.getEleccionesDelNivelEnCurso() }, puntosGolpe: 13,
+        });
+        const familiar = ficha.familiar!;
+        expect([familiar.armaduraNatural, familiar.inteligencia, familiar.vida, familiar.rc]).toEqual([2, 7, 6, undefined]);
+        expect(familiar.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayContaining([COMPARTIR_FAMILIAR, EVASION_MEJORADA_FAMILIAR, TRANSMITIR]));
+        expect([familiar.nombre, familiar.idMonstruo, familiar.idPlantilla]).toEqual(['Bigotes', GATO, FAMILIAR_BASICO]);
+        expect(familiar.ataqueBase).toBe(3);
+
+        // Sin el nivel y con los mismos PG, el familiar va tal cual.
+        const sinSubir = subir(guardado, HUMANO, CLASES_MAGO);
+        sinSubir.setProgresionFamiliar(PROGRESION);
+        const igual = cuerpoDelMotor(sinSubir, guardado.entrada);
+        expect(fichaDeLaSubida({
+            entrada: guardado.entrada, antes: igual, despues: igual, idClase: 9, nivel: { idClase: 9, nivelClase: 3, elecciones: [] },
+            puntosGolpe: toInt(guardado.entrada.personaje.puntosGolpe),
+        }).familiar).toEqual(guardado.entrada.familiar);
     });
 });

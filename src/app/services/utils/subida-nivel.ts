@@ -1,6 +1,7 @@
 import { ClaseIntercambioConjuros } from 'src/app/interfaces/clase';
-import { PersonajeCreateCompaneroDto, PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateCompaneroDto, PersonajeCreateFamiliarDto, PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { modificadorCaracteristica } from './caracteristicas';
+import { mitadDeLosPg } from './mascota-payload';
 import { toInt } from './normalizacion';
 
 /*
@@ -341,15 +342,51 @@ export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, an
         if (toInt(despues[k]) !== toInt(antes?.[k]))
             resultado[k] = toInt(despues[k]);
     });
-    const porId = <T>(guardadas: T[] | undefined, previas: T[] | undefined, nuevas: T[] | undefined, id: (x: T) => number): T[] => {
-        const idsAntes = new Set((previas ?? []).map(id));
-        const idsDespues = new Set((nuevas ?? []).map(id));
-        const quedan = (guardadas ?? []).filter((x) => !(idsAntes.has(id(x)) && !idsDespues.has(id(x))));
-        const yaEstan = new Set(quedan.map(id));
-        return [...quedan, ...(nuevas ?? []).filter((x) => !idsAntes.has(id(x)) && !yaEstan.has(id(x)))];
-    };
-    resultado.especiales = porId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
-    resultado.dotes = porId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
+    resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
+    resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
+    return resultado;
+}
+
+/**
+ * Las aptitudes o las dotes guardadas de una mascota con lo que gana o pierde en el motor (por id, entre `previas` y
+ * `nuevas`): lo que guardaba la ficha con otra forma (el extra de antes) se queda.
+ */
+function conLaDiferenciaPorId<T>(guardadas: T[] | undefined, previas: T[] | undefined, nuevas: T[] | undefined, id: (x: T) => number): T[] {
+    const idsAntes = new Set((previas ?? []).map(id));
+    const idsDespues = new Set((nuevas ?? []).map(id));
+    const quedan = (guardadas ?? []).filter((x) => !(idsAntes.has(id(x)) && !idsDespues.has(id(x))));
+    const yaEstan = new Set(quedan.map(id));
+    return [...quedan, ...(nuevas ?? []).filter((x) => !idsAntes.has(id(x)) && !yaEstan.has(id(x)))];
+}
+
+/** Las salvaciones del familiar: el motor las cambia si cambian las del amo (la base mejor, la suya o la de su amo). */
+const SALVACIONES_FAMILIAR_DEL_MOTOR = ['fortaleza', 'reflejos', 'voluntad'] as const;
+
+/**
+ * El familiar de la `entrada` puesto al día por el motor (`docs/publica/endpoints/personajes.md`, «El familiar, comprobado
+ * por la API»): lo que comprueba la API, como lo calcula el motor con la tabla al nivel de su amo (la armadura natural, la
+ * Inteligencia, la resistencia a conjuros y el ataque base); sus PG, la mitad de los `puntosGolpe` del amo (con los
+ * mayores, los suyos si son más: el motor los da con un amo sin PG, `cuerpoDelMotor`); las salvaciones, si cambian; y, por
+ * id, las aptitudes y las dotes que gana o pierde. Lo demás (el nombre, la criatura, la plantilla, las habilidades) se
+ * queda como estaba.
+ */
+export function familiarConLoDelMotor(guardado: PersonajeCreateFamiliarDto, antes: PersonajeCreateFamiliarDto | undefined,
+    despues: PersonajeCreateFamiliarDto, puntosGolpe: number): PersonajeCreateFamiliarDto {
+    const resultado: PersonajeCreateFamiliarDto = JSON.parse(JSON.stringify(guardado));
+    resultado.armaduraNatural = toInt(despues.armaduraNatural);
+    resultado.inteligencia = toInt(despues.inteligencia);
+    resultado.ataqueBase = toInt(despues.ataqueBase);
+    resultado.vida = Math.max(mitadDeLosPg(puntosGolpe), toInt(despues.vida));
+    if (despues.rc !== undefined)
+        resultado.rc = despues.rc;
+    else if (/\d/.test(`${guardado.rc ?? ''}`))
+        resultado.rc = 'No';
+    SALVACIONES_FAMILIAR_DEL_MOTOR.forEach((k) => {
+        if (toInt(despues[k]) !== toInt(antes?.[k]))
+            resultado[k] = toInt(despues[k]);
+    });
+    resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
+    resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
     return resultado;
 }
 
@@ -460,6 +497,9 @@ export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreate
     // El compañero animal, puesto al día por el motor (la tabla y las aptitudes de su nivel).
     if (ficha.companero && despues.companero && claveElemento(antes.companero ?? null) !== claveElemento(despues.companero))
         ficha.companero = companeroConLoDelMotor(ficha.companero, antes.companero, despues.companero);
+    // El familiar, siempre que lo tenga: sus PG siguen a los del amo y lo demás, a la tabla al nivel de su amo.
+    if (ficha.familiar && despues.familiar)
+        ficha.familiar = familiarConLoDelMotor(ficha.familiar, antes.familiar, despues.familiar, ficha.personaje.puntosGolpe);
 
     ficha.niveles = (datos.entrada.niveles ?? []).map((n) => ({ ...n }));
     return ficha;

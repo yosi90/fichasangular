@@ -132,4 +132,12 @@ describe('SelectorFamiliarModalComponent', () => {
 
         expect(spy).not.toHaveBeenCalled();
     });
+
+    it('explica el nivel que pide una opción: el de su amo', () => {
+        component.nivelesRequeridos = { '2:1': 3 };
+        expect(component.getNivelRequerido(component.familiaresElegibles[1])).toBe(3);
+        expect(component.getExplicacionNivel(component.familiaresElegibles[1]))
+            .toBe('Pide un amo de nivel 3: se suman los niveles de tus clases que dan familiar, cada una como dice su tabla.');
+        expect(component.getExplicacionNivel(component.familiaresElegibles[0])).toBe('');
+    });
 });

@@ -136,6 +136,10 @@
       ".read": "true",
       ".write": "false"
     },
+    "FamiliaresProgresion": {
+      ".read": "true",
+      ".write": "false"
+    },
     "Fusiones": {
       ".read": "true",
       ".write": "false"

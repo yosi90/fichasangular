@@ -1,6 +1,8 @@
 import { PROGRESION_API } from "src/testing/companero-animal-api";
+import { NOTA_ALERTA, PROGRESION_FAMILIAR_API } from "src/testing/familiar-api";
 import {
     leerCompaneroProgresion,
+    leerFamiliarProgresion,
     normalizeCompaneroMonstruoDetalle,
     normalizeCompaneroMonstruoDetalleArray,
     normalizeFamiliarMonstruoDetalle,
@@ -249,5 +251,42 @@ describe("monstruo-mapper", () => {
         expect(monstruos.length).toBe(2);
         expect(familiares.length).toBe(2);
         expect(companeros.length).toBe(2);
+    });
+});
+
+describe("monstruo-mapper: el familiar, de los datos", () => {
+    it("la mascota de cada fila de `Niveles_clase`: `companero`, `familiar` o `null` (una caché de antes o un valor que no es del contrato)", () => {
+        const buho = normalizeMonstruoDetalle({
+            Id: 70, Nombre: "Búho",
+            Niveles_clase: [
+                { Clase: { Id: 5, Nombre: "Druida" }, Nivel: 2, Ajuste: -1, Plantilla: { Id: 3, Nombre: "Celestial" }, Dote: { Id: 53, Nombre: "Compañero elevado" }, Mascota: "companero" },
+                { Clase: { Id: 8, Nombre: "Hechicero" }, Nivel: 3, Plantilla: { Id: 3, Nombre: "Celestial" }, Dote: { Id: 45, Nombre: "Familiar celestial" }, Mascota: "familiar" },
+                { Clase: { Id: 9, Nombre: "Mago" }, Nivel: 3 },
+                { Clase: { Id: 9, Nombre: "Mago" }, Nivel: 3, Mascota: "otra" },
+            ],
+        }, 1);
+        expect(buho.Niveles_clase.map((f) => f.Mascota)).toEqual(["companero", "familiar", null, null]);
+    });
+
+    it("GET /familiares/progresion y su caché: la tabla por defecto primero, sus filas en orden y los `null` del contrato", () => {
+        const api = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
+        expect(api.Tablas.map((t) => [t.Id, t.Por_defecto])).toEqual([[1, true], [2, false]]);
+        expect(api.Tablas[0].Bonos[5]).toEqual({ Nivel: 11, Armadura_natural: 6, Inteligencia: 11, Rc_sobre_nivel: 5 });
+        expect(api.Tablas[1].Bonos[0]).toEqual({ Nivel: 1, Armadura_natural: 1, Inteligencia: null, Rc_sobre_nivel: null });
+        expect(api.Tablas[0].Aptitudes[0]).toEqual({
+            Id: 1, Nivel: 1, Especial: null, Dote: { Id: 17, Nombre: "Alerta" }, Destinatario: "amo", Nota: NOTA_ALERTA,
+        });
+        expect(api.Plantillas.find((p) => p.Id === 5)).toEqual({
+            Id: 5, Nombre: "Mejorado", Tabla: { Id: 1, Nombre: "Manual del jugador" }, Pg_ataque_mayores: false, Sin_aptitudes: [7],
+        });
+        // La caché, con las listas como objetos y la de por defecto detrás.
+        const cache = leerFamiliarProgresion({
+            Tablas: { 0: PROGRESION_FAMILIAR_API.Tablas[1], 1: { ...PROGRESION_FAMILIAR_API.Tablas[0], Bonos: { 1: PROGRESION_FAMILIAR_API.Tablas[0].Bonos[1], 0: PROGRESION_FAMILIAR_API.Tablas[0].Bonos[0] } } },
+            Plantillas: { 0: { ...PROGRESION_FAMILIAR_API.Plantillas[3], Sin_aptitudes: { 0: 7 } } },
+        });
+        expect(cache.Tablas.map((t) => t.Id)).toEqual([1, 2]);
+        expect(cache.Tablas[0].Bonos.map((b) => b.Nivel)).toEqual([1, 3]);
+        expect(cache.Plantillas[0].Sin_aptitudes).toEqual([7]);
+        expect(leerFamiliarProgresion(null)).toEqual({ Tablas: [], Plantillas: [] });
     });
 });

@@ -88,6 +88,9 @@ export interface MonstruoHabilidad {
     Rangos: number;
 }
 
+/** De qué mascota es una fila de `Niveles_clase`: la que da su clase (contrato, `MonstruoNivelClase.Mascota`). */
+export type MascotaDeFila = 'companero' | 'familiar';
+
 export interface MonstruoNivelClase {
     Clase: {
         Id: number;
@@ -116,6 +119,12 @@ export interface MonstruoNivelClase {
         Id: number;
         Nombre: string;
     };
+    /**
+     * De qué mascota es la fila (`companero` o `familiar`: la que da su clase; el animal celestial de Compañero elevado, de
+     * compañero); `null` si su clase no da ninguna. Desde el 2026-11-21 (cachés `Monstruos` 16, `Familiares` y `Compañeros
+     * animales` 13).
+     */
+    Mascota: MascotaDeFila | null;
 }
 
 export interface PersonajeRefMonstruo {
@@ -220,19 +229,23 @@ export interface CompaneroBonosNivel {
     Trucos_adicionales: number;
 }
 
-/** A quién va lo que da un nivel del compañero. */
+/** A quién va lo que da un nivel de la mascota (el compañero o el familiar). */
 export type DestinatarioAptitudMascota = 'amo' | 'mascota' | 'ambos';
 
 /**
- * Lo que gana el compañero o su amo desde un nivel (`Aptitudes` de `GET /companeros/progresion`): una aptitud
- * (`Especial`) o una dote (`Dote`) y, si es una dote, la aptitud que gana el compañero que no cumple sus prerrequisitos.
+ * Lo que gana la mascota o su amo desde un nivel (`Aptitudes` de `GET /companeros/progresion` y de cada tabla de
+ * `GET /familiares/progresion`, tabla `mascota_aptitudes`): una aptitud (`Especial`) o una dote (`Dote`) y a quién va.
  */
-export interface CompaneroAptitudNivel {
+export interface MascotaAptitudNivel {
     Id: number;
     Nivel: number;
     Especial: { Id: number; Nombre: string; } | null;
     Dote: { Id: number; Nombre: string; } | null;
     Destinatario: DestinatarioAptitudMascota;
+}
+
+/** Lo que da un nivel del compañero: si es una dote, la aptitud que gana el compañero que no cumple sus prerrequisitos. */
+export interface CompaneroAptitudNivel extends MascotaAptitudNivel {
     Alternativa: { Id: number; Nombre: string; } | null;
 }
 
@@ -240,6 +253,52 @@ export interface CompaneroAptitudNivel {
 export interface CompaneroProgresion {
     Bonos: CompaneroBonosNivel[];
     Aptitudes: CompaneroAptitudNivel[];
+}
+
+/**
+ * Una fila de una tabla del familiar (`Bonos` de cada tabla de `GET /familiares/progresion`): lo que tiene desde ese nivel
+ * del amo.
+ */
+export interface FamiliarBonosNivel {
+    Nivel: number;
+    /** Se suma a la armadura natural de su monstruo. */
+    Armadura_natural: number;
+    /** La Inteligencia del familiar (si la de su monstruo es mayor, la suya); `null`, la de su monstruo. */
+    Inteligencia: number | null;
+    /** La resistencia a conjuros es el nivel del amo más esto; `null`, aún no tiene. */
+    Rc_sobre_nivel: number | null;
+}
+
+/** Lo que da un nivel del familiar: con lo que dice la hoja (`Nota`: Alerta, solo con él al alcance de la mano). */
+export interface FamiliarAptitudNivel extends MascotaAptitudNivel {
+    Nota: string | null;
+}
+
+/** Una tabla del familiar (`Tablas` de `GET /familiares/progresion`): la del Manual del jugador o la dracónica. */
+export interface FamiliarTabla {
+    Id: number;
+    Nombre: string;
+    Por_defecto: boolean;
+    Bonos: FamiliarBonosNivel[];
+    Aptitudes: FamiliarAptitudNivel[];
+}
+
+/** Una pseudoplantilla de familiar (`Plantillas` de `GET /familiares/progresion`): la tabla que sigue y lo que cambia. */
+export interface FamiliarPlantillaProgresion {
+    Id: number;
+    Nombre: string;
+    /** La que sigue (la suya o la de por defecto). */
+    Tabla: { Id: number; Nombre: string; } | null;
+    /** Sus PG y su ataque base, los mayores entre los del amo (la mitad de sus PG) y los suyos (el dracónico, el celestial). */
+    Pg_ataque_mayores: boolean;
+    /** Los `Id` de las `Aptitudes` de su tabla que no gana (el mejorado, comunicarse con animales de su mismo tipo). */
+    Sin_aptitudes: number[];
+}
+
+/** `GET /familiares/progresion` (caché `FamiliaresProgresion`): las tablas del familiar y lo que sigue cada pseudoplantilla. */
+export interface FamiliarProgresion {
+    Tablas: FamiliarTabla[];
+    Plantillas: FamiliarPlantillaProgresion[];
 }
 
 export interface CompaneroMonstruoDetalle extends MonstruoDetalle {

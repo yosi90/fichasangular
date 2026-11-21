@@ -11,7 +11,14 @@ import {
     DestinatarioAptitudMascota,
     DIETAS_MONSTRUO,
     EspecialContextualMonstruo,
+    FamiliarAptitudNivel,
+    FamiliarBonosNivel,
     FamiliarMonstruoDetalle,
+    FamiliarPlantillaProgresion,
+    FamiliarProgresion,
+    FamiliarTabla,
+    MascotaAptitudNivel,
+    MascotaDeFila,
     MonstruoAlineamientoBasicoRef,
     MonstruoAlineamientosRequeridos,
     MonstruoAtaque,
@@ -38,7 +45,7 @@ import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeRacial } from "./racial-mapper";
-import { idNombre, toArray, toBoolean, toInt, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { idNombre, toArray, toBoolean, toInt, toIntOrNull, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizeManualLegacy } from './manual-mapper';
 import { leerArmasNaturales } from './armas-naturales';
@@ -183,6 +190,8 @@ function normalizeHabilidad(raw: any): MonstruoHabilidad {
     };
 }
 
+const MASCOTAS_DE_FILA: readonly MascotaDeFila[] = ['companero', 'familiar'];
+
 function normalizeNivelClase(raw: any): MonstruoNivelClase {
     return {
         Clase: {
@@ -208,6 +217,7 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
             Id: toNumber(raw?.Dote?.Id),
             Nombre: toText(raw?.Dote?.Nombre),
         },
+        Mascota: MASCOTAS_DE_FILA.includes(raw?.Mascota) ? raw.Mascota : null,
     };
 }
 
@@ -365,6 +375,25 @@ export function normalizeCompaneroMonstruoDetalle(raw: any, depth = 1): Companer
 const DESTINATARIOS_APTITUD_MASCOTA: readonly DestinatarioAptitudMascota[] = ['amo', 'mascota', 'ambos'];
 
 /**
+ * Lo que da un nivel de una mascota (`mascota_aptitudes`, en el compañero y en cada tabla del familiar) con lo que añade
+ * cada una (`extra`), de menor a mayor nivel. Una sin aptitud ni dote, o con un destinatario que no es del contrato, no
+ * cuenta.
+ */
+function leerAptitudesMascota<T extends MascotaAptitudNivel>(raw: any, extra: (fila: any) => Omit<T, keyof MascotaAptitudNivel>): T[] {
+    return toArray(raw)
+        .map((fila: any) => ({
+            Id: toInt(fila?.Id),
+            Nivel: toInt(fila?.Nivel),
+            Especial: idNombre(fila?.Especial),
+            Dote: idNombre(fila?.Dote),
+            Destinatario: fila?.Destinatario,
+            ...extra(fila),
+        }) as T)
+        .filter((fila) => (fila.Especial || fila.Dote) && DESTINATARIOS_APTITUD_MASCOTA.includes(fila.Destinatario))
+        .sort((a, b) => a.Nivel - b.Nivel || a.Id - b.Id);
+}
+
+/**
  * `GET /companeros/progresion` y su caché `CompanerosProgresion` (que la guarda tal cual; la RTDB puede dar las listas como
  * objetos): la tabla del compañero animal, de menor a mayor nivel, y lo que da cada nivel. Una aptitud sin aptitud ni
  * dote, o con un destinatario que no es del contrato, no cuenta.
@@ -380,18 +409,45 @@ export function leerCompaneroProgresion(raw: any): CompaneroProgresion {
         }))
         .filter((fila) => fila.Nivel > 0)
         .sort((a, b) => a.Nivel - b.Nivel);
-    const aptitudes: CompaneroAptitudNivel[] = toArray(raw?.Aptitudes)
-        .map((fila: any) => ({
-            Id: toInt(fila?.Id),
-            Nivel: toInt(fila?.Nivel),
-            Especial: idNombre(fila?.Especial),
-            Dote: idNombre(fila?.Dote),
-            Destinatario: fila?.Destinatario,
-            Alternativa: idNombre(fila?.Alternativa),
-        }))
-        .filter((fila) => (fila.Especial || fila.Dote) && DESTINATARIOS_APTITUD_MASCOTA.includes(fila.Destinatario))
-        .sort((a, b) => a.Nivel - b.Nivel || a.Id - b.Id);
+    const aptitudes = leerAptitudesMascota<CompaneroAptitudNivel>(raw?.Aptitudes, (fila) => ({ Alternativa: idNombre(fila?.Alternativa) }));
     return { Bonos: bonos, Aptitudes: aptitudes };
+}
+
+/**
+ * `GET /familiares/progresion` y su caché `FamiliaresProgresion` (que la guarda tal cual; la RTDB puede dar las listas como
+ * objetos): las tablas del familiar, la de por defecto primero, con sus filas de menor a mayor nivel y lo que da cada
+ * nivel, y lo que sigue cada pseudoplantilla.
+ */
+export function leerFamiliarProgresion(raw: any): FamiliarProgresion {
+    const tablas: FamiliarTabla[] = toArray(raw?.Tablas)
+        .map((tabla: any) => ({
+            Id: toInt(tabla?.Id),
+            Nombre: toText(tabla?.Nombre).trim(),
+            Por_defecto: toBoolean(tabla?.Por_defecto),
+            Bonos: toArray(tabla?.Bonos)
+                .map((fila: any): FamiliarBonosNivel => ({
+                    Nivel: toInt(fila?.Nivel),
+                    Armadura_natural: toInt(fila?.Armadura_natural),
+                    Inteligencia: toIntOrNull(fila?.Inteligencia),
+                    Rc_sobre_nivel: toIntOrNull(fila?.Rc_sobre_nivel),
+                }))
+                .filter((fila) => fila.Nivel > 0)
+                .sort((a, b) => a.Nivel - b.Nivel),
+            Aptitudes: leerAptitudesMascota<FamiliarAptitudNivel>(tabla?.Aptitudes, (fila) => ({ Nota: toText(fila?.Nota).trim() || null })),
+        }))
+        .filter((tabla) => tabla.Id > 0)
+        .sort((a, b) => Number(b.Por_defecto) - Number(a.Por_defecto) || a.Id - b.Id);
+    const plantillas: FamiliarPlantillaProgresion[] = toArray(raw?.Plantillas)
+        .map((plantilla: any) => ({
+            Id: toInt(plantilla?.Id),
+            Nombre: toText(plantilla?.Nombre).trim(),
+            Tabla: idNombre(plantilla?.Tabla),
+            Pg_ataque_mayores: toBoolean(plantilla?.Pg_ataque_mayores),
+            Sin_aptitudes: toArray(plantilla?.Sin_aptitudes).map((id: any) => toInt(id)).filter((id: number) => id > 0),
+        }))
+        .filter((plantilla) => plantilla.Id > 0)
+        .sort((a, b) => a.Id - b.Id);
+    return { Tablas: tablas, Plantillas: plantillas };
 }
 
 export function normalizeMonstruoDetalleArray(raw: any, depth = 1): MonstruoDetalle[] {
