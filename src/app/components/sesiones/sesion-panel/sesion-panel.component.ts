@@ -34,7 +34,10 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { SesionesService, esSesionDesactualizada } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { TrucoService } from 'src/app/services/truco.service';
-import { contextoDelTrucoEnsenado, motivoTrucoEnsenado, textoDeLoQueSustituye, trucosQueSeEnsenan } from 'src/app/services/utils/companero-trucos';
+import {
+    TRUCOS_POR_INTELIGENCIA, TrucoConMotivo, contextoDelTrucoEnsenado, motivoTrucoEnsenado, porMotivoYNombre, textoDeLoQueSustituye,
+    trucosQueSeEnsenan,
+} from 'src/app/services/utils/companero-trucos';
 import { nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { nivelLanzadorMinimo, precioCopiaLibro } from 'src/app/services/utils/libro-conjuros';
@@ -82,9 +85,7 @@ interface ConjuroLibroPanel {
 }
 
 /** Un truco que se le puede enseñar al compañero, con por qué no (`null` si se puede) y lo que sustituye. */
-export interface TrucoEnsenablePanel {
-    truco: Truco;
-    motivo: string | null;
+export interface TrucoEnsenablePanel extends TrucoConMotivo {
     sustituye: string | null;
 }
 
@@ -379,7 +380,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         const contexto = contextoDelTrucoEnsenado(this.companero, catalogo, this.dotesCatalogo ?? []);
         return trucosQueSeEnsenan(catalogo, this.pj?.Oficial === false && !this.soloOficial)
             .map((truco) => ({ truco, motivo: motivoTrucoEnsenado(truco, contexto), sustituye: textoDeLoQueSustituye(truco, contexto) }))
-            .sort((a, b) => Number(a.motivo !== null) - Number(b.motivo !== null) || a.truco.Nombre.localeCompare(b.truco.Nombre, 'es'));
+            .sort(porMotivoYNombre);
     }
 
     /** Lo que sabe ya y cuántos puede aprender: «Sabe 3 de 6 (3 por punto de Inteligencia y lo de sus dotes).» */
@@ -389,7 +390,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         const contexto = contextoDelTrucoEnsenado(this.companero, this.trucosCatalogo, this.dotesCatalogo ?? []);
         if (contexto.inteligencia === null || contexto.inteligencia >= 3)
             return '';
-        return `Ha aprendido ${contexto.cuenta} de ${contexto.limite} (3 por punto de Inteligencia, más lo que dan sus dotes). `
+        return `Ha aprendido ${contexto.cuenta} de ${contexto.limite} (${TRUCOS_POR_INTELIGENCIA} por punto de Inteligencia, más lo que dan sus dotes). `
             + 'Rol no tira la prueba de Trato con animales ni cuenta las semanas: apúntalo cuando lo haya aprendido.';
     }
 

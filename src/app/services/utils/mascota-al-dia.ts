@@ -115,9 +115,14 @@ function valoresDelFamiliar(f: PersonajeCreateFamiliarDto): string {
         + `Int ${toInt(f.inteligencia)}, ${rc}`;
 }
 
+/** El título de sus filas: «Compañero animal (Gruk)»; sin nombre, «Compañero animal (compañero animal)». */
+function tituloDeLaMascota(que: string, mascota: { nombre?: string | null; }): string {
+    return `${que} (${`${mascota.nombre ?? ''}`.trim() || que.toLocaleLowerCase('es')})`;
+}
+
 function filaDeLaMascota<T extends { nombre: string; inactiva?: boolean; }>(que: string, antes: T, despues: T,
     valores: (m: T) => string, estado: EstadoDeLaMascota | undefined): FilaDeLaMascota | null {
-    const titulo = `${que} (${`${despues.nombre ?? ''}`.trim() || que.toLocaleLowerCase('es')})`;
+    const titulo = tituloDeLaMascota(que, despues);
     // Las frases de la API (`utils/mascota_inactiva.py`; contrato: `personajes.md`, «Las frases de "queda inactivo"»).
     if (despues.inactiva && !antes.inactiva) {
         const motivo = `${estado?.motivo ?? ''}`.trim();
@@ -200,8 +205,7 @@ export function filasDeLasMascotas(entrada: PersonajeCreateRequestDto, ficha: Pe
             filas.push(fila);
         // Inactivo vale su criatura tal cual: ya lo dice su fila.
         if (!ficha.companero.inactiva) {
-            const titulo = `Compañero animal (${`${ficha.companero.nombre ?? ''}`.trim() || 'compañero animal'})`;
-            filas.push(...filasDeLoQueElige(titulo, entrada.companero, ficha.companero, nombres));
+            filas.push(...filasDeLoQueElige(tituloDeLaMascota('Compañero animal', ficha.companero), entrada.companero, ficha.companero, nombres));
         }
     }
     if (entrada.familiar && ficha.familiar) {

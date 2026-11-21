@@ -6,6 +6,7 @@ import { sinPuntuacion } from 'src/app/services/utils/caracteristicas';
 import { inteligenciaDelCompanero, nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { costeDelTruco, costeDeLosTrucos } from 'src/app/services/utils/truco-coste';
 
 /*
@@ -14,8 +15,6 @@ import { costeDelTruco, costeDeLosTrucos } from 'src/app/services/utils/truco-co
  * (`Trucos_adi`) los elige el jugador: trucos sueltos, sin repetir, con sus requisitos y contando su `Coste`; no se cambian,
  * y al perder un nivel se pierden los últimos que eligió.
  */
-
-export { costeDelTruco, costeDeLosTrucos } from 'src/app/services/utils/truco-coste';
 
 /** El aviso de cuando lo elegido en el selector ya no vale al ponerlo (en la creación y en las sesiones). */
 export const AVISO_TRUCOS_QUE_YA_NO_VALEN = {
@@ -191,10 +190,12 @@ export function contextoDelTrucoEnsenado(companero: CompaneroMonstruoDetalle | n
     const inteligencia = inteligenciaDelCompanero(companero);
     const int = sinPuntuacion(inteligencia) ? null : toInt(inteligencia);
     const aprendidos = trucosAprendidosDelCompanero(companero);
+    // Lo que sabe, sus aptitudes y su tipo, como para los adicionales.
+    const { sabe, aptitudes, idTipo } = contextoDeTrucosDelCompanero(companero, catalogo);
     return {
-        sabe: idsDeLoQueSabe(trucosDelCompanero(companero).map((t) => t.Id), catalogo),
-        aptitudes: aptitudesDeLaCriatura(companero),
-        idTipo: toInt(companero?.Tipo?.Id),
+        sabe,
+        aptitudes,
+        idTipo,
         inteligencia: int,
         limite: int === null ? 0 : TRUCOS_POR_INTELIGENCIA * int + trucosExtraDeSusDotes(companero, catalogoDotes),
         cuenta: costeDeLosTrucos(aprendidos),
@@ -257,9 +258,20 @@ export function trucosQueSeEnsenan(catalogo: readonly Truco[], incluirHomebrew: 
     return catalogo.filter((t) => incluirHomebrew || t.Oficial);
 }
 
-/** Los trucos sueltos del catálogo que se le ofrecen como adicionales (los oficiales, salvo en una ficha homebrew), por nombre. */
+/** Los trucos sueltos del catálogo que se le ofrecen como adicionales (los que se enseñan, sin los fines). */
 export function trucosQueSeOfrecen(catalogo: readonly Truco[], incluirHomebrew: boolean): Truco[] {
-    return catalogo.filter((t) => !t.Es_fin && (incluirHomebrew || t.Oficial));
+    return trucosQueSeEnsenan(catalogo, incluirHomebrew).filter((t) => !t.Es_fin);
+}
+
+/** Un truco de una lista para elegir (los adicionales y los enseñados), con por qué no se puede elegir (`null` si se puede). */
+export interface TrucoConMotivo {
+    truco: Truco;
+    motivo: string | null;
+}
+
+/** El orden de esas listas: primero los que se pueden elegir y después los demás, cada grupo por nombre. */
+export function porMotivoYNombre(a: TrucoConMotivo, b: TrucoConMotivo): number {
+    return Number(a.motivo !== null) - Number(b.motivo !== null) || compararTexto(a.truco.Nombre, b.truco.Nombre);
 }
 
 /** Si le queda algún truco adicional por elegir y alguno de los que se ofrecen le vale: si no, el selector sobra. */

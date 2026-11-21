@@ -1,14 +1,10 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Truco } from 'src/app/interfaces/truco';
-import { contextoDeTrucosDelCompanero, costeDeLosTrucos, motivoTrucoAdicional, trucosAdicionalesPendientes, trucosQueSeOfrecen } from 'src/app/services/utils/companero-trucos';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
-
-/** Un truco de la lista, con por qué no se puede elegir ahora (`null` si se puede). */
-export interface TrucoDelSelector {
-    truco: Truco;
-    motivo: string | null;
-}
+import {
+    TrucoConMotivo, contextoDeTrucosDelCompanero, motivoTrucoAdicional, porMotivoYNombre, trucosAdicionalesPendientes, trucosQueSeOfrecen,
+} from 'src/app/services/utils/companero-trucos';
+import { costeDeLosTrucos } from 'src/app/services/utils/truco-coste';
 
 /**
  * Los trucos adicionales del compañero animal (contrato: `personajes.md`, «Los trucos del compañero»): los trucos sueltos
@@ -47,17 +43,17 @@ export class SelectorTrucosModalComponent {
     }
 
     /** Los que se ofrecen: primero los que puede elegir y después los demás, con su motivo; los elegidos, como elegibles. */
-    get opciones(): TrucoDelSelector[] {
+    get opciones(): TrucoConMotivo[] {
         const elegidos = new Set(this.elegidos.map((t) => t.Id));
         const otros = this.elegidos;
         return trucosQueSeOfrecen(this.catalogo, this.incluirHomebrew)
-            .map((truco): TrucoDelSelector => ({
+            .map((truco): TrucoConMotivo => ({
                 truco,
                 motivo: elegidos.has(truco.Id)
                     ? null
                     : motivoTrucoAdicional(truco, contextoDeTrucosDelCompanero(this.companero, this.catalogo, otros)),
             }))
-            .sort((a, b) => Number(a.motivo !== null) - Number(b.motivo !== null) || compararTexto(a.truco.Nombre, b.truco.Nombre));
+            .sort(porMotivoYNombre);
     }
 
     get hayAlgunoQueCabe(): boolean {
@@ -82,7 +78,7 @@ export class SelectorTrucosModalComponent {
         return this.opciones.find((o) => o.truco.Id === truco.Id)?.motivo ?? null;
     }
 
-    trackByTruco(_index: number, opcion: TrucoDelSelector): number {
+    trackByTruco(_index: number, opcion: TrucoConMotivo): number {
         return opcion.truco.Id;
     }
 
@@ -90,7 +86,7 @@ export class SelectorTrucosModalComponent {
      * Lo enseña en el detalle y, si se puede, lo elige o lo quita. Al quitar uno, se quitan también los elegidos después
      * que ya no valdrían sin él (el que lo pedía).
      */
-    alternar(opcion: TrucoDelSelector): void {
+    alternar(opcion: TrucoConMotivo): void {
         this.enDetalle = opcion.truco;
         if (this.esElegido(opcion.truco)) {
             const sin = this.elegidos.filter((t) => t.Id !== opcion.truco.Id);
