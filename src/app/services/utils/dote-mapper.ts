@@ -290,6 +290,8 @@ export function normalizeContexto(raw: any): DoteContexto {
         Id_personaje: toNumber(raw?.Id_personaje, 0),
         Origen: raw?.Origen ?? "Desconocido",
         ...(raw?.Sin_prerrequisitos === true ? { Sin_prerrequisitos: true } : {}),
+        // La que eligió el compañero animal con sus DG.
+        ...(toNumber(raw?.Dg, 0) > 0 ? { Dg: toNumber(raw?.Dg, 0) } : {}),
         // La de un monstruo (`Entidad` «Monstruo»), la «(B)» de su bloque.
         ...(typeof raw?.Adicional === "boolean" ? { Adicional: raw.Adicional } : {}),
     };

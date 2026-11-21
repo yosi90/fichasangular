@@ -271,7 +271,13 @@ export interface PersonajeCreateCompaneroDto {
     trucosAdi: number;
     habilidades: PersonajeCreateHabilidadMascotaDto[];
     especiales: Array<{ idEspecial: number; idExtra: number; }>;
-    dotes: Array<{ idDote: number; idExtra: number; }>;
+    /**
+     * Las de su tabla (sin `dg`) y las que elige con sus DG (con `dg`, el DG total en que la ganó; contrato: «Las dotes y
+     * las mejoras que elige el compañero»). Las de su monstruo no se mandan.
+     */
+    dotes: Array<{ idDote: number; idExtra: number; dg?: number; }>;
+    /** Sus mejoras de característica (+1 al llegar a cada múltiplo de 4 DG por sus DG adicionales). */
+    mejoras?: Array<{ dg: number; idCaracteristica: number; }>;
     /** Inactivo hasta que vuelva a cumplir lo que pide su fila de la lista (como el del familiar); sin él, activo. */
     inactiva?: boolean;
 }

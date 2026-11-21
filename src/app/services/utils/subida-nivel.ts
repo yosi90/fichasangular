@@ -344,11 +344,17 @@ export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, an
         if (toInt(despues[k]) !== toInt(antes?.[k]))
             resultado[k] = toInt(despues[k]);
     });
-    resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
-    resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
-    // Los rangos, solo si bajan sus DG adicionales (la subida no los cambia: se reparten aparte) y el motor los cambia.
-    if (toInt(despues.dgAdi) < toInt(antes?.dgAdi) && claveElemento(antes?.habilidades ?? []) !== claveElemento(despues.habilidades ?? []))
+    resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => `${toInt(x?.idEspecial)}`);
+    // Las de su tabla por id; las que elige con sus DG, por dote, extra y DG (una repetida con otro extra es otra).
+    resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes,
+        (x) => toInt(x?.dg) > 0 ? `${toInt(x?.idDote)}|${Math.max(0, toInt(x?.idExtra))}|${toInt(x?.dg)}` : `${toInt(x?.idDote)}`);
+    // Los rangos, si cambian sus DG adicionales y el motor los cambia: al bajar («todo o nada») y al subir (los de sus DG
+    // nuevos, que se reparten en la subida).
+    if (toInt(despues.dgAdi) !== toInt(antes?.dgAdi) && claveElemento(antes?.habilidades ?? []) !== claveElemento(despues.habilidades ?? []))
         resultado.habilidades = JSON.parse(JSON.stringify(despues.habilidades ?? []));
+    // Sus mejoras de característica, como las deja el motor si cambian (contrato: «Las dotes y las mejoras que elige…»).
+    if (claveElemento(antes?.mejoras ?? []) !== claveElemento(despues.mejoras ?? []))
+        resultado.mejoras = JSON.parse(JSON.stringify(despues.mejoras ?? []));
     conSuActividad(resultado, despues);
     return resultado;
 }
@@ -365,7 +371,7 @@ function conSuActividad(resultado: { inactiva?: boolean; }, despues: { inactiva?
  * Las aptitudes o las dotes guardadas de una mascota con lo que gana o pierde en el motor (por id, entre `previas` y
  * `nuevas`): lo que guardaba la ficha con otra forma (el extra de antes) se queda.
  */
-function conLaDiferenciaPorId<T>(guardadas: T[] | undefined, previas: T[] | undefined, nuevas: T[] | undefined, id: (x: T) => number): T[] {
+function conLaDiferenciaPorId<T>(guardadas: T[] | undefined, previas: T[] | undefined, nuevas: T[] | undefined, id: (x: T) => string): T[] {
     const idsAntes = new Set((previas ?? []).map(id));
     const idsDespues = new Set((nuevas ?? []).map(id));
     const quedan = (guardadas ?? []).filter((x) => !(idsAntes.has(id(x)) && !idsDespues.has(id(x))));
@@ -400,8 +406,8 @@ export function familiarConLoDelMotor(guardado: PersonajeCreateFamiliarDto, ante
         if (toInt(despues[k]) !== toInt(antes?.[k]))
             resultado[k] = toInt(despues[k]);
     });
-    resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
-    resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
+    resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => `${toInt(x?.idEspecial)}`);
+    resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => `${toInt(x?.idDote)}`);
     // Al quedar inactivo o activarse, sus rangos: los de su criatura o los mejores entre los suyos y los de su amo.
     if (!!guardado.inactiva !== !!despues.inactiva)
         resultado.habilidades = JSON.parse(JSON.stringify(despues.habilidades ?? []));

@@ -31,6 +31,11 @@ export interface DoteContextoPersonaje extends DoteContextoBase {
      * homebrew. Desde el 2026-11-13.
      */
     Sin_prerrequisitos?: boolean;
+    /**
+     * En una dote del compañero animal, el DG total en que la eligió (contrato: «Las dotes y las mejoras que elige el
+     * compañero»); sin él, la de su monstruo o su tabla.
+     */
+    Dg?: number;
 }
 
 export interface DoteContextoRaza extends DoteContextoBase {

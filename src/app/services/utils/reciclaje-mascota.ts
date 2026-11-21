@@ -347,13 +347,25 @@ export function fichaConLaMascota(entrada: PersonajeCreateRequestDto, plan: Plan
 
 /**
  * La ficha de la subida con los rangos del compañero nuevo (los que se repartieron otra vez en la subida, del cuerpo del
- * motor `despues`): la subida no cambia las habilidades de la mascota, pero el reciclaje las elige de nuevo.
+ * motor `despues`), sus dotes, sus mejoras y las características que cambian con ellas: el reciclaje las elige de nuevo.
  */
 export function conLosRangosDelCompaneroNuevo(ficha: PersonajeCreateRequestDto, plan: PlanMascota | null | undefined,
     despues: PersonajeCreateRequestDto): PersonajeCreateRequestDto {
     if (plan?.hueco.mascota !== 'companero' || !ficha.companero || !despues.companero)
         return ficha;
-    return { ...ficha, companero: { ...ficha.companero, habilidades: JSON.parse(JSON.stringify(despues.companero.habilidades ?? [])) } };
+    // Con lo que elige con sus DG (contrato: «Las dotes y las mejoras que elige el compañero»): sus dotes y sus mejoras.
+    return {
+        ...ficha,
+        companero: {
+            ...ficha.companero,
+            habilidades: JSON.parse(JSON.stringify(despues.companero.habilidades ?? [])),
+            dotes: JSON.parse(JSON.stringify(despues.companero.dotes ?? [])),
+            mejoras: JSON.parse(JSON.stringify(despues.companero.mejoras ?? [])),
+            fuerza: despues.companero.fuerza,
+            destreza: despues.companero.destreza,
+            inteligencia: despues.companero.inteligencia,
+        },
+    };
 }
 
 /** El cuerpo `reciclaje` de la mascota (contrato, «La mascota: el compañero animal o el familiar»). */
