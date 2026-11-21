@@ -23,6 +23,7 @@ import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
 import { SesionesService } from './sesiones.service';
 import { SubtipoService } from './subtipo.service';
+import { TipoCriaturaService } from './tipo-criatura.service';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
 import { familiarConSuCriatura } from './utils/familiar-reglas';
 import { idDelMonstruo } from './utils/mascota-cupos';
@@ -65,6 +66,7 @@ export class MotorDesdeFichaService {
         private subtipoSvc: SubtipoService,
         private deidadSvc: DeidadService,
         private monstruoSvc: MonstruoService,
+        private tipoCriaturaSvc: TipoCriaturaService,
     ) { }
 
     /** El primer valor de un catálogo, o `null` si falla. */
@@ -229,9 +231,9 @@ export class MotorDesdeFichaService {
     }
 
     /**
-     * El personaje con las habilidades del monstruo de su compañero (`Habilidades_monstruo`): sus rangos siguen el criterio
-     * «todo o nada» al bajar sus DG adicionales (al perder un nivel o quedar inactivo). Sin el monstruo, sus rangos se quedan
-     * como están.
+     * El personaje con las habilidades del monstruo de su compañero y los puntos por DG de su tipo (`Habilidades_monstruo`,
+     * `Puntos_habilidad_tipo`): sus rangos siguen el criterio «todo o nada» al bajar sus DG adicionales (al perder un nivel o
+     * quedar inactivo). Sin el monstruo o su tipo, sus rangos se quedan como están.
      */
     private async conLaCriaturaDelCompanero(pj: Personaje): Promise<Personaje> {
         const companeros = pj?.Companeros ?? [];
@@ -239,7 +241,11 @@ export class MotorDesdeFichaService {
             return pj;
         const conSuCriatura = await Promise.all(companeros.map(async (companero) => {
             const monstruo = await this.monstruoDeLaMascota(companero);
-            return monstruo ? { ...companero, Habilidades_monstruo: [...(monstruo.Habilidades ?? [])] } : companero;
+            const idTipo = toInt(monstruo?.Tipo?.Id);
+            const tipo = idTipo > 0 ? await this.primero(Promise.resolve().then(() => this.tipoCriaturaSvc.getTipoCriatura(idTipo))) : null;
+            if (!monstruo || !tipo || tipo.Puntos_habilidad === undefined || tipo.Puntos_habilidad === null)
+                return companero;
+            return { ...companero, Habilidades_monstruo: [...(monstruo.Habilidades ?? [])], Puntos_habilidad_tipo: toInt(tipo.Puntos_habilidad) };
         }));
         return { ...pj, Companeros: conSuCriatura };
     }

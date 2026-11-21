@@ -207,8 +207,9 @@ export function vidaMediaPorDados(dados: number, carasDado: number, modConstituc
 /**
  * El compañero animal ya trae sus bonos por nivel del druida (DG adicionales, armadura natural, Fuerza, Destreza y
  * trucos; `clonarCompaneroParaPersonaje`); inactivo, los de su monstruo (`inactiva`). Sus puntos de golpe son los medios de
- * sus DG (los suyos y los adicionales). Con las habilidades de su monstruo (`Habilidades_monstruo`, en las sesiones), sus
- * rangos son los que le caben con sus DG adicionales (`rangosDelCompaneroQueCaben`).
+ * sus DG (los suyos y los adicionales). Con las habilidades de su monstruo y los puntos por DG de su tipo
+ * (`Habilidades_monstruo` y `Puntos_habilidad_tipo`, en las sesiones), sus rangos son los que le caben con sus DG
+ * adicionales (`rangosDelCompaneroQueCaben`).
  */
 export function construirCompaneroParaGuardar(
     companero: CompaneroMonstruoDetalle,
@@ -218,8 +219,9 @@ export function construirCompaneroParaGuardar(
     const dgAdi = Math.max(0, toInt(companero?.Dg_adi));
     const dados = dadosGolpeCompanero(companero);
     const caras = carasDado(companero?.Dados_golpe?.Tipo_dado?.Nombre);
-    const habilidades = companero?.Habilidades_monstruo
-        ? rangosDelCompaneroQueCaben(companero.Habilidades ?? [], companero.Habilidades_monstruo, dgAdi, caracteristicas['Inteligencia'])
+    const habilidades = companero?.Habilidades_monstruo && companero.Puntos_habilidad_tipo !== undefined
+        ? rangosDelCompaneroQueCaben(companero.Habilidades ?? [], companero.Habilidades_monstruo, dgAdi,
+            companero.Puntos_habilidad_tipo, caracteristicas['Inteligencia'])
         : companero?.Habilidades;
     return {
         nombre: nombreMascota(companero?.Nombre, 'Compañero'),

@@ -93,9 +93,16 @@ export function esDotePropiaDelCompanero(item: { Contexto?: Record<string, any> 
     return entidad === 'personaje' || entidad === 'companero';
 }
 
-/** Los puntos de habilidad de cada DG adicional del compañero, un animal: máx(1, 2 + mod. de Int) (MM, pág. 290). */
-export function puntosPorDgDelCompanero(inteligencia: number | null | undefined): number {
-    return Math.max(1, 2 + (inteligencia === null || inteligencia === undefined ? -5 : modificadorCaracteristica(toInt(inteligencia))));
+/**
+ * Los puntos de habilidad de cada DG adicional del compañero: máx(1, puntos por DG del tipo de su monstruo + mod. de Int)
+ * (MM, pág. 290; los `Puntos_habilidad` del tipo, como el reparto de la creación). Sin Inteligencia (una sabandija
+ * descerebrada; `null`, o el 0 con que la base guarda el «—», como `utils/caracteristicas.puntuacion` de la API), ninguno
+ * (la nota de la tabla 4-1).
+ */
+export function puntosPorDgDelCompanero(puntosDelTipo: number, inteligencia: number | null | undefined): number {
+    if (inteligencia === null || inteligencia === undefined || toInt(inteligencia) <= 0)
+        return 0;
+    return Math.max(1, toInt(puntosDelTipo) + modificadorCaracteristica(toInt(inteligencia)));
 }
 
 /**
@@ -107,7 +114,7 @@ export function puntosPorDgDelCompanero(inteligencia: number | null | undefined)
  * a 0. Al perder un nivel (o quedar inactivo, sin DG adicionales) pierde así los rangos de sus puntos.
  */
 export function rangosDelCompaneroQueCaben(habilidades: readonly MonstruoHabilidad[], delMonstruo: readonly MonstruoHabilidad[],
-    dgAdicionales: number, inteligencia: number | null | undefined): MonstruoHabilidad[] {
+    dgAdicionales: number, puntosDelTipo: number, inteligencia: number | null | undefined): MonstruoHabilidad[] {
     const dg = Math.max(0, toInt(dgAdicionales));
     const base = new Map((delMonstruo ?? []).map((h) => [toInt(h?.Id_habilidad), h] as const));
     let coste = 0;
@@ -119,7 +126,7 @@ export function rangosDelCompaneroQueCaben(habilidades: readonly MonstruoHabilid
         if (exceso > (suya ? dg : dg / 2))
             cabe = false;
     });
-    if (cabe && coste <= puntosPorDgDelCompanero(inteligencia) * dg)
+    if (cabe && coste <= puntosPorDgDelCompanero(puntosDelTipo, inteligencia) * dg)
         return (habilidades ?? []).map((h) => ({ ...h }));
     return (habilidades ?? []).map((h) => {
         const suya = base.get(toInt(h?.Id_habilidad));
