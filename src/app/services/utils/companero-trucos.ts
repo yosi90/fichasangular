@@ -2,7 +2,7 @@ import { CompaneroMonstruoDetalle, TrucoDeMascota } from 'src/app/interfaces/mon
 import { PersonajeCreateCompaneroDto } from 'src/app/interfaces/personajes-api';
 import { Truco } from 'src/app/interfaces/truco';
 import { sinPuntuacion } from 'src/app/services/utils/caracteristicas';
-import { nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
+import { inteligenciaDelCompanero, nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 
@@ -12,6 +12,22 @@ import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
  * (`Trucos_adi`) los elige el jugador: trucos sueltos, sin repetir, con sus requisitos y contando su `Coste`; no se cambian,
  * y al perder un nivel se pierden los últimos que eligió.
  */
+
+/** Lo que cuenta un truco (su `Coste`; al menos 1: Ataca (todas las criaturas), 2). */
+export function costeDelTruco(truco: { Coste?: unknown; } | null | undefined): number {
+    return Math.max(1, toInt(truco?.Coste, 1));
+}
+
+/** Lo que cuentan unos trucos (sus adicionales, los que lleva elegidos en el selector). */
+export function costeDeLosTrucos(trucos: readonly { Coste?: unknown; }[]): number {
+    return trucos.reduce((total, t) => total + costeDelTruco(t), 0);
+}
+
+/** El aviso de cuando lo elegido en el selector ya no vale al ponerlo (en la creación y en las sesiones). */
+export const AVISO_TRUCOS_QUE_YA_NO_VALEN = {
+    titulo: 'No se pudieron poner los trucos',
+    texto: 'La selección ya no vale con el compañero de ahora. Elige otros.',
+} as const;
 
 /** Los que sabe, de cualquier origen. */
 export function trucosDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): TrucoDeMascota[] {
@@ -30,13 +46,13 @@ export function trucosAdicionalesDelCompanero(companero: CompaneroMonstruoDetall
  * Inteligencia (una sabandija descerebrada) sí sabe los adicionales, que no piden entrenamiento.
  */
 export function companeroNoSabeTrucos(companero: CompaneroMonstruoDetalle | null | undefined): boolean {
-    const inteligencia = (companero?.Caracteristicas as Record<string, number | null> | undefined)?.['Inteligencia'];
+    const inteligencia = inteligenciaDelCompanero(companero);
     return !sinPuntuacion(inteligencia) && toInt(inteligencia) >= 3;
 }
 
 /** Lo que cuentan sus adicionales (su `Coste`). */
 export function costeDeLosAdicionales(companero: CompaneroMonstruoDetalle | null | undefined): number {
-    return trucosAdicionalesDelCompanero(companero).reduce((total, t) => total + Math.max(1, toInt(t.Coste, 1)), 0);
+    return costeDeLosTrucos(trucosAdicionalesDelCompanero(companero));
 }
 
 /** Los trucos adicionales que le quedan por elegir (sus `Trucos_adi` menos lo que cuentan los que tiene); inactivo, ninguno. */
@@ -96,7 +112,7 @@ export function contextoDeTrucosDelCompanero(companero: CompaneroMonstruoDetalle
         sabe: idsDeLoQueSabe([...trucosDelCompanero(companero).map((t) => t.Id), ...elegidos.map((t) => t.Id)], catalogo),
         aptitudes: aptitudesDeLaCriatura(companero),
         idTipo: toInt(companero?.Tipo?.Id),
-        quedan: trucosAdicionalesPendientes(companero) - elegidos.reduce((total, t) => total + Math.max(1, toInt(t.Coste, 1)), 0),
+        quedan: trucosAdicionalesPendientes(companero) - costeDeLosTrucos(elegidos),
     };
 }
 
@@ -122,7 +138,7 @@ export function motivoTrucoAdicional(truco: Truco, contexto: ContextoTrucosDelCo
         return `Pide ${unirLista([...new Set(racialesOpcionales.map((r) => nombreDeAptitud(r.Nombre)))], 'o')}.`;
     if (truco.Requisitos.Tipos.length > 0 && !truco.Requisitos.Tipos.some((t) => t.Id === contexto.idTipo))
         return `Solo para ${unirLista(truco.Requisitos.Tipos.map((t) => t.Nombre), 'o')}.`;
-    const coste = Math.max(1, toInt(truco.Coste, 1));
+    const coste = costeDelTruco(truco);
     if (coste > contexto.quedan)
         return `Cuenta ${coste} trucos y le ${contexto.quedan === 1 ? 'queda 1' : `quedan ${Math.max(0, contexto.quedan)}`}.`;
     return null;
@@ -160,7 +176,7 @@ export function aplicarTrucosAdicionales(companero: CompaneroMonstruoDetalle | n
     companero.Trucos = [
         ...trucosDelCompanero(companero),
         ...puestos.map((t): TrucoDeMascota => ({
-            Id: t.Id, Nombre: t.Nombre, Origen: 'adicional', Orden: ++orden, Coste: Math.max(1, toInt(t.Coste, 1)), Es_fin: false,
+            Id: t.Id, Nombre: t.Nombre, Origen: 'adicional', Orden: ++orden, Coste: costeDelTruco(t), Es_fin: false,
         })),
     ];
     return true;
@@ -177,7 +193,7 @@ export function quitarLosTrucosQueNoCaben(companero: CompaneroMonstruoDetalle | 
     let cuenta = 0;
     const quedan = new Set<TrucoDeMascota>();
     trucosAdicionalesDelCompanero(companero).forEach((t) => {
-        cuenta += Math.max(1, toInt(t.Coste, 1));
+        cuenta += costeDelTruco(t);
         if (cuenta <= caben)
             quedan.add(t);
     });
