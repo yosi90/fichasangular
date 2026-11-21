@@ -21,7 +21,7 @@ import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
 import { construirCatalogoCompanerosDesdeMonstruos, claveCompanero } from './utils/companero-reglas';
 import { leerCompaneroProgresion, leerFamiliarProgresion } from './utils/monstruo-mapper';
-import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos, listasDeFamiliarDelCatalogo } from './utils/familiar-reglas';
+import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos } from './utils/familiar-reglas';
 import {
     BASICA as FAMILIAR_BASICO, COMPARTIR as COMPARTIR_FAMILIAR, EVASION_MEJORADA as EVASION_MEJORADA_FAMILIAR, GATO,
     MONSTRUOS_FAMILIAR, PROGRESION_FAMILIAR_API, TRANSMITIR,
@@ -2020,7 +2020,7 @@ describe('Subida de nivel: el mago pone al día su familiar (el familiar, de los
         svc.setProgresionFamiliar(PROGRESION);
         aplicarNivel(svc, MAGO_CON_FAMILIAR);
         aplicarNivel(svc, MAGO_CON_FAMILIAR);
-        const gato = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR, listasDeFamiliarDelCatalogo(CLASES_MAGO))
+        const gato = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR)
             .find((f) => claveFamiliar(f) === `${GATO}:${FAMILIAR_BASICO}`)!;
         expect(svc.registrarFamiliarSeleccionado(JSON.parse(JSON.stringify(gato)), 'Bigotes').registrado).toBeTrue();
         const guardado = guardar(svc, catalogoDeClases);

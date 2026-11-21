@@ -428,6 +428,7 @@ describe('DetallesMonstruoComponent', () => {
                     Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
                     Preferencia_moral: { Id: 10, Nombre: 'Ninguna preferencia' },
                     Dote: { Id: 53, Nombre: 'Compañero elevado' },
+                    Mascota: 'companero',
                 },
                 {
                     Clase: { Id: 9, Nombre: 'Mago' },
@@ -436,6 +437,7 @@ describe('DetallesMonstruoComponent', () => {
                     Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
                     Preferencia_moral: { Id: 10, Nombre: 'Ninguna preferencia' },
                     Dote: { Id: 48, Nombre: 'Familiar mejorado' },
+                    Mascota: 'familiar',
                 },
             ] as any,
         });
@@ -452,28 +454,36 @@ describe('DetallesMonstruoComponent', () => {
         expect(nivelesFamiliar[0].dote).toBe('Familiar mejorado');
     });
 
-    it('separa los niveles por sus datos, no por los ids ni los nombres de las clases y las dotes (homebrew)', () => {
-        const nivel = (clase: string, idClase: number, plantilla: { Id: number; Nombre: string } | null) => ({
+    it('separa los niveles por la mascota de cada fila, no por los ids ni los nombres de las clases y las dotes (homebrew)', () => {
+        const nivel = (clase: string, idClase: number, plantilla: { Id: number; Nombre: string } | null, mascota: string | null, dote = '') => ({
             Clase: { Id: idClase, Nombre: clase },
             Nivel: 1,
             Plantilla: plantilla,
             Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
             Preferencia_moral: { Id: 10, Nombre: 'Ninguna preferencia' },
-            Dote: { Id: 0, Nombre: null },
+            Dote: { Id: 0, Nombre: dote || null },
+            Mascota: mascota,
         });
+        const celestial = { Id: 3, Nombre: 'Celestial' };
+        // El búho (fallo de la tanda 1): la fila «Celestial» con Compañero elevado del druida es de compañero, aunque lleve
+        // la misma plantilla que la de Familiar celestial del hechicero.
         component.monstruo = crearMonstruoMock({
             Familiar: true,
             Companero: true,
-            Niveles_clase: [nivel('Domador de bestias', 900, null), nivel('Invocador de sombras', 901, { Id: 30, Nombre: 'Sombrío' })] as any,
+            Niveles_clase: [
+                nivel('Druida', 5, celestial, 'companero', 'Compañero elevado'),
+                nivel('Hechicero', 8, celestial, 'familiar', 'Familiar celestial'),
+                nivel('Invocador de sombras', 901, { Id: 30, Nombre: 'Sombrío' }, 'familiar'),
+            ] as any,
         });
-        expect(component.getNivelesClaseRequeridosCompanero().map((n) => n.nombreClase)).toEqual(['Domador de bestias']);
-        expect(component.getNivelesClaseRequeridosFamiliar().map((n) => n.nombreClase)).toEqual(['Invocador de sombras']);
+        expect(component.getNivelesClaseRequeridosCompanero().map((n) => [n.nombreClase, n.dote])).toEqual([['Druida', 'Compañero elevado']]);
+        expect(component.getNivelesClaseRequeridosFamiliar().map((n) => n.nombreClase)).toEqual(['Hechicero', 'Invocador de sombras']);
 
-        // Un monstruo que solo puede ser familiar: sin pseudoplantilla, la fila también es de familiar.
+        // Sin `Mascota` (su clase no da ninguna), por lo que puede ser el monstruo: no se pierde la fila.
         component.monstruo = crearMonstruoMock({
             Familiar: true,
             Companero: false,
-            Niveles_clase: [nivel('Invocador de sombras', 901, null)] as any,
+            Niveles_clase: [nivel('Invocador de sombras', 901, null, null)] as any,
         });
         expect(component.getNivelesClaseRequeridosFamiliar().length).toBe(1);
         expect(component.getNivelesClaseRequeridosCompanero().length).toBe(0);

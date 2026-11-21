@@ -127,6 +127,7 @@ function fila(idClase: number, nivel: number, plantilla: number, dote = 0): Mons
         Preferencia_legal: { Id: 0, Nombre: '' },
         Preferencia_moral: { Id: 0, Nombre: '' },
         Dote: { Id: dote, Nombre: NOMBRES_DOTE[dote] ?? '' },
+        Mascota: 'familiar',
     };
 }
 

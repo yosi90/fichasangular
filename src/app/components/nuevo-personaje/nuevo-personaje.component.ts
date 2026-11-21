@@ -6022,10 +6022,7 @@ export class NuevoPersonajeComponent {
                 firstValueFrom(this.monstruoSvc.getFamiliaresProgresion().pipe(take(1))),
             ]);
             this.nuevoPSvc.setProgresionFamiliar(progresion);
-            this.selectorFamiliarCatalogoCompleto = construirCatalogoFamiliaresDesdeMonstruos(
-                Array.isArray(monstruos) ? monstruos : [],
-                this.nuevoPSvc.getListasDeFamiliar()
-            );
+            this.selectorFamiliarCatalogoCompleto = construirCatalogoFamiliaresDesdeMonstruos(Array.isArray(monstruos) ? monstruos : []);
             return true;
         } catch {
             await Swal.fire({
@@ -6091,10 +6088,7 @@ export class NuevoPersonajeComponent {
                 firstValueFrom(this.monstruoSvc.getCompanerosProgresion().pipe(take(1))),
             ]);
             this.nuevoPSvc.setProgresionCompanero(progresion);
-            this.selectorCompaneroCatalogoCompleto = construirCatalogoCompanerosDesdeMonstruos(
-                Array.isArray(monstruos) ? monstruos : [],
-                this.nuevoPSvc.getListasDeCompanero()
-            );
+            this.selectorCompaneroCatalogoCompleto = construirCatalogoCompanerosDesdeMonstruos(Array.isArray(monstruos) ? monstruos : []);
             return true;
         } catch {
             await Swal.fire({

@@ -18,6 +18,7 @@ import {
     FamiliarProgresion,
     FamiliarTabla,
     MascotaAptitudNivel,
+    MascotaDeFila,
     MonstruoAlineamientoBasicoRef,
     MonstruoAlineamientosRequeridos,
     MonstruoAtaque,
@@ -189,6 +190,8 @@ function normalizeHabilidad(raw: any): MonstruoHabilidad {
     };
 }
 
+const MASCOTAS_DE_FILA: readonly MascotaDeFila[] = ['companero', 'familiar'];
+
 function normalizeNivelClase(raw: any): MonstruoNivelClase {
     return {
         Clase: {
@@ -214,6 +217,7 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
             Id: toNumber(raw?.Dote?.Id),
             Nombre: toText(raw?.Dote?.Nombre),
         },
+        Mascota: MASCOTAS_DE_FILA.includes(raw?.Mascota) ? raw.Mascota : null,
     };
 }
 

@@ -88,6 +88,9 @@ export interface MonstruoHabilidad {
     Rangos: number;
 }
 
+/** De qué mascota es una fila de `Niveles_clase`: la que da su clase (contrato, `MonstruoNivelClase.Mascota`). */
+export type MascotaDeFila = 'companero' | 'familiar';
+
 export interface MonstruoNivelClase {
     Clase: {
         Id: number;
@@ -116,6 +119,12 @@ export interface MonstruoNivelClase {
         Id: number;
         Nombre: string;
     };
+    /**
+     * De qué mascota es la fila (`companero` o `familiar`: la que da su clase; el animal celestial de Compañero elevado, de
+     * compañero); `null` si su clase no da ninguna. Desde el 2026-11-21 (cachés `Monstruos` 16, `Familiares` y `Compañeros
+     * animales` 13).
+     */
+    Mascota: MascotaDeFila | null;
 }
 
 export interface PersonajeRefMonstruo {

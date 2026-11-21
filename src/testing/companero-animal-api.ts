@@ -103,6 +103,7 @@ function fila(idClase: number, nombreClase: string, nivel: number, ajuste: numbe
         Preferencia_legal: { Id: 0, Nombre: '' },
         Preferencia_moral: { Id: 0, Nombre: '' },
         Dote: { Id: dote, Nombre: dote === COMPANERO_ELEVADO ? 'Compañero elevado' : '' },
+        Mascota: 'companero',
     };
 }
 

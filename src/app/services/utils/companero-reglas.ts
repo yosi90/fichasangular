@@ -18,7 +18,6 @@ import {
     FilaMascotaResuelta,
     filasDeSusListas,
     filasPorPlantilla,
-    listasDeMascotaDelCatalogo,
     resolverEstadoMascota,
     resolverFilaMascota,
     TextosMascota,
@@ -69,11 +68,6 @@ export type AptitudesCompaneroDelNivel = AptitudesMascotaDelNivel<CompaneroAptit
 const SIN_BONOS: CompaneroBonosNivel = { Nivel: 0, Dg_adicionales: 0, Armadura_natural: 0, Fuerza_destreza: 0, Trucos_adicionales: 0 };
 
 const TEXTOS_COMPANERO: TextosMascota = { mascota: 'compañero animal', listaDe: 'compañeros animales', listaPorDefecto: 'druida' };
-
-/** Las listas de compañeros de todas las clases del catálogo (las clases cuyas filas de `Niveles_clase` son de compañero). */
-export function listasDeCompaneroDelCatalogo(catalogoClases: Clase[] | null | undefined): Set<number> {
-    return listasDeMascotaDelCatalogo(catalogoClases, 'Otorga_companero');
-}
 
 /** Las fuentes del compañero, su cupo (uno por personaje), su nivel efectivo de druida y las listas de las que elige. */
 export function resolverEstadoCuposCompanero(personaje: Personaje, catalogoClases: Clase[]): EstadoCuposCompanero {
@@ -187,19 +181,15 @@ export function claveCompanero(companero: CompaneroMonstruoDetalle | null | unde
 /**
  * Los compañeros que se pueden elegir en la creación: uno por monstruo marcado como compañero y plantilla de sus filas de
  * `Niveles_clase` (sin plantilla, `Plantilla.Id` 0; los animales celestiales de Compañero elevado, la «Celestial»), con
- * esas filas. Con `listasCompanero` (las de `listasDeCompaneroDelCatalogo`), solo las filas de esas listas: las de un
- * familiar no hacen un compañero.
+ * esas filas: las de compañero (su `Mascota`); las de un familiar no hacen un compañero.
  */
-export function construirCatalogoCompanerosDesdeMonstruos(
-    monstruos: MonstruoDetalle[],
-    listasCompanero?: ReadonlySet<number> | null,
-): CompaneroMonstruoDetalle[] {
+export function construirCatalogoCompanerosDesdeMonstruos(monstruos: MonstruoDetalle[]): CompaneroMonstruoDetalle[] {
     const resultado: CompaneroMonstruoDetalle[] = [];
     (Array.isArray(monstruos) ? monstruos : []).forEach((monstruo) => {
         const id = toInt(monstruo?.Id);
         if (!monstruo?.Companero || id <= 0)
             return;
-        filasPorPlantilla(monstruo, listasCompanero).forEach((filas, idPlantilla) => {
+        filasPorPlantilla(monstruo, 'companero').forEach((filas, idPlantilla) => {
             resultado.push({
                 ...monstruo,
                 Id_companero: id,

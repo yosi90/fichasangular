@@ -14,11 +14,9 @@ import {
     aptitudesFamiliarDelNivel,
     construirCatalogoFamiliaresDesdeMonstruos,
     EstadoCuposFamiliar,
-    esNivelDeFamiliar,
     evaluarFamiliaresElegibilidad,
     familiarConSuCriatura,
     filtrarFamiliaresElegibles,
-    listasDeFamiliarDelCatalogo,
     plantillasFamiliarDisponibles,
     resolverEstadoCuposFamiliar,
     resolverFilaFamiliar,
@@ -57,6 +55,7 @@ function crearNivelClase(
         Preferencia_legal: { Id: prefLegal, Nombre: `${prefLegal}` },
         Preferencia_moral: { Id: prefMoral, Nombre: `${prefMoral}` },
         Dote: dote,
+        Mascota: 'familiar',
     };
 }
 
@@ -406,7 +405,10 @@ describe('familiar-reglas', () => {
 // Con las respuestas reales de la API de desarrollo: la serpiente (`GET /monstruos/16`) y las dos clases propias que dan
 // familiar (`GET /clases/418` y `/419`). Las pseudoplantillas salen de los datos, no de una lista de ids.
 describe('familiar-reglas con las respuestas reales de la API', () => {
-    const serpiente = normalizeMonstruoDetalle(SERPIENTE_API, 1);
+    // La respuesta es de antes de `Mascota` (2026-11-21): todas sus filas son de clases que dan familiar.
+    const serpiente = normalizeMonstruoDetalle({
+        ...SERPIENTE_API, Niveles_clase: SERPIENTE_API.Niveles_clase.map((fila: any) => ({ ...fila, Mascota: 'familiar' })),
+    }, 1);
     const magiingeniero = normalizeClase(MAGIINGENIERO_API);
     const convocador = normalizeClase(CONVOCADOR_DIVINO_API);
     const catalogo = construirCatalogoFamiliaresDesdeMonstruos([serpiente]);
@@ -537,8 +539,7 @@ describe('familiar-reglas con las respuestas reales de la API', () => {
 // `familiar_datos.sql`: el nivel del amo, la lista, la tabla de su pseudoplantilla y lo que da cada nivel.
 describe('familiar-reglas: el familiar, de los datos', () => {
     const progresion = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
-    const listas = listasDeFamiliarDelCatalogo(CLASES_CON_FAMILIAR);
-    const catalogo = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR, listas);
+    const catalogo = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR);
     const de = (id: number, plantilla: number) => catalogo.find((f) => f.Id_familiar === id && f.Plantilla.Id === plantilla)!;
 
     function estadoDe(clases: Array<[string, number]>): EstadoCuposFamiliar {
@@ -580,14 +581,21 @@ describe('familiar-reglas: el familiar, de los datos', () => {
         expect(resolverFilaFamiliar(de(PERRO_INTERMITENTE, MEJORADO), estado, new Set([FAMILIAR_MEJORADO])).nivelTabla).toBe(8);
     });
 
-    it('el catálogo, solo con las filas de las listas de familiar: el animal celestial de un compañero no es un familiar', () => {
-        const conCompanero = MONSTRUOS_FAMILIAR.map((m) => m.Id !== GATO ? m : {
-            ...m, Niveles_clase: [...m.Niveles_clase, { ...m.Niveles_clase[0], Clase: { Id: 5, Nombre: 'Druida' }, Plantilla: { Id: CELESTIAL, Nombre: 'Celestial' } }],
-        });
-        const conListas = construirCatalogoFamiliaresDesdeMonstruos(conCompanero, listas);
-        expect(conListas.filter((f) => f.Id_familiar === GATO).map((f) => f.Plantilla.Id)).toEqual([BASICA]);
-        expect(esNivelDeFamiliar(conCompanero[0].Niveles_clase[2], listas)).toBeFalse();
-        expect(esNivelDeFamiliar(conCompanero[0].Niveles_clase[0], listas)).toBeTrue();
+    it('el catálogo, solo con las filas de familiar (`Mascota`): el animal celestial de un compañero no es un familiar', () => {
+        // El búho: «Celestial» con Compañero elevado, de la lista del druida (de compañero); «Celestial» con Familiar
+        // celestial, del mago (de familiar).
+        const celestial = { Id: CELESTIAL, Nombre: 'Celestial' };
+        const buho = {
+            ...MONSTRUOS_FAMILIAR[0], Id: 70, Nombre: 'Búho', Companero: true,
+            Niveles_clase: [
+                { ...MONSTRUOS_FAMILIAR[0].Niveles_clase[0], Clase: { Id: 5, Nombre: 'Druida' }, Plantilla: celestial, Dote: { Id: 53, Nombre: 'Compañero elevado' }, Mascota: 'companero' as const },
+                { ...MONSTRUOS_FAMILIAR[0].Niveles_clase[1], Nivel: 3, Plantilla: celestial, Dote: { Id: 45, Nombre: 'Familiar celestial' }, Mascota: 'familiar' as const },
+                { ...MONSTRUOS_FAMILIAR[0].Niveles_clase[1], Clase: { Id: 99, Nombre: 'Sin mascota' }, Mascota: null },
+            ],
+        };
+        const familiares = construirCatalogoFamiliaresDesdeMonstruos([buho]);
+        expect(familiares.map((f) => [f.Plantilla.Id, f.Niveles_clase.map((fila) => fila.Clase.Id)])).toEqual([[CELESTIAL, [MAGO]]]);
+        expect(familiares[0].Niveles_clase[0].Dote.Nombre).toBe('Familiar celestial');
     });
 
     it('la tabla de su pseudoplantilla: la del Manual del jugador por defecto; la dracónica, la suya', () => {

@@ -1,15 +1,15 @@
 import { FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import {
-    BASICA, CLASES_CON_FAMILIAR, DRACONICO, DRAGON_NEGRO, GATO, MEJORADO, MONSTRUOS_FAMILIAR, PERRO_INTERMITENTE,
+    BASICA, DRACONICO, DRAGON_NEGRO, GATO, MEJORADO, MONSTRUOS_FAMILIAR, PERRO_INTERMITENTE,
     PROGRESION_FAMILIAR_API,
 } from 'src/testing/familiar-api';
-import { construirCatalogoFamiliaresDesdeMonstruos, listasDeFamiliarDelCatalogo, tablaDelFamiliar } from './familiar-reglas';
+import { construirCatalogoFamiliaresDesdeMonstruos, tablaDelFamiliar } from './familiar-reglas';
 import { construirFamiliarParaGuardar, mitadDeLosPg, vidaMediaDelMonstruo, vidaMediaPorDados } from './mascota-payload';
 import { leerFamiliarProgresion } from './monstruo-mapper';
 
 describe('el familiar para guardar, con la tabla de su pseudoplantilla al nivel de su amo (MJ págs. 44-45)', () => {
     const progresion = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
-    const catalogo = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR, listasDeFamiliarDelCatalogo(CLASES_CON_FAMILIAR));
+    const catalogo = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR);
     const de = (id: number, plantilla: number): FamiliarMonstruoDetalle =>
         catalogo.find((f) => f.Id_familiar === id && f.Plantilla.Id === plantilla)!;
     const amo = (vida: number, ataqueBase: number) => ({

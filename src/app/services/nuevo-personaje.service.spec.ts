@@ -30,7 +30,7 @@ import {
     ESCUDRINAR, EVASION_MEJORADA as EVASION_MEJORADA_FAMILIAR, FAMILIAR_MEJORADO, GATO, MEJORADO, MONSTRUOS_FAMILIAR,
     PERRO_INTERMITENTE, PROGRESION_FAMILIAR_API, RC, TRANSMITIR, VINCULO as VINCULO_FAMILIAR,
 } from 'src/testing/familiar-api';
-import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos, listasDeFamiliarDelCatalogo } from './utils/familiar-reglas';
+import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos } from './utils/familiar-reglas';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -9377,7 +9377,7 @@ describe('NuevoPersonajeService (Magic of Incarnum)', () => {
 
 describe('NuevoPersonajeService (el familiar, de los datos)', () => {
     const PROGRESION = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
-    const CATALOGO = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR, listasDeFamiliarDelCatalogo(CLASES_CON_FAMILIAR));
+    const CATALOGO = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR);
     const familiar = (idMonstruo: number, idPlantilla: number) => JSON.parse(JSON.stringify(
         CATALOGO.find((f) => claveFamiliar(f) === `${idMonstruo}:${idPlantilla}`)));
     const ALERTA_DOTE = { Id: ALERTA, Nombre: 'Alerta', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'MJ', Pagina: 89 }, Modificadores: {} } as any;

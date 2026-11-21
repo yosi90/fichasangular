@@ -255,6 +255,19 @@ describe("monstruo-mapper", () => {
 });
 
 describe("monstruo-mapper: el familiar, de los datos", () => {
+    it("la mascota de cada fila de `Niveles_clase`: `companero`, `familiar` o `null` (una caché de antes o un valor que no es del contrato)", () => {
+        const buho = normalizeMonstruoDetalle({
+            Id: 70, Nombre: "Búho",
+            Niveles_clase: [
+                { Clase: { Id: 5, Nombre: "Druida" }, Nivel: 2, Ajuste: -1, Plantilla: { Id: 3, Nombre: "Celestial" }, Dote: { Id: 53, Nombre: "Compañero elevado" }, Mascota: "companero" },
+                { Clase: { Id: 8, Nombre: "Hechicero" }, Nivel: 3, Plantilla: { Id: 3, Nombre: "Celestial" }, Dote: { Id: 45, Nombre: "Familiar celestial" }, Mascota: "familiar" },
+                { Clase: { Id: 9, Nombre: "Mago" }, Nivel: 3 },
+                { Clase: { Id: 9, Nombre: "Mago" }, Nivel: 3, Mascota: "otra" },
+            ],
+        }, 1);
+        expect(buho.Niveles_clase.map((f) => f.Mascota)).toEqual(["companero", "familiar", null, null]);
+    });
+
     it("GET /familiares/progresion y su caché: la tabla por defecto primero, sus filas en orden y los `null` del contrato", () => {
         const api = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
         expect(api.Tablas.map((t) => [t.Id, t.Por_defecto])).toEqual([[1, true], [2, false]]);

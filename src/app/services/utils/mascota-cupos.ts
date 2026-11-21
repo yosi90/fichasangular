@@ -1,6 +1,6 @@
 import { Clase, ClaseEspecialMascota } from 'src/app/interfaces/clase';
 import { Id_nombre } from 'src/app/interfaces/genericas';
-import { MascotaAptitudNivel, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
+import { MascotaAptitudNivel, MascotaDeFila, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { doteDeNivelClase, idPlantillaDeNivel } from 'src/app/services/utils/nivel-clase-monstruo';
@@ -14,8 +14,8 @@ import { doteDeNivelClase, idPlantillaDeNivel } from 'src/app/services/utils/niv
  *   `Ajuste`) de su `Mascota` y elige de la lista de `Mascota.Lista`. **El nivel efectivo** es la suma;
  * - **el cupo**: una mascota de cada clase por personaje, aunque la den varias clases;
  * - **la lista**: las filas de `Niveles_clase` de esas listas con la plantilla de la mascota, la dote que la abre y el
- *   nivel mínimo (`resolverFilaMascota`), y el catálogo de la creación, una entrada por monstruo y plantilla
- *   (`filasPorPlantilla`);
+ *   nivel mínimo (`resolverFilaMascota`), y el catálogo de la creación, una entrada por monstruo y plantilla con las filas
+ *   de esa mascota (`Mascota` de cada fila: `filasPorPlantilla`);
  * - **lo que da cada nivel** (`mascota_aptitudes`): al amo, a la mascota o a los dos (`aptitudesMascotaDelNivel`), y la
  *   fila de una tabla por nivel (`filaDelNivel`).
  */
@@ -205,14 +205,6 @@ export function aptitudesMascotaDeLaClase(clase: Clase | null | undefined, otorg
     return Array.from(porEspecial.values());
 }
 
-/** Las listas de la mascota de todas las clases del catálogo (las clases cuyas filas de `Niveles_clase` son de esa mascota). */
-export function listasDeMascotaDelCatalogo(catalogoClases: Clase[] | null | undefined, otorga: OtorgaMascota): Set<number> {
-    const listas = new Set<number>();
-    (catalogoClases ?? []).forEach((clase) => aptitudesMascotaDeLaClase(clase, otorga)
-        .forEach((aptitud) => listas.add(toInt(aptitud.mascota.Lista?.Id) || toInt(clase?.Id))));
-    return listas;
-}
-
 /**
  * Las clases del personaje que le dan la mascota: las de su tabla con la aptitud a su nivel o antes y, si es de un grupo
  * opcional, elegida (está entre sus aptitudes, `Claseas`), con lo que aporta cada una.
@@ -347,17 +339,17 @@ export function resolverFilaMascota(
 }
 
 /**
- * Las filas de `Niveles_clase` de un monstruo, por plantilla (sin plantilla, 0): cada plantilla es una entrada del
- * catálogo de la creación. Con `listas`, solo las filas de esas listas: las de un familiar no hacen un compañero, ni al
- * revés.
+ * Las filas de `Niveles_clase` de un monstruo que son de esa `mascota` (su `Mascota`: las de un familiar no hacen un
+ * compañero, ni al revés; el animal celestial de Compañero elevado es de compañero), por plantilla (sin plantilla, 0):
+ * cada plantilla es una entrada del catálogo de la creación.
  */
 export function filasPorPlantilla(
     monstruo: Pick<MonstruoDetalle, 'Niveles_clase'> | null | undefined,
-    listas?: ReadonlySet<number> | null,
+    mascota: MascotaDeFila,
 ): Map<number, MonstruoNivelClase[]> {
     const porPlantilla = new Map<number, MonstruoNivelClase[]>();
     (monstruo?.Niveles_clase ?? [])
-        .filter((fila) => !listas || listas.has(toInt(fila?.Clase?.Id)))
+        .filter((fila) => fila?.Mascota === mascota)
         .forEach((fila) => {
             const idPlantilla = idPlantillaDeNivel(fila);
             porPlantilla.set(idPlantilla, [...(porPlantilla.get(idPlantilla) ?? []), fila]);

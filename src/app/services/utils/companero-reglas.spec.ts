@@ -15,7 +15,6 @@ import {
     EstadoCuposCompanero,
     evaluarCompanerosElegibilidad,
     filtrarCompanerosElegibles,
-    listasDeCompaneroDelCatalogo,
     resolverEstadoCuposCompanero,
     resolverFilaCompanero,
     resolverNivelesCompaneroDisponibles,
@@ -38,7 +37,7 @@ function estadoDe(clases: Array<[string, number]>, partial: Partial<Personaje> =
 }
 
 function catalogo(): CompaneroMonstruoDetalle[] {
-    return construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_COMPANERO, listasDeCompaneroDelCatalogo(CLASES_CON_COMPANERO));
+    return construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_COMPANERO);
 }
 
 function delCatalogo(idMonstruo: number, idPlantilla = 0): CompaneroMonstruoDetalle {

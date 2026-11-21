@@ -21,7 +21,6 @@ import {
     FilaMascotaResuelta,
     filasDeSusListas,
     filasPorPlantilla,
-    listasDeMascotaDelCatalogo,
     resolverEstadoMascota,
     resolverFilaMascota,
     TextosMascota,
@@ -82,28 +81,12 @@ const TEXTOS_FAMILIAR: TextosMascota = { mascota: 'familiar', listaDe: 'familiar
 
 const SIN_BONOS: FamiliarBonosNivel = { Nivel: 0, Armadura_natural: 0, Inteligencia: null, Rc_sobre_nivel: null };
 
-/** Las listas de familiares de todas las clases del catálogo (las clases cuyas filas de `Niveles_clase` son de familiar). */
-export function listasDeFamiliarDelCatalogo(catalogoClases: Clase[] | null | undefined): Set<number> {
-    return listasDeMascotaDelCatalogo(catalogoClases, 'Otorga_familiar');
-}
-
 /**
  * Las fuentes del familiar, su cupo (uno por personaje), el nivel del amo y las listas de las que elige. Sin nivel del amo
  * (un filo aojador 3), ninguna clase le da un familiar.
  */
 export function resolverEstadoCuposFamiliar(personaje: Personaje, catalogoClases: Clase[]): EstadoCuposFamiliar {
     return resolverEstadoMascota(personaje, catalogoClases, 'Otorga_familiar', personaje?.Familiares, 1);
-}
-
-/**
- * Si una fila de `Niveles_clase` de un monstruo es de familiar: la de una lista de familiares (`listasFamiliar`, de
- * `listasDeFamiliarDelCatalogo`). Sin las listas, la que lleva pseudoplantilla (`Plantilla.Id` > 0): no distingue un
- * animal celestial de Compañero elevado, que es un compañero.
- */
-export function esNivelDeFamiliar(nivel: MonstruoNivelClase | null | undefined, listasFamiliar?: ReadonlySet<number> | null): boolean {
-    if (listasFamiliar)
-        return listasFamiliar.has(toInt(nivel?.Clase?.Id));
-    return idPlantillaDeNivel(nivel) >= 1;
 }
 
 /**
@@ -131,22 +114,16 @@ export function plantillasFamiliarDisponibles(
 
 /**
  * Los familiares que se pueden elegir en la creación: uno por monstruo marcado como familiar y pseudoplantilla de sus filas
- * de `Niveles_clase`, con esas filas. Con `listasFamiliar` (las de `listasDeFamiliarDelCatalogo`), solo las filas de esas
- * listas: las de un compañero (el animal celestial de Compañero elevado) no hacen un familiar; sin ellas, las que llevan
- * pseudoplantilla.
+ * de `Niveles_clase`, con esas filas: las de familiar (su `Mascota`); las de un compañero (el animal celestial de Compañero
+ * elevado) no hacen un familiar.
  */
-export function construirCatalogoFamiliaresDesdeMonstruos(
-    monstruos: MonstruoDetalle[],
-    listasFamiliar?: ReadonlySet<number> | null,
-): FamiliarMonstruoDetalle[] {
+export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDetalle[]): FamiliarMonstruoDetalle[] {
     const resultado: FamiliarMonstruoDetalle[] = [];
     (Array.isArray(monstruos) ? monstruos : []).forEach((monstruo) => {
         const id = toInt(monstruo?.Id);
         if (!monstruo?.Familiar || id <= 0)
             return;
-        filasPorPlantilla(monstruo, listasFamiliar).forEach((filas, idPlantilla) => {
-            if (!listasFamiliar && idPlantilla < 1)
-                return;
+        filasPorPlantilla(monstruo, 'familiar').forEach((filas, idPlantilla) => {
             resultado.push({
                 ...monstruo,
                 Id_familiar: id,

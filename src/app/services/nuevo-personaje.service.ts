@@ -66,7 +66,6 @@ import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 import {
     aptitudesFamiliarDelNivel,
     EstadoCuposFamiliar as EstadoCuposFamiliarUtil,
-    listasDeFamiliarDelCatalogo,
     resolverEstadoCuposFamiliar,
     resolverFilaFamiliar,
     TablaDelFamiliar,
@@ -80,7 +79,6 @@ import {
     dadosGolpeCompanero,
     esDotePropiaDelCompanero,
     EstadoCuposCompanero as EstadoCuposCompaneroUtil,
-    listasDeCompaneroDelCatalogo,
     resolverEstadoCuposCompanero,
     resolverFilaCompanero,
 } from './utils/companero-reglas';
@@ -3614,11 +3612,6 @@ export class NuevoPersonajeService {
         return resolverEstadoCuposFamiliar(this.personajeCreacion, this.catalogoClases);
     }
 
-    /** Las listas de familiares de las clases del catálogo (para quedarse con las filas de familiar de los monstruos). */
-    getListasDeFamiliar(): Set<number> {
-        return listasDeFamiliarDelCatalogo(this.catalogoClases);
-    }
-
     /** Las clases que le dan el compañero animal, su cupo y su nivel efectivo de druida (de los datos de sus clases). */
     getEstadoCuposCompanero(): EstadoCuposCompanero {
         return resolverEstadoCuposCompanero(this.personajeCreacion, this.catalogoClases);
@@ -3626,11 +3619,6 @@ export class NuevoPersonajeService {
 
     tieneCompaneroPendienteSinSelector(): boolean {
         return this.getEstadoCuposCompanero().cuposDisponibles > 0;
-    }
-
-    /** Las listas de compañeros de las clases del catálogo (para quedarse con las filas de compañero de los monstruos). */
-    getListasDeCompanero(): Set<number> {
-        return listasDeCompaneroDelCatalogo(this.catalogoClases);
     }
 
     /** Las dotes del personaje, por id (las que abren una fila de la lista del compañero: Compañero elevado). */

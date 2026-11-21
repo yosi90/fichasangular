@@ -15,10 +15,9 @@ import {
 } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
-import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MascotaDeFila, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { UserService } from 'src/app/services/user.service';
 import { esMonstruoDerivado } from 'src/app/services/utils/monstruo-mapper';
-import { esNivelDeFamiliar } from 'src/app/services/utils/familiar-reglas';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
@@ -453,14 +452,14 @@ export class DetallesMonstruoComponent {
             }));
     }
 
-    private getNivelesClaseNormalizados(): Array<NivelClaseRequerido & { deFamiliar: boolean; }> {
+    private getNivelesClaseNormalizados(): Array<NivelClaseRequerido & { mascota: MascotaDeFila | null; }> {
         return (this.monstruo?.Niveles_clase ?? [])
             .filter(item => toNumber(item?.Clase?.Id) > 0 && tieneTextoVisible(item?.Clase?.Nombre))
             .map((item) => ({
                 idClase: toNumber(item?.Clase?.Id),
                 nombreClase: `${item?.Clase?.Nombre ?? ''}`.trim(),
                 nivel: toNumber(item?.Nivel),
-                deFamiliar: esNivelDeFamiliar(item),
+                mascota: item?.Mascota ?? null,
                 plantilla: `${item?.Plantilla?.Nombre ?? ''}`.trim(),
                 dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
                 alineamiento: textoEjesAlineamiento(item?.Preferencia_legal?.Nombre, item?.Preferencia_moral?.Nombre),
@@ -468,14 +467,15 @@ export class DetallesMonstruoComponent {
     }
 
     /**
-     * Si una fila de `Niveles_clase` es una forma de tenerlo de familiar o de compañero, por sus datos y no por ids o
-     * nombres fijos: la que lleva pseudoplantilla de familiar es de familiar (`esNivelDeFamiliar`, la regla de la
-     * creación); sin ella, de compañero si el monstruo puede serlo (`Companero`) y, si no, de familiar. Comprobado el 2026-11-05 con las 288 filas de `rol` y
-     * `rol_dev`: la misma separación que daban los ids de las clases y las dotes.
+     * Si una fila de `Niveles_clase` es una forma de tenerlo de familiar o de compañero: lo dice su `Mascota` (la que da su
+     * clase; el animal celestial de Compañero elevado, de compañero). Sin ella (su clase no da ninguna), por lo que puede
+     * ser el monstruo: de compañero si puede serlo (`Companero`) y, si no, de familiar; así no se pierde la fila.
      */
-    private getContextosNivelClase(nivel: NivelClaseRequerido & { deFamiliar: boolean; }): Array<'Familiar' | 'Companero'> {
-        if (nivel.deFamiliar)
+    private getContextosNivelClase(nivel: NivelClaseRequerido & { mascota: MascotaDeFila | null; }): Array<'Familiar' | 'Companero'> {
+        if (nivel.mascota === 'familiar')
             return ['Familiar'];
+        if (nivel.mascota === 'companero')
+            return ['Companero'];
         if (this.monstruo?.Companero)
             return ['Companero'];
         if (this.monstruo?.Familiar)
