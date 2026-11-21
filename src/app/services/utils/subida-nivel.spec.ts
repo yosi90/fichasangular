@@ -167,6 +167,19 @@ describe('subida-nivel: el compañero animal que pone al día el motor', () => {
         expect(resultado.dotes).toEqual([{ idDote: 49, idExtra: 0 }]);
     });
 
+    it('la dote que elige con sus DG entra por dote, extra y DG; sus mejoras y los rangos de sus DG nuevos, como los deja el motor', () => {
+        const conGuardada = { ...guardado, dotes: [{ idDote: 50, idExtra: 72, dg: 1 }] };
+        const antesConLaSuya = { ...antes, dotes: [{ idDote: 50, idExtra: 72, dg: 1 }] };
+        const despues: PersonajeCreateCompaneroDto = {
+            ...antesConLaSuya, dgAdi: 2, dotes: [{ idDote: 50, idExtra: 72, dg: 1 }, { idDote: 50, idExtra: 73, dg: 3 }],
+            mejoras: [{ dg: 4, idCaracteristica: 1 }], habilidades: [{ idHabilidad: 6, idExtra: -1, rangos: 5 }],
+        };
+        const resultado = companeroConLoDelMotor(conGuardada, antesConLaSuya, despues);
+        expect(resultado.dotes).toEqual([{ idDote: 50, idExtra: 72, dg: 1 }, { idDote: 50, idExtra: 73, dg: 3 }]);
+        expect(resultado.mejoras).toEqual([{ dg: 4, idCaracteristica: 1 }]);
+        expect(resultado.habilidades).toEqual([{ idHabilidad: 6, idExtra: -1, rangos: 5 }]);
+    });
+
     it('la ficha de la subida lleva el compañero puesto al día; sin cambios del motor, el de la entrada tal cual', () => {
         const entrada = { ...JSON.parse(JSON.stringify(ENTRADA_ENANO_CLERIGO_1)), companero: guardado } as PersonajeCreateRequestDto;
         const base = { ...JSON.parse(JSON.stringify(ENTRADA_ENANO_CLERIGO_1)) } as PersonajeCreateRequestDto;

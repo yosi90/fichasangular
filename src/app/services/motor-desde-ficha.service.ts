@@ -233,7 +233,8 @@ export class MotorDesdeFichaService {
     /**
      * El personaje con las habilidades del monstruo de su compañero y los puntos por DG de su tipo (`Habilidades_monstruo`,
      * `Puntos_habilidad_tipo`): sus rangos siguen el criterio «todo o nada» al bajar sus DG adicionales (al perder un nivel o
-     * quedar inactivo). Sin el monstruo o su tipo, sus rangos se quedan como están.
+     * quedar inactivo). Sin el monstruo o su tipo, sus rangos se quedan como están. Con las dotes de su monstruo
+     * (`Dotes_monstruo`), las que le quedan por elegir, y con el límite de Inteligencia de su tipo, sus mejoras.
      */
     private async conLaCriaturaDelCompanero(pj: Personaje): Promise<Personaje> {
         const companeros = pj?.Companeros ?? [];
@@ -243,9 +244,18 @@ export class MotorDesdeFichaService {
             const monstruo = await this.monstruoDeLaMascota(companero);
             const idTipo = toInt(monstruo?.Tipo?.Id);
             const tipo = idTipo > 0 ? await this.primero(Promise.resolve().then(() => this.tipoCriaturaSvc.getTipoCriatura(idTipo))) : null;
-            if (!monstruo || !tipo || tipo.Puntos_habilidad === undefined || tipo.Puntos_habilidad === null)
+            if (!monstruo)
                 return companero;
-            return { ...companero, Habilidades_monstruo: [...(monstruo.Habilidades ?? [])], Puntos_habilidad_tipo: toInt(tipo.Puntos_habilidad) };
+            // Las dotes de su monstruo: con ellas se cuentan las que le tocan elegir con sus DG.
+            const conSusDotes = { ...companero, Dotes_monstruo: [...(monstruo.Dotes ?? [])] };
+            if (!tipo || tipo.Puntos_habilidad === undefined || tipo.Puntos_habilidad === null)
+                return conSusDotes;
+            return {
+                ...conSusDotes,
+                Habilidades_monstruo: [...(monstruo.Habilidades ?? [])],
+                Puntos_habilidad_tipo: toInt(tipo.Puntos_habilidad),
+                Limite_inteligencia_tipo: toInt(tipo.Limite_inteligencia),
+            };
         }));
         return { ...pj, Companeros: conSuCriatura };
     }

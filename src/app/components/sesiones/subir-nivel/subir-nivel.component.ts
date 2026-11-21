@@ -20,7 +20,7 @@ import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { ClasesDelNivelComponent } from 'src/app/components/sesiones/clases-del-nivel/clases-del-nivel.component';
 import { ConjurosDelNivelComponent, nombreDeConjuro } from 'src/app/components/sesiones/conjuros-del-nivel/conjuros-del-nivel.component';
 import {
-    avisarPaso, catalogosDelNivel, ClaseDelNivel, clasesParaElNivel, doteElegidaEnElHueco, resolverDotesPendientes, resolverIncrementoPendiente,
+    avisarPaso, catalogosDelNivel, ClaseDelNivel, clasesParaElNivel, doteElegidaEnElHueco, resolverDotesPendientes, resolverDotesYMejorasDelCompanero, resolverIncrementoPendiente,
     tiradasPermitidasDe, tomarNivelDeClase,
 } from 'src/app/components/sesiones/pasos-con-selectores';
 import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
@@ -398,7 +398,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             ...(this.svc.getDotesPendientes().some((d) => d.estado === 'pendiente') ? ['dotes' as const] : []),
             ...(this.svc.getConjurosSesionActual().activa ? ['conjuros' as const] : []),
             ...(this.intercambio ? ['intercambio' as const] : []),
-            ...(this.repartirRangosDelCompanero ? ['companero' as const] : []),
+            ...(this.repartirRangosDelCompanero || this.svc.companeroTieneAlgoQueElegir() ? ['companero' as const] : []),
             'resumen',
         ];
         await this.siguiente();
@@ -939,8 +939,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     async siguiente(): Promise<void> {
         const i = this.pasos.indexOf(this.paso);
         const siguiente = this.pasos[i + 1] ?? 'resumen';
-        // Los rangos del compañero nuevo, con los puntos de sus DG adicionales; sin ellos, el paso sobra.
+        // Los rangos del compañero (el nuevo, o los de sus DG adicionales nuevos), con sus puntos; sin ellos, sus mejoras y
+        // sus dotes, si las tiene (en sus selectores), y el paso sobra.
         if (siguiente === 'companero' && !this.svc.iniciarDistribucionHabilidadesCompanero('clases')) {
+            await resolverDotesYMejorasDelCompanero(this.svc, this.selectores);
             this.pasos = this.pasos.filter((p) => p !== 'companero');
             await this.siguiente();
             return;
@@ -1006,11 +1008,14 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     // Habilidades (la tabla es `app-reparto-rangos`), también las del compañero que se recicla
-    cerrarHabilidades(): void {
+    async cerrarHabilidades(): Promise<void> {
         if (!this.svc.puedeCerrarDistribucionHabilidades())
             return;
         this.svc.cerrarDistribucionHabilidades();
-        void this.siguiente();
+        // Con los rangos del compañero ya puestos, sus mejoras y sus dotes.
+        if (this.paso === 'companero')
+            await resolverDotesYMejorasDelCompanero(this.svc, this.selectores);
+        await this.siguiente();
     }
 
     // Conjuros (la lista es `app-conjuros-del-nivel`)

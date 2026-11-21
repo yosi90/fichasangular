@@ -334,6 +334,22 @@ export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
     Habilidades_monstruo?: MonstruoHabilidad[];
     /** Los puntos de habilidad por DG del tipo de su monstruo, que la carga de las sesiones pone con `Habilidades_monstruo`. */
     Puntos_habilidad_tipo?: number;
+    /** El límite de Inteligencia del tipo de su monstruo (`Limite_inteligencia`: 2 en un animal; 0, sin límite). */
+    Limite_inteligencia_tipo?: number;
+    /**
+     * Las dotes de su monstruo (las que no se cambian; con `Adicional`, las «(B)»): las pone la creación al elegirlo y la
+     * carga de las sesiones. Con ellas se cuentan las que le tocan elegir (`huecosDeDotesDelCompanero`).
+     */
+    Dotes_monstruo?: DoteContextual[];
+    /** Sus mejoras de característica (contrato: «Las dotes y las mejoras que elige el compañero»). */
+    Mejoras?: CompaneroMejora[];
+}
+
+/** Una mejora de característica del compañero: +1 a `Caracteristica` al llegar a `Dg` DG totales (MM, pág. 290). */
+export interface CompaneroMejora {
+    Dg: number;
+    Id_caracteristica: number;
+    Caracteristica: string;
 }
 
 /**

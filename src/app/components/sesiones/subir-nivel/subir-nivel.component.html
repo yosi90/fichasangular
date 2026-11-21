@@ -244,10 +244,10 @@
                 <app-reparto-rangos [motor]="svc"></app-reparto-rangos>
             </ng-container>
 
-            <!-- Las habilidades del compañero que se recicla: sus rangos, de nuevo (como al crearlo) -->
+            <!-- Las habilidades del compañero: los rangos de sus DG adicionales nuevos (el que se recicla, todos, como al crearlo) -->
             <ng-container *ngSwitchCase="'companero'">
                 <app-reparto-rangos [motor]="svc" [titulo]="'Habilidades de ' + (svc.PersonajeCreacion.Companeros[0]?.Nombre || 'tu compañero animal')"></app-reparto-rangos>
-                <p class="subida__nota">Los puntos de sus DG adicionales, como al elegirlo: las habilidades de su criatura son de clase.</p>
+                <p class="subida__nota">Los puntos de sus DG adicionales, como al elegirlo: las habilidades de su criatura son de clase. Al continuar, sus mejoras de característica y sus dotes, si le tocan, en sus selectores.</p>
             </ng-container>
 
             <!-- Dotes: en el selector de la creación -->

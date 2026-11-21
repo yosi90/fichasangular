@@ -1994,6 +1994,64 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.obtenerLimiteRangoHabilidad(claveDeHabilidad(6, false))).toBe(9);
     });
 
+    it('el compañero elige sus dotes (como criatura) y sus mejoras con sus DG, y las pierde con ellos (contrato: «Las dotes y las mejoras…»)', () => {
+        const druida = crearClaseBase({ Id: 5, Nombre: 'Druida', Desglose_niveles: [nivelConEspecial(29, 'Compañero animal')] });
+        service.setCatalogoClases([druida]);
+        service.setProgresionCompanero(leerCompaneroProgresion(PROGRESION_API));
+        service.setCatalogoTiposCriatura([{ ...crearTipoBase(), Id: 3, Nombre: 'Animal', Puntos_habilidad: 2, Limite_inteligencia: 2 }]);
+        const fuerza13 = { Id_caracteristica: 1, Caracteristica: 'Fuerza', Cantidad: 13, Opcional: 0, Frase: 'Fuerza 13' };
+        const int13 = { Id_caracteristica: 4, Caracteristica: 'Inteligencia', Cantidad: 13, Opcional: 0, Frase: 'Inteligencia 13' };
+        const ataquePoderoso = { Id: 70, Nombre: 'Ataque poderoso', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Prerrequisitos: { caracteristica: [fuerza13] } } as any;
+        const pericia = { Id: 71, Nombre: 'Pericia en combate', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Prerrequisitos: { caracteristica: [int13] } } as any;
+        service.setCatalogoDotes([ataquePoderoso, pericia]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 3 }] as any;
+        const rastrear = { Dote: { Id: 40, Nombre: 'Rastrear' }, Contexto: { Entidad: 'personaje', Id_personaje: 0, Extra: '', Id_extra: 0, Adicional: true } };
+        const soltura = { Dote: { Id: 50, Nombre: 'Soltura con un arma' }, Contexto: { Entidad: 'personaje', Id_personaje: 0, Extra: 'Mordisco', Id_extra: 72, Adicional: false } };
+        const lobo = {
+            Id: 55, Id_companero: 55, Nombre: 'Lobo', Monstruo_origen: { Id: 55, Nombre: 'Lobo' }, Tipo: { Id: 3, Nombre: 'Animal' },
+            Plantilla: { Id: 0, Nombre: '' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [FILA_LOBO_DRUIDA],
+            Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
+            Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 3, Nombre: 'd8' }, Suma: 4 },
+            Ataque: { Ataque_base: 1, Presa: 2, Ataques: '', Ataque_completo: '' },
+            Caracteristicas: { Fuerza: 13, Destreza: 15, Constitucion: 15, Constitucion_modificador: 2, Inteligencia: 2, Inteligencia_modificador: -4, Sabiduria: 12, Sabiduria_modificador: 1, Carisma: 6 },
+            Defensa: { Ca: 14, Toque: 12, Desprevenido: 12, Armadura_natural: 2, Reduccion_dano: '', Resistencia_conjuros: '', Resistencia_elemental: '' },
+            Habilidades: [], Dotes: [rastrear, soltura], Especiales: [],
+        } as any;
+        expect(service.registrarCompaneroSeleccionado(lobo, 'Colmillo').registrado).toBeTrue();
+        const dotesDelPersonaje = (service.PersonajeCreacion.DotesContextuales ?? []).length;
+
+        // Druida 3: 2 + 2 DG, le tocan 2; cuenta la Soltura de su bloque (el Rastrear es «(B)»): elige la de su 3.er DG.
+        expect(service.companeroTieneAlgoQueElegir()).toBeTrue();
+        expect(service.registrarDotesPendientesDelCompanero()).toBe(1);
+        expect(service.registrarDotesPendientesDelCompanero()).toBe(0);
+        const pendiente = service.getSiguienteDotePendiente()!;
+        expect([pendiente.fuente, pendiente.dgCompanero, pendiente.origen]).toEqual(['companero', 3, 'Compañero animal (Colmillo): la de su 3.º DG']);
+        // Su mejora del 4.º DG, primero (la Fuerza 14 no cambia lo que puede elegir).
+        expect(service.getMejorasPendientesDelCompanero().map((m) => m.id)).toEqual([4]);
+        expect(service.topesCaracteristicasDelCompanero()).toEqual({ Inteligencia: 2 });
+        expect(service.aplicarMejorasDelCompanero([{ idPendiente: 4, caracteristica: 'Inteligencia' }])).toBeFalse();
+        expect(service.aplicarMejorasDelCompanero([{ idPendiente: 4, caracteristica: 'Fuerza' }])).toBeTrue();
+        const candidatos = service.obtenerCandidatosDotePendiente(pendiente.id);
+        expect(candidatos.find((c) => c.dote.Id === 70)?.evaluacion.estado).toBe('eligible');
+        expect(candidatos.find((c) => c.dote.Id === 71)?.evaluacion.estado).toBe('blocked_failed');
+        expect(service.aplicarDotePendiente(pendiente.id, { idDote: 70, idExtra: 0, extra: '' })).toBeTrue();
+        expect((service.PersonajeCreacion.DotesContextuales ?? []).length).toBe(dotesDelPersonaje);
+        expect(service.companeroTieneAlgoQueElegir()).toBeTrue(); // aún le quedan los puntos de sus DG adicionales
+
+        const guardado = payloadDeLaCreacion().companero!;
+        expect(guardado.dotes).toEqual([{ idDote: 70, idExtra: 0, dg: 3 }]);
+        expect(guardado.mejoras).toEqual([{ dg: 4, idCaracteristica: 1 }]);
+        expect(guardado.fuerza).toBe(13 + 1 + 1); // el bono de su tabla y la mejora
+
+        // Druida 2: sin DG adicionales, pierde la dote y la mejora de esos DG.
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 2 }] as any;
+        (service as any).actualizarMascotasPorNivel();
+        const sinEllas = payloadDeLaCreacion().companero!;
+        expect([sinEllas.dgAdi, sinEllas.dotes, sinEllas.mejoras, sinEllas.fuerza]).toEqual([0, [], [], 13]);
+    });
+
     it('un mago guarda su familiar con los datos de su amo y la tabla del familiar por nivel (MJ cap. 3)', () => {
         const mago = crearClaseBase({ Id: 10, Nombre: 'Mago', Desglose_niveles: [nivelConEspecial(47, 'Convocar a un familiar')] });
         service.setCatalogoClases([mago]);

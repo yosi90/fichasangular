@@ -122,6 +122,29 @@ export async function resolverDotesPendientes(svc: NuevoPersonajeService, select
 }
 
 /**
+ * Las mejoras de característica y las dotes que le tocan al compañero animal con sus DG (contrato: «Las dotes y las mejoras
+ * que elige el compañero»): las mejoras en el selector de los incrementos, con sus características (no se cierra hasta
+ * ponerlas); las dotes en el de dotes, juzgadas como criatura. Las que se cierran sin elegir quedan pendientes.
+ */
+export async function resolverDotesYMejorasDelCompanero(svc: NuevoPersonajeService, selectores: HuecoDeSelectores): Promise<void> {
+    const nombre = `${svc.PersonajeCreacion.Companeros?.[0]?.Nombre ?? ''}`.trim() || 'el compañero animal';
+    while (svc.getMejorasPendientesDelCompanero().length > 0) {
+        const asignaciones = await selectores.abrir<any[]>(SelectorAumentosCaracteristicaModalComponent, {
+            titulo: `Mejoras de característica de ${nombre}`,
+            pendientes: svc.getMejorasPendientesDelCompanero(),
+            caracteristicasActuales: svc.caracteristicasDelCompanero(),
+            caracteristicasPerdidas: svc.caracteristicasPerdidasDelCompanero(),
+            topesCaracteristicas: svc.topesCaracteristicasDelCompanero(),
+        }, ['confirmar'], []);
+        if (asignaciones && svc.aplicarMejorasDelCompanero(asignaciones))
+            break;
+        await avisarPaso('Falta la mejora', `Elige a qué característica de ${nombre} va el +1 para seguir.`);
+    }
+    if (svc.registrarDotesPendientesDelCompanero() > 0 && !await resolverDotesPendientes(svc, selectores))
+        svc.omitirDotesPendientesDelCompanero();
+}
+
+/**
  * La dote que queda en el hueco `pendiente` tras aplicar `seleccion` (`aplicarDotePendiente`): su id, su extra (el del
  * motor, o el elegido) y sus nombres, para enseñarla. La usan la corrección (otra dote en lugar de la quitada) y el
  * reciclaje de la subida (la dote que entra en el hueco de la reciclada).

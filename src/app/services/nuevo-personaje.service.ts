@@ -85,6 +85,17 @@ import {
     resolverEstadoCuposCompanero,
     resolverFilaCompanero,
 } from './utils/companero-reglas';
+import {
+    aplicarMejoraAlCompanero,
+    companeroSinInteligencia,
+    contextoDeDotesDelCompanero,
+    esDoteDelMonstruoDelCompanero,
+    huecosDeDotesDelCompanero,
+    huecosDeMejorasDelCompanero,
+    origenDeLaDoteDelCompanero,
+    dgDeLaDoteDelCompanero,
+    quitarLoDeLosDgQueNoTieneElCompanero,
+} from './utils/companero-dotes';
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
@@ -817,7 +828,8 @@ interface DestinoModificadoresDote {
     bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>;
 }
 
-export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza' | 'raza_dg';
+/** `companero`: una dote que elige el compañero animal con sus DG (`dgCompanero`), juzgada como criatura. */
+export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza' | 'raza_dg' | 'companero';
 export type DoteEstadoPendiente = 'pendiente' | 'resuelta' | 'omitida';
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -858,6 +870,15 @@ export interface DotePendienteState {
      */
     origenFijo?: string | null;
     alNivel?: number | null;
+    /** La del compañero animal (`fuente` «companero»): el DG total en que la gana. */
+    dgCompanero?: number | null;
+}
+
+/** Las dotes de quien elige (el personaje o su compañero animal), para no repetirlas. */
+interface SujetoDeDotes {
+    contextuales: DoteContextual[];
+    legacy: Array<{ Nombre?: string; Extra?: string; }>;
+    companero: CompaneroMonstruoDetalle | null;
 }
 
 export interface DoteEvaluacionResultado {
@@ -3517,6 +3538,145 @@ export class NuevoPersonajeService {
         return creadas.map((item) => ({ ...item }));
     }
 
+    /**
+     * Las dotes que le quedan por elegir al compañero animal con sus DG (`huecosDeDotesDelCompanero`; contrato: «Las dotes
+     * y las mejoras que elige el compañero»), como dotes pendientes de `fuente` «companero»: se eligen en el mismo selector,
+     * juzgadas como criatura. No repite los huecos que ya están pendientes ni los omitidos. Devuelve cuántas registra.
+     */
+    registrarDotesPendientesDelCompanero(): number {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        if (!companero || companero.Inactiva)
+            return 0;
+        const yaEstan = this.dotesPendientes
+            .filter((p) => p.fuente === 'companero' && p.estado !== 'resuelta')
+            .map((p) => toInt(p.dgCompanero));
+        const nuevas = huecosDeDotesDelCompanero(companero).filter((dg) => {
+            const i = yaEstan.indexOf(dg);
+            if (i < 0)
+                return true;
+            yaEstan.splice(i, 1);
+            return false;
+        });
+        nuevas.forEach((dg) => {
+            const pendiente = this.crearDotePendiente('companero', origenDeLaDoteDelCompanero(companero, dg), null);
+            pendiente.nivel = null;
+            pendiente.dgCompanero = dg;
+            this.dotesPendientes.push(pendiente);
+        });
+        return nuevas.length;
+    }
+
+    /**
+     * Si el compañero animal tiene algo que elegir con sus DG: los puntos de sus DG adicionales nuevos, una dote o una mejora
+     * de característica que le falta (también las que les faltaban a las fichas de antes). La subida le abre su paso.
+     */
+    companeroTieneAlgoQueElegir(): boolean {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        if (!companero || companero.Inactiva)
+            return false;
+        return toInt(companero.Dg_adi) > this.dgsCompaneroRepartidos
+            || huecosDeDotesDelCompanero(companero).length > 0
+            || huecosDeMejorasDelCompanero(companero).length > 0;
+    }
+
+    /** Las del compañero que siguen pendientes quedan sin elegir (en la ficha, pendientes para otra vez). */
+    omitirDotesPendientesDelCompanero(): void {
+        this.dotesPendientes
+            .filter((p) => p.fuente === 'companero' && p.estado === 'pendiente')
+            .forEach((p) => p.estado = 'omitida');
+    }
+
+    /** La dote elegida para el compañero: con su extra y el DG en que la gana (`Contexto.Dg`), sin tocar al personaje. */
+    private aplicarDoteDelCompanero(pendiente: DotePendienteState, dote: Dote, idExtra: number, extraTexto: string): boolean {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        const dg = toInt(pendiente.dgCompanero);
+        if (!companero || dg < 1)
+            return false;
+        const nueva: DoteContextual = {
+            Dote: dote,
+            Contexto: {
+                Entidad: 'personaje',
+                Id_personaje: toNumber(this.personajeCreacion?.Id),
+                Extra: extraTexto,
+                Id_extra: Math.max(0, toInt(idExtra)),
+                Origen: pendiente.origen,
+                Dg: dg,
+            },
+        };
+        if (esDoteDelMonstruoDelCompanero(companero, nueva))
+            return false;
+        companero.Dotes = [...(companero.Dotes ?? []), nueva];
+        pendiente.estado = 'resuelta';
+        return true;
+    }
+
+    /**
+     * Las mejoras de característica que le quedan al compañero (`huecosDeMejorasDelCompanero`), con la forma de los
+     * incrementos del personaje para su mismo selector: una por DG (su `id`).
+     */
+    getMejorasPendientesDelCompanero(): AumentoCaracteristicaPendiente[] {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        if (!companero || companero.Inactiva)
+            return [];
+        const nombre = `${companero.Nombre ?? ''}`.trim() || 'compañero';
+        return huecosDeMejorasDelCompanero(companero).map((dg) => ({
+            id: dg,
+            valor: 1,
+            origen: `Compañero animal (${nombre}): su ${dg}.º DG`,
+            descripcion: 'Al llegar a un número de DG múltiplo de 4, +1 a una característica (Manual de monstruos, pág. 290).',
+            nivel: null,
+        }));
+    }
+
+    /** Sus características de ahora (las seis), para el selector de sus mejoras. */
+    caracteristicasDelCompanero(): Record<Caracteristica, number> {
+        const c = ((this.personajeCreacion.Companeros ?? [])[0]?.Caracteristicas ?? {}) as Record<string, number | null>;
+        return {
+            Fuerza: toInt(c['Fuerza']), Destreza: toInt(c['Destreza']), Constitucion: toInt(c['Constitucion']),
+            Inteligencia: toInt(c['Inteligencia']), Sabiduria: toInt(c['Sabiduria']), Carisma: toInt(c['Carisma']),
+        };
+    }
+
+    /** Las que no tiene (el «—»: sin puntuación), que no se pueden mejorar. */
+    caracteristicasPerdidasDelCompanero(): Partial<Record<Caracteristica, boolean>> {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        const c = (companero?.Caracteristicas ?? {}) as Record<string, number | null>;
+        const perdidas: Partial<Record<Caracteristica, boolean>> = {};
+        CARACTERISTICAS.forEach((k) => {
+            if (c[k] === null || c[k] === undefined || (k === 'Inteligencia' && companeroSinInteligencia(companero)))
+                perdidas[k] = true;
+        });
+        return perdidas;
+    }
+
+    /** El tope de su Inteligencia: el límite de su tipo (`Limite_inteligencia`: un animal, 2; MM pág. 314); sin él, ninguno. */
+    topesCaracteristicasDelCompanero(): Partial<Record<Caracteristica, number>> {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        const limite = toInt(companero?.Limite_inteligencia_tipo);
+        return limite > 0 ? { Inteligencia: limite } : {};
+    }
+
+    /** Pone las mejoras elegidas (`idPendiente`, el DG de cada una). Devuelve si eran todas válidas. */
+    aplicarMejorasDelCompanero(asignaciones: AsignacionAumentoCaracteristica[]): boolean {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        if (!companero)
+            return false;
+        const huecos = new Set(huecosDeMejorasDelCompanero(companero));
+        const perdidas = this.caracteristicasPerdidasDelCompanero();
+        const topes = this.topesCaracteristicasDelCompanero();
+        const actuales = this.caracteristicasDelCompanero();
+        const lista = asignaciones ?? [];
+        const validas = lista.every((a) => {
+            const tope = topes[a.caracteristica];
+            actuales[a.caracteristica] += 1;
+            return huecos.has(toInt(a.idPendiente)) && !perdidas[a.caracteristica] && (tope === undefined || actuales[a.caracteristica] <= tope);
+        });
+        if (!validas || new Set(lista.map((a) => toInt(a.idPendiente))).size !== lista.length)
+            return false;
+        lista.forEach((a) => aplicarMejoraAlCompanero(companero, toInt(a.idPendiente), a.caracteristica));
+        return true;
+    }
+
     getDotesPendientes(): DotePendienteState[] {
         return this.dotesPendientes.map((item) => ({ ...item }));
     }
@@ -3579,6 +3739,9 @@ export class NuevoPersonajeService {
         const extraTexto = this.resolverExtraTextoDote(dote, idExtra, extraSeleccion);
         if (requiereExtra && normalizarTexto(extraTexto).length < 1)
             return false;
+
+        if (pendiente.fuente === 'companero')
+            return this.aplicarDoteDelCompanero(pendiente, dote, idExtra, extraTexto);
 
         const origen = this.construirOrigenDoteDesdePendiente(pendiente);
         const agregado = this.agregarDoteAlPersonaje(dote, origen, idExtra, extraTexto);
@@ -3960,7 +4123,12 @@ export class NuevoPersonajeService {
         const restringidaPorTipo = !this.cumpleRestriccionTipoDote(dote, pendiente.tipoPermitido);
         const requiereExtra = this.doteTieneExtrasSoportados(dote);
         const extrasBase = this.resolverExtrasDisponiblesDote(dote);
-        const extrasDisponibles = this.filtrarExtrasPorRepeticionDote(dote, extrasBase);
+        const sujeto = this.dotesDelSujetoDeLaPendiente(pendiente);
+        const extrasDisponibles = this.filtrarExtrasPorRepeticionDote(dote, extrasBase, sujeto);
+        // Las del compañero se juzgan como criatura, con lo que tiene en el DG en que la gana.
+        const contextoFijo = sujeto.companero
+            ? contextoDeDotesDelCompanero(sujeto.companero, toInt(pendiente.dgCompanero), (id) => this.doteDelCatalogo(id))
+            : null;
 
         if (requiereExtra && extrasDisponibles.length < 1) {
             return {
@@ -3979,8 +4147,8 @@ export class NuevoPersonajeService {
 
         const alNivel = pendiente.alNivel ?? null;
         if (!requiereExtra) {
-            const repeticionValida = this.validarRepeticionDote(dote, 0, '');
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, 0, '', alNivel);
+            const repeticionValida = this.validarRepeticionDote(dote, 0, '', sujeto);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, 0, '', alNivel, false, contextoFijo);
             return {
                 dote,
                 restringidaPorTipo,
@@ -3996,8 +4164,8 @@ export class NuevoPersonajeService {
         if (idExtra > 0) {
             const extra = extrasDisponibles.find((item) => toNumber(item?.Id) === idExtra);
             const extraNombre = `${extra?.Nombre ?? extraTexto}`.trim();
-            const repeticionValida = this.validarRepeticionDote(dote, idExtra, extraNombre);
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, idExtra, extraNombre, alNivel);
+            const repeticionValida = this.validarRepeticionDote(dote, idExtra, extraNombre, sujeto);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, idExtra, extraNombre, alNivel, false, contextoFijo);
             return {
                 dote,
                 restringidaPorTipo,
@@ -4015,8 +4183,8 @@ export class NuevoPersonajeService {
         extrasDisponibles.forEach((extra) => {
             const id = toNumber(extra?.Id);
             const nombre = `${extra?.Nombre ?? ''}`.trim();
-            const repeticionValida = this.validarRepeticionDote(dote, id, nombre);
-            const evaluacion = this.evaluarPrerrequisitosDote(dote, id, nombre, alNivel);
+            const repeticionValida = this.validarRepeticionDote(dote, id, nombre, sujeto);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, id, nombre, alNivel, false, contextoFijo);
             if (repeticionValida && evaluacion.estado === 'eligible')
                 hayElegible = true;
             if (evaluacion.estado === 'blocked_unknown')
@@ -4094,7 +4262,19 @@ export class NuevoPersonajeService {
         return this.normalizarCatalogoExtras(extras);
     }
 
-    private filtrarExtrasPorRepeticionDote(dote: Dote, extras: DoteExtraOpcion[]): DoteExtraOpcion[] {
+    /**
+     * Las dotes con las que se mira si una se repite: las del personaje o, en una del compañero animal (`fuente`
+     * «companero»), las suyas (las de su monstruo, su tabla y las elegidas).
+     */
+    private dotesDelSujetoDeLaPendiente(pendiente: DotePendienteState | null | undefined): SujetoDeDotes {
+        const companero = pendiente?.fuente === 'companero' ? (this.personajeCreacion.Companeros ?? [])[0] ?? null : null;
+        if (companero)
+            return { contextuales: [...(companero.Dotes_monstruo ?? []), ...(companero.Dotes ?? [])], legacy: [], companero };
+        return { contextuales: this.personajeCreacion.DotesContextuales ?? [], legacy: this.personajeCreacion.Dotes ?? [], companero: null };
+    }
+
+    private filtrarExtrasPorRepeticionDote(dote: Dote, extras: DoteExtraOpcion[],
+        sujeto: SujetoDeDotes = this.dotesDelSujetoDeLaPendiente(null)): DoteExtraOpcion[] {
         if (!toBoolean(dote?.Repetible_distinto_extra))
             return extras;
 
@@ -4103,7 +4283,7 @@ export class NuevoPersonajeService {
         const usadosId = new Set<number>();
         const usadosNombre = new Set<string>();
 
-        (this.personajeCreacion.DotesContextuales ?? [])
+        sujeto.contextuales
             .filter((item) => {
                 const idActual = toNumber(item?.Dote?.Id);
                 const nombreActual = normalizarTexto(item?.Dote?.Nombre ?? '');
@@ -4129,17 +4309,18 @@ export class NuevoPersonajeService {
         });
     }
 
-    private validarRepeticionDote(dote: Dote, idExtra: number, extraTexto: string): boolean {
+    private validarRepeticionDote(dote: Dote, idExtra: number, extraTexto: string,
+        sujeto: SujetoDeDotes = this.dotesDelSujetoDeLaPendiente(null)): boolean {
         const idDote = toNumber(dote?.Id);
         const nombreNorm = normalizarTexto(`${dote?.Nombre ?? ''}`);
         const repetibleDistintoExtra = toBoolean(dote?.Repetible_distinto_extra) && this.doteTieneExtrasSoportados(dote);
-        const contextuales = (this.personajeCreacion.DotesContextuales ?? []).filter((item) => {
+        const contextuales = sujeto.contextuales.filter((item) => {
             const id = toNumber(item?.Dote?.Id);
             const nombre = normalizarTexto(item?.Dote?.Nombre ?? '');
             return (idDote > 0 && id === idDote) || (nombreNorm.length > 0 && nombre === nombreNorm);
         });
 
-        const legacy = (this.personajeCreacion.Dotes ?? []).filter((item) =>
+        const legacy = sujeto.legacy.filter((item) =>
             normalizarTexto(item?.Nombre ?? '') === nombreNorm
         );
         const yaExiste = contextuales.length > 0 || legacy.length > 0;
@@ -4188,7 +4369,10 @@ export class NuevoPersonajeService {
      * que tenía al tomar ese nivel (`contextoAlNivel`: la corrección de la ficha, MJ pág. 87).
      */
     private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string, alNivel: number | null = null,
-        yaLaTiene = false): DoteEvaluacionResultado {
+        yaLaTiene = false, contextoFijo: DoteEvaluacionContexto | null = null): DoteEvaluacionResultado {
+        // Con un contexto ya hecho (el del compañero animal, `contextoDeDotesDelCompanero`), se juzga con él.
+        if (contextoFijo)
+            return this.resultadoDeLaEvaluacionDote(dote, contextoFijo, idExtra, extraTexto);
         const identidad = this.identidadPrerrequisitosActual();
 
         const nivelesClase = this.nivelesDeClaseParaPrerrequisitos();
@@ -4395,9 +4579,13 @@ export class NuevoPersonajeService {
             nivelPoderPsionicoMaximo: this.resolverNivelPoderPsionicoMaximo(),
         };
 
+        return this.resultadoDeLaEvaluacionDote(dote, alNivel === null ? contexto : this.contextoAlNivel(contexto, alNivel), idExtra, extraTexto);
+    }
+
+    private resultadoDeLaEvaluacionDote(dote: Dote, contexto: DoteEvaluacionContexto, idExtra: number, extraTexto: string): DoteEvaluacionResultado {
         const evaluacion = evaluarElegibilidadDote({
             dote,
-            contexto: alNivel === null ? contexto : this.contextoAlNivel(contexto, alNivel),
+            contexto,
             idExtraSeleccionado: Math.max(0, toNumber(idExtra)),
             extraSeleccionado: `${extraTexto ?? ''}`.trim(),
         });
@@ -5074,6 +5262,8 @@ export class NuevoPersonajeService {
             companero.Defensa.Armadura_natural = toNumber(companero.Defensa.Armadura_natural) + nueva.Armadura_natural - anterior.Armadura_natural;
         companero.Dg_adi = nueva.Dg_adicionales;
         companero.Trucos_adi = nueva.Trucos_adicionales;
+        // Con menos DG, pierde las dotes elegidas y las mejoras de los que ya no tiene (contrato, «Al perder un nivel…»).
+        quitarLoDeLosDgQueNoTieneElCompanero(companero);
         if (resuelta.fila) {
             delete companero.Inactiva;
             this.ponerAptitudesCompanero(companero, resuelta.nivelTabla);
@@ -5147,8 +5337,9 @@ export class NuevoPersonajeService {
         const quitarDotes = new Set(aptitudes.dotesQueNo);
         mascota.Especiales = (mascota.Especiales ?? [])
             .filter((item) => !quitarEspeciales.has(toNumber((item?.Especial as any)?.Id)));
+        // Las que eligió el compañero con sus DG (`Contexto.Dg`) no son de su tabla: no se quitan aquí.
         mascota.Dotes = (mascota.Dotes ?? [])
-            .filter((item) => !(opciones.esDotePropia(item) && quitarDotes.has(toNumber(item?.Dote?.Id))));
+            .filter((item) => !(opciones.esDotePropia(item) && quitarDotes.has(toNumber(item?.Dote?.Id)) && dgDeLaDoteDelCompanero(item) < 1));
         return { especialesAgregadosIds, dotesAgregadasIds };
     }
 
@@ -5256,6 +5447,10 @@ export class NuevoPersonajeService {
             Trucos_adi: toNumber(bonos?.Trucos_adicionales),
             Especiales: [...(companero?.Especiales ?? [])],
             Dotes: [...(companero?.Dotes ?? [])],
+            // Las de su monstruo, para contar las que le tocan elegir; y el límite de Inteligencia de su tipo (sus mejoras).
+            Dotes_monstruo: [...(companero?.Dotes ?? [])],
+            Limite_inteligencia_tipo: toInt(this.buscarTipoCriaturaPorId(toNumber(companero?.Tipo?.Id))?.Limite_inteligencia),
+            Mejoras: [],
         };
     }
 
@@ -5421,6 +5616,7 @@ export class NuevoPersonajeService {
             adicional: 'Dote adicional',
             raza: ORIGEN_DOTE_ADICIONAL_DE_RAZA,
             raza_dg: 'DGs de raza',
+            companero: 'Compañero animal',
         };
         const prefijo = prefijos[pendiente.fuente] ?? 'Dote adicional';
         const origen = `${pendiente?.origen ?? ''}`.trim();
@@ -11722,6 +11918,8 @@ export class NuevoPersonajeService {
         this.aumentosPendientesCaracteristica = [];
         this.idiomasInicialesConcedidos = true;
         this.dgRacialSinClasesRepartido = this.getNivelClasesActual() < 1;
+        // Los rangos de los DG adicionales que ya tenía su compañero ya están repartidos: al subir, solo los de los nuevos.
+        this.dgsCompaneroRepartidos = Math.max(0, toInt((pj.Companeros ?? [])[0]?.Dg_adi));
 
         // Las clases cerradas por multiclase, con el orden real (sin contar las de sus compatibles).
         const libres = new Set((this.razaSeleccionada?.Clases_multiclase_libre ?? []).map((libre) => toInt(libre?.Id)));

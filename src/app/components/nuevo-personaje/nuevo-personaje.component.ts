@@ -607,6 +607,8 @@ export class NuevoPersonajeComponent {
     selectorAumentosCaracteristicasPerdidas: Partial<Record<CaracteristicaAumentoKey, boolean>> = {};
     selectorAumentosTopes: Partial<Record<CaracteristicaAumentoKey, number>> = {};
     private resolverSelectorAumentos: ((completado: boolean) => void) | null = null;
+    /** El selector de los incrementos está abierto para las mejoras del compañero animal (no las del personaje). */
+    private selectorAumentosDelCompanero = false;
     private resolverSelectorEspecialidadMagica: ((seleccion: SelectorEspecialidadMagicaConfirmacion | null) => void) | null = null;
     /** La clase cuya especialización mágica se elige (para no volver a confirmar el homebrew de su escuela fija). */
     private claseEspecialidadEnCurso: Clase | null = null;
@@ -4783,9 +4785,7 @@ export class NuevoPersonajeComponent {
                 return;
             this.Personaje = this.nuevoPSvc.PersonajeCreacion;
             const siguientePaso = this.resolverPasoPostDotesFinNivel();
-            if (!this.nuevoPSvc.iniciarDistribucionHabilidadesCompanero(siguientePaso))
-                this.nuevoPSvc.actualizarPasoActual(siguientePaso);
-            this.sincronizarTabConPaso();
+            await this.siguienteTrasElCompanero(siguientePaso);
             return;
         }
 
@@ -4807,6 +4807,11 @@ export class NuevoPersonajeComponent {
         if (!returnStep)
             return;
 
+        // Con sus rangos ya puestos, las mejoras y las dotes que elige el compañero con sus DG.
+        if (origenHabilidades === 'companero_dg') {
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+            await this.resolverDotesYMejorasDelCompanero();
+        }
         this.nuevoPSvc.actualizarPasoActual(returnStep);
         this.sincronizarTabConPaso();
         // El reparto del DG racial único se abrió al terminar sin clases: se sigue terminando.
@@ -4880,9 +4885,47 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.cerrarSesionConjuros();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         const siguientePaso = this.resolverPasoPostDotesFinNivel();
-        if (!this.nuevoPSvc.iniciarDistribucionHabilidadesCompanero(siguientePaso))
+        await this.siguienteTrasElCompanero(siguientePaso);
+    }
+
+    /**
+     * Los rangos de los DG adicionales del compañero (su reparto, que al cerrarse pide sus mejoras y sus dotes) o, sin
+     * puntos que repartir, sus mejoras y sus dotes directamente; después, `siguientePaso`.
+     */
+    private async siguienteTrasElCompanero(siguientePaso: StepNuevoPersonaje): Promise<void> {
+        if (!this.nuevoPSvc.iniciarDistribucionHabilidadesCompanero(siguientePaso)) {
+            await this.resolverDotesYMejorasDelCompanero();
             this.nuevoPSvc.actualizarPasoActual(siguientePaso);
+        }
         this.sincronizarTabConPaso();
+    }
+
+    /**
+     * Las mejoras de característica y las dotes que le tocan al compañero con sus DG (contrato: «Las dotes y las mejoras
+     * que elige el compañero»): las mejoras en el selector de los incrementos, con sus características; las dotes en el de
+     * dotes, juzgadas como criatura. Lo que se cierra sin elegir queda pendiente.
+     */
+    private async resolverDotesYMejorasDelCompanero(): Promise<void> {
+        const mejoras = this.nuevoPSvc.getMejorasPendientesDelCompanero();
+        if (mejoras.length > 0)
+            await this.abrirSelectorMejorasDelCompanero(mejoras);
+        if (this.nuevoPSvc.registrarDotesPendientesDelCompanero() > 0 && !await this.resolverDotesPendientes())
+            this.nuevoPSvc.omitirDotesPendientesDelCompanero();
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+    }
+
+    private abrirSelectorMejorasDelCompanero(pendientes: AumentoCaracteristicaPendiente[]): Promise<boolean> {
+        const nombre = `${this.nuevoPSvc.PersonajeCreacion.Companeros?.[0]?.Nombre ?? ''}`.trim() || 'el compañero animal';
+        this.selectorAumentosDelCompanero = true;
+        this.selectorAumentosTitulo = `Mejoras de característica de ${nombre}`;
+        this.selectorAumentosPendientes = pendientes;
+        this.selectorAumentosCaracteristicasActuales = this.nuevoPSvc.caracteristicasDelCompanero();
+        this.selectorAumentosCaracteristicasPerdidas = this.nuevoPSvc.caracteristicasPerdidasDelCompanero();
+        this.selectorAumentosTopes = this.nuevoPSvc.topesCaracteristicasDelCompanero();
+        this.modalSelectorAumentosAbierto = true;
+        return new Promise<boolean>((resolve) => {
+            this.resolverSelectorAumentos = resolve;
+        });
     }
 
     private async resolverFlujoPostDotesFinNivel(): Promise<boolean> {
@@ -6215,7 +6258,9 @@ export class NuevoPersonajeComponent {
     }
 
     onConfirmarAumentosCaracteristica(asignaciones: AsignacionAumentoCaracteristica[]): void {
-        const aplicado = this.nuevoPSvc.aplicarAumentosCaracteristica(asignaciones);
+        const aplicado = this.selectorAumentosDelCompanero
+            ? this.nuevoPSvc.aplicarMejorasDelCompanero(asignaciones)
+            : this.nuevoPSvc.aplicarAumentosCaracteristica(asignaciones);
         if (!aplicado) {
             Swal.fire({
                 icon: 'warning',
@@ -6828,6 +6873,7 @@ export class NuevoPersonajeComponent {
 
     private cerrarSelectorAumentosContexto(resultado: 'completado' | 'cancelado' = 'cancelado'): void {
         this.modalSelectorAumentosAbierto = false;
+        this.selectorAumentosDelCompanero = false;
         this.selectorAumentosPendientes = [];
         this.selectorAumentosTitulo = 'Seleccionar aumentos de caracteristica';
         this.selectorAumentosCaracteristicasActuales = {

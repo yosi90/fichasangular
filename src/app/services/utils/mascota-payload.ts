@@ -8,6 +8,7 @@ import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { primerEntero, toInt, toNumber } from './normalizacion';
 import { carasDado } from './puntos-golpe';
 import { dadosGolpeCompanero, rangosDelCompaneroQueCaben } from './companero-reglas';
+import { dgDeLaDoteDelCompanero, esDoteDelMonstruoDelCompanero, quitarLoDeLosDgQueNoTieneElCompanero } from './companero-dotes';
 import { TablaDelFamiliar } from './familiar-reglas';
 import { idDelMonstruo } from './mascota-cupos';
 
@@ -114,6 +115,21 @@ function dotesPropias(mascota: FamiliarMonstruoDetalle | CompaneroMonstruoDetall
         .map((item) => ({ idDote: toInt(item.Dote.Id), idExtra: Math.max(0, toInt(item?.Contexto?.Id_extra)) }));
 }
 
+/**
+ * Las dotes del compañero para guardar (contrato: «Las dotes y las mejoras que elige el compañero»): las de su tabla, sin
+ * `dg`, y las que eligió con sus DG, con su `dg`; las de su monstruo (`Dotes_monstruo`) no se mandan. Sin `Dotes_monstruo`,
+ * las que la creación le dio (`dotesPropias`). Una repetida con otro extra se manda (antes se perdía).
+ */
+function dotesDelCompanero(companero: CompaneroMonstruoDetalle): Array<{ idDote: number; idExtra: number; dg?: number; }> {
+    const propias = (companero?.Dotes ?? [])
+        .filter((item) => item?.Contexto?.Entidad === 'personaje' && toInt(item?.Dote?.Id) > 0)
+        .filter((item) => dgDeLaDoteDelCompanero(item) > 0 || !companero.Dotes_monstruo || !esDoteDelMonstruoDelCompanero(companero, item));
+    return sinRepetidos(propias.map((item) => {
+        const dg = dgDeLaDoteDelCompanero(item);
+        return { idDote: toInt(item.Dote.Id), idExtra: Math.max(0, toInt(item?.Contexto?.Id_extra)), ...(dg > 0 ? { dg } : {}) };
+    }), (d) => `${d.idDote}|${d.idExtra}|${d.dg ?? 0}`);
+}
+
 function sinRepetidos<T>(items: T[], clave: (item: T) => string): T[] {
     const vistos = new Set<string>();
     return items.filter((item) => {
@@ -212,9 +228,15 @@ export function vidaMediaPorDados(dados: number, carasDado: number, modConstituc
  * adicionales (`rangosDelCompaneroQueCaben`).
  */
 export function construirCompaneroParaGuardar(
-    companero: CompaneroMonstruoDetalle,
+    companeroDelMotor: CompaneroMonstruoDetalle,
     idsEspecialesDelVinculo: number[] = []
 ): PersonajeCreateCompaneroDto {
+    // Sin las dotes elegidas ni las mejoras de los DG que no tiene (al perder un nivel o quedar inactivo).
+    const companero: CompaneroMonstruoDetalle = companeroDelMotor
+        ? { ...companeroDelMotor, Caracteristicas: { ...(companeroDelMotor.Caracteristicas ?? {}) } as any,
+            Dotes: [...(companeroDelMotor.Dotes ?? [])], ...(companeroDelMotor.Mejoras ? { Mejoras: [...companeroDelMotor.Mejoras] } : {}) }
+        : companeroDelMotor;
+    quitarLoDeLosDgQueNoTieneElCompanero(companero);
     const caracteristicas = (companero?.Caracteristicas ?? {}) as Record<string, number | null>;
     const dgAdi = Math.max(0, toInt(companero?.Dg_adi));
     const dados = dadosGolpeCompanero(companero);
@@ -239,7 +261,9 @@ export function construirCompaneroParaGuardar(
             [...especialesDe(companero), ...idsEspecialesDelVinculo.filter((id) => id > 0).map((idEspecial) => ({ idEspecial, idExtra: 0 }))],
             (item) => `${item.idEspecial}|${item.idExtra}`
         ),
-        dotes: dotesPropias(companero),
+        dotes: dotesDelCompanero(companero),
+        mejoras: (companero?.Mejoras ?? []).map((m) => ({ dg: toInt(m.Dg), idCaracteristica: toInt(m.Id_caracteristica) }))
+            .filter((m) => m.dg > 0 && m.idCaracteristica > 0),
         ...(companero?.Inactiva ? { inactiva: true } : {}),
     };
 }
