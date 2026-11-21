@@ -224,6 +224,23 @@ function habilidadesDelCompanero(habilidades: readonly MonstruoHabilidad[] | nul
         }));
 }
 
+/**
+ * Los tipos con los que cuenta el compañero para los prerrequisitos de tipo de sus dotes y sus trucos: el de su monstruo y,
+ * si lo pone el motor, el de su progresión (`Tipo_prerrequisitos`: bestia mágica, MJ pág. 36). Valen los dos, como en la
+ * API (`companero_animal.tipos_que_cuenta`): la araña de Compañero sabandija sigue aprendiendo los trucos de las sabandijas.
+ */
+export function tiposQueCuentaElCompanero(companero: CompaneroMonstruoDetalle | null | undefined): Array<{ Id: number; Nombre: string; }> {
+    const tipos: Array<{ Id: number; Nombre: string; }> = [];
+    [companero?.Tipo, companero?.Tipo_prerrequisitos].forEach((t) => {
+        if (!t || (toInt(t.Id) <= 0 && `${t.Nombre ?? ''}`.trim().length < 1))
+            return;
+        if (toInt(t.Id) > 0 && tipos.some((otro) => toInt(otro.Id) === toInt(t.Id)))
+            return;
+        tipos.push({ Id: toInt(t.Id), Nombre: `${t.Nombre ?? ''}`.trim() });
+    });
+    return tipos;
+}
+
 /** Todas sus dotes (las de su monstruo, su tabla y las elegidas antes de `dg`), en la forma de los prerrequisitos. */
 function dotesDelCompaneroHasta(companero: CompaneroMonstruoDetalle, dg: number): DoteEvaluacionContexto['dotes'] {
     const todas = [...(companero.Dotes_monstruo ?? []), ...(companero.Dotes ?? [])]
@@ -245,20 +262,23 @@ function dotesDelCompaneroHasta(companero: CompaneroMonstruoDetalle, dg: number)
  * Los prerrequisitos de una dote del compañero se juzgan como criatura, con lo que tenía en el DG en que la gana (MJ pág.
  * 87; contrato, «Las elegidas»): sus características (con el ajuste de la tabla y sus mejoras), el ataque base y las
  * salvaciones base de ese DG, sus DG (también como nivel de personaje), sus rangos, sus dotes de antes, su tamaño, sus
- * armas naturales y su tipo. Sin clases, conjuros, idiomas, región ni deidad.
+ * armas naturales y su tipo: el de su monstruo y el de su progresión (`Tipo_prerrequisitos`: bestia mágica, MJ pág. 36),
+ * que valen los dos (`tiposQueCuentaElCompanero`). Sin clases, conjuros, idiomas, región ni deidad.
  */
 export function contextoDeDotesDelCompanero(companero: CompaneroMonstruoDetalle, dg: number,
     doteDelCatalogo: (id: number) => Dote | null | undefined): DoteEvaluacionContexto {
     const dgs = Math.max(1, toInt(dg));
     const dgMonstruo = dgDelMonstruoDelCompanero(companero);
     const c = (companero?.Caracteristicas ?? {}) as Record<string, number | null>;
-    const tipoId = toInt(companero?.Tipo?.Id);
-    const tipoNombre = `${companero?.Tipo?.Nombre ?? ''}`.trim();
+    const tipos = tiposQueCuentaElCompanero(companero).map((t) => ({ id: toInt(t.Id) > 0 ? toInt(t.Id) : null, nombre: `${t.Nombre ?? ''}`.trim() }));
+    const [suTipo, ...otrosTipos] = tipos;
+    const tipoId = toInt(suTipo?.id);
+    const tipoNombre = suTipo?.nombre ?? '';
     const alineamiento = `${companero?.Alineamiento?.Basico?.Nombre ?? ''}`.trim();
     return {
         identidad: {
             razas: [],
-            tiposCriatura: tipoId > 0 || normalizarTexto(tipoNombre).length > 0 ? [{ id: tipoId > 0 ? tipoId : null, nombre: tipoNombre }] : [],
+            tiposCriatura: tipos,
             subtipos: [],
         },
         caracteristicas: puntuacionesDelCompanero(companero),
@@ -285,6 +305,7 @@ export function contextoDeDotesDelCompanero(companero: CompaneroMonstruoDetalle,
         tamanoId: toInt(companero?.Tamano?.Id) > 0 ? toInt(companero.Tamano.Id) : null,
         tipoCriaturaId: tipoId > 0 ? tipoId : null,
         tipoCriaturaNombre: tipoNombre,
+        otrosTiposCriatura: otrosTipos,
         tiposDote: [],
         region: { id: null, nombre: '' },
         salvacionesBase: {

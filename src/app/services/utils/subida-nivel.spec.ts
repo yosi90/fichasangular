@@ -1,6 +1,6 @@
 import { PersonajeCreateCompaneroDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ENTRADA_ENANO_CLERIGO_1 } from 'src/testing/subida-nivel-api';
-import { claveBorradorSubida, companeroConLoDelMotor, fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida, tocaIntercambioConjuros } from './subida-nivel';
+import { claveBorradorSubida, companeroConLoDelMotor, familiarConLoDelMotor, fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida, tocaIntercambioConjuros } from './subida-nivel';
 import { fichaDeLaPlantilla } from './adquirir-plantilla';
 import { campoDelErrorASubida, PasoSubida } from './subida-nivel-vista';
 
@@ -189,5 +189,23 @@ describe('subida-nivel: el compañero animal que pone al día el motor', () => {
         const subido = fichaDeLaSubida({ ...datos, antes: { ...base, companero: antes }, despues: { ...base, companero: { ...antes, dgAdi: 2 } } });
         expect(subido.companero!.dgAdi).toBe(2);
         expect(subido.companero!.especiales).toEqual(guardado.especiales);
+    });
+});
+
+describe('las mascotas del motor en los cambios de la ficha (tanda (f))', () => {
+    const habilidades = (rangos: number) => [{ idHabilidad: 1, idExtra: -1, rangos }];
+
+    it('el familiar: sus rangos siguen a los de su amo cuando cambian (al subir o perder un nivel)', () => {
+        const familiar = (rangos: number) => ({ nombre: 'Pico', idMonstruo: 2, vida: 6, ataqueBase: 1, armaduraNatural: 1, inteligencia: 6, fortaleza: 2, reflejos: 2, voluntad: 2, habilidades: habilidades(rangos) } as any);
+        expect(familiarConLoDelMotor(familiar(4), familiar(4), familiar(5), 12).habilidades).toEqual(habilidades(5));
+        expect(familiarConLoDelMotor(familiar(5), familiar(5), familiar(4), 12).habilidades).toEqual(habilidades(4));
+        // Si el motor no los cambia, se quedan los guardados.
+        expect(familiarConLoDelMotor(familiar(7), familiar(4), familiar(4), 12).habilidades).toEqual(habilidades(7));
+    });
+
+    it('el compañero: con conSusRangos, sus rangos aunque no cambien sus DG; sin él, solo si cambian', () => {
+        const companero = (rangos: number) => ({ nombre: 'Gruk', idMonstruo: 3, dgAdi: 2, habilidades: habilidades(rangos) } as PersonajeCreateCompaneroDto);
+        expect(companeroConLoDelMotor(companero(4), companero(4), companero(5)).habilidades).toEqual(habilidades(4));
+        expect(companeroConLoDelMotor(companero(4), companero(4), companero(5), { conSusRangos: true }).habilidades).toEqual(habilidades(5));
     });
 });

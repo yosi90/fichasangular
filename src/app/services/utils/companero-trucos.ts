@@ -3,7 +3,7 @@ import { PersonajeCreateCompaneroDto } from 'src/app/interfaces/personajes-api';
 import { Dote } from 'src/app/interfaces/dote';
 import { Truco } from 'src/app/interfaces/truco';
 import { sinPuntuacion } from 'src/app/services/utils/caracteristicas';
-import { inteligenciaDelCompanero, nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
+import { inteligenciaDelCompanero, nombreDelCompanero, tiposQueCuentaElCompanero } from 'src/app/services/utils/companero-dotes';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
@@ -94,7 +94,8 @@ export function aptitudesDeLaCriatura(companero: CompaneroMonstruoDetalle | null
 export interface ContextoTrucosDelCompanero {
     sabe: ReadonlySet<number>;
     aptitudes: ReadonlySet<string>;
-    idTipo: number;
+    /** Los tipos con los que cuenta (el de su monstruo y el de su progresión: `tiposQueCuentaElCompanero`). */
+    idsTipo: ReadonlySet<number>;
     quedan: number;
 }
 
@@ -104,7 +105,7 @@ export function contextoDeTrucosDelCompanero(companero: CompaneroMonstruoDetalle
     return {
         sabe: idsDeLoQueSabe([...trucosDelCompanero(companero).map((t) => t.Id), ...elegidos.map((t) => t.Id)], catalogo),
         aptitudes: aptitudesDeLaCriatura(companero),
-        idTipo: toInt(companero?.Tipo?.Id),
+        idsTipo: new Set(tiposQueCuentaElCompanero(companero).map((t) => toInt(t.Id)).filter((id) => id > 0)),
         quedan: trucosAdicionalesPendientes(companero) - costeDeLosTrucos(elegidos),
     };
 }
@@ -113,7 +114,7 @@ export function contextoDeTrucosDelCompanero(companero: CompaneroMonstruoDetalle
  * Lo que no cumple de sus `Requisitos` (los trucos que pide, entre los que sabe; los raciales de su criatura, por su nombre y
  * con su grupo «uno de estos»; su tipo), o `null` si los cumple: lo común de los adicionales y de los enseñados.
  */
-function motivoDeSusRequisitos(truco: Truco, contexto: Pick<ContextoTrucosDelCompanero, 'sabe' | 'aptitudes' | 'idTipo'>): string | null {
+function motivoDeSusRequisitos(truco: Truco, contexto: Pick<ContextoTrucosDelCompanero, 'sabe' | 'aptitudes' | 'idsTipo'>): string | null {
     const obligatorios = truco.Requisitos.Trucos.filter((t) => !t.Opcional);
     const faltan = obligatorios.filter((t) => !contexto.sabe.has(t.Id));
     if (faltan.length > 0)
@@ -128,7 +129,7 @@ function motivoDeSusRequisitos(truco: Truco, contexto: Pick<ContextoTrucosDelCom
     const racialesOpcionales = truco.Requisitos.Raciales.filter((r) => r.Opcional);
     if (racialesOpcionales.length > 0 && !racialesOpcionales.some(tieneRacial))
         return `Pide ${unirLista([...new Set(racialesOpcionales.map((r) => nombreDeAptitud(r.Nombre)))], 'o')}.`;
-    if (truco.Requisitos.Tipos.length > 0 && !truco.Requisitos.Tipos.some((t) => t.Id === contexto.idTipo))
+    if (truco.Requisitos.Tipos.length > 0 && !truco.Requisitos.Tipos.some((t) => contexto.idsTipo.has(t.Id)))
         return `Solo para ${unirLista(truco.Requisitos.Tipos.map((t) => t.Nombre), 'o')}.`;
     return null;
 }
@@ -169,7 +170,7 @@ export function trucosAprendidosDelCompanero(companero: CompaneroMonstruoDetalle
 }
 
 /** Lo que hace falta para juzgar un truco que se le enseña con Trato con animales. */
-export interface ContextoTrucoEnsenado extends Pick<ContextoTrucosDelCompanero, 'sabe' | 'aptitudes' | 'idTipo'> {
+export interface ContextoTrucoEnsenado extends Pick<ContextoTrucosDelCompanero, 'sabe' | 'aptitudes' | 'idsTipo'> {
     /** Su Inteligencia; `null` sin ella (una sabandija descerebrada). */
     inteligencia: number | null;
     /** Cuántos puede aprender: 3 × Int más lo que dan sus dotes. */
@@ -191,11 +192,11 @@ export function contextoDelTrucoEnsenado(companero: CompaneroMonstruoDetalle | n
     const int = sinPuntuacion(inteligencia) ? null : toInt(inteligencia);
     const aprendidos = trucosAprendidosDelCompanero(companero);
     // Lo que sabe, sus aptitudes y su tipo, como para los adicionales.
-    const { sabe, aptitudes, idTipo } = contextoDeTrucosDelCompanero(companero, catalogo);
+    const { sabe, aptitudes, idsTipo } = contextoDeTrucosDelCompanero(companero, catalogo);
     return {
         sabe,
         aptitudes,
-        idTipo,
+        idsTipo,
         inteligencia: int,
         limite: int === null ? 0 : TRUCOS_POR_INTELIGENCIA * int + trucosExtraDeSusDotes(companero, catalogoDotes),
         cuenta: costeDeLosTrucos(aprendidos),

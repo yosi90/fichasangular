@@ -144,7 +144,7 @@ describe("monstruo-mapper: el compañero animal, de los datos", () => {
         });
         expect(cache.Bonos.map((b) => b.Nivel)).toEqual([1, 3]);
         expect(cache.Aptitudes.map((a) => a.Id)).toEqual([1]);
-        expect(leerCompaneroProgresion(null)).toEqual({ Bonos: [], Aptitudes: [] });
+        expect(leerCompaneroProgresion(null)).toEqual({ Bonos: [], Aptitudes: [], Tipo_prerrequisitos: null });
     });
 
     it("el ajuste de cada fila de la lista: 0 o menos, y 0 sin él (una caché de antes)", () => {
@@ -294,6 +294,6 @@ describe("monstruo-mapper: el familiar, de los datos", () => {
         expect(cache.Tablas.map((t) => t.Id)).toEqual([1, 2]);
         expect(cache.Tablas[0].Bonos.map((b) => b.Nivel)).toEqual([1, 3]);
         expect(cache.Plantillas[0].Sin_aptitudes).toEqual([7]);
-        expect(leerFamiliarProgresion(null)).toEqual({ Tablas: [], Plantillas: [] });
+        expect(leerFamiliarProgresion(null)).toEqual({ Tablas: [], Plantillas: [], Tipo_prerrequisitos: null });
     });
 });

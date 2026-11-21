@@ -600,6 +600,20 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             this.puertaSubida.solicitar(this.idPersonaje);
     }
 
+    /**
+     * «Completar el compañero» (contrato: SESIONES_FRONT, «Lo que la mascota tiene pendiente, fuera de una subida»): para quien
+     * apunta, con su compañero activo. Lo que le falta (puntos, dotes, mejoras, trucos) lo dice su pantalla, que carga su
+     * criatura: la ficha sola no lo sabe.
+     */
+    get puedeCompletarCompanero(): boolean {
+        return this.editable && !!this.companero && !this.companero.Inactiva;
+    }
+
+    pedirCompletarCompanero(): void {
+        if (this.idPersonaje > 0)
+            this.puertaSubida.solicitarCompanero(this.idPersonaje);
+    }
+
     trackEvento(_indice: number, evento: SesionEvento): number {
         return evento.id;
     }

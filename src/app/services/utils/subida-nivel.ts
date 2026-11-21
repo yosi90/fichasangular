@@ -339,7 +339,7 @@ const CIFRAS_COMPANERO_DEL_MOTOR = ['vida', 'dgAdi', 'trucosAdi', 'fuerza', 'des
  * de antes) también.
  */
 export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, antes: PersonajeCreateCompaneroDto | undefined,
-    despues: PersonajeCreateCompaneroDto): PersonajeCreateCompaneroDto {
+    despues: PersonajeCreateCompaneroDto, { conSusRangos = false }: { conSusRangos?: boolean; } = {}): PersonajeCreateCompaneroDto {
     const resultado: PersonajeCreateCompaneroDto = JSON.parse(JSON.stringify(guardado));
     CIFRAS_COMPANERO_DEL_MOTOR.forEach((k) => {
         if (toInt(despues[k]) !== toInt(antes?.[k]))
@@ -351,7 +351,8 @@ export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, an
         (x) => toInt(x?.dg) > 0 ? claveDeDoteDelCompaneroGuardada(x) : `${toInt(x?.idDote)}`);
     // Los rangos, si cambian sus DG adicionales y el motor los cambia: al bajar («todo o nada») y al subir (los de sus DG
     // nuevos, que se reparten en la subida).
-    if (toInt(despues.dgAdi) !== toInt(antes?.dgAdi) && claveElemento(antes?.habilidades ?? []) !== claveElemento(despues.habilidades ?? []))
+    // Con `conSusRangos` (completar lo que le faltaba, sin cambiar sus DG), también si solo cambian sus rangos.
+    if ((conSusRangos || toInt(despues.dgAdi) !== toInt(antes?.dgAdi)) && claveElemento(antes?.habilidades ?? []) !== claveElemento(despues.habilidades ?? []))
         resultado.habilidades = JSON.parse(JSON.stringify(despues.habilidades ?? []));
     // Sus mejoras de característica, como las deja el motor si cambian (contrato: «Las dotes y las mejoras que elige…»).
     if (claveElemento(antes?.mejoras ?? []) !== claveElemento(despues.mejoras ?? []))
@@ -413,8 +414,9 @@ export function familiarConLoDelMotor(guardado: PersonajeCreateFamiliarDto, ante
     });
     resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => `${toInt(x?.idEspecial)}`);
     resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes, (x) => `${toInt(x?.idDote)}`);
-    // Al quedar inactivo o activarse, sus rangos: los de su criatura o los mejores entre los suyos y los de su amo.
-    if (!!guardado.inactiva !== !!despues.inactiva)
+    // Sus rangos, los mejores entre los de su criatura y los de su amo (MJ pág. 45), como los deja el motor si cambian: al
+    // cambiar los del amo (al subir o perder un nivel, con una plantilla…), al quedar inactivo (los de su criatura) o activarse.
+    if (!!guardado.inactiva !== !!despues.inactiva || claveElemento(antes?.habilidades ?? []) !== claveElemento(despues.habilidades ?? []))
         resultado.habilidades = JSON.parse(JSON.stringify(despues.habilidades ?? []));
     conSuActividad(resultado, despues);
     return resultado;

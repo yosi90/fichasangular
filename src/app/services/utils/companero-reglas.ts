@@ -116,6 +116,24 @@ export function rangosDelCompaneroQueCaben(habilidades: readonly MonstruoHabilid
     dgAdicionales: number, puntosDelTipo: number, inteligencia: number | null | undefined): MonstruoHabilidad[] {
     const dg = Math.max(0, toInt(dgAdicionales));
     const base = new Map((delMonstruo ?? []).map((h) => [toInt(h?.Id_habilidad), h] as const));
+    const { coste, cabe } = costeDeLosRangosDelCompanero(habilidades, delMonstruo, dg);
+    if (cabe && coste <= puntosPorDgDelCompanero(puntosDelTipo, inteligencia) * dg)
+        return (habilidades ?? []).map((h) => ({ ...h }));
+    return (habilidades ?? []).map((h) => {
+        const suya = base.get(toInt(h?.Id_habilidad));
+        return suya ? { ...h, Id_extra: suya.Id_extra, Extra: suya.Extra, Rangos: toInt(suya.Rangos) } : { ...h, Rangos: 0 };
+    });
+}
+
+/**
+ * Lo que cuestan sus rangos por encima de los de su monstruo (`delMonstruo`): 1 por rango en las habilidades de su monstruo
+ * y 2 en las demás; `cabe`, si ninguna pasa de sus DG adicionales (la mitad en las demás). El criterio de la herramienta de
+ * las fichas guardadas (`scripts/companeros_guardados.corregir_habilidades`).
+ */
+export function costeDeLosRangosDelCompanero(habilidades: readonly MonstruoHabilidad[], delMonstruo: readonly MonstruoHabilidad[],
+    dgAdicionales: number): { coste: number; cabe: boolean; } {
+    const dg = Math.max(0, toInt(dgAdicionales));
+    const base = new Map((delMonstruo ?? []).map((h) => [toInt(h?.Id_habilidad), h] as const));
     let coste = 0;
     let cabe = true;
     (habilidades ?? []).forEach((h) => {
@@ -125,12 +143,18 @@ export function rangosDelCompaneroQueCaben(habilidades: readonly MonstruoHabilid
         if (exceso > (suya ? dg : dg / 2))
             cabe = false;
     });
-    if (cabe && coste <= puntosPorDgDelCompanero(puntosDelTipo, inteligencia) * dg)
-        return (habilidades ?? []).map((h) => ({ ...h }));
-    return (habilidades ?? []).map((h) => {
-        const suya = base.get(toInt(h?.Id_habilidad));
-        return suya ? { ...h, Id_extra: suya.Id_extra, Extra: suya.Extra, Rangos: toInt(suya.Rangos) } : { ...h, Rangos: 0 };
-    });
+    return { coste, cabe };
+}
+
+/**
+ * Los puntos de habilidad que le quedan por gastar al compañero (contrato: SESIONES_FRONT, «Lo que la mascota tiene
+ * pendiente»): los de sus DG adicionales (`puntosPorDgDelCompanero` × DG adicionales) menos lo que cuestan sus rangos por
+ * encima de los de su monstruo (`costeDeLosRangosDelCompanero`). También los de las fichas de antes (Gruk, 1).
+ */
+export function puntosPendientesDelCompanero(habilidades: readonly MonstruoHabilidad[], delMonstruo: readonly MonstruoHabilidad[],
+    dgAdicionales: number, puntosDelTipo: number, inteligencia: number | null | undefined): number {
+    const dg = Math.max(0, toInt(dgAdicionales));
+    return Math.max(0, puntosPorDgDelCompanero(puntosDelTipo, inteligencia) * dg - costeDeLosRangosDelCompanero(habilidades, delMonstruo, dg).coste);
 }
 
 /** Las armas naturales del compañero (las de su monstruo), para los prerrequisitos de sus dotes (Ataque múltiple). */

@@ -283,6 +283,11 @@ export interface CompaneroAptitudNivel extends MascotaAptitudNivel {
 export interface CompaneroProgresion {
     Bonos: CompaneroBonosNivel[];
     Aptitudes: CompaneroAptitudNivel[];
+    /**
+     * El tipo con el que cuenta el compañero para los prerrequisitos de tipo de sus dotes (MJ pág. 36: bestia mágica), o
+     * `null` sin el dato: entonces, el de su monstruo (contrato: catalogos.md, `GET /companeros/progresion`).
+     */
+    Tipo_prerrequisitos?: { Id: number; Nombre: string; } | null;
 }
 
 /**
@@ -329,6 +334,8 @@ export interface FamiliarPlantillaProgresion {
 export interface FamiliarProgresion {
     Tablas: FamiliarTabla[];
     Plantillas: FamiliarPlantillaProgresion[];
+    /** El tipo con el que cuenta el familiar para los prerrequisitos de tipo (MJ pág. 44: bestia mágica), o `null`. */
+    Tipo_prerrequisitos?: { Id: number; Nombre: string; } | null;
 }
 
 export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
@@ -353,6 +360,11 @@ export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
     Habilidades_monstruo?: MonstruoHabilidad[];
     /** Los puntos de habilidad por DG del tipo de su monstruo, que la carga de las sesiones pone con `Habilidades_monstruo`. */
     Puntos_habilidad_tipo?: number;
+    /**
+     * El tipo con el que cuenta para los prerrequisitos de tipo de sus dotes y sus trucos (el `Tipo_prerrequisitos` de su
+     * progresión: bestia mágica), que pone el motor; vale también el de su monstruo (`tiposQueCuentaElCompanero`).
+     */
+    Tipo_prerrequisitos?: { Id: number; Nombre: string; } | null;
     /** El límite de Inteligencia del tipo de su monstruo (`Limite_inteligencia`: 2 en un animal; 0, sin límite). */
     Limite_inteligencia_tipo?: number;
     /**

@@ -61,6 +61,8 @@ export interface DoteEvaluacionContexto {
     tamanoId?: number | null;
     tipoCriaturaId?: number | null;
     tipoCriaturaNombre?: string;
+    /** Otros tipos con los que también cuenta para `tipo_criatura` (la mascota: el de su progresión, además del de su monstruo). */
+    otrosTiposCriatura?: Array<{ id: number | null; nombre: string; }>;
     tiposDote?: Array<{ id: number | null; nombre: string; }>;
     region?: {
         id: number | null;
@@ -421,18 +423,17 @@ function buildEvaluacionTipoCriatura(entry: Record<string, any>, ctx: DoteEvalua
     const tipoIdReq = parseId(entry, ['Id_tipo', 'id_tipo', 'Id_tipo_criatura', 'id_tipo_criatura', 'Id', 'id', 'i']);
     const tipoNombreReq = parseText(entry, ['Tipo', 'tipo', 'Tipo_criatura', 'tipo_criatura', 'Nombre', 'nombre']);
     const tipoNombreReqNorm = normalizarTexto(tipoNombreReq);
-    const tipoActualId = toInt(ctx.tipoCriaturaId);
-    const tipoActualNombreNorm = normalizarTexto(ctx.tipoCriaturaNombre ?? '');
-    const evaluable = (tipoIdReq > 0 || tipoNombreReqNorm.length > 0)
-        && (tipoActualId > 0 || tipoActualNombreNorm.length > 0);
-    const cumplePorId = tipoIdReq > 0 && tipoActualId > 0 && tipoActualId === tipoIdReq;
-    const cumplePorNombre = tipoNombreReqNorm.length > 0
-        && tipoActualNombreNorm.length > 0
-        && tipoNombreReqNorm === tipoActualNombreNorm;
+    // Su tipo y los otros con los que cuenta (la mascota: el de su progresión); vale cualquiera.
+    const actuales = [{ id: ctx.tipoCriaturaId ?? null, nombre: ctx.tipoCriaturaNombre ?? '' }, ...(ctx.otrosTiposCriatura ?? [])]
+        .map((t) => ({ id: toInt(t.id), nombre: normalizarTexto(t.nombre ?? '') }))
+        .filter((t) => t.id > 0 || t.nombre.length > 0);
+    const evaluable = (tipoIdReq > 0 || tipoNombreReqNorm.length > 0) && actuales.length > 0;
+    const cumple = actuales.some((t) => (tipoIdReq > 0 && t.id > 0 && t.id === tipoIdReq)
+        || (tipoNombreReqNorm.length > 0 && t.nombre.length > 0 && tipoNombreReqNorm === t.nombre));
     return {
         grupoOpcional,
         evaluable,
-        cumple: evaluable ? (cumplePorId || cumplePorNombre) : false,
+        cumple: evaluable ? cumple : false,
         razonUnknown: 'Prerrequisito tipo_criatura con formato no reconocido',
     };
 }

@@ -17,6 +17,7 @@ import {
     EstadoCuposCompanero,
     evaluarCompanerosElegibilidad,
     filtrarCompanerosElegibles,
+    puntosPendientesDelCompanero,
     puntosPorDgDelCompanero,
     rangosDelCompaneroQueCaben,
     resolverEstadoCuposCompanero,
@@ -287,5 +288,22 @@ describe('los rangos del compañero al bajar sus DG adicionales, «todo o nada»
         expect(rangosDelCompaneroQueCaben(suyas, DEL_MONSTRUO, 0, 2, 2).map((h) => h.Rangos)).toEqual([4, 4, 0]);
         // Un rango más que sus DG adicionales en una de su monstruo no cabe aunque sobren puntos.
         expect(rangosDelCompaneroQueCaben([habilidad(1, 7)], DEL_MONSTRUO, 2, 2, 18).map((h) => h.Rangos)).toEqual([4]);
+    });
+
+    it('los puntos que le quedan: los de todos sus DG adicionales menos lo que cuestan sus rangos (también los de una ficha de antes)', () => {
+        // Gruk: 2 DG adicionales, Int 2 (−4): 1 punto por DG, 2 puntos; gastó 1 en Escuchar (de su monstruo): le queda 1.
+        expect(puntosPendientesDelCompanero([habilidad(1, 5), habilidad(2, 4)], DEL_MONSTRUO, 2, 2, 2)).toBe(1);
+        // Sin gastar nada, los 2; un rango de una que no es de su monstruo cuesta 2: no le queda ninguno.
+        expect(puntosPendientesDelCompanero([habilidad(1, 4), habilidad(2, 4)], DEL_MONSTRUO, 2, 2, 2)).toBe(2);
+        expect(puntosPendientesDelCompanero([habilidad(1, 4), habilidad(2, 4), habilidad(3, 1)], DEL_MONSTRUO, 2, 2, 2)).toBe(0);
+        // Sin DG adicionales, o sin Inteligencia, ninguno.
+        expect(puntosPendientesDelCompanero(DEL_MONSTRUO, DEL_MONSTRUO, 0, 2, 2)).toBe(0);
+        expect(puntosPendientesDelCompanero(DEL_MONSTRUO, DEL_MONSTRUO, 2, 2, null)).toBe(0);
+    });
+
+    it('la progresión lleva el tipo con el que cuenta para sus prerrequisitos; sin él, null', () => {
+        expect(leerCompaneroProgresion({ ...PROGRESION_API, Tipo_prerrequisitos: { Id: 4, Nombre: 'Bestia mágica' } }).Tipo_prerrequisitos)
+            .toEqual({ Id: 4, Nombre: 'Bestia mágica' });
+        expect(leerCompaneroProgresion(PROGRESION_API).Tipo_prerrequisitos).toBeNull();
     });
 });
