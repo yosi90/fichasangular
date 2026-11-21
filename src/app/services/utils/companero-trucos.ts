@@ -211,13 +211,16 @@ export function trucosDeSuMonstruo(monstruo: { Trucos?: TrucoDeMascota[]; } | nu
 }
 
 /**
- * Sus trucos con los de su monstruo que le falten (la ficha de antes de los trucos no los guardaba; la API pide que estén
- * todos: contrato, «Los trucos del compañero»).
+ * Sus trucos con los de su monstruo que le falten (la ficha de antes de los trucos no los guardaba), salvo el que ya
+ * sustituye uno que sabe (Combate montado a Monta), con el `Sustituye` del `catalogo`: como la API
+ * (`companero_animal.con_los_de_su_monstruo`; contrato, «Los trucos del compañero»).
  */
 export function conLosTrucosDeSuMonstruo(trucos: readonly TrucoDeMascota[] | null | undefined,
-    monstruo: { Trucos?: TrucoDeMascota[]; } | null | undefined): TrucoDeMascota[] {
+    monstruo: { Trucos?: TrucoDeMascota[]; } | null | undefined, catalogo: readonly Truco[] = []): TrucoDeMascota[] {
     const tiene = new Set((trucos ?? []).map((t) => t.Id));
-    return [...(trucos ?? []), ...trucosDeSuMonstruo(monstruo).filter((t) => !tiene.has(t.Id))];
+    const porId = new Map(catalogo.map((t) => [t.Id, t] as const));
+    const sustituidos = new Set([...tiene].map((id) => toInt(porId.get(id)?.Sustituye?.Id)).filter((id) => id > 0));
+    return [...(trucos ?? []), ...trucosDeSuMonstruo(monstruo).filter((t) => !tiene.has(t.Id) && !sustituidos.has(t.Id))];
 }
 
 /** `companero.trucos[]` del alta y de los cambios de la ficha: `{ idTruco, origen, orden? }` (el orden, en los adicionales). */

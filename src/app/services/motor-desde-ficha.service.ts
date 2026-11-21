@@ -24,6 +24,7 @@ import { RazaService } from './raza.service';
 import { SesionesService } from './sesiones.service';
 import { SubtipoService } from './subtipo.service';
 import { TipoCriaturaService } from './tipo-criatura.service';
+import { Truco } from 'src/app/interfaces/truco';
 import { TrucoService } from './truco.service';
 import { conLosTrucosDeSuMonstruo } from './utils/companero-trucos';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
@@ -232,7 +233,7 @@ export class MotorDesdeFichaService {
         const plantillas = (await Promise.all((entrada.colecciones?.plantillas ?? [])
             .map((p) => this.primero(this.plantillaSvc.getPlantilla(toInt(p.idPlantilla))))))
             .filter((p): p is NonNullable<typeof p> => !!p);
-        const personaje = await this.conLaCriaturaDelCompanero(await this.conLaCriaturaDelFamiliar(pj));
+        const personaje = await this.conLaCriaturaDelCompanero(await this.conLaCriaturaDelFamiliar(pj), motor.CatalogoTrucos);
         motor.iniciarSubidaDesdeFicha({ personaje, entrada, raza, razaBase, plantillas, nivelesPerdidos });
     }
 
@@ -242,7 +243,7 @@ export class MotorDesdeFichaService {
      * quedar inactivo). Sin el monstruo o su tipo, sus rangos se quedan como están. Con las dotes de su monstruo
      * (`Dotes_monstruo`), las que le quedan por elegir, y con el límite de Inteligencia de su tipo, sus mejoras.
      */
-    private async conLaCriaturaDelCompanero(pj: Personaje): Promise<Personaje> {
+    private async conLaCriaturaDelCompanero(pj: Personaje, catalogoTrucos: readonly Truco[] = []): Promise<Personaje> {
         const companeros = pj?.Companeros ?? [];
         if (companeros.length < 1)
             return pj;
@@ -255,7 +256,7 @@ export class MotorDesdeFichaService {
             // Las dotes de su monstruo: con ellas se cuentan las que le tocan elegir con sus DG; y sus trucos, con los que
             // trae su monstruo (contrato: «Los trucos del compañero»).
             const conSusDotes = {
-                ...companero, Dotes_monstruo: [...(monstruo.Dotes ?? [])], Trucos: conLosTrucosDeSuMonstruo(companero.Trucos, monstruo),
+                ...companero, Dotes_monstruo: [...(monstruo.Dotes ?? [])], Trucos: conLosTrucosDeSuMonstruo(companero.Trucos, monstruo, catalogoTrucos),
             };
             if (!tipo || tipo.Puntos_habilidad === undefined || tipo.Puntos_habilidad === null)
                 return conSusDotes;

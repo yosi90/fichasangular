@@ -135,6 +135,10 @@ describe('los trucos del compañero animal', () => {
         const monstruo = { Trucos: leerTrucosDeMascota([{ Id: 7, Nombre: 'Lucha', Es_fin: true }]) };
         expect(conLosTrucosDeSuMonstruo([], monstruo).map((t) => [t.Nombre, t.Origen])).toEqual([['Lucha', 'monstruo']]);
         expect(conLosTrucosDeSuMonstruo([deMascota(LUCHA, 'monstruo')], monstruo).length).toBe(1);
+        // El que ya sabe uno que lo sustituye (Ataca (todas las criaturas) a Ataca) no se añade, como en la API.
+        const conAtaca = { Trucos: leerTrucosDeMascota([{ Id: 1, Nombre: 'Ataca' }]) };
+        expect(conLosTrucosDeSuMonstruo([deMascota(ATACA_TODAS, 'ensenado')], conAtaca, CATALOGO).map((t) => t.Id)).toEqual([2]);
+        expect(conLosTrucosDeSuMonstruo([], conAtaca, CATALOGO).map((t) => t.Id)).toEqual([1]);
     });
 
     it('la ficha los enseña por su origen; el monstruo, con su nombre', () => {
