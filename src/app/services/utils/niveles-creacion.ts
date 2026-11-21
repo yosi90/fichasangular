@@ -111,6 +111,17 @@ export function nivelDelOrden(orden: NivelTomado[] | null | undefined, nivel: Re
         : undefined;
 }
 
+/**
+ * El nivel de cada clase al tomar el nivel `indice` del orden (incluido): el `nivelClase` más alto de cada una hasta él. Lo
+ * usan los prerrequisitos de una dote con lo que tenía al elegirla (`contextoAlNivel` del motor) y el nivel efectivo de la
+ * mascota al elegir su dote (`reciclaje-mascota.ts`, como `_nivel_al_elegir_la_dote` de la API).
+ */
+export function nivelesDeClaseHasta(orden: NivelTomado[] | null | undefined, indice: number): Map<number, number> {
+    const hasta = new Map<number, number>();
+    (orden ?? []).slice(0, indice + 1).forEach((n) => hasta.set(toInt(n?.idClase), Math.max(hasta.get(toInt(n?.idClase)) ?? 0, toInt(n?.nivelClase))));
+    return hasta;
+}
+
 /** Si una elección de un nivel es la de ese tipo y ese elemento, con su extra (`mismoExtra`: sin extra, 0 o -1). */
 export function esLaEleccion(eleccion: PersonajeCreateNivelEleccionDto | null | undefined, tipo: PersonajeCreateNivelEleccionDto['tipo'],
     idElemento: unknown, idExtra: unknown): boolean {

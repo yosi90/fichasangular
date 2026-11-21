@@ -4,15 +4,17 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import {
-    claveCompanero, EntradasSelectorCompanero, entradasDelSelectorCompanero, resolverEstadoCuposCompanero, resolverFilaCompanero,
+    claveCompanero, EntradasSelectorCompanero, entradasDelSelectorCompanero, resolverEstadoCuposCompanero, resolverFilaCompanero, TEXTOS_COMPANERO,
 } from './companero-reglas';
 import {
-    claveFamiliar, EntradasSelectorFamiliar, entradasDelSelectorFamiliar, resolverEstadoCuposFamiliar, resolverFilaFamiliar,
+    claveFamiliar, EntradasSelectorFamiliar, entradasDelSelectorFamiliar, resolverEstadoCuposFamiliar, resolverFilaFamiliar, TEXTOS_FAMILIAR,
 } from './familiar-reglas';
 import { doteDeNivelClase } from './nivel-clase-monstruo';
-import { aportaAlDarLaMascota, EstadoMascota, filasDeSusListas, OtorgaMascota } from './mascota-cupos';
+import { nivelesDeClaseHasta } from './niveles-creacion';
+import { aportaAlDarLaMascota, EstadoMascota, filasDeSusListas, OtorgaMascota, TextosMascota } from './mascota-cupos';
 import { normalizarTexto, toInt } from './normalizacion';
 import { conLasAptitudesYDotesDelMotor, DerivadoDelRasgo } from './reciclaje-dominio-escuela';
+import { textoVisible } from './texto-visible';
 import { familiarConLoDelMotor } from './subida-nivel';
 
 /*
@@ -79,21 +81,20 @@ export interface PlanMascota {
     aptitudesNuevas: Array<{ nombre: string; extra: string; }>;
 }
 
-/** Lo que dicen las frases y lo que pide el motor de cada mascota. */
-const DE_LA_MASCOTA: Record<TipoDeMascota, { otorga: OtorgaMascota; nombre: string; lista: string; }> = {
-    companero: { otorga: 'Otorga_companero', nombre: 'compañero animal', lista: 'compañeros animales' },
-    familiar: { otorga: 'Otorga_familiar', nombre: 'familiar', lista: 'familiares' },
+/** Lo que pide el motor de cada mascota y sus frases (las de la creación, `TEXTOS_COMPANERO` y `TEXTOS_FAMILIAR`). */
+const DE_LA_MASCOTA: Record<TipoDeMascota, { otorga: OtorgaMascota; textos: TextosMascota; }> = {
+    companero: { otorga: 'Otorga_companero', textos: TEXTOS_COMPANERO },
+    familiar: { otorga: 'Otorga_familiar', textos: TEXTOS_FAMILIAR },
 };
 
 /** El nombre de la mascota para las frases («compañero animal», «familiar»). */
 export function nombreDeLaMascota(tipo: TipoDeMascota): string {
-    return DE_LA_MASCOTA[tipo].nombre;
+    return DE_LA_MASCOTA[tipo].textos.mascota;
 }
 
-/** La plantilla de una criatura que se nombra: vacía sin ella o con la de relleno («No aplica»). */
+/** La plantilla de una criatura que se nombra: vacía sin ella o con un texto de relleno («No aplica», `textoVisible`). */
 function plantillaVisible(criatura: Pick<CriaturaDelRasgo, 'plantilla'> | null | undefined): string {
-    const plantilla = `${criatura?.plantilla ?? ''}`.trim();
-    return normalizarTexto(plantilla) === normalizarTexto('No aplica') ? '' : plantilla;
+    return textoVisible(criatura?.plantilla);
 }
 
 /** La criatura con su plantilla, si la tiene: «Lobo», «Lobo (Celestial)», «Gato (Básica)». */
@@ -110,6 +111,11 @@ export function nombresDelCambio(tiene: CriaturaDelRasgo, pone: CriaturaDelRasgo
     if (normalizarTexto(plantillaVisible(tiene)) === normalizarTexto(plantillaVisible(pone)))
         return [tiene.nombre, pone.nombre];
     return [nombreDeLaCriatura(tiene), nombreDeLaCriatura(pone)];
+}
+
+/** La clave de una criatura de la mascota, como la de su catálogo (`claveDe`): su monstruo y su plantilla. */
+function claveDeLaCriatura(criatura: Pick<CriaturaDelRasgo, 'idMonstruo' | 'idPlantilla'>): string {
+    return `${toInt(criatura.idMonstruo)}:${Math.max(0, toInt(criatura.idPlantilla))}`;
 }
 
 /** La clave de una criatura del catálogo (`claveCompanero` o `claveFamiliar`): su monstruo y su plantilla. */
@@ -145,14 +151,14 @@ export function huecosDeMascota(motor: NuevoPersonajeService, entrada: Personaje
         const guardada = tipo === 'companero' ? entrada.companero : entrada.familiar;
         if (!guardada || toInt(guardada.idMonstruo) <= 0)
             return [];
-        const textos = DE_LA_MASCOTA[tipo];
+        const { otorga, textos } = DE_LA_MASCOTA[tipo];
         const estado = estadoDe(motor, tipo);
         const fuente = estado.fuentesMascota[0] ?? null;
         const catalogo: CriaturaDeMascota[] | null = tipo === 'companero' ? catalogos.companeros : catalogos.familiares;
         const enElMotor: CriaturaDeMascota | undefined = (tipo === 'companero' ? motor.PersonajeCreacion.Companeros : motor.PersonajeCreacion.Familiares)?.[0];
-        const clave = `${toInt(guardada.idMonstruo)}:${Math.max(0, toInt(guardada.idPlantilla))}`;
-        const delCatalogo = (catalogo ?? []).find((c) => claveDe(tipo, c) === clave) ?? null;
         const idPlantilla = Math.max(0, toInt(guardada.idPlantilla));
+        const clave = claveDeLaCriatura({ idMonstruo: toInt(guardada.idMonstruo), idPlantilla });
+        const delCatalogo = (catalogo ?? []).find((c) => claveDe(tipo, c) === clave) ?? null;
         const tiene: CriaturaDelRasgo = {
             idMonstruo: toInt(guardada.idMonstruo), idPlantilla,
             nombre: `${delCatalogo?.Nombre ?? enElMotor?.Monstruo_origen?.Nombre ?? guardada.nombre ?? ''}`.trim(),
@@ -163,9 +169,9 @@ export function huecosDeMascota(motor: NuevoPersonajeService, entrada: Personaje
             tiene, nombrePropio: `${guardada.nombre ?? ''}`.trim(), nivelEleccion: 0, nivelPorDote: {},
         };
         if (!fuente)
-            return [{ ...base, motivo: `Ninguna de sus clases le da un ${textos.nombre}.` }];
+            return [{ ...base, motivo: `Ninguna de sus clases le da un ${textos.mascota}.` }];
         if (!catalogo)
-            return [{ ...base, motivo: `No se ha podido leer el catálogo de ${textos.lista}. Vuelve a intentarlo en unos segundos.` }];
+            return [{ ...base, motivo: `No se ha podido leer el catálogo de ${textos.listaDe}. Vuelve a intentarlo en unos segundos.` }];
         const conSusFilas = delCatalogo ?? enElMotor;
         const resuelta = conSusFilas
             ? (tipo === 'companero'
@@ -174,10 +180,10 @@ export function huecosDeMascota(motor: NuevoPersonajeService, entrada: Personaje
             : null;
         // El mínimo de las filas con las que la tiene (su plantilla y, si las hay, las de una dote suya), como la API.
         const deSuFila = Math.max(0, toInt(resuelta?.nivelMinimo));
-        const nivelEleccion = Math.max(deSuFila, aportaAlDarLaMascota(motor.claseDelCatalogo(fuente.idClase), textos.otorga));
+        const nivelEleccion = Math.max(deSuFila, aportaAlDarLaMascota(motor.claseDelCatalogo(fuente.idClase), otorga));
         const hueco: HuecoDeMascota = { ...base, nivelEleccion, nivelPorDote: nivelesPorDote(motor, tipo, catalogo, estado.nivelEfectivo), motivo: null };
         return [catalogoDelReciclaje(catalogo, hueco, estado).length > 0 ? hueco
-            : { ...hueco, motivo: `No hay otro ${textos.nombre} en la lista de sus clases de nivel ${nivelEleccion} o menos.` }];
+            : { ...hueco, motivo: `No hay otro ${textos.mascota} en la lista de sus clases de nivel ${nivelEleccion} o menos.` }];
     });
 }
 
@@ -197,8 +203,7 @@ function nivelesPorDote(motor: NuevoPersonajeService, tipo: TipoDeMascota, catal
             salida[idDote] = ahora;
             return;
         }
-        const niveles = new Map<number, number>();
-        (pj.Orden_niveles ?? []).slice(0, indice + 1).forEach((n) => niveles.set(toInt(n?.idClase), (niveles.get(toInt(n?.idClase)) ?? 0) + 1));
+        const niveles = nivelesDeClaseHasta(pj.Orden_niveles, indice);
         const clases = Array.from(niveles.keys()).map((id) => motor.claseDelCatalogo(id)).filter((c): c is Clase => !!c);
         const entonces = {
             ...pj, desgloseClases: clases.map((c) => ({ Id: toInt(c.Id), Nombre: `${c.Nombre}`, Nivel: niveles.get(toInt(c.Id)) ?? 0 })),
@@ -224,7 +229,7 @@ function nivelDeLaFila(hueco: HuecoDeMascota, fila: MonstruoNivelClase): number 
 export function catalogoDelReciclaje<T extends CriaturaDeMascota>(catalogo: readonly T[], hueco: HuecoDeMascota,
     estado: Pick<EstadoMascota, 'listasIds'>): T[] {
     const listas = new Set(estado.listasIds ?? []);
-    const tiene = `${hueco.tiene.idMonstruo}:${hueco.tiene.idPlantilla}`;
+    const tiene = claveDeLaCriatura(hueco.tiene);
     return (catalogo ?? [])
         .filter((c) => claveDe(hueco.mascota, c) !== tiene)
         .map((c) => ({

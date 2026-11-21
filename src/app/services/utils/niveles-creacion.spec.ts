@@ -1,8 +1,15 @@
-import { apuntarEleccion, construirNivelesCreacion, NivelTomado, ordenCuadra } from './niveles-creacion';
+import { apuntarEleccion, construirNivelesCreacion, nivelesDeClaseHasta, NivelTomado, ordenCuadra } from './niveles-creacion';
 
 describe('niveles-creacion (el orden de los niveles del alta)', () => {
     const clases = [{ id: 8, nombre: 'Hechicero', nivel: 2 }, { id: 9, nombre: 'Mago', nivel: 1 }];
     const orden = [{ idClase: 8, nivelClase: 1 }, { idClase: 9, nivelClase: 1 }, { idClase: 8, nivelClase: 2 }];
+
+    it('el nivel de cada clase hasta un nivel del orden, incluido', () => {
+        expect(Array.from(nivelesDeClaseHasta(orden, 1))).toEqual([[8, 1], [9, 1]]);
+        expect(Array.from(nivelesDeClaseHasta(orden, 2))).toEqual([[8, 2], [9, 1]]);
+        expect(Array.from(nivelesDeClaseHasta(orden, 0))).toEqual([[8, 1]]);
+        expect(nivelesDeClaseHasta(undefined, 3).size).toBe(0);
+    });
 
     it('sin orden, o con uno que no cuadra con las clases (un borrador de antes), no se manda', () => {
         expect(construirNivelesCreacion({ orden: [], clases })).toBeNull();
