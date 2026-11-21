@@ -38,7 +38,7 @@ import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeRacial } from "./racial-mapper";
-import { toArray, toBoolean, toInt, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { idNombre, toArray, toBoolean, toInt, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizeManualLegacy } from './manual-mapper';
 import { leerArmasNaturales } from './armas-naturales';
@@ -364,11 +364,6 @@ export function normalizeCompaneroMonstruoDetalle(raw: any, depth = 1): Companer
 
 const DESTINATARIOS_APTITUD_MASCOTA: readonly DestinatarioAptitudMascota[] = ['amo', 'mascota', 'ambos'];
 
-function idNombreONulo(raw: any): { Id: number; Nombre: string; } | null {
-    const id = toInt(raw?.Id);
-    return raw && typeof raw === 'object' && id > 0 ? { Id: id, Nombre: toText(raw?.Nombre) } : null;
-}
-
 /**
  * `GET /companeros/progresion` y su caché `CompanerosProgresion` (que la guarda tal cual; la RTDB puede dar las listas como
  * objetos): la tabla del compañero animal, de menor a mayor nivel, y lo que da cada nivel. Una aptitud sin aptitud ni
@@ -389,10 +384,10 @@ export function leerCompaneroProgresion(raw: any): CompaneroProgresion {
         .map((fila: any) => ({
             Id: toInt(fila?.Id),
             Nivel: toInt(fila?.Nivel),
-            Especial: idNombreONulo(fila?.Especial),
-            Dote: idNombreONulo(fila?.Dote),
+            Especial: idNombre(fila?.Especial),
+            Dote: idNombre(fila?.Dote),
             Destinatario: fila?.Destinatario,
-            Alternativa: idNombreONulo(fila?.Alternativa),
+            Alternativa: idNombre(fila?.Alternativa),
         }))
         .filter((fila) => (fila.Especial || fila.Dote) && DESTINATARIOS_APTITUD_MASCOTA.includes(fila.Destinatario))
         .sort((a, b) => a.Nivel - b.Nivel || a.Id - b.Id);
