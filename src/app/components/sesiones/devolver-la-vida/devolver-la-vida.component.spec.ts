@@ -24,6 +24,7 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
+import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { dgsDeClase } from 'src/app/services/utils/clase-niveles';
@@ -64,7 +65,7 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
                 { provide: SubidaNivelPuertaService, useValue: new SubidaNivelPuertaService() },
                 ...[ClaseService, DoteService, ConjuroService, HabilidadService, IdiomaService, DominioService, PlantillaService,
                     EscuelaConjurosService, DisciplinaConjurosService, EnemigoPredilectoService, ArmaService, ArmaduraService, GrupoArmaService,
-                    GrupoArmaduraService, SubtipoService, DeidadService, MonstruoService]
+                    GrupoArmaduraService, SubtipoService, DeidadService, MonstruoService, TipoCriaturaService]
                     .map((provide) => ({ provide, useValue: {} })),
             ],
         }).compileComponents();

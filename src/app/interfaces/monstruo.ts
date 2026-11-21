@@ -332,6 +332,8 @@ export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
      * rangos se quedan como están.
      */
     Habilidades_monstruo?: MonstruoHabilidad[];
+    /** Los puntos de habilidad por DG del tipo de su monstruo, que la carga de las sesiones pone con `Habilidades_monstruo`. */
+    Puntos_habilidad_tipo?: number;
 }
 
 /**
