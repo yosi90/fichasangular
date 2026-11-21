@@ -97,7 +97,8 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
     vuelta: {
         titulo: 'Devolver la vida', corta: 'Vuelta', icono: 'favorite',
         cargar: async () => (await import('src/app/components/sesiones/devolver-la-vida/devolver-la-vida.component')).DevolverLaVidaComponent,
-    },    companero: {
+    },
+    companero: {
         titulo: 'Completar el compañero', corta: 'Compañero', icono: 'pets',
         cargar: async () => (await import('src/app/components/sesiones/completar-companero/completar-companero.component')).CompletarCompaneroComponent,
     },

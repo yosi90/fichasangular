@@ -7,6 +7,7 @@ describe('filasDeLasMascotas: lo que elige el compañero', () => {
     const NOMBRES: NombresDeLaMascota = {
         dote: (id) => ({ 15: 'Aguante', 72: 'Soltura con un arma' } as Record<number, string>)[id] ?? `dote ${id}`,
         truco: (id) => ({ 1: 'Ataca', 2: 'Busca' } as Record<number, string>)[id] ?? `truco ${id}`,
+        habilidad: (id) => `habilidad ${id}`,
     };
 
     const companero = (cambios: Partial<PersonajeCreateCompaneroDto> = {}): PersonajeCreateCompaneroDto => ({

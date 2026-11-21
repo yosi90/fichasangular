@@ -159,8 +159,7 @@ export class CompletarCompaneroComponent implements OnInit, OnDestroy {
         this.ficha = companeroCompletado(this.entrada, this.antes, despues);
         const nombres = this.svc.nombresDeLoQueEligeLaMascota();
         this.filas = [
-            ...rangosQueCambian(this.entrada, this.ficha, (id) => this.svc.EstadoFlujo.ventajas.catalogoHabilidades
-                .find((h) => h.Id_habilidad === id)?.Nombre ?? `habilidad ${id}`),
+            ...rangosQueCambian(this.entrada, this.ficha, nombres),
             ...filasDeLasMascotas(this.entrada, this.ficha, {}, nombres),
         ];
         this.paso = 'resumen';

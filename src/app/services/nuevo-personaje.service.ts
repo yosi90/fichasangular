@@ -1,4 +1,5 @@
 import type { NombresDeLaMascota } from './utils/mascota-al-dia';
+import type { LoQueLeFaltaAlCompanero } from './utils/completar-companero';
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
@@ -2119,11 +2120,12 @@ export class NuevoPersonajeService {
         return [...this.catalogoTrucos];
     }
 
-    /** Los nombres de lo que elige la mascota (sus dotes y sus trucos, por su id), para «Lo que cambia» de las sesiones. */
+    /** Los nombres de lo que elige la mascota (sus dotes, sus trucos y sus habilidades, por su id), para «Lo que cambia» de las sesiones. */
     nombresDeLoQueEligeLaMascota(): NombresDeLaMascota {
         return {
             dote: (id) => this.doteDelCatalogo(id)?.Nombre ?? `dote ${id}`,
             truco: (id) => this.catalogoTrucos.find((t) => t.Id === id)?.Nombre ?? `truco ${id}`,
+            habilidad: (id) => (this.estadoFlujo.ventajas.catalogoHabilidades ?? []).find((h) => h.Id_habilidad === id)?.Nombre ?? `habilidad ${id}`,
         };
     }
 
@@ -3637,7 +3639,7 @@ export class NuevoPersonajeService {
      * habilidad por gastar, los DG de las dotes y de las mejoras que le faltan y los trucos adicionales por elegir. `null`
      * sin compañero o inactivo.
      */
-    loQueLeFaltaAlCompanero(): { puntos: number; dotes: number[]; mejoras: number[]; trucos: number; } | null {
+    loQueLeFaltaAlCompanero(): LoQueLeFaltaAlCompanero | null {
         const companero = (this.personajeCreacion.Companeros ?? [])[0];
         if (!companero || companero.Inactiva)
             return null;

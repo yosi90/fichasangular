@@ -450,13 +450,8 @@ export function leerCompaneroProgresion(raw: any): CompaneroProgresion {
         .filter((fila) => fila.Nivel > 0)
         .sort((a, b) => a.Nivel - b.Nivel);
     const aptitudes = leerAptitudesMascota<CompaneroAptitudNivel>(raw?.Aptitudes, (fila) => ({ Alternativa: idNombre(fila?.Alternativa) }));
-    return { Bonos: bonos, Aptitudes: aptitudes, Tipo_prerrequisitos: tipoPrerrequisitosDe(raw?.Tipo_prerrequisitos) };
-}
-
-/** El `Tipo_prerrequisitos` de una progresión de mascota: `{ Id, Nombre }` con id, o `null`. */
-function tipoPrerrequisitosDe(raw: any): { Id: number; Nombre: string; } | null {
-    const tipo = idNombre(raw);
-    return tipo && toInt(tipo.Id) > 0 ? { Id: toInt(tipo.Id), Nombre: `${tipo.Nombre ?? ''}`.trim() } : null;
+    // `Tipo_prerrequisitos`: `{ Id, Nombre }` con id, o `null` (`idNombre`).
+    return { Bonos: bonos, Aptitudes: aptitudes, Tipo_prerrequisitos: idNombre(raw?.Tipo_prerrequisitos) };
 }
 
 /**
@@ -493,7 +488,7 @@ export function leerFamiliarProgresion(raw: any): FamiliarProgresion {
         }))
         .filter((plantilla) => plantilla.Id > 0)
         .sort((a, b) => a.Id - b.Id);
-    return { Tablas: tablas, Plantillas: plantillas, Tipo_prerrequisitos: tipoPrerrequisitosDe(raw?.Tipo_prerrequisitos) };
+    return { Tablas: tablas, Plantillas: plantillas, Tipo_prerrequisitos: idNombre(raw?.Tipo_prerrequisitos) };
 }
 
 export function normalizeMonstruoDetalleArray(raw: any, depth = 1): MonstruoDetalle[] {

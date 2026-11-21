@@ -1,6 +1,6 @@
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { PersonajeCreateHabilidadMascotaDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { FilaDeLaMascota } from './mascota-al-dia';
+import { FilaDeLaMascota, NombresDeLaMascota, tituloDeLaMascota } from './mascota-al-dia';
 import { toInt } from './normalizacion';
 import { compararTexto } from './orden-texto';
 import { companeroConLoDelMotor } from './subida-nivel';
@@ -13,8 +13,19 @@ import { companeroConLoDelMotor } from './subida-nivel';
 /** El motivo de la corrección que lo guarda. */
 export const MOTIVO_COMPLETAR_COMPANERO = 'lo que le faltaba al compañero';
 
+/**
+ * Lo que le falta al compañero activo (`NuevoPersonajeService.loQueLeFaltaAlCompanero`): los puntos de habilidad por gastar,
+ * los DG de las dotes y de las mejoras que le faltan y los trucos adicionales por elegir.
+ */
+export interface LoQueLeFaltaAlCompanero {
+    puntos: number;
+    dotes: number[];
+    mejoras: number[];
+    trucos: number;
+}
+
 /** Lo que le falta (`NuevoPersonajeService.loQueLeFaltaAlCompanero`), en frases: «2 puntos de habilidad», «1 dote (la de su 6.º DG)». */
-export function frasesDeLoQueLeFalta(falta: { puntos: number; dotes: number[]; mejoras: number[]; trucos: number; } | null): string[] {
+export function frasesDeLoQueLeFalta(falta: LoQueLeFaltaAlCompanero | null): string[] {
     if (!falta)
         return [];
     const dgs = (lista: number[]) => unirLista(lista.map((dg) => `${dg}.º`), 'y');
@@ -42,9 +53,13 @@ export function companeroCompletado(entrada: PersonajeCreateRequestDto, antes: P
     return ficha;
 }
 
-/** Los rangos del compañero que cambian entre la `entrada` y la `ficha`, en una fila de «Lo que cambia» («Avistar 4 → 5»). */
+/**
+ * Los rangos del compañero que cambian entre la `entrada` y la `ficha`, en una fila de «Lo que cambia» («Avistar 4 → 5»),
+ * con el título de las demás filas de la mascota (`tituloDeLaMascota`) y los nombres del motor (`nombresDeLoQueEligeLaMascota`).
+ */
 export function rangosQueCambian(entrada: PersonajeCreateRequestDto, ficha: PersonajeCreateRequestDto,
-    nombre: (idHabilidad: number) => string): FilaDeLaMascota[] {
+    nombres: Pick<NombresDeLaMascota, 'habilidad'>): FilaDeLaMascota[] {
+    const nombre = (id: number) => nombres.habilidad(id);
     if (!entrada.companero || !ficha.companero)
         return [];
     const clave = (h: PersonajeCreateHabilidadMascotaDto) => `${toInt(h.idHabilidad)}|${toInt(h.idExtra)}`;
@@ -56,7 +71,7 @@ export function rangosQueCambian(entrada: PersonajeCreateRequestDto, ficha: Pers
         .sort((x, y) => compararTexto(nombre(toInt(x.h.idHabilidad)), nombre(toInt(y.h.idHabilidad))));
     if (cambios.length < 1)
         return [];
-    const titulo = `Compañero animal (${`${ficha.companero.nombre ?? ''}`.trim() || 'compañero animal'}): rangos`;
+    const titulo = `${tituloDeLaMascota('Compañero animal', ficha.companero)}: rangos`;
     return [{
         que: titulo,
         antes: cambios.map((c) => `${nombre(toInt(c.h.idHabilidad))} ${c.a}`).join(', '),
