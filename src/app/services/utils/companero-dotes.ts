@@ -3,10 +3,11 @@ import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CompaneroMejora, CompaneroMonstruoDetalle, MonstruoHabilidad } from 'src/app/interfaces/monstruo';
 import { armasNaturalesDelCompanero, dadosGolpeCompanero } from 'src/app/services/utils/companero-reglas';
-import { caracteristicaPorId, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { caracteristicaPorId, modificadorCaracteristica, sinPuntuacion } from 'src/app/services/utils/caracteristicas';
+import { daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { DoteEvaluacionContexto, dotesConCuentaComo } from 'src/app/services/utils/dote-elegibilidad';
 import { HabilidadParaPrerrequisitos } from 'src/app/services/utils/prerrequisitos-evaluacion';
-import { normalizarTexto, primerEntero, toInt } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, sinRepetidos, toInt } from 'src/app/services/utils/normalizacion';
 
 /*
  * Las dotes y las mejoras de característica que elige el compañero animal con sus DG adicionales (contrato:
@@ -30,10 +31,29 @@ export function dgDelMonstruoDelCompanero(companero: CompaneroMonstruoDetalle | 
     return Math.max(0, primerEntero(companero?.Dados_golpe?.Cantidad) ?? 0);
 }
 
-/** Sin Inteligencia (el «—» de una sabandija descerebrada: `null`, o el 0 de la base). */
+/** Sin Inteligencia (el «—» de una sabandija descerebrada: `sinPuntuacion`). */
 export function companeroSinInteligencia(companero: CompaneroMonstruoDetalle | null | undefined): boolean {
-    const valor = (companero?.Caracteristicas as Record<string, number | null> | undefined)?.['Inteligencia'];
-    return valor === null || valor === undefined || toInt(valor) <= 0;
+    return sinPuntuacion((companero?.Caracteristicas as Record<string, number | null> | undefined)?.['Inteligencia']);
+}
+
+/** Su nombre, o `porDefecto` si no lo tiene, para los textos de sus huecos y sus selectores. */
+export function nombreDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined, porDefecto = 'compañero'): string {
+    return `${companero?.Nombre ?? ''}`.trim() || porDefecto;
+}
+
+/**
+ * Los DG de `pedidos` que no están entre `yaEstan` (uno por cada uno: dos iguales piden dos). Lo usan los huecos de sus
+ * dotes y sus mejoras y las dotes pendientes que se registran (`NuevoPersonajeService`).
+ */
+export function dgsQueFaltan(pedidos: readonly number[], yaEstan: readonly number[]): number[] {
+    const quedan = [...yaEstan];
+    return pedidos.filter((dg) => {
+        const i = quedan.indexOf(dg);
+        if (i < 0)
+            return true;
+        quedan.splice(i, 1);
+        return false;
+    });
 }
 
 /** El DG en que la eligió (`Contexto.Dg`); 0 si no es una elegida (las de su monstruo y su tabla). */
@@ -55,16 +75,8 @@ function claveDote(item: DoteContextual | null | undefined): string {
  * Con `Dotes_monstruo` (las que pone la creación o la carga de las sesiones); sin él, no se sabe cuáles son.
  */
 export function dotesQueCuentanDelMonstruo(companero: CompaneroMonstruoDetalle | null | undefined): DoteContextual[] {
-    const vistas = new Set<string>();
-    return (companero?.Dotes_monstruo ?? [])
-        .filter((item) => toInt(item?.Dote?.Id) > 0 && item?.Contexto?.Adicional !== true)
-        .filter((item) => {
-            const clave = claveDote(item);
-            if (vistas.has(clave))
-                return false;
-            vistas.add(clave);
-            return true;
-        });
+    return sinRepetidos((companero?.Dotes_monstruo ?? [])
+        .filter((item) => toInt(item?.Dote?.Id) > 0 && item?.Contexto?.Adicional !== true), claveDote);
 }
 
 /** Si la dote (con su extra) ya es de su monstruo, las adicionales también. */
@@ -88,40 +100,29 @@ export function huecosDeDotesDelCompanero(companero: CompaneroMonstruoDetalle | 
         return [];
     const cuentan = dotesQueCuentanDelMonstruo(companero).length;
     const tocan = dotesQueLeTocanAlCompanero(companero);
-    const elegidas = dotesElegidasDelCompanero(companero).map(dgDeLaDoteDelCompanero);
-    const huecos: number[] = [];
-    for (let numero = cuentan + 1; numero <= tocan; numero++) {
-        const dg = dgDeLaDote(numero);
-        const i = elegidas.indexOf(dg);
-        if (i >= 0)
-            elegidas.splice(i, 1);
-        else
-            huecos.push(dg);
-    }
-    return huecos;
+    const pedidos: number[] = [];
+    for (let numero = cuentan + 1; numero <= tocan; numero++)
+        pedidos.push(dgDeLaDote(numero));
+    return dgsQueFaltan(pedidos, dotesElegidasDelCompanero(companero).map(dgDeLaDoteDelCompanero));
 }
 
-/** Los DG de sus mejoras: cada múltiplo de 4 de sus DG totales al que llega por sus DG adicionales (MM, pág. 290). */
+/**
+ * Los DG de sus mejoras: cada múltiplo de 4 de sus DG totales al que llega por sus DG adicionales (MM, pág. 290; como el
+ * nivel de personaje, `daIncrementoPorNivelDePersonaje`).
+ */
 export function dgsDeLasMejorasDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): number[] {
     const desde = dgDelMonstruoDelCompanero(companero);
     const hasta = dadosGolpeCompanero(companero);
     const dgs: number[] = [];
     for (let dg = desde + 1; dg <= hasta; dg++)
-        if (dg % 4 === 0)
+        if (daIncrementoPorNivelDePersonaje(dg))
             dgs.push(dg);
     return dgs;
 }
 
 /** Los DG de las mejoras que le quedan por elegir (las que ya tiene, por su `Dg`, no se piden). */
 export function huecosDeMejorasDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): number[] {
-    const tiene = (companero?.Mejoras ?? []).map((mejora) => toInt(mejora?.Dg));
-    return dgsDeLasMejorasDelCompanero(companero).filter((dg) => {
-        const i = tiene.indexOf(dg);
-        if (i < 0)
-            return true;
-        tiene.splice(i, 1);
-        return false;
-    });
+    return dgsQueFaltan(dgsDeLasMejorasDelCompanero(companero), (companero?.Mejoras ?? []).map((mejora) => toInt(mejora?.Dg)));
 }
 
 /** El id de una característica (del 1 al 6, en el orden de `CARACTERISTICAS`). */
@@ -195,7 +196,8 @@ function salvacionBaseConDg(total: number, modificador: number, dgMonstruo: numb
     return buena ? 2 + Math.floor(dg / 2) : Math.floor(dg / 3);
 }
 
-function caracteristicasDelCompanero(companero: CompaneroMonstruoDetalle): DoteEvaluacionContexto['caracteristicas'] {
+/** Sus seis puntuaciones de ahora (sin puntuación, 0): las de sus prerrequisitos y las del selector de sus mejoras. */
+export function puntuacionesDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): Record<Caracteristica, number> {
     const c = (companero?.Caracteristicas ?? {}) as Record<string, number | null>;
     const valor = (clave: Caracteristica) => toInt(c[clave]);
     return {
@@ -224,15 +226,7 @@ function dotesDelCompaneroHasta(companero: CompaneroMonstruoDetalle, dg: number)
             const suDg = dgDeLaDoteDelCompanero(item);
             return suDg < 1 || suDg < dg;
         });
-    const vistas = new Set<string>();
-    return todas
-        .filter((item) => {
-            const clave = claveDote(item);
-            if (vistas.has(clave))
-                return false;
-            vistas.add(clave);
-            return true;
-        })
+    return sinRepetidos(todas, claveDote)
         .map((item) => ({
             id: toInt(item.Dote.Id) > 0 ? toInt(item.Dote.Id) : null,
             nombre: `${item.Dote.Nombre}`.trim(),
@@ -261,7 +255,7 @@ export function contextoDeDotesDelCompanero(companero: CompaneroMonstruoDetalle,
             tiposCriatura: tipoId > 0 || normalizarTexto(tipoNombre).length > 0 ? [{ id: tipoId > 0 ? tipoId : null, nombre: tipoNombre }] : [],
             subtipos: [],
         },
-        caracteristicas: caracteristicasDelCompanero(companero),
+        caracteristicas: puntuacionesDelCompanero(companero),
         ataqueBase: ataqueBaseDelCompaneroConDg(companero, dgs),
         nivelesClase: [],
         dotes: dotesConCuentaComo(dotesDelCompaneroHasta(companero, dgs), doteDelCatalogo),
@@ -303,5 +297,15 @@ export function contextoDeDotesDelCompanero(companero: CompaneroMonstruoDetalle,
 
 /** El texto del hueco de una dote del compañero («Compañero animal (Gruk): la de su 6.º DG»). */
 export function origenDeLaDoteDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined, dg: number): string {
-    return `Compañero animal (${`${companero?.Nombre ?? ''}`.trim() || 'compañero'}): la de su ${toInt(dg)}.º DG`;
+    return `Compañero animal (${nombreDelCompanero(companero)}): la de su ${toInt(dg)}.º DG`;
+}
+
+/** El texto del hueco de una mejora del compañero («Compañero animal (Gruk): su 4.º DG»). */
+export function origenDeLaMejoraDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined, dg: number): string {
+    return `Compañero animal (${nombreDelCompanero(companero)}): su ${toInt(dg)}.º DG`;
+}
+
+/** El título del selector de sus mejoras («Mejoras de característica de Gruk»), en la creación y en las sesiones. */
+export function tituloDeLasMejorasDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): string {
+    return `Mejoras de característica de ${nombreDelCompanero(companero, 'el compañero animal')}`;
 }

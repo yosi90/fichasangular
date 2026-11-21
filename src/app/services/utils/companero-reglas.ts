@@ -26,7 +26,7 @@ import {
 } from 'src/app/services/utils/mascota-cupos';
 import { contarArmasNaturales } from 'src/app/services/utils/armas-naturales';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
-import { modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { modificadorCaracteristica, sinPuntuacion } from 'src/app/services/utils/caracteristicas';
 
 /*
  * El compañero animal, de los datos (contrato: `docs/publica/endpoints/catalogos.md`, «El compañero animal, de los
@@ -96,11 +96,10 @@ export function esDotePropiaDelCompanero(item: { Contexto?: Record<string, any> 
 /**
  * Los puntos de habilidad de cada DG adicional del compañero: máx(1, puntos por DG del tipo de su monstruo + mod. de Int)
  * (MM, pág. 290; los `Puntos_habilidad` del tipo, como el reparto de la creación). Sin Inteligencia (una sabandija
- * descerebrada; `null`, o el 0 con que la base guarda el «—», como `utils/caracteristicas.puntuacion` de la API), ninguno
- * (la nota de la tabla 4-1).
+ * descerebrada, `sinPuntuacion`), ninguno (la nota de la tabla 4-1).
  */
 export function puntosPorDgDelCompanero(puntosDelTipo: number, inteligencia: number | null | undefined): number {
-    if (inteligencia === null || inteligencia === undefined || toInt(inteligencia) <= 0)
+    if (sinPuntuacion(inteligencia))
         return 0;
     return Math.max(1, toInt(puntosDelTipo) + modificadorCaracteristica(toInt(inteligencia)));
 }

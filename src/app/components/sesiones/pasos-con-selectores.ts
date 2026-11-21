@@ -22,6 +22,7 @@ import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { EspecialService } from 'src/app/services/especial.service';
 import { extrasElegiblesEspecial } from 'src/app/services/utils/aptitudes-clase';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
+import { nombreDelCompanero, tituloDeLasMejorasDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { HuecoDeSelectores } from './hueco-selectores';
@@ -127,10 +128,10 @@ export async function resolverDotesPendientes(svc: NuevoPersonajeService, select
  * ponerlas); las dotes en el de dotes, juzgadas como criatura. Las que se cierran sin elegir quedan pendientes.
  */
 export async function resolverDotesYMejorasDelCompanero(svc: NuevoPersonajeService, selectores: HuecoDeSelectores): Promise<void> {
-    const nombre = `${svc.PersonajeCreacion.Companeros?.[0]?.Nombre ?? ''}`.trim() || 'el compañero animal';
+    const nombre = nombreDelCompanero(svc.PersonajeCreacion.Companeros?.[0], 'el compañero animal');
     while (svc.getMejorasPendientesDelCompanero().length > 0) {
         const asignaciones = await selectores.abrir<any[]>(SelectorAumentosCaracteristicaModalComponent, {
-            titulo: `Mejoras de característica de ${nombre}`,
+            titulo: tituloDeLasMejorasDelCompanero(svc.PersonajeCreacion.Companeros?.[0]),
             pendientes: svc.getMejorasPendientesDelCompanero(),
             caracteristicasActuales: svc.caracteristicasDelCompanero(),
             caracteristicasPerdidas: svc.caracteristicasPerdidasDelCompanero(),

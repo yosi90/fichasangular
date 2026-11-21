@@ -13,6 +13,14 @@ export function modificadorCaracteristica(valor: number): number {
     return Math.floor((Number(valor) - 10) / 2);
 }
 
+/**
+ * Si una característica no tiene puntuación (el «—»): sin valor, o el 0 con que la base lo guarda, como
+ * `utils/caracteristicas.puntuacion` de la API.
+ */
+export function sinPuntuacion(valor: unknown): boolean {
+    return valor === null || valor === undefined || toInt(valor) <= 0;
+}
+
 /** La característica de un `Id_caracteristica` (del 1 al 6, en el orden de `CARACTERISTICAS`), o `null` si no es de ninguna. */
 export function caracteristicaPorId(idCaracteristica: number): Caracteristica | null {
     return CARACTERISTICAS[Number(idCaracteristica) - 1] ?? null;

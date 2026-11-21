@@ -92,6 +92,7 @@ import {
     construirCatalogoCompanerosDesdeMonstruos,
     entradasDelSelectorCompanero,
 } from 'src/app/services/utils/companero-reglas';
+import { tituloDeLasMejorasDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
 import { SelectorCompaneroConfirmacion } from './selector-companero-modal/selector-companero-modal.component';
 import { SelectorEspecialidadMagicaConfirmacion } from './selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
@@ -4915,9 +4916,8 @@ export class NuevoPersonajeComponent {
     }
 
     private abrirSelectorMejorasDelCompanero(pendientes: AumentoCaracteristicaPendiente[]): Promise<boolean> {
-        const nombre = `${this.nuevoPSvc.PersonajeCreacion.Companeros?.[0]?.Nombre ?? ''}`.trim() || 'el compañero animal';
         this.selectorAumentosDelCompanero = true;
-        this.selectorAumentosTitulo = `Mejoras de característica de ${nombre}`;
+        this.selectorAumentosTitulo = tituloDeLasMejorasDelCompanero(this.nuevoPSvc.PersonajeCreacion.Companeros?.[0]);
         this.selectorAumentosPendientes = pendientes;
         this.selectorAumentosCaracteristicasActuales = this.nuevoPSvc.caracteristicasDelCompanero();
         this.selectorAumentosCaracteristicasPerdidas = this.nuevoPSvc.caracteristicasPerdidasDelCompanero();
