@@ -114,6 +114,36 @@ export function contarArmasNaturales(
     plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[] = [],
     aptitudes: readonly ArmaNatural[] = [],
 ): number {
+    return Math.max(...Array.from(formasDeArmasNaturales(raza, plantillas, aptitudes).values()).map(total));
+}
+
+/**
+ * Los tipos de armas naturales que tiene en alguna de sus formas (`{ Id, Nombre }`, con el `Id_arma_natural`), con la misma
+ * cuenta que `contarArmasNaturales`: el extra de Ataque natural mejorado (catalogos.md, «Los extras de las dotes de
+ * monstruo»). Sin tipo de la API (`Id_arma_natural` 0), no se ofrece.
+ */
+export function tiposDeArmasNaturales(
+    raza: { Armas_naturales?: readonly ArmaNatural[] | null; } | null | undefined,
+    plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[] = [],
+    aptitudes: readonly ArmaNatural[] = [],
+): { Id: number; Nombre: string; }[] {
+    const nombres = new Map<string, string>();
+    [...(raza?.Armas_naturales ?? []), ...aptitudes, ...plantillas.flatMap((p) => p?.Armas_naturales ?? [])]
+        .forEach((arma) => nombres.set(claveDe(arma), arma.Arma_natural));
+    const claves = new Set<string>();
+    formasDeArmasNaturales(raza, plantillas, aptitudes)
+        .forEach((estado) => estado.forEach((cantidad, clave) => { if (cantidad > 0) claves.add(clave); }));
+    return [...claves]
+        .map((clave) => ({ Id: toInt(clave), Nombre: nombres.get(clave) ?? '' }))
+        .filter((tipo) => tipo.Id > 0);
+}
+
+/** Las armas naturales de cada forma (la normal, `todas`, y las de forma `animal` o `hibrida` de sus plantillas). */
+function formasDeArmasNaturales(
+    raza: { Armas_naturales?: readonly ArmaNatural[] | null; } | null | undefined,
+    plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[],
+    aptitudes: readonly ArmaNatural[],
+): Map<FormaArmaNatural, Estado> {
     let normal: Estado = new Map();
     (raza?.Armas_naturales ?? []).forEach((arma) => sumar(normal, arma));
     if (aptitudes.length > 0)
@@ -130,7 +160,7 @@ export function contarArmasNaturales(
                 formas.set(forma, aplicar(formas.get('todas') ?? new Map(), propias));
         });
     });
-    return Math.max(...Array.from(formas.values()).map(total));
+    return formas;
 }
 
 // --- Formulario --------------------------------------------------------------------------------------------------------

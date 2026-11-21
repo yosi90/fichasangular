@@ -47,7 +47,8 @@ import {
     sinApilarRaciales,
 } from './utils/habilidades-raciales';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
-import { contarArmasNaturales } from './utils/armas-naturales';
+import { contarArmasNaturales, tiposDeArmasNaturales } from './utils/armas-naturales';
+import { CriaturaParaExtras, extrasDeCriaturaDeLaDote, familiaDeExtraDeCriatura, motivoSinExtrasDeCriatura } from './utils/dote-extras-de-criatura';
 import { esPlantillaLicantropa, PlantillaEvaluacionContexto, rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, coincideClaveEntidad, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
@@ -3791,7 +3792,7 @@ export class NuevoPersonajeService {
         if (requiereExtra && !candidato.extrasDisponibles.some((extra) => toNumber(extra?.Id) === idExtra))
             return false;
 
-        const extraTexto = this.resolverExtraTextoDote(dote, idExtra, extraSeleccion);
+        const extraTexto = this.resolverExtraTextoDote(dote, idExtra, extraSeleccion, this.dotesDelSujetoDeLaPendiente(pendiente));
         if (requiereExtra && normalizarTexto(extraTexto).length < 1)
             return false;
 
@@ -4150,6 +4151,7 @@ export class NuevoPersonajeService {
             || toBoolean(dote?.Extras_soportados?.Extra_habilidad)
             || toBoolean(dote?.Extras_soportados?.Extra_chakra)
             || toBoolean(dote?.Extras_soportados?.Extra_fusion)
+            || familiaDeExtraDeCriatura(dote) !== null
         );
     }
 
@@ -4177,8 +4179,8 @@ export class NuevoPersonajeService {
 
         const restringidaPorTipo = !this.cumpleRestriccionTipoDote(dote, pendiente.tipoPermitido);
         const requiereExtra = this.doteTieneExtrasSoportados(dote);
-        const extrasBase = this.resolverExtrasDisponiblesDote(dote);
         const sujeto = this.dotesDelSujetoDeLaPendiente(pendiente);
+        const extrasBase = this.resolverExtrasDisponiblesDote(dote, sujeto);
         const extrasDisponibles = this.filtrarExtrasPorRepeticionDote(dote, extrasBase, sujeto);
         // Las del compañero se juzgan como criatura, con lo que tiene en el DG en que la gana.
         const contextoFijo = sujeto.companero
@@ -4194,7 +4196,7 @@ export class NuevoPersonajeService {
                 repeticionValida: false,
                 evaluacion: {
                     estado: 'blocked_failed',
-                    razones: ['No hay extras válidos disponibles para esta dote'],
+                    razones: [motivoSinExtrasDeCriatura(dote)],
                     advertencias: [],
                 },
             };
@@ -4277,7 +4279,31 @@ export class NuevoPersonajeService {
         return tipos.some((tipo) => normalizarTexto(`${tipo?.Nombre ?? ''}`) === tipoNorm);
     }
 
-    private resolverExtrasDisponiblesDote(dote: Dote): DoteExtraOpcion[] {
+    /**
+     * Lo que tiene la criatura que adquiere la dote, para sus extras de criatura (catalogos.md, «Los extras de las dotes de
+     * monstruo»): el compañero, lo de su monstruo; el personaje, sus armas naturales (raza a su edad, aptitudes de clase y
+     * plantillas), los ataques especiales de sus plantillas (la raza no dice cuáles de sus raciales lo son) y sus sortílegas.
+     */
+    private criaturaParaExtras(sujeto: SujetoDeDotes): CriaturaParaExtras {
+        const companero = sujeto.companero;
+        if (companero)
+            return {
+                armasNaturales: tiposDeArmasNaturales({ Armas_naturales: companero.Armas_naturales ?? [] }),
+                ataquesEspeciales: companero.Ataques_especiales ?? [],
+                sortilegas: companero.Sortilegas ?? [],
+            };
+        const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
+        return {
+            armasNaturales: tiposDeArmasNaturales(this.razaSeleccionada, plantillas, this.armasNaturalesDeAptitudes()),
+            ataquesEspeciales: plantillas.flatMap((plantilla) => (plantilla?.Ataques_especiales ?? []).map((a) => a?.Racial)),
+            sortilegas: this.personajeCreacion.Sortilegas ?? [],
+        };
+    }
+
+    private resolverExtrasDisponiblesDote(dote: Dote, sujeto: SujetoDeDotes = this.dotesDelSujetoDeLaPendiente(null)): DoteExtraOpcion[] {
+        // Lo que se elige es algo de la criatura (sus armas naturales, sus ataques especiales, sus sortílegas).
+        if (familiaDeExtraDeCriatura(dote) !== null)
+            return this.normalizarCatalogoExtras(extrasDeCriaturaDeLaDote(dote, this.criaturaParaExtras(sujeto)));
         const fuenteHabilidades = (this.estadoFlujo.ventajas.catalogoHabilidades ?? [])
             .map((habilidad) => ({
                 Id: toNumber(habilidad?.Id_habilidad),
@@ -5709,14 +5735,15 @@ export class NuevoPersonajeService {
         return Math.max(1, hermanas.findIndex((item) => toNumber(item.id) === toNumber(pendiente.id)) + 1);
     }
 
-    private resolverExtraTextoDote(dote: Dote, idExtra: number, extraSeleccionado: string): string {
+    private resolverExtraTextoDote(dote: Dote, idExtra: number, extraSeleccionado: string,
+        sujeto: SujetoDeDotes = this.dotesDelSujetoDeLaPendiente(null)): string {
         const requiereExtra = this.doteTieneExtrasSoportados(dote);
         if (!requiereExtra)
             return 'No aplica';
 
         const id = Math.max(0, toNumber(idExtra));
         if (id > 0) {
-            const extra = this.resolverExtrasDisponiblesDote(dote)
+            const extra = this.resolverExtrasDisponiblesDote(dote, sujeto)
                 .find((item) => toNumber(item?.Id) === id);
             if (extra)
                 return `${extra?.Nombre ?? ''}`.trim();

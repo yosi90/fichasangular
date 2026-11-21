@@ -335,6 +335,22 @@ describe('NuevaDoteComponent', () => {
         expect(component.getOpcionesExtraDote(1)).toEqual([{ id: 101, nombre: 'Espada larga' }]);
     });
 
+    it('los extras de las dotes de monstruo: una familia más, exclusiva, sin lista que elegir, y van en el cuerpo', () => {
+        component.onExtraTipoSeleccionado('extra_arma');
+        component.onExtraTipoSeleccionado('extra_sortilega');
+        expect(component.extraTipoSeleccionado).toBe('extra_sortilega');
+        expect(component.form.controls.extra_arma.value).toBeFalse();
+        expect(component.requiereSelectorExtras).toBeFalse();
+        component.form.controls.extra_arma.setValue(true);
+        component.form.updateValueAndValidity();
+        expect(component.form.hasError('extra_tipo_exclusivo')).toBeTrue();
+        component.form.controls.extra_arma.setValue(false);
+        const dote = (component as any).buildPayload().dote;
+        expect([dote.extra_arma_natural, dote.extra_ataque_especial, dote.extra_sortilega]).toEqual([undefined, undefined, true]);
+        component.limpiarTipoExtra();
+        expect(component.extraTipoSeleccionado).toBe('');
+    });
+
     it('filtra escudos y armaduras segun los subtipos activos', async () => {
         component.form.controls.extra_armadura_armaduras.setValue(true);
         component.form.controls.extra_armadura_escudos.setValue(false);

@@ -192,6 +192,10 @@ export class DetallesDoteComponent {
             { nombre: 'Habilidades', activo: !!this.doteData.Extras_soportados.Extra_habilidad },
             { nombre: 'Chakras', activo: !!this.doteData.Extras_soportados.Extra_chakra },
             { nombre: 'Fusiones', activo: !!this.doteData.Extras_soportados.Extra_fusion },
+            // Los de las dotes de monstruo: algo que ya tiene la criatura (catalogos.md).
+            { nombre: 'Sus armas naturales', activo: !!this.doteData.Extras_soportados.Extra_arma_natural },
+            { nombre: 'Sus ataques especiales', activo: !!this.doteData.Extras_soportados.Extra_ataque_especial },
+            { nombre: 'Sus aptitudes sortílegas', activo: !!this.doteData.Extras_soportados.Extra_sortilega },
         ].filter(extra => extra.activo);
     }
 

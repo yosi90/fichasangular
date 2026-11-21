@@ -2052,6 +2052,52 @@ describe('NuevoPersonajeService (clases)', () => {
         expect([sinEllas.dgAdi, sinEllas.dotes, sinEllas.mejoras, sinEllas.fuerza]).toEqual([0, [], [], 13]);
     });
 
+    it('el extra de una dote de monstruo es algo de la criatura: el compañero elige una de sus armas naturales (catalogos.md)', () => {
+        const druida = crearClaseBase({ Id: 5, Nombre: 'Druida', Desglose_niveles: [nivelConEspecial(29, 'Compañero animal')] });
+        service.setCatalogoClases([druida]);
+        service.setProgresionCompanero(leerCompaneroProgresion(PROGRESION_API));
+        service.setCatalogoTiposCriatura([{ ...crearTipoBase(), Id: 3, Nombre: 'Animal', Puntos_habilidad: 2, Limite_inteligencia: 2 }]);
+        const mejorado = {
+            Id: 80, Nombre: 'Ataque natural mejorado', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 303 },
+            Repetible: 0, Repetible_distinto_extra: 1, Repetible_comb: 0,
+            Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_arma_natural: 1 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] }, Prerrequisitos: {},
+        } as any;
+        const soltura = {
+            Id: 81, Nombre: 'Soltura con una aptitud', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 304 },
+            Repetible: 0, Repetible_distinto_extra: 1, Repetible_comb: 0,
+            Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_ataque_especial: 1 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] }, Prerrequisitos: {},
+        } as any;
+        service.setCatalogoDotes([mejorado, soltura]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 3 }] as any;
+        const lobo = {
+            Id: 55, Id_companero: 55, Nombre: 'Lobo', Monstruo_origen: { Id: 55, Nombre: 'Lobo' }, Tipo: { Id: 3, Nombre: 'Animal' },
+            Plantilla: { Id: 0, Nombre: '' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [FILA_LOBO_DRUIDA],
+            Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
+            Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 3, Nombre: 'd8' }, Suma: 4 },
+            Ataque: { Ataque_base: 1, Presa: 2, Ataques: '', Ataque_completo: '' },
+            Caracteristicas: { Fuerza: 13, Destreza: 15, Constitucion: 15, Constitucion_modificador: 2, Inteligencia: 2, Inteligencia_modificador: -4, Sabiduria: 12, Sabiduria_modificador: 1, Carisma: 6 },
+            Defensa: { Ca: 14, Toque: 12, Desprevenido: 12, Armadura_natural: 2, Reduccion_dano: '', Resistencia_conjuros: '', Resistencia_elemental: '' },
+            Armas_naturales: [{ Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d6', Primaria: true, Texto: 'Mordisco 1d6' }],
+            Ataques_especiales: [],
+            Habilidades: [], Dotes: [], Especiales: [],
+        } as any;
+        expect(service.registrarCompaneroSeleccionado(lobo, 'Colmillo').registrado).toBeTrue();
+        expect(service.registrarDotesPendientesDelCompanero()).toBeGreaterThan(0);
+        const pendiente = service.getSiguienteDotePendiente()!;
+        const candidatos = service.obtenerCandidatosDotePendiente(pendiente.id);
+        const deMejorado = candidatos.find((c) => c.dote.Id === 80)!;
+        expect([deMejorado.requiereExtra, deMejorado.extrasDisponibles.map((e) => [e.Id, e.Nombre])]).toEqual([true, [[1, 'Mordisco']]]);
+        // Sin ataques especiales, Soltura con una aptitud no se puede elegir, con su motivo.
+        const deSoltura = candidatos.find((c) => c.dote.Id === 81)!;
+        expect(deSoltura.evaluacion.razones).toEqual(['No tiene ningún ataque especial al que aplicarla.']);
+        expect(service.aplicarDotePendiente(pendiente.id, { idDote: 80, idExtra: 1, extra: '' })).toBeTrue();
+        // Sin dotes en su bloque, la primera que elige es la de su 1.er DG.
+        expect(payloadDeLaCreacion().companero!.dotes).toEqual([{ idDote: 80, idExtra: 1, dg: pendiente.dgCompanero! }]);
+        expect(pendiente.dgCompanero).toBe(1);
+    });
+
     it('un mago guarda su familiar con los datos de su amo y la tabla del familiar por nivel (MJ cap. 3)', () => {
         const mago = crearClaseBase({ Id: 10, Nombre: 'Mago', Desglose_niveles: [nivelConEspecial(47, 'Convocar a un familiar')] });
         service.setCatalogoClases([mago]);
