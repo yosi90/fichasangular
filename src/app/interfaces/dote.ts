@@ -29,6 +29,12 @@ export interface DoteExtrasSoportados {
     Extra_chakra?: number;
     /** Se elige una fusión (Magic of Incarnum). */
     Extra_fusion?: number;
+    /** Se elige una de sus armas naturales (Ataque natural mejorado; catalogos.md, «Los extras de las dotes de monstruo»). */
+    Extra_arma_natural?: number;
+    /** Se elige uno de sus ataques especiales (Soltura con una aptitud). */
+    Extra_ataque_especial?: number;
+    /** Se elige una de sus aptitudes sortílegas (Apresurar y Potenciar aptitud sortílega). */
+    Extra_sortilega?: number;
 }
 
 export interface DoteExtrasDisponibles {

@@ -158,6 +158,18 @@
                         <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_habilidad'">
                             <mat-radio-button value="extra_habilidad">Extra habilidad</mat-radio-button>
                         </div>
+                        <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_arma_natural'">
+                            <mat-radio-button value="extra_arma_natural">Una de sus armas naturales</mat-radio-button>
+                        </div>
+                        <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_ataque_especial'">
+                            <mat-radio-button value="extra_ataque_especial">Uno de sus ataques especiales</mat-radio-button>
+                        </div>
+                        <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_sortilega'">
+                            <mat-radio-button value="extra_sortilega">Una de sus aptitudes sortílegas</mat-radio-button>
+                        </div>
+                        <p class="extra-nota" *ngIf="extraTipoSeleccionado === 'extra_arma_natural' || extraTipoSeleccionado === 'extra_ataque_especial' || extraTipoSeleccionado === 'extra_sortilega'">
+                            Se elige al adquirirla, entre lo que tiene la criatura: no lleva lista.
+                        </p>
                     </mat-radio-group>
                     <div class="option-extra-actions">
                         <button type="button" mat-stroked-button (click)="limpiarTipoExtra()" [disabled]="extraTipoSeleccionado.length < 1">

@@ -73,10 +73,14 @@ import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { idsUnicosOrdenados, normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
+import { familiaDeExtraDeCriatura } from 'src/app/services/utils/dote-extras-de-criatura';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 type RepeticionKey = 'repetible' | 'repetible_distinto_extra' | 'repetible_comb';
-type ExtraFamilyKey = 'extra_arma' | 'extra_armadura' | 'extra_escuela' | 'extra_habilidad';
+type ExtraFamilyKey = 'extra_arma' | 'extra_armadura' | 'extra_escuela' | 'extra_habilidad' | ExtraDeCriaturaKey;
+/** Los extras de las dotes de monstruo: se eligen al adquirirla entre lo que tiene la criatura, sin lista (catalogos.md). */
+type ExtraDeCriaturaKey = 'extra_arma_natural' | 'extra_ataque_especial' | 'extra_sortilega';
+const EXTRAS_DE_CRIATURA: readonly ExtraDeCriaturaKey[] = ['extra_arma_natural', 'extra_ataque_especial', 'extra_sortilega'];
 
 interface CrearDoteEmitPayload {
     idDote: number;
@@ -144,7 +148,7 @@ type ArmaduraSelectorItem = ExtraSelectorItem & { esEscudo: boolean; };
 export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorDeCatalogo {
     private static readonly bodyModalClass = 'nueva-dote-modal-open';
     private static readonly preferredManualName = 'Compendio de dotes';
-    private readonly extraFamilyKeys: ExtraFamilyKey[] = ['extra_arma', 'extra_armadura', 'extra_escuela', 'extra_habilidad'];
+    private readonly extraFamilyKeys: ExtraFamilyKey[] = ['extra_arma', 'extra_armadura', 'extra_escuela', 'extra_habilidad', ...EXTRAS_DE_CRIATURA];
     private readonly prerrequisitosSoloClase = new Set<PrerequisiteType>([
         'conjuro_conocido',
         'conocer_poder_psionico',
@@ -295,6 +299,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         extra_armadura_escudos: [false],
         extra_escuela: [false],
         extra_habilidad: [false],
+        extra_arma_natural: [false],
+        extra_ataque_especial: [false],
+        extra_sortilega: [false],
     }, {
         validators: [
             this.tiposDistintosValidator(),
@@ -555,11 +562,12 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return 'extra_escuela';
         if (this.form.controls.extra_habilidad.value === true)
             return 'extra_habilidad';
-        return '';
+        return EXTRAS_DE_CRIATURA.find((clave) => this.form.controls[clave].value === true) ?? '';
     }
 
     get requiereSelectorExtras(): boolean {
-        return this.extraTipoSeleccionado.length > 0;
+        const tipo = this.extraTipoSeleccionado;
+        return tipo.length > 0 && !(EXTRAS_DE_CRIATURA as readonly string[]).includes(tipo);
     }
 
     get cantidadExtrasSeleccionadosActual(): number {
@@ -634,6 +642,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.form.controls.extra_arma.setValue(extraTipo === 'extra_arma');
         this.form.controls.extra_escuela.setValue(extraTipo === 'extra_escuela');
         this.form.controls.extra_habilidad.setValue(extraTipo === 'extra_habilidad');
+        EXTRAS_DE_CRIATURA.forEach((clave) => this.form.controls[clave].setValue(extraTipo === clave));
         if (extraTipo === 'extra_armadura') {
             const mantenerArmaduras = this.subtipoArmaduraActivo || !this.subtipoEscudoActivo;
             this.form.controls.extra_armadura_armaduras.setValue(mantenerArmaduras);
@@ -652,6 +661,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.form.controls.extra_armadura_escudos.setValue(false);
         this.form.controls.extra_escuela.setValue(false);
         this.form.controls.extra_habilidad.setValue(false);
+        EXTRAS_DE_CRIATURA.forEach((clave) => this.form.controls[clave].setValue(false));
         this.form.controls.comp_arma.setValue(false);
     }
 
@@ -1198,6 +1208,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 extra_armadura_escudos: !!raw.extra_armadura_escudos,
                 extra_escuela: !!raw.extra_escuela,
                 extra_habilidad: !!raw.extra_habilidad,
+                // Los extras de las dotes de monstruo, solo activos (sin ellos, la API los toma por desactivados).
+                ...(raw.extra_arma_natural ? { extra_arma_natural: true } : {}),
+                ...(raw.extra_ataque_especial ? { extra_ataque_especial: true } : {}),
+                ...(raw.extra_sortilega ? { extra_sortilega: true } : {}),
             },
             modificadores: this.construirModificadoresPayload(),
             habilidades_otorgadas: this.construirHabilidadesOtorgadasPayload(),
@@ -1245,6 +1259,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             extra_armadura_escudos: toInt(extras?.Extra_armadura_escudos) > 0,
             extra_escuela: toInt(extras?.Extra_escuela) > 0,
             extra_habilidad: toInt(extras?.Extra_habilidad) > 0,
+            extra_arma_natural: toInt(extras?.Extra_arma_natural) > 0,
+            extra_ataque_especial: toInt(extras?.Extra_ataque_especial) > 0,
+            extra_sortilega: toInt(extras?.Extra_sortilega) > 0,
         });
         this.modificadoresEditor = modificadoresDeDote(dote);
         if (this.modificadoresEditor.length < 1)
@@ -1308,6 +1325,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             extra_armadura_escudos: false,
             extra_escuela: false,
             extra_habilidad: false,
+            extra_arma_natural: false,
+            extra_ataque_especial: false,
+            extra_sortilega: false,
         });
         this.form.markAsPristine();
         this.form.markAsUntouched();
@@ -1847,7 +1867,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             || this.doteSoportaArmaduras(dote)
             || this.doteSoportaEscudos(dote)
             || toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0
-            || toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0;
+            || toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0
+            || familiaDeExtraDeCriatura(dote) !== null;
     }
 
     private getOpcionesArmaduraParaDote(dote: Dote): ExtraSelectorItem[] {
@@ -1928,6 +1949,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 group.get('extra_armadura_armaduras')?.value === true || group.get('extra_armadura_escudos')?.value === true,
                 group.get('extra_escuela')?.value === true,
                 group.get('extra_habilidad')?.value === true,
+                ...EXTRAS_DE_CRIATURA.map((clave) => group.get(clave)?.value === true),
             ].filter(Boolean).length;
             return activos > 1 ? { extra_tipo_exclusivo: true } : null;
         };

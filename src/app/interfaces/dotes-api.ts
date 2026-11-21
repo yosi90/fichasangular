@@ -20,6 +20,10 @@ export interface DoteCreateDoteDto {
     extra_armadura_escudos: boolean;
     extra_escuela: boolean;
     extra_habilidad: boolean;
+    /** Los extras de las dotes de monstruo (catalogos.md): se eligen entre lo que tiene la criatura, sin lista. */
+    extra_arma_natural?: boolean;
+    extra_ataque_especial?: boolean;
+    extra_sortilega?: boolean;
     [key: string]: any;
 }
 

@@ -172,6 +172,9 @@ export function normalizeDoteApi(raw: any): Dote {
             Extra_habilidad: toNumber(raw?.Extras_soportados?.Extra_habilidad, 0),
             Extra_chakra: toNumber(raw?.Extras_soportados?.Extra_chakra, 0),
             Extra_fusion: toNumber(raw?.Extras_soportados?.Extra_fusion, 0),
+            Extra_arma_natural: toNumber(raw?.Extras_soportados?.Extra_arma_natural, 0),
+            Extra_ataque_especial: toNumber(raw?.Extras_soportados?.Extra_ataque_especial, 0),
+            Extra_sortilega: toNumber(raw?.Extras_soportados?.Extra_sortilega, 0),
         },
         Extras_disponibles: {
             Armas: normalizeExtraItemsApi(raw?.Extras_disponibles?.Armas),
@@ -228,6 +231,9 @@ export function normalizeDoteLegacy(raw: any): Dote {
             Extra_habilidad: toNumber(raw?.Extras_soportados?.Extra_habilidad, 0),
             Extra_chakra: toNumber(raw?.Extras_soportados?.Extra_chakra, 0),
             Extra_fusion: toNumber(raw?.Extras_soportados?.Extra_fusion, 0),
+            Extra_arma_natural: toNumber(raw?.Extras_soportados?.Extra_arma_natural, 0),
+            Extra_ataque_especial: toNumber(raw?.Extras_soportados?.Extra_ataque_especial, 0),
+            Extra_sortilega: toNumber(raw?.Extras_soportados?.Extra_sortilega, 0),
         },
         Extras_disponibles: {
             Armas: normalizeExtraItemsLegacy(raw?.Extras_disponibles?.Armas),
