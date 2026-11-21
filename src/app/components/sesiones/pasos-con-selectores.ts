@@ -24,7 +24,7 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { extrasElegiblesEspecial } from 'src/app/services/utils/aptitudes-clase';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { nombreDelCompanero, tituloDeLasMejorasDelCompanero } from 'src/app/services/utils/companero-dotes';
-import { hayTrucoAdicionalQueElegir, tituloDeLosTrucosDelCompanero } from 'src/app/services/utils/companero-trucos';
+import { AVISO_TRUCOS_QUE_YA_NO_VALEN, tituloDeLosTrucosDelCompanero } from 'src/app/services/utils/companero-trucos';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { HuecoDeSelectores } from './hueco-selectores';
@@ -152,17 +152,16 @@ export async function resolverLoQueEligeElCompanero(svc: NuevoPersonajeService, 
 
 /** Sus trucos adicionales, en el selector de trucos: «Omitir» los deja pendientes. */
 async function resolverTrucosDelCompanero(svc: NuevoPersonajeService, selectores: HuecoDeSelectores): Promise<void> {
-    const incluirHomebrew = svc.PersonajeCreacion.Oficial === false;
-    while (svc.getTrucosPendientesDelCompanero() > 0
-        && hayTrucoAdicionalQueElegir(svc.PersonajeCreacion.Companeros?.[0], svc.CatalogoTrucos, incluirHomebrew)) {
+    while (svc.hayTrucosQueElegirDelCompanero()) {
         const companero = svc.PersonajeCreacion.Companeros?.[0] ?? null;
         const elegidos = await selectores.abrir<number[] | 'omitir'>(SelectorTrucosModalComponent, {
-            titulo: tituloDeLosTrucosDelCompanero(companero), companero, catalogo: svc.CatalogoTrucos, incluirHomebrew,
+            titulo: tituloDeLosTrucosDelCompanero(companero), companero, catalogo: svc.CatalogoTrucos,
+            incluirHomebrew: svc.IncluirTrucosHomebrew,
         }, ['confirmar'], [], { omitir: 'omitir' });
         if (!elegidos || elegidos === 'omitir')
             return;
         if (!svc.aplicarTrucosDelCompanero(elegidos))
-            await avisarPaso('No se pudieron poner los trucos', 'La selección ya no vale con el compañero de ahora. Elige otros.');
+            await avisarPaso(AVISO_TRUCOS_QUE_YA_NO_VALEN.titulo, AVISO_TRUCOS_QUE_YA_NO_VALEN.texto);
     }
 }
 

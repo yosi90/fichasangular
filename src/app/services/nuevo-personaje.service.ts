@@ -101,6 +101,7 @@ import {
 } from './utils/companero-dotes';
 import {
     aplicarTrucosAdicionales,
+    hayTrucoAdicionalQueElegir,
     quitarLosTrucosQueNoCaben,
     trucosAdicionalesPendientes,
     trucosDeSuMonstruo,
@@ -3603,6 +3604,20 @@ export class NuevoPersonajeService {
         if (this.catalogoTrucos.length < 1)
             return 0;
         return trucosAdicionalesPendientes((this.personajeCreacion.Companeros ?? [])[0]);
+    }
+
+    /** Si la ficha que se crea ve también los trucos homebrew (una que ya no es oficial). */
+    get IncluirTrucosHomebrew(): boolean {
+        return this.personajeCreacion.Oficial === false;
+    }
+
+    /**
+     * Si le queda algún truco adicional por elegir al compañero y alguno de los que se ofrecen le vale: si no, su selector
+     * sobra. Lo usan la creación (`NuevoPersonajeComponent`) y las sesiones (`pasos-con-selectores.ts`).
+     */
+    hayTrucosQueElegirDelCompanero(): boolean {
+        return this.getTrucosPendientesDelCompanero() > 0
+            && hayTrucoAdicionalQueElegir((this.personajeCreacion.Companeros ?? [])[0], this.catalogoTrucos, this.IncluirTrucosHomebrew);
     }
 
     /** Pone sus trucos adicionales (`idsTrucos`, en el orden en que se eligieron), si todos valen. */

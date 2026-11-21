@@ -93,7 +93,7 @@ import {
     entradasDelSelectorCompanero,
 } from 'src/app/services/utils/companero-reglas';
 import { tituloDeLasMejorasDelCompanero } from 'src/app/services/utils/companero-dotes';
-import { hayTrucoAdicionalQueElegir, tituloDeLosTrucosDelCompanero } from 'src/app/services/utils/companero-trucos';
+import { AVISO_TRUCOS_QUE_YA_NO_VALEN, tituloDeLosTrucosDelCompanero } from 'src/app/services/utils/companero-trucos';
 import { TrucoService } from 'src/app/services/truco.service';
 import { Truco } from 'src/app/interfaces/truco';
 import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
@@ -4927,8 +4927,7 @@ export class NuevoPersonajeComponent {
 
     /** Sus trucos adicionales: «Omitir» los deja pendientes. */
     private async resolverTrucosDelCompanero(): Promise<void> {
-        while (this.nuevoPSvc.getTrucosPendientesDelCompanero() > 0
-            && hayTrucoAdicionalQueElegir(this.companeroDelSelectorTrucos, this.nuevoPSvc.CatalogoTrucos, this.incluirHomebrewTrucos)) {
+        while (this.nuevoPSvc.hayTrucosQueElegirDelCompanero()) {
             const elegidos = await new Promise<number[] | null>((resolve) => {
                 this.resolverSelectorTrucos = resolve;
                 this.modalSelectorTrucosAbierto = true;
@@ -4936,7 +4935,7 @@ export class NuevoPersonajeComponent {
             if (!elegidos)
                 return;
             if (!this.nuevoPSvc.aplicarTrucosDelCompanero(elegidos))
-                await Swal.fire({ icon: 'warning', title: 'No se pudieron poner los trucos', text: 'La selección ya no vale con el compañero de ahora. Elige otros.', confirmButtonText: 'Entendido' });
+                await Swal.fire({ icon: 'warning', title: AVISO_TRUCOS_QUE_YA_NO_VALEN.titulo, text: AVISO_TRUCOS_QUE_YA_NO_VALEN.texto, confirmButtonText: 'Entendido' });
         }
     }
 
@@ -4955,7 +4954,7 @@ export class NuevoPersonajeComponent {
 
     /** Una ficha que ya no es oficial ve también los homebrew. */
     get incluirHomebrewTrucos(): boolean {
-        return this.nuevoPSvc.PersonajeCreacion.Oficial === false;
+        return this.nuevoPSvc.IncluirTrucosHomebrew;
     }
 
     onConfirmarTrucosDelCompanero(elegidos: number[]): void {
