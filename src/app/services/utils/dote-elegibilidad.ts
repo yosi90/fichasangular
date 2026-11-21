@@ -787,10 +787,9 @@ function evaluateFamily(
     }
     if (keyNorm === 'reserva_psionica')
         return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.reservaPsionica), 'Prerrequisito reserva_psionica con formato no reconocido'));
-    if (keyNorm === 'armas_naturales')
-        return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.armasNaturales), 'Prerrequisito armas_naturales con formato no reconocido'));
     // Las dotes de monstruo: el mínimo de cada una contra lo de la criatura (`DoteEvaluacionContexto`, sin él, 0).
     const DE_MONSTRUO: Record<string, number | undefined> = {
+        armas_naturales: ctx.armasNaturales,
         volar: ctx.velocidadVuelo,
         armadura_natural: ctx.armaduraNatural,
         sortilega: ctx.nivelLanzadorSortilegas,
