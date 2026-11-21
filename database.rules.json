@@ -252,6 +252,10 @@
       ".read": "true",
       ".write": "false"
     },
+    "Trucos": {
+      ".read": "true",
+      ".write": "false"
+    },
     "Ventajas": {
       ".read": "true",
       ".write": "false"
