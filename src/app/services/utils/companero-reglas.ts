@@ -12,6 +12,7 @@ import { razonesAlineamientoMascota, resolveDoteIdFromNivelClase } from 'src/app
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
 import { contarArmasNaturales } from 'src/app/services/utils/armas-naturales';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 
 /*
  * El compañero animal, de los datos (contrato: `docs/publica/endpoints/catalogos.md`, «El compañero animal, de los
@@ -90,12 +91,6 @@ export interface AptitudesCompaneroDelNivel {
 }
 
 const SIN_BONOS: CompaneroBonosNivel = { Nivel: 0, Dg_adicionales: 0, Armadura_natural: 0, Fuerza_destreza: 0, Trucos_adicionales: 0 };
-
-/** Un ajuste con su signo («−3», «+0»). */
-export function textoAjuste(ajuste: number): string {
-    const valor = toInt(ajuste);
-    return valor < 0 ? `−${Math.abs(valor)}` : `+${valor}`;
-}
 
 interface AptitudCompaneroDeClase {
     idEspecial: number;
@@ -219,6 +214,18 @@ function nombreDeLista(nombre: string | null | undefined): string {
     return texto.length > 0 ? texto.toLocaleLowerCase('es') : 'druida';
 }
 
+/** Las filas de `Niveles_clase` del compañero en esas listas (las de sus clases) y con su plantilla. */
+function filasDeSusListas(companero: CompaneroMonstruoDetalle, listas: ReadonlySet<number>): MonstruoNivelClase[] {
+    const idPlantilla = Math.max(0, toInt(companero?.Plantilla?.Id));
+    return (companero?.Niveles_clase ?? []).filter((fila) =>
+        listas.has(toInt(fila?.Clase?.Id)) && Math.max(0, toInt(fila?.Plantilla?.Id)) === idPlantilla);
+}
+
+/** La fila de menos nivel. */
+function filaDeMenosNivel(filas: MonstruoNivelClase[]): MonstruoNivelClase {
+    return filas.reduce((a, b) => toInt(b.Nivel) < toInt(a.Nivel) ? b : a);
+}
+
 /**
  * La fila de la lista con la que el personaje tiene a ese compañero (de sus listas, con su plantilla, con la dote que la
  * abre y a su nivel efectivo; entre las que valen, la de más nivel de tabla, como la API) y el nivel de la tabla que le
@@ -230,13 +237,10 @@ export function resolverFilaCompanero(
     dotesPersonaje: ReadonlySet<number>,
 ): FilaCompaneroResuelta {
     const nivelEfectivo = Math.max(0, toInt(estado?.nivelEfectivoCompanero));
-    const listas = new Set(estado?.listasIds ?? []);
-    const idPlantilla = Math.max(0, toInt(companero?.Plantilla?.Id));
     const nombre = `${companero?.Nombre ?? ''}`.trim();
-    const filas = (companero?.Niveles_clase ?? []).filter((fila) =>
-        listas.has(toInt(fila?.Clase?.Id)) && Math.max(0, toInt(fila?.Plantilla?.Id)) === idPlantilla && toInt(fila?.Nivel) >= 0);
+    const filas = filasDeSusListas(companero, new Set(estado?.listasIds ?? [])).filter((fila) => toInt(fila?.Nivel) >= 0);
     const resultado = (razones: string[], filasMinimo: MonstruoNivelClase[]): FilaCompaneroResuelta => {
-        const minima = filasMinimo.length > 0 ? filasMinimo.reduce((a, b) => toInt(b.Nivel) < toInt(a.Nivel) ? b : a) : null;
+        const minima = filasMinimo.length > 0 ? filaDeMenosNivel(filasMinimo) : null;
         return {
             fila: null, nivelTabla: 0, razones,
             nivelMinimo: minima ? Math.max(0, toInt(minima.Nivel)) : null,
@@ -256,7 +260,7 @@ export function resolverFilaCompanero(
     }
     const aSuNivel = conDote.filter((fila) => toInt(fila.Nivel) <= nivelEfectivo);
     if (aSuNivel.length < 1) {
-        const minima = conDote.reduce((a, b) => toInt(b.Nivel) < toInt(a.Nivel) ? b : a);
+        const minima = filaDeMenosNivel(conDote);
         return resultado([`Pide un nivel efectivo de ${nombreDeLista(minima?.Clase?.Nombre)} ${Math.max(0, toInt(minima.Nivel))}, y tienes ${nivelEfectivo}.`], conDote);
     }
     const fila = aSuNivel.reduce((a, b) => toInt(b.Ajuste) > toInt(a.Ajuste) ? b : a);
@@ -265,7 +269,7 @@ export function resolverFilaCompanero(
     if (nivelTabla < 1) {
         return {
             fila: null, nivelTabla, nivelMinimo, ajuste: toInt(fila.Ajuste),
-            razones: [`Con el ajuste de su lista (${textoAjuste(toInt(fila.Ajuste))}), «${nombre}» se queda sin nivel efectivo de ${nombreDeLista(fila?.Clase?.Nombre)}: aún no se puede elegir.`],
+            razones: [`Con el ajuste de su lista (${textoConSigno(toInt(fila.Ajuste), '−')}), «${nombre}» se queda sin nivel efectivo de ${nombreDeLista(fila?.Clase?.Nombre)}: aún no se puede elegir.`],
         };
     }
     return { fila, nivelTabla, nivelMinimo, ajuste: toInt(fila.Ajuste), razones: [] };
@@ -295,11 +299,9 @@ export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesIn
             razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
         if (resuelta.fila && nivelSeleccionado > 0 && toInt(resuelta.fila.Nivel) !== nivelSeleccionado)
             razones.push(`No cumple el filtro de nivel ${nivelSeleccionado}.`);
-        const filasDeSusListas = (companero?.Niveles_clase ?? []).filter((fila) =>
-            listas.has(toInt(fila?.Clase?.Id)) && Math.max(0, toInt(fila?.Plantilla?.Id)) === Math.max(0, toInt(companero?.Plantilla?.Id)));
         razones.push(...razonesAlineamientoMascota(
             companero?.Alineamientos_requeridos?.Companero ?? [],
-            filasDeSusListas,
+            filasDeSusListas(companero, listas),
             input?.alineamientoPersonaje ?? '',
             'compañero'
         ));
