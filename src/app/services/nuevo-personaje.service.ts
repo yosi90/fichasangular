@@ -89,11 +89,14 @@ import {
     aplicarMejoraAlCompanero,
     companeroSinInteligencia,
     contextoDeDotesDelCompanero,
+    dgsQueFaltan,
     esDoteDelMonstruoDelCompanero,
     huecosDeDotesDelCompanero,
     huecosDeMejorasDelCompanero,
     origenDeLaDoteDelCompanero,
+    origenDeLaMejoraDelCompanero,
     dgDeLaDoteDelCompanero,
+    puntuacionesDelCompanero,
     quitarLoDeLosDgQueNoTieneElCompanero,
 } from './utils/companero-dotes';
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
@@ -3550,13 +3553,7 @@ export class NuevoPersonajeService {
         const yaEstan = this.dotesPendientes
             .filter((p) => p.fuente === 'companero' && p.estado !== 'resuelta')
             .map((p) => toInt(p.dgCompanero));
-        const nuevas = huecosDeDotesDelCompanero(companero).filter((dg) => {
-            const i = yaEstan.indexOf(dg);
-            if (i < 0)
-                return true;
-            yaEstan.splice(i, 1);
-            return false;
-        });
+        const nuevas = dgsQueFaltan(huecosDeDotesDelCompanero(companero), yaEstan);
         nuevas.forEach((dg) => {
             const pendiente = this.crearDotePendiente('companero', origenDeLaDoteDelCompanero(companero, dg), null);
             pendiente.nivel = null;
@@ -3618,11 +3615,10 @@ export class NuevoPersonajeService {
         const companero = (this.personajeCreacion.Companeros ?? [])[0];
         if (!companero || companero.Inactiva)
             return [];
-        const nombre = `${companero.Nombre ?? ''}`.trim() || 'compañero';
         return huecosDeMejorasDelCompanero(companero).map((dg) => ({
             id: dg,
             valor: 1,
-            origen: `Compañero animal (${nombre}): su ${dg}.º DG`,
+            origen: origenDeLaMejoraDelCompanero(companero, dg),
             descripcion: 'Al llegar a un número de DG múltiplo de 4, +1 a una característica (Manual de monstruos, pág. 290).',
             nivel: null,
         }));
@@ -3630,11 +3626,7 @@ export class NuevoPersonajeService {
 
     /** Sus características de ahora (las seis), para el selector de sus mejoras. */
     caracteristicasDelCompanero(): Record<Caracteristica, number> {
-        const c = ((this.personajeCreacion.Companeros ?? [])[0]?.Caracteristicas ?? {}) as Record<string, number | null>;
-        return {
-            Fuerza: toInt(c['Fuerza']), Destreza: toInt(c['Destreza']), Constitucion: toInt(c['Constitucion']),
-            Inteligencia: toInt(c['Inteligencia']), Sabiduria: toInt(c['Sabiduria']), Carisma: toInt(c['Carisma']),
-        };
+        return puntuacionesDelCompanero((this.personajeCreacion.Companeros ?? [])[0]);
     }
 
     /** Las que no tiene (el «—»: sin puntuación), que no se pueden mejorar. */

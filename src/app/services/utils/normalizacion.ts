@@ -197,3 +197,15 @@ export function textosUnicos(valores: string[]): string[] {
         return true;
     });
 }
+
+/** Los elementos sin repetir su `clave`, en su orden; de los repetidos se queda el primero. */
+export function sinRepetidos<T>(items: readonly T[], clave: (item: T) => string): T[] {
+    const vistos = new Set<string>();
+    return items.filter((item) => {
+        const k = clave(item);
+        if (vistos.has(k))
+            return false;
+        vistos.add(k);
+        return true;
+    });
+}

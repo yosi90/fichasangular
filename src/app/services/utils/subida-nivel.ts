@@ -1,7 +1,7 @@
 import { ClaseIntercambioConjuros } from 'src/app/interfaces/clase';
 import { PersonajeCreateCompaneroDto, PersonajeCreateFamiliarDto, PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { modificadorCaracteristica } from './caracteristicas';
-import { mitadDeLosPg } from './mascota-payload';
+import { claveDeDoteDelCompaneroGuardada, mitadDeLosPg } from './mascota-payload';
 import { toInt } from './normalizacion';
 
 /*
@@ -347,7 +347,7 @@ export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, an
     resultado.especiales = conLaDiferenciaPorId(guardado.especiales, antes?.especiales, despues.especiales, (x) => `${toInt(x?.idEspecial)}`);
     // Las de su tabla por id; las que elige con sus DG, por dote, extra y DG (una repetida con otro extra es otra).
     resultado.dotes = conLaDiferenciaPorId(guardado.dotes, antes?.dotes, despues.dotes,
-        (x) => toInt(x?.dg) > 0 ? `${toInt(x?.idDote)}|${Math.max(0, toInt(x?.idExtra))}|${toInt(x?.dg)}` : `${toInt(x?.idDote)}`);
+        (x) => toInt(x?.dg) > 0 ? claveDeDoteDelCompaneroGuardada(x) : `${toInt(x?.idDote)}`);
     // Los rangos, si cambian sus DG adicionales y el motor los cambia: al bajar («todo o nada») y al subir (los de sus DG
     // nuevos, que se reparten en la subida).
     if (toInt(despues.dgAdi) !== toInt(antes?.dgAdi) && claveElemento(antes?.habilidades ?? []) !== claveElemento(despues.habilidades ?? []))

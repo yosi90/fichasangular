@@ -5,7 +5,7 @@ import {
     PersonajeCreateHabilidadMascotaDto,
 } from 'src/app/interfaces/personajes-api';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
-import { primerEntero, toInt, toNumber } from './normalizacion';
+import { primerEntero, sinRepetidos, toInt, toNumber } from './normalizacion';
 import { carasDado } from './puntos-golpe';
 import { dadosGolpeCompanero, rangosDelCompaneroQueCaben } from './companero-reglas';
 import { dgDeLaDoteDelCompanero, esDoteDelMonstruoDelCompanero, quitarLoDeLosDgQueNoTieneElCompanero } from './companero-dotes';
@@ -127,18 +127,15 @@ function dotesDelCompanero(companero: CompaneroMonstruoDetalle): Array<{ idDote:
     return sinRepetidos(propias.map((item) => {
         const dg = dgDeLaDoteDelCompanero(item);
         return { idDote: toInt(item.Dote.Id), idExtra: Math.max(0, toInt(item?.Contexto?.Id_extra)), ...(dg > 0 ? { dg } : {}) };
-    }), (d) => `${d.idDote}|${d.idExtra}|${d.dg ?? 0}`);
+    }), claveDeDoteDelCompaneroGuardada);
 }
 
-function sinRepetidos<T>(items: T[], clave: (item: T) => string): T[] {
-    const vistos = new Set<string>();
-    return items.filter((item) => {
-        const k = clave(item);
-        if (vistos.has(k))
-            return false;
-        vistos.add(k);
-        return true;
-    });
+/**
+ * La clave de una dote del compañero en la forma del alta (`companero.dotes`): su dote, su extra (sin él, 0) y su `dg`
+ * (sin él, 0). Una repetida con otro extra o en otro DG es otra. La usan el alta y la subida de nivel (`subida-nivel`).
+ */
+export function claveDeDoteDelCompaneroGuardada(d: { idDote?: number; idExtra?: number; dg?: number; } | null | undefined): string {
+    return `${toInt(d?.idDote)}|${Math.max(0, toInt(d?.idExtra))}|${toInt(d?.dg)}`;
 }
 
 /**
