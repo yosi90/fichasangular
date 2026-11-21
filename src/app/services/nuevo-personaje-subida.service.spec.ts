@@ -2121,6 +2121,15 @@ describe('El reciclaje de la mascota (R3, tercera tanda; Manual del jugador II, 
             expect(listados).not.toContain(`${LOBO}:0`);
         });
 
+        it('el nivel de la elección es el de la fila más baja con la que lo tiene, como la API, aunque otra de más nivel le valga igual', () => {
+            const { guardado, subida } = druidaConLobo();
+            const lobo = delCatalogo(LOBO);
+            const deNivel4 = { ...lobo.Niveles_clase[0], Nivel: 4 };
+            const conDosFilas = CATALOGO.map((c) => c === lobo ? { ...c, Niveles_clase: [deNivel4, ...c.Niveles_clase] } : c);
+            const [hueco] = huecosDeMascota(subida, guardado.entrada, { companeros: conDosFilas, familiares: null });
+            expect(hueco.nivelEleccion).toBe(1);
+        });
+
         it('con Compañero elevado (tomado con nivel efectivo 3) ve también el lobo celestial, que es de nivel 2 con esa dote', () => {
             const { guardado, subida } = druidaConLobo(true);
             const [hueco] = huecosDeMascota(subida, guardado.entrada, { companeros: CATALOGO, familiares: null });

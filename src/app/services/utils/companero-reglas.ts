@@ -68,7 +68,8 @@ export type AptitudesCompaneroDelNivel = AptitudesMascotaDelNivel<CompaneroAptit
 
 const SIN_BONOS: CompaneroBonosNivel = { Nivel: 0, Dg_adicionales: 0, Armadura_natural: 0, Fuerza_destreza: 0, Trucos_adicionales: 0 };
 
-const TEXTOS_COMPANERO: TextosMascota = { mascota: 'compañero animal', listaDe: 'compañeros animales', listaPorDefecto: 'druida' };
+/** Cómo se llama el compañero y su lista en las frases (también las del reciclaje, `reciclaje-mascota.ts`). */
+export const TEXTOS_COMPANERO: TextosMascota = { mascota: 'compañero animal', listaDe: 'compañeros animales', listaPorDefecto: 'druida' };
 
 /** Las fuentes del compañero, su cupo (uno por personaje), su nivel efectivo de druida y las listas de las que elige. */
 export function resolverEstadoCuposCompanero(personaje: Personaje, catalogoClases: Clase[]): EstadoCuposCompanero {

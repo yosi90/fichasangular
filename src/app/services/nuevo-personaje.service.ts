@@ -120,7 +120,7 @@ import {
 } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
 import {
-    apuntarEleccion, construirNivelesCreacion, esLaEleccion, nivelDelOrden, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
+    apuntarEleccion, construirNivelesCreacion, esLaEleccion, nivelDelOrden, nivelesDeClaseHasta, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
     origenDotePorNivelDePersonaje, RefNivelTomado,
 } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
@@ -11806,8 +11806,7 @@ export class NuevoPersonajeService {
             if (key)
                 caracteristicas[key] = toNumber(caracteristicas[key]) - Math.max(1, toInt(e.valor));
         });
-        const hasta = new Map<number, number>();
-        orden.slice(0, indice + 1).forEach((n) => hasta.set(toInt(n?.idClase), Math.max(hasta.get(toInt(n?.idClase)) ?? 0, toInt(n?.nivelClase))));
+        const hasta = nivelesDeClaseHasta(orden, indice);
         const ataqueDe = (idClase: number, nivel: number) => {
             const clase = this.catalogoClases.find((c) => toInt(c?.Id) === idClase);
             return clase && nivel > 0 ? (primerEntero(this.obtenerDetalleNivelClase(clase, nivel)?.Ataque_base) ?? 0) : 0;

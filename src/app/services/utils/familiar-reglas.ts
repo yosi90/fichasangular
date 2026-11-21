@@ -79,7 +79,8 @@ export interface TablaDelFamiliar {
     bonos: FamiliarBonosNivel;
 }
 
-const TEXTOS_FAMILIAR: TextosMascota = { mascota: 'familiar', listaDe: 'familiares', listaPorDefecto: 'su clase' };
+/** Cómo se llama el familiar y su lista en las frases (también las del reciclaje, `reciclaje-mascota.ts`). */
+export const TEXTOS_FAMILIAR: TextosMascota = { mascota: 'familiar', listaDe: 'familiares', listaPorDefecto: 'su clase' };
 
 const SIN_BONOS: FamiliarBonosNivel = { Nivel: 0, Armadura_natural: 0, Inteligencia: null, Rc_sobre_nivel: null };
 
