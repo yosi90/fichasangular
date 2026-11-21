@@ -55,6 +55,8 @@ export const VALOR_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>
     caracteristica: 'Cantidad',
     conjuros_escuela: 'Cantidad',
     armas_naturales: 'Cantidad',
+    armadura_natural: 'Cantidad',
+    ataque_especial: 'Cantidad',
     dg: 'Cantidad',
     escuela_nivel: 'Nivel',
     habilidad: 'Cantidad',
@@ -69,6 +71,9 @@ export const VALOR_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>
     nivel_lanzador: 'Nivel',
     nivel_max: 'Nivel',
     reserva_psionica: 'Cantidad',
+    sortilega: 'Nivel_lanzador',
+    trucos: 'Cantidad',
+    volar: 'Cantidad',
 };
 
 /**
@@ -118,6 +123,8 @@ export function filaDeLectura(tipo: PrerequisiteType, item: PrerrequisitoItem, u
     const claveValor = claves.valor?.[tipo] ?? VALOR_DE_LECTURA[tipo];
     if (claveValor)
         fila.valor = toInt(item?.[claveValor]);
+    if (tipo === 'caracteristica' && toInt(item?.['Maximo']) > 0)
+        fila.maximo = toInt(item['Maximo']);
     if (tipo === 'salvacion_minimo') {
         const salvacion = SALVACIONES.find((clave) => toInt(item?.[claveDeSalvacion(clave)]) > 0) ?? 'fortaleza';
         fila.salvacion_tipo = salvacion;

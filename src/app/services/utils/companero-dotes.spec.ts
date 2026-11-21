@@ -87,6 +87,30 @@ describe('las dotes y las mejoras del compañero animal', () => {
         expect([ataqueBaseDelCompaneroConDg(gruk, 5), ataqueBaseDelCompaneroConDg(gruk, 7)]).toEqual([3, 5]);
     });
 
+    it('Truco adicional: un lobo con Rastrea (Animal, Int 2, un truco) puede; sin trucos o con Int 3, no', () => {
+        const trucoAdicional = { Id: 900, Nombre: 'Truco adicional', Prerrequisitos: {
+            tipo_criatura: [{ Id_tipo_criatura: 3, Tipo_criatura: 'Animal', Opcional: 1 }, { Id_tipo_criatura: 4, Tipo_criatura: 'Bestia mágica', Opcional: 1 }],
+            caracteristica: [{ Id_caracteristica: 4, Caracteristica: 'Inteligencia', Cantidad: 1, Maximo: 2, Opcional: 0 }],
+            trucos: [{ Cantidad: 1, Opcional: 0, Frase: 'Conocer al menos 1 truco' }],
+        } } as any;
+        const rastrea = { Id: 4, Nombre: 'Rastrea', Origen: 'adicional', Orden: 1, Coste: 1, Es_fin: false };
+        const lobo = companero({ dg: 2, Nombre: 'Colmillo', Trucos: [rastrea] } as any);
+        expect(evaluarElegibilidadDote({ dote: trucoAdicional, contexto: contextoDeDotesDelCompanero(lobo, 3, () => undefined) }).estado).toBe('eligible');
+        const sinTrucos = companero({ dg: 2, Trucos: [] } as any);
+        expect(evaluarElegibilidadDote({ dote: trucoAdicional, contexto: contextoDeDotesDelCompanero(sinTrucos, 3, () => undefined) }).estado).toBe('blocked_failed');
+        const listo = companero({ dg: 2, int: 3, Trucos: [rastrea] } as any);
+        expect(evaluarElegibilidadDote({ dote: trucoAdicional, contexto: contextoDeDotesDelCompanero(listo, 3, () => undefined) }).estado).toBe('blocked_failed');
+    });
+
+    it('lo de su monstruo para las dotes de monstruo: su vuelo, su armadura natural, sus sortílegas, sus ataques especiales y sus trucos', () => {
+        const halcon = companero({ dg: 1, Movimientos: { Correr: 10, Nadar: 0, Volar: 60, Trepar: 0, Excavar: 0 },
+            Defensa: { Armadura_natural: 3 }, Sortilegas: [{ Nivel_lanzador: 6 }], Ataques_especiales: [{ Id: 1, Nombre: 'Veneno (víbora)' }],
+            Trucos: [{ Id: 7, Nombre: 'Lucha', Origen: 'monstruo', Orden: null, Coste: 3, Es_fin: true }] } as any);
+        const contexto = contextoDeDotesDelCompanero(halcon, 1, () => undefined);
+        expect([contexto.velocidadVuelo, contexto.armaduraNatural, contexto.nivelLanzadorSortilegas, contexto.ataquesEspeciales, contexto.trucosConocidos])
+            .toEqual([60, 3, 6, 1, 3]);
+    });
+
     it('se juzga como criatura en el DG en que la gana: sus características, su ataque base y sus dotes de antes', () => {
         const gruk = companero({ Dotes: [ALERTA, AGUANTE, dote(60, 'Esquiva', { Dg: 9 })] });
         const contexto = contextoDeDotesDelCompanero(gruk, 6, () => undefined);

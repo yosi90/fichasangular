@@ -18,6 +18,8 @@ export class PrerrequisitoCatalogValueEditorComponent {
     @Input() catalog: PrerequisiteCatalogItem[] = [];
     @Input() disabled: boolean = false;
     @Input() allowRequiresExtra: boolean = false;
+    /** Si se enseña el tope (el `Maximo` de una característica en una dote). */
+    @Input() allowMaximum: boolean = false;
     /** Los extras de la habilidad elegida, para los que pide la fila con «requiere extra». */
     @Input() extraOptions: PrerequisiteCatalogItem[] = [];
 

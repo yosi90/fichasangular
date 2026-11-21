@@ -6,7 +6,7 @@ import {
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from './alineamiento-contrato';
-import { normalizarTexto, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { ClaseConNivel, DeidadDelPersonaje, EvaluacionPrerrequisito, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararNivelDeClase, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
@@ -92,6 +92,25 @@ export interface DoteEvaluacionContexto {
     armasNaturales?: number;
     /** Su deidad, para la deidad tutelar (`deidad`: Bendecido por Tem-Et-Nu); `null` o sin él, no tiene. */
     deidad?: DeidadDelPersonaje | null;
+    /**
+     * Lo de las dotes de monstruo (catalogos.md, «Los prerrequisitos de las dotes de monstruo»): su velocidad de vuelo en
+     * pies (`volar`), su armadura natural (`armadura_natural`), el nivel de lanzador de su aptitud sortílega más alta
+     * (`sortilega`), cuántos ataques especiales tiene (`ataque_especial`) y cuántos trucos sabe (`trucos`: solo una mascota;
+     * un personaje, 0). Sin el dato, 0.
+     */
+    velocidadVuelo?: number;
+    armaduraNatural?: number;
+    nivelLanzadorSortilegas?: number;
+    ataquesEspeciales?: number;
+    trucosConocidos?: number;
+}
+
+/**
+ * El nivel de lanzador de la aptitud sortílega más alta (`sortilega`): las que lo dan con un número; la de un rasgo que lo da
+ * con un texto («igual a sus niveles de clase»), con el primer número que traiga, o no cuenta.
+ */
+export function nivelLanzadorMaximoDeSortilegas(sortilegas: ReadonlyArray<{ Nivel_lanzador?: number | string | null; }> | null | undefined): number {
+    return (sortilegas ?? []).reduce((maximo, s) => Math.max(maximo, primerEntero(s?.Nivel_lanzador) ?? 0), 0);
 }
 
 /**
@@ -180,12 +199,14 @@ function buildEvaluacionCaracteristica(entry: Record<string, any>, ctx: DoteEval
     const grupoOpcional = parseOpcional(entry);
     const idCaracteristica = parseId(entry, ['Id_caracteristica', 'id_caracteristica', 'Id', 'id']);
     const minimo = toNumber(pick(entry, ['Cantidad', 'cantidad', 'Valor', 'valor']));
+    // Con `Maximo`, la puntuación entre los dos («Int 1 a 2», Truco adicional); sin él (`null`), sin tope.
+    const maximo = toNumber(pick(entry, ['Maximo', 'maximo']));
     const actual = valorCaracteristicaPorId(ctx.caracteristicas, idCaracteristica);
     const evaluable = idCaracteristica > 0 && minimo > 0 && Number.isFinite(actual);
     return {
         grupoOpcional,
         evaluable,
-        cumple: evaluable ? actual >= minimo : false,
+        cumple: evaluable ? actual >= minimo && (maximo <= 0 || actual <= maximo) : false,
         razonUnknown: 'Prerrequisito de característica con formato no reconocido',
     };
 }
@@ -364,7 +385,7 @@ function buildEvaluacionNumeroMinimo(
     razonUnknown: string
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
-    const requerido = parseNumber(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c']);
+    const requerido = parseNumber(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c', 'Minimo', 'minimo', 'Nivel_lanzador', 'nivel_lanzador']);
     const evaluable = Number.isFinite(requerido);
     return {
         grupoOpcional,
@@ -768,6 +789,16 @@ function evaluateFamily(
         return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.reservaPsionica), 'Prerrequisito reserva_psionica con formato no reconocido'));
     if (keyNorm === 'armas_naturales')
         return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.armasNaturales), 'Prerrequisito armas_naturales con formato no reconocido'));
+    // Las dotes de monstruo: el mínimo de cada una contra lo de la criatura (`DoteEvaluacionContexto`, sin él, 0).
+    const DE_MONSTRUO: Record<string, number | undefined> = {
+        volar: ctx.velocidadVuelo,
+        armadura_natural: ctx.armaduraNatural,
+        sortilega: ctx.nivelLanzadorSortilegas,
+        ataque_especial: ctx.ataquesEspeciales,
+        trucos: ctx.trucosConocidos,
+    };
+    if (Object.prototype.hasOwnProperty.call(DE_MONSTRUO, keyNorm))
+        return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(DE_MONSTRUO[keyNorm]), `Prerrequisito ${keyNorm} con formato no reconocido`));
     if (keyNorm === 'lanzar_poder_psionico_nivel')
         return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.nivelPoderPsionicoMaximo), 'Prerrequisito lanzar_poder_psionico_nivel con formato no reconocido'));
     if (CLAVES_PRERREQUISITOS_INCARNUM.includes(keyNorm)) {

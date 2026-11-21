@@ -30,7 +30,9 @@ export type PrerequisiteType =
     | 'alineamiento_requerido'
     | 'aptitud_especial'
     | 'armas_naturales'
+    | 'armadura_natural'
     | 'ataque_base'
+    | 'ataque_especial'
     | 'caracteristica'
     | 'clase_especial'
     | 'competencia_arma'
@@ -63,6 +65,7 @@ export type PrerequisiteType =
     | 'region'
     | 'reserva_psionica'
     | 'salvacion_minimo'
+    | 'sortilega'
     | 'conjuro_conocido'
     | 'conocer_poder_psionico'
     | 'genero'
@@ -74,6 +77,8 @@ export type PrerequisiteType =
     | 'tamano_minimo'
     | 'tipo_criatura'
     | 'tipo_dote'
+    | 'trucos'
+    | 'volar'
     | TipoEditorMutacion;
 
 /**
@@ -122,6 +127,8 @@ export interface PrerequisiteRowModel {
      * predilecta de su deidad)», el cruzado divino, *El divino completo*, pág. 30).
      */
     arma_deidad?: boolean;
+    /** El tope de una `caracteristica` («Int 1 a 2», Truco adicional): `Maximo` del cuerpo; 0 o sin él, sin tope. */
+    maximo?: number;
 }
 
 export interface PrerequisiteCatalogContext {
@@ -131,6 +138,8 @@ export interface PrerequisiteCatalogContext {
     dotePermiteExtra(idDote: number): boolean;
     /** Si quien edita admite «con el arma predilecta de su deidad» en sus dotes (las clases; las dotes no). */
     admiteArmaDeidad?(): boolean;
+    /** Si quien edita admite el tope de una característica (`Maximo`: las dotes; las clases y las plantillas, no). */
+    admiteMaximoDeCaracteristica?(): boolean;
     getGlobalExtraOptions(): PrerequisiteCatalogItem[];
     habilidadPermiteExtra(idHabilidad: number): boolean;
     /** Los extras de esa habilidad, para elegir los que pide una fila con «requiere extra». Sin él, `getGlobalExtraOptions`. */
@@ -150,6 +159,8 @@ export interface PrerequisiteEditorDefinition {
     supportsExtraSelector?: boolean;
     supportsCatalogExtraOptions?: boolean;
     supportsRequiresExtra?: boolean;
+    /** Admite un tope además del mínimo (el `Maximo` de una característica), si el catálogo lo admite. */
+    supportsMaximum?: boolean;
     /**
      * El comodín 0 de su catálogo como opción del selector (la «Competencia con el arma elegida» de Soltura con un arma):
      * su etiqueta. Elegirlo deja la fila en el id 0 con `comodin` y la da por completa.
