@@ -59,6 +59,25 @@ describe('prerrequisito-editor.registry', () => {
         expect(payload['dote'][0]).toEqual(jasmine.objectContaining({ Id_extra: -1, Extra_arma_deidad: true }));
     });
 
+    it('serializa las dotes de monstruo (su mínimo, o el nivel de lanzador de la sortílega) y el tope de una característica', () => {
+        const payload = buildPrerequisitePayload([
+            row({ tipo: 'volar', valor: 1 }),
+            row({ tipo: 'armadura_natural', valor: 1, opcional: 2 }),
+            row({ tipo: 'sortilega', valor: 10 }),
+            row({ tipo: 'ataque_especial', valor: 1 }),
+            row({ tipo: 'trucos', valor: 1 }),
+            row({ tipo: 'caracteristica', id: 4, valor: 1, maximo: 2 }),
+            row({ uid: 'otra', tipo: 'caracteristica', id: 1, valor: 13 }),
+        ], context);
+        expect(payload['volar']).toEqual([{ Minimo: 1 }]);
+        expect(payload['armadura_natural']).toEqual([{ Opcional: 2, Minimo: 1 }]);
+        expect(payload['sortilega']).toEqual([{ Nivel_lanzador: 10 }]);
+        expect(payload['ataque_especial']).toEqual([{ Minimo: 1 }]);
+        expect(payload['trucos']).toEqual([{ Minimo: 1 }]);
+        expect(payload['caracteristica'][0]).toEqual(jasmine.objectContaining({ Id_caracteristica: 4, Cantidad: 1, Maximo: 2 }));
+        expect(Object.keys(payload['caracteristica'][1])).not.toContain('Maximo');
+    });
+
     it('serializa clase_especial con id_extra', () => {
         const payload = buildPrerequisitePayload([
             row({ tipo: 'clase_especial', id: 8, id_extra: 0 }),

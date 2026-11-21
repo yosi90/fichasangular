@@ -70,8 +70,10 @@ function buildCatalogPayload(
         return { ...base, Id_alineamiento: id, Alineamiento: context.getCatalogName(tipo, id) };
     if (tipo === 'aptitud_especial')
         return { ...base, Id_aptitud_especial: id, Aptitud_especial: context.getCatalogName(tipo, id) };
-    if (tipo === 'caracteristica')
-        return { ...base, Id_caracteristica: id, Caracteristica: context.getCatalogName(tipo, id), Cantidad: valor };
+    if (tipo === 'caracteristica') {
+        const maximo = toInt(row.maximo, 0);
+        return { ...base, Id_caracteristica: id, Caracteristica: context.getCatalogName(tipo, id), Cantidad: valor, ...(maximo > 0 ? { Maximo: maximo } : {}) };
+    }
     if (tipo === 'clase_especial')
         return withOpcional(base, { Id_especial: id, Clase_especial: context.getCatalogName(tipo, id), Id_extra: row.id_extra });
     if (tipo === 'competencia_arma')
@@ -168,6 +170,11 @@ function buildValuePayload(row: PrerequisiteRowModel): Record<string, any> {
     if (tipo === 'ataque_base' || tipo === 'dg' || tipo === 'nivel' || tipo === 'nivel_max' || tipo === 'reserva_psionica'
         || tipo === 'armas_naturales')
         return { ...base, Cantidad: valor };
+    // Las dotes de monstruo (catalogos.md, «Los prerrequisitos de las dotes de monstruo»).
+    if (tipo === 'volar' || tipo === 'armadura_natural' || tipo === 'ataque_especial' || tipo === 'trucos')
+        return { ...base, Minimo: valor };
+    if (tipo === 'sortilega')
+        return { ...base, Nivel_lanzador: valor };
 
     return { ...base, Nivel: valor };
 }
@@ -201,6 +208,7 @@ function definition(
         supportsExtraSelector: config.supportsExtraSelector,
         supportsCatalogExtraOptions: config.supportsCatalogExtraOptions,
         supportsRequiresExtra: config.supportsRequiresExtra,
+        supportsMaximum: config.supportsMaximum,
         comodinLabel: config.comodinLabel,
         isComplete: config.comodinLabel
             ? (row) => row.comodin === true || (config.isComplete ?? (() => true))(row)
@@ -247,6 +255,7 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
     definition('caracteristica', 'catalog-plus-value', {
         catalogLabel: 'Característica',
         valueLabel: 'Puntuacion minima',
+        supportsMaximum: true,
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
@@ -307,6 +316,32 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         valueLabel: 'Pasa a ser',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
+    }),
+    // Las dotes de monstruo (*Manual de monstruos*, cap. 6; Truco adicional): un mínimo de lo de la criatura.
+    definition('volar', 'value-only', {
+        valueLabel: 'Velocidad de vuelo minima (pies)',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
+    }),
+    definition('armadura_natural', 'value-only', {
+        valueLabel: 'Armadura natural minima',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
+    }),
+    definition('sortilega', 'value-only', {
+        valueLabel: 'Nivel de lanzador minimo',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
+    }),
+    definition('ataque_especial', 'value-only', {
+        valueLabel: 'Ataques especiales minimos',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
+    }),
+    definition('trucos', 'value-only', {
+        valueLabel: 'Trucos conocidos minimos',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
     }),
     // Armas naturales mínimas (Ataque múltiple, tres o más): las cuenta la creación en la raza y sus plantillas.
     definition('armas_naturales', 'value-only', {

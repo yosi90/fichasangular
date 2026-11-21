@@ -34,6 +34,16 @@
             (input)="patchChange.emit({ valor: +$any($event.target).value || 0 })">
     </mat-form-field>
 
+    <mat-form-field appearance="fill" *ngIf="definition.supportsMaximum && allowMaximum">
+        <mat-label>Puntuacion maxima (opcional)</mat-label>
+        <input
+            matInput
+            type="number"
+            [value]="row.maximo || ''"
+            [disabled]="disabled"
+            (input)="patchChange.emit({ maximo: +$any($event.target).value || 0 })">
+    </mat-form-field>
+
     <mat-checkbox
         class="prereq-extra-check"
         *ngIf="definition.supportsRequiresExtra && allowRequiresExtra"

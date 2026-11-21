@@ -5,7 +5,7 @@ import { CompaneroMejora, CompaneroMonstruoDetalle, MonstruoHabilidad } from 'sr
 import { armasNaturalesDelCompanero, dadosGolpeCompanero } from 'src/app/services/utils/companero-reglas';
 import { caracteristicaPorId, modificadorCaracteristica, sinPuntuacion } from 'src/app/services/utils/caracteristicas';
 import { daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
-import { DoteEvaluacionContexto, dotesConCuentaComo } from 'src/app/services/utils/dote-elegibilidad';
+import { DoteEvaluacionContexto, dotesConCuentaComo, nivelLanzadorMaximoDeSortilegas } from 'src/app/services/utils/dote-elegibilidad';
 import { HabilidadParaPrerrequisitos } from 'src/app/services/utils/prerrequisitos-evaluacion';
 import { normalizarTexto, primerEntero, sinRepetidos, toInt } from 'src/app/services/utils/normalizacion';
 
@@ -297,7 +297,22 @@ export function contextoDeDotesDelCompanero(companero: CompaneroMonstruoDetalle,
         catalogoRegiones: [],
         armasNaturales: armasNaturalesDelCompanero(companero),
         deidad: null,
+        // Las dotes de monstruo: lo de su monstruo (su vuelo, sus aptitudes sortílegas y sus ataques especiales), su armadura
+        // natural con la de su tabla (la que ya lleva) y los trucos que sabe de cualquier origen, con los de su fin.
+        velocidadVuelo: toInt(companero?.Movimientos?.Volar),
+        armaduraNatural: toInt(companero?.Defensa?.Armadura_natural),
+        nivelLanzadorSortilegas: nivelLanzadorMaximoDeSortilegas(companero?.Sortilegas),
+        ataquesEspeciales: (companero?.Ataques_especiales ?? []).length,
+        trucosConocidos: trucosQueSabeElCompanero(companero),
     };
+}
+
+/**
+ * Cuántos trucos sabe (el prerrequisito `trucos`: Truco adicional pide conocer al menos 1): los suyos de cualquier origen,
+ * y un fin, los que suma (su `Coste`).
+ */
+export function trucosQueSabeElCompanero(companero: CompaneroMonstruoDetalle | null | undefined): number {
+    return (companero?.Trucos ?? []).reduce((total, t) => total + (t?.Es_fin ? Math.max(1, toInt(t?.Coste)) : 1), 0);
 }
 
 /** El texto del hueco de una dote del compañero («Compañero animal (Gruk): la de su 6.º DG»). */

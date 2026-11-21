@@ -266,6 +266,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         habilidadPermiteExtra: (idHabilidad) => this.habilidadCatalogoPermiteExtra(idHabilidad),
         getHabilidadExtraOptions: (idHabilidad) => this.extrasDeHabilidad(idHabilidad),
         especialPermiteExtra: (idEspecial) => this.especialCatalogoPermiteExtra(idEspecial),
+        // El tope de una característica (Truco adicional: Int 1 a 2; catalogos.md, «Los prerrequisitos de las dotes de monstruo»).
+        admiteMaximoDeCaracteristica: () => true,
     };
     readonly ensurePrerequisiteCatalogs = (types: PrerequisiteType[]) => this.asegurarCatalogosPrerrequisitos(types);
 

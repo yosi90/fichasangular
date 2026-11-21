@@ -853,6 +853,36 @@ describe('dote-elegibilidad', () => {
             expect(evaluarElegibilidadDote({ dote: ataqueMultiple, contexto: crearContextoBase() }).estado).toBe('blocked_failed');
         });
 
+        it('las dotes de monstruo: vuelo, armadura natural, sortílega, ataque especial y trucos, con su mínimo y su frase', () => {
+            const flotar = crearDoteBase({ Nombre: 'Flotar', Prerrequisitos: { volar: [{ Minimo: 1, Opcional: 0, Frase: 'Velocidad de vuelo' }] } as any });
+            expect(evaluarElegibilidadDote({ dote: flotar, contexto: crearContextoBase({ velocidadVuelo: 60 }) }).estado).toBe('eligible');
+            const sinAlas = evaluarElegibilidadDote({ dote: flotar, contexto: crearContextoBase() });
+            expect(sinAlas.estado).toBe('blocked_failed');
+            expect(sinAlas.razones.join(' ')).toContain('Velocidad de vuelo');
+            const armadura = crearDoteBase({ Prerrequisitos: { armadura_natural: [{ Minimo: 1, Opcional: 0, Frase: 'Armadura natural +1' }] } as any });
+            expect(evaluarElegibilidadDote({ dote: armadura, contexto: crearContextoBase({ armaduraNatural: 2 }) }).estado).toBe('eligible');
+            expect(evaluarElegibilidadDote({ dote: armadura, contexto: crearContextoBase({ armaduraNatural: 0 }) }).estado).toBe('blocked_failed');
+            const apresurar = crearDoteBase({ Prerrequisitos: { sortilega: [{ Nivel_lanzador: 10, Opcional: 0, Frase: 'Una aptitud sortílega a nivel de lanzador 10 o más' }] } as any });
+            expect(evaluarElegibilidadDote({ dote: apresurar, contexto: crearContextoBase({ nivelLanzadorSortilegas: 12 }) }).estado).toBe('eligible');
+            expect(evaluarElegibilidadDote({ dote: apresurar, contexto: crearContextoBase({ nivelLanzadorSortilegas: 6 }) }).estado).toBe('blocked_failed');
+            const soltura = crearDoteBase({ Prerrequisitos: { ataque_especial: [{ Minimo: 1, Opcional: 0, Frase: 'Un ataque especial' }] } as any });
+            expect(evaluarElegibilidadDote({ dote: soltura, contexto: crearContextoBase({ ataquesEspeciales: 1 }) }).estado).toBe('eligible');
+            expect(evaluarElegibilidadDote({ dote: soltura, contexto: crearContextoBase() }).estado).toBe('blocked_failed');
+            // Un personaje no sabe trucos.
+            const truco = crearDoteBase({ Prerrequisitos: { trucos: [{ Minimo: 1, Opcional: 0, Frase: 'Conocer al menos 1 truco' }] } as any });
+            expect(evaluarElegibilidadDote({ dote: truco, contexto: crearContextoBase({ trucosConocidos: 0 }) }).estado).toBe('blocked_failed');
+            expect(evaluarElegibilidadDote({ dote: truco, contexto: crearContextoBase({ trucosConocidos: 1 }) }).estado).toBe('eligible');
+        });
+
+        it('la característica con un máximo: entre `Cantidad` y `Maximo` (Truco adicional, Int 1 a 2)', () => {
+            const dote = crearDoteBase({ Prerrequisitos: { caracteristica: [{ Id_caracteristica: 4, Caracteristica: 'Inteligencia', Cantidad: 1, Maximo: 2, Opcional: 0 }] } as any });
+            const conInt = (Inteligencia: number) => crearContextoBase({ caracteristicas: { ...crearContextoBase().caracteristicas, Inteligencia } });
+            expect(evaluarElegibilidadDote({ dote, contexto: conInt(2) }).estado).toBe('eligible');
+            expect(evaluarElegibilidadDote({ dote, contexto: conInt(3) }).estado).toBe('blocked_failed');
+            const sinTope = crearDoteBase({ Prerrequisitos: { caracteristica: [{ Id_caracteristica: 4, Cantidad: 1, Maximo: null, Opcional: 0 }] } as any });
+            expect(evaluarElegibilidadDote({ dote: sinTope, contexto: conInt(18) }).estado).toBe('eligible');
+        });
+
         it('una dote que «cuenta como» otra la sustituye en los prerrequisitos', () => {
             const catalogo: Record<number, Dote> = { 1087: crearDoteBase({ Id: 1087, Nombre: 'Dureza azur', Cuenta_como: [{ Id: 43, Nombre: 'Dureza' }] }) };
             const dotes = dotesConCuentaComo([{ id: 1087, nombre: 'Dureza azur', idExtra: 0, extra: '' }], (id) => catalogo[id]);

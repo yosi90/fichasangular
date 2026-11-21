@@ -59,7 +59,7 @@ import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
 import { esRazaMutada, especialesDevueltos, especialQueLaSustituye } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, ContextoCompatibles, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
-import { cumpleArmasNaturalesDeLaDote, DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import { cumpleArmasNaturalesDeLaDote, DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote, nivelLanzadorMaximoDeSortilegas } from './utils/dote-elegibilidad';
 import { ClaseConNivel, HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
 import { ClaveHabilidad, claveDeHabilidad, claveHabilidad, clavesDeReferenciaGuardada } from './utils/habilidad-clave';
@@ -4623,6 +4623,15 @@ export class NuevoPersonajeService {
             incarnum: incarnumParaPrerrequisitos(this.getIncarnumBorrador()),
             reservaPsionica: this.resolverReservaPsionicaActual(),
             nivelPoderPsionicoMaximo: this.resolverNivelPoderPsionicoMaximo(),
+            // Las dotes de monstruo: su vuelo y su armadura natural (los de su raza a su edad, sus plantillas y subtipos, que
+            // la creación ya pone en la ficha), sus aptitudes sortílegas y los ataques especiales de sus plantillas. Un
+            // personaje no sabe trucos.
+            velocidadVuelo: toNumber(this.personajeCreacion.Volar),
+            armaduraNatural: toNumber(this.personajeCreacion.Armadura_natural),
+            nivelLanzadorSortilegas: nivelLanzadorMaximoDeSortilegas(this.personajeCreacion.Sortilegas),
+            ataquesEspeciales: (this.estadoFlujo.plantillas.seleccionadas ?? [])
+                .reduce((total, plantilla) => total + (plantilla?.Ataques_especiales ?? []).length, 0),
+            trucosConocidos: 0,
         };
 
         return this.resultadoDeLaEvaluacionDote(dote, alNivel === null ? contexto : this.contextoAlNivel(contexto, alNivel), idExtra, extraTexto);
