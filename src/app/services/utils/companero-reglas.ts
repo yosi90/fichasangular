@@ -174,6 +174,47 @@ export function resolverNivelesCompaneroDisponibles(input: Omit<FiltroCompaneros
     return Array.from(niveles).sort((a, b) => a - b);
 }
 
+/** Lo que enseña el selector del compañero (`selector-companero-modal`), del catálogo y del personaje. */
+export interface EntradasSelectorCompanero {
+    /** Los niveles del filtro «Nivel» (`resolverNivelesCompaneroDisponibles`). */
+    nivelesDisponibles: number[];
+    /** El nivel del filtro, si sigue entre los disponibles; si no, `null`. */
+    nivelSeleccionado: number | null;
+    elegibles: CompaneroMonstruoDetalle[];
+    bloqueados: Array<{ companero: CompaneroMonstruoDetalle; razones: string[]; nivelMinimoRequerido: number | null; }>;
+    /** El nivel efectivo de druida que pide cada uno, por `claveCompanero`. */
+    nivelesRequeridos: Record<string, number>;
+    /** El ajuste de su lista, por `claveCompanero`. */
+    ajustes: Record<string, number>;
+}
+
+/**
+ * Las entradas del selector del compañero: los niveles del filtro, los que puede elegir y los que no (con su motivo), el
+ * nivel que pide cada uno y el ajuste de su lista. Lo usan la creación y el reciclaje de la subida (`reciclaje-mascota.ts`).
+ */
+export function entradasDelSelectorCompanero(input: FiltroCompanerosElegiblesInput): EntradasSelectorCompanero {
+    const nivelesDisponibles = resolverNivelesCompaneroDisponibles(input);
+    const pedido = input?.nivelSeleccionado ?? null;
+    const nivelSeleccionado = pedido !== null && nivelesDisponibles.includes(pedido) ? pedido : null;
+    const evaluaciones = evaluarCompanerosElegibilidad({ ...input, nivelSeleccionado });
+    const nivelesRequeridos: Record<string, number> = {};
+    const ajustes: Record<string, number> = {};
+    evaluaciones.forEach((item) => {
+        const clave = claveCompanero(item.companero);
+        ajustes[clave] = Math.trunc(Number(item?.ajuste ?? 0));
+        const nivel = Number(item?.nivelMinimoRequerido ?? 0);
+        if (Number.isFinite(nivel) && nivel > 0)
+            nivelesRequeridos[clave] = Math.trunc(nivel);
+    });
+    return {
+        nivelesDisponibles, nivelSeleccionado, nivelesRequeridos, ajustes,
+        elegibles: evaluaciones.filter((item) => item.elegible).map((item) => item.companero),
+        bloqueados: evaluaciones.filter((item) => !item.elegible).map((item) => ({
+            companero: item.companero, razones: [...(item.razones ?? [])], nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
+        })),
+    };
+}
+
 /** La clave de un compañero del catálogo de la creación: su monstruo y su plantilla. */
 export function claveCompanero(companero: CompaneroMonstruoDetalle | null | undefined): string {
     return `${toInt(companero?.Id_companero)}:${Math.max(0, toInt(companero?.Plantilla?.Id))}`;

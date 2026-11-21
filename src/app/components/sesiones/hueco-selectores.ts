@@ -13,10 +13,11 @@ export class HuecoDeSelectores {
 
     /**
      * Abre el selector `tipo` con sus entradas y resuelve con lo que emita en `aceptar` (su valor) o en `rechazar`
-     * (`null`); `fijos` resuelve esas salidas con un valor. Sin hueco, `null`.
+     * (`null`); `fijos` resuelve esas salidas con un valor. Con `cambios`, lo que emite en esas salidas (un filtro, el nombre)
+     * no lo cierra: da las entradas que cambian (el selector del compañero, que vuelve a juzgar con el filtro). Sin hueco, `null`.
      */
     abrir<T>(tipo: Type<unknown>, entradas: Record<string, unknown>, aceptar: string[], rechazar: string[],
-        fijos: Record<string, unknown> = {}): Promise<T | null> {
+        fijos: Record<string, unknown> = {}, cambios: Record<string, (valor: any) => Record<string, unknown>> = {}): Promise<T | null> {
         this.cerrar();
         const host = this.host();
         if (!host)
@@ -33,6 +34,8 @@ export class HuecoDeSelectores {
             aceptar.forEach((salida) => instancia[salida]?.subscribe((valor: T) => terminar(valor)));
             rechazar.forEach((salida) => instancia[salida]?.subscribe(() => terminar(null)));
             Object.entries(fijos).forEach(([salida, valor]) => instancia[salida]?.subscribe(() => terminar(valor as T)));
+            Object.entries(cambios).forEach(([salida, entradasNuevas]) => instancia[salida]?.subscribe((valor: unknown) =>
+                Object.entries(entradasNuevas(valor)).forEach(([k, v]) => ref.setInput(k, v))));
         });
     }
 

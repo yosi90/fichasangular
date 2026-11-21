@@ -246,15 +246,7 @@ export function fichaConElDominio(entrada: PersonajeCreateRequestDto, plan: Plan
     const colA: any = motor?.antes.colecciones ?? {};
     const colD: any = motor?.despues.colecciones ?? {};
     const origenes = new Set([origenDeDominio(hueco.tiene.nombre), origenDeDominio(pone.nombre)].map((n) => normalizarTexto(n)));
-    const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
-    const deDotes = diferencia((colA.dotes ?? []).filter((d: any) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`))),
-        (colD.dotes ?? []).filter((d: any) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`))));
-    deDotes.quitados.forEach((d) => sacarDoteDeLaFicha(dotes, toInt(d['idDote']), toInt(d['idExtra']), `${d['origen'] ?? ''}`));
-    deDotes.nuevos.forEach((d) => dotes.push({ ...d }));
-    const especiales: any[] = col.especiales = [...(col.especiales ?? [])];
-    const deEspeciales = diferencia(colA.especiales ?? [], colD.especiales ?? []);
-    deEspeciales.quitados.forEach((e) => sacarPrimero(especiales, (x) => toInt(x?.idEspecial) === toInt(e['idEspecial']) && mismoExtra(x?.idExtra, e['idExtra'])));
-    deEspeciales.nuevos.forEach((e) => especiales.push({ ...e }));
+    conLasAptitudesYDotesDelMotor(col, colA, colD, (d) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`)));
 
     // Si son de clase: lo que cambia el motor (las del dominio que sale dejan de serlo, las del que entra lo son).
     const clave = (h: any) => `${toInt(h?.idHabilidad)}:${Math.max(0, toInt(h?.idExtra))}`;
@@ -283,8 +275,24 @@ export function fichaConElDominio(entrada: PersonajeCreateRequestDto, plan: Plan
             primero.elecciones = [...(primero.elecciones ?? []), eleccion];
     }
     if (ficha.decisionesHomebrew)
-        ficha.decisionesHomebrew = sinDecisionesDeDotesQueNoTiene(ficha.decisionesHomebrew, dotes);
+        ficha.decisionesHomebrew = sinDecisionesDeDotesQueNoTiene(ficha.decisionesHomebrew, col.dotes);
     return ficha;
+}
+
+/**
+ * En las colecciones de la ficha (`col`), las aptitudes y las dotes que quita y pone el motor entre las de su cuerpo antes
+ * (`colA`) y después (`colD`) de un cambio; con `deLasDotes`, solo esas dotes (las del poder de un dominio). Lo usan el
+ * dominio y la mascota (`reciclaje-mascota.ts`, lo que el amo gana con ella).
+ */
+export function conLasAptitudesYDotesDelMotor(col: any, colA: any, colD: any, deLasDotes: (dote: any) => boolean = () => true): void {
+    const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
+    const deDotes = diferencia((colA?.dotes ?? []).filter(deLasDotes), (colD?.dotes ?? []).filter(deLasDotes));
+    deDotes.quitados.forEach((d) => sacarDoteDeLaFicha(dotes, toInt(d['idDote']), toInt(d['idExtra']), `${d['origen'] ?? ''}`));
+    deDotes.nuevos.forEach((d) => dotes.push({ ...d }));
+    const especiales: any[] = col.especiales = [...(col.especiales ?? [])];
+    const deEspeciales = diferencia(colA?.especiales ?? [], colD?.especiales ?? []);
+    deEspeciales.quitados.forEach((e) => sacarPrimero(especiales, (x) => toInt(x?.idEspecial) === toInt(e['idEspecial']) && mismoExtra(x?.idExtra, e['idExtra'])));
+    deEspeciales.nuevos.forEach((e) => especiales.push({ ...e }));
 }
 
 // --- La escuela del mago ---------------------------------------------------------------------------------------------
