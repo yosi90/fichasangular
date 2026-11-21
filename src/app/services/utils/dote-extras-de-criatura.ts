@@ -1,25 +1,21 @@
 import { Dote } from 'src/app/interfaces/dote';
-import { primerEntero, toArray, toBoolean, toInt, toText } from './normalizacion';
+import { Id_nombre } from 'src/app/interfaces/genericas';
+import { idNombres, primerEntero, sinRepetidos, toArray, toBoolean, toInt } from './normalizacion';
 
 /*
  * Los extras de las dotes de monstruo (contrato: `docs/publica/endpoints/catalogos.md`, «Los extras de las dotes de
  * monstruo»): lo que se elige al adquirir Ataque natural mejorado (una de sus armas naturales), Soltura con una aptitud (uno
  * de sus ataques especiales) y Apresurar o Potenciar aptitud sortílega (una de sus sortílegas, con el nivel de lanzador que
- * pide la dote) es algo que ya tiene la criatura que la adquiere, el personaje o su mascota.
+ * pide la dote) es algo que ya tiene la criatura que la adquiere, el personaje o su mascota. Cada extra es un `Id_nombre`:
+ * el id que va en `idExtra` (el tipo de arma natural, el racial o el conjuro) y su nombre.
  */
-
-/** Un extra de la criatura: el id que va en `idExtra` (el tipo de arma natural, el racial o el conjuro) y su nombre. */
-export interface ExtraDeCriatura {
-    Id: number;
-    Nombre: string;
-}
 
 /** Lo que tiene la criatura que adquiere la dote, para ofrecer sus extras. */
 export interface CriaturaParaExtras {
     /** Sus tipos de armas naturales (`tiposDeArmasNaturales`), con el `Id_arma_natural`. */
-    armasNaturales: readonly ExtraDeCriatura[];
+    armasNaturales: readonly Id_nombre[];
     /** Sus ataques especiales, con el `Id` de su racial. */
-    ataquesEspeciales: readonly ExtraDeCriatura[];
+    ataquesEspeciales: readonly Id_nombre[];
     /** Sus aptitudes sortílegas, con su conjuro y su nivel de lanzador (un número o un texto, el de un rasgo). */
     sortilegas: readonly { Conjuro?: { Id?: number; Nombre?: string; } | null; Nivel_lanzador?: number | string | null; }[];
 }
@@ -49,23 +45,23 @@ export function nivelLanzadorQuePide(dote: Dote | null | undefined): number {
     return filas.length > 0 ? Math.min(...filas.map((fila) => fila.nivel)) : 0;
 }
 
-function sinRepetidos(extras: ExtraDeCriatura[]): ExtraDeCriatura[] {
-    const vistos = new Set<number>();
-    return extras.filter((extra) => extra.Id > 0 && extra.Nombre.length > 0 && !vistos.has(extra.Id) && !!vistos.add(extra.Id));
+/** Las referencias con id y nombre, sin repetir el id (`idNombres` y `sinRepetidos`). */
+function extrasConNombre(referencias: readonly unknown[]): Id_nombre[] {
+    return sinRepetidos(idNombres(referencias).filter((extra) => extra.Nombre.length > 0), (extra) => `${extra.Id}`);
 }
 
 /** Los extras de la dote que tiene la criatura (vacío si la dote no tiene extra de criatura). */
-export function extrasDeCriaturaDeLaDote(dote: Dote | null | undefined, criatura: CriaturaParaExtras): ExtraDeCriatura[] {
+export function extrasDeCriaturaDeLaDote(dote: Dote | null | undefined, criatura: CriaturaParaExtras): Id_nombre[] {
     switch (familiaDeExtraDeCriatura(dote)) {
         case 'arma_natural':
-            return sinRepetidos([...criatura.armasNaturales].map((a) => ({ Id: toInt(a.Id), Nombre: toText(a.Nombre) })));
+            return extrasConNombre(criatura.armasNaturales);
         case 'ataque_especial':
-            return sinRepetidos([...criatura.ataquesEspeciales].map((a) => ({ Id: toInt(a.Id), Nombre: toText(a.Nombre) })));
+            return extrasConNombre(criatura.ataquesEspeciales);
         case 'sortilega': {
             const pide = nivelLanzadorQuePide(dote);
-            return sinRepetidos(criatura.sortilegas
+            return extrasConNombre(criatura.sortilegas
                 .filter((s) => (primerEntero(s?.Nivel_lanzador) ?? 0) >= pide)
-                .map((s) => ({ Id: toInt(s?.Conjuro?.Id), Nombre: toText(s?.Conjuro?.Nombre) })));
+                .map((s) => s?.Conjuro));
         }
         default:
             return [];
