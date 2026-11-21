@@ -1,9 +1,18 @@
 import { Clase, ClaseEspecialMascota } from 'src/app/interfaces/clase';
 import { Id_nombre } from 'src/app/interfaces/genericas';
-import { MascotaAptitudNivel, MascotaDeFila, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
+import {
+    EspecialContextualMonstruo,
+    MascotaAptitudNivel,
+    MascotaDeFila,
+    MonstruoDetalle,
+    MonstruoNivelClase,
+    MonstruoOrigenRef,
+    PersonajeRefMonstruo,
+} from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { doteDeNivelClase, idPlantillaDeNivel } from 'src/app/services/utils/nivel-clase-monstruo';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 /*
  * Lo común de las mascotas, el compañero animal (`companero-reglas.ts`) y el familiar (`familiar-reglas.ts`), de los datos
@@ -355,6 +364,53 @@ export function filasPorPlantilla(
             porPlantilla.set(idPlantilla, [...(porPlantilla.get(idPlantilla) ?? []), fila]);
         });
     return porPlantilla;
+}
+
+/** Lo común de una entrada del catálogo de la creación de una mascota (`catalogoDeMascotaDesdeMonstruos`). */
+export type EntradaDeMascota = MonstruoDetalle & {
+    Monstruo_origen: MonstruoOrigenRef;
+    Vida: number;
+    Plantilla: { Id: number; Nombre: string; };
+    Niveles_clase: MonstruoNivelClase[];
+    Especiales: EspecialContextualMonstruo[];
+    Personajes: PersonajeRefMonstruo[];
+};
+
+/**
+ * El catálogo de la creación de una mascota: una entrada por monstruo que puede serlo (`puedeSerlo`: su `Familiar` o su
+ * `Companero`) y plantilla de sus filas de esa `mascota` (`filasPorPlantilla`), con esas filas y el nombre de su plantilla
+ * (el primero que no esté vacío; sin plantilla, ninguno: «No aplica» es de relleno), por nombre y plantilla. `conSuId`
+ * le pone lo de cada mascota (su `Id_familiar` o su `Id_companero` y, en el compañero, sus DG y trucos adicionales a 0).
+ */
+export function catalogoDeMascotaDesdeMonstruos<T>(
+    monstruos: MonstruoDetalle[],
+    mascota: MascotaDeFila,
+    puedeSerlo: (monstruo: MonstruoDetalle) => boolean,
+    conSuId: (entrada: EntradaDeMascota, id: number) => T,
+): T[] {
+    const entradas: EntradaDeMascota[] = [];
+    (Array.isArray(monstruos) ? monstruos : []).forEach((monstruo) => {
+        const id = toInt(monstruo?.Id);
+        if (!puedeSerlo(monstruo) || id <= 0)
+            return;
+        filasPorPlantilla(monstruo, mascota).forEach((filas, idPlantilla) => {
+            const nombrePlantilla = idPlantilla > 0
+                ? filas.map((fila) => `${fila?.Plantilla?.Nombre ?? ''}`.trim()).find((nombre) => nombre.length > 0) ?? ''
+                : '';
+            entradas.push({
+                ...monstruo,
+                Monstruo_origen: { Id: id, Nombre: `${monstruo?.Nombre ?? ''}`.trim() },
+                Vida: 0,
+                Plantilla: { Id: idPlantilla, Nombre: nombrePlantilla },
+                Niveles_clase: filas,
+                Especiales: [],
+                Personajes: [],
+            });
+        });
+    });
+    return entradas
+        .sort((a, b) => porNombre(a, b) || toInt(a.Plantilla?.Id) - toInt(b.Plantilla?.Id))
+        .map((entrada) => conSuId(entrada, toInt(entrada.Id)));
 }
 
 /** La fila de una tabla por nivel que toca a ese nivel: la última que empieza en él o antes; `null` por debajo de la primera. */

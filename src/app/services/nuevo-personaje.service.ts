@@ -20,7 +20,9 @@ import {
     FamiliarAptitudNivel,
     FamiliarMonstruoDetalle,
     FamiliarProgresion,
+    MascotaAptitudNivel,
 } from '../interfaces/monstruo';
+import { AptitudesMascotaDelNivel } from './utils/mascota-cupos';
 import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
@@ -339,6 +341,12 @@ export function origenDeDominio(nombreDominio: string): string {
 /** El origen de `habilidadesDeClasePorOrigen` de una clase, por su nombre (como `desgloseClases`). */
 function origenDeClase(nombreClase: string | null | undefined): string {
     return `clase:${normalizarTexto(nombreClase ?? '')}`;
+}
+
+/** Lo que añaden al personaje y a su mascota las aptitudes de la tabla de la mascota a su nivel. */
+interface AptitudesMascotaAgregadas {
+    especialesAgregadosIds: number[];
+    dotesAgregadasIds: number[];
 }
 
 /** El extra con el que el personaje lleva las aptitudes de su vínculo con el familiar o el compañero. */
@@ -4903,33 +4911,14 @@ export class NuevoPersonajeService {
      * pseudoplantilla: las del amo, al personaje (con el extra «Familiar»; Alerta, como dote con origen «Familiar» y la nota
      * de su tabla); las suyas, al familiar; y fuera del familiar las que aún no le tocan. Devuelve lo que añade.
      */
-    private ponerAptitudesFamiliar(familiar: FamiliarMonstruoDetalle, nivel: number): { especialesAgregadosIds: number[]; dotesAgregadasIds: number[]; } {
-        const aptitudes = aptitudesFamiliarDelNivel(this.tablaDelFamiliar(familiar, nivel), (idDote) => (familiar?.Dotes ?? [])
-            .some((item) => toNumber(item?.Dote?.Id) === idDote && item?.Contexto?.Entidad !== 'personaje'));
-        const especialesAgregadosIds: number[] = [];
-        aptitudes.delAmo.forEach((especial) => {
-            if (this.asegurarEspecialDelVinculo(especial.Id, especial.Nombre, EXTRA_ESPECIAL_FAMILIAR))
-                especialesAgregadosIds.push(especial.Id);
+    private ponerAptitudesFamiliar(familiar: FamiliarMonstruoDetalle, nivel: number): AptitudesMascotaAgregadas {
+        return this.ponerAptitudesMascota(familiar, {
+            aptitudes: (monstruoTieneDote) => aptitudesFamiliarDelNivel(this.tablaDelFamiliar(familiar, nivel), monstruoTieneDote),
+            esDotePropia: (item) => item?.Contexto?.['Entidad'] === 'personaje',
+            extra: EXTRA_ESPECIAL_FAMILIAR,
+            entidad: 'familiar',
+            dotesDelAmo: (aptitud) => this.asegurarDoteDelAmoPorSuFamiliar(aptitud),
         });
-        aptitudes.especiales.forEach((especial) => {
-            if (this.asegurarEspecialMascota(familiar, especial.Id, especial.Nombre, 'familiar'))
-                especialesAgregadosIds.push(especial.Id);
-        });
-        const dotesAgregadasIds = aptitudes.dotesDelAmo
-            .filter((aptitud) => this.asegurarDoteDelAmoPorSuFamiliar(aptitud))
-            .map((aptitud) => toInt(aptitud.Dote?.Id));
-        aptitudes.dotes.forEach((dote) => {
-            if (this.asegurarDoteMascota(familiar, dote.Id, dote.Nombre, 'Familiar'))
-                dotesAgregadasIds.push(dote.Id);
-        });
-        const tiene = new Set(aptitudes.especiales.map((especial) => especial.Id));
-        const quitarEspeciales = new Set(aptitudes.especialesQueNo.filter((id) => !tiene.has(id)));
-        const quitarDotes = new Set(aptitudes.dotesQueNo);
-        familiar.Especiales = (familiar.Especiales ?? [])
-            .filter((item) => !quitarEspeciales.has(toNumber((item?.Especial as any)?.Id)));
-        familiar.Dotes = (familiar.Dotes ?? [])
-            .filter((item) => !(item?.Contexto?.Entidad === 'personaje' && quitarDotes.has(toNumber(item?.Dote?.Id))));
-        return { especialesAgregadosIds, dotesAgregadasIds };
     }
 
     /**
@@ -4961,35 +4950,65 @@ export class NuevoPersonajeService {
      * tocan. Una dote, si la cumple con las armas naturales de su monstruo y no la tiene ya; si no, su alternativa.
      * Devuelve lo que añade.
      */
-    private ponerAptitudesCompanero(companero: CompaneroMonstruoDetalle, nivelTabla: number): { especialesAgregadosIds: number[]; dotesAgregadasIds: number[]; } {
+    private ponerAptitudesCompanero(companero: CompaneroMonstruoDetalle, nivelTabla: number): AptitudesMascotaAgregadas {
         const armas = armasNaturalesDelCompanero(companero);
-        const aptitudes = aptitudesCompaneroDelNivel(this.progresionCompanero, nivelTabla, {
-            cumpleDote: (idDote) => {
-                const dote = this.doteDelCatalogo(idDote);
-                return !dote || cumpleArmasNaturalesDeLaDote(dote, armas);
-            },
-            monstruoTieneDote: (idDote) => (companero?.Dotes ?? [])
-                .some((item) => toNumber(item?.Dote?.Id) === idDote && !esDotePropiaDelCompanero(item)),
+        return this.ponerAptitudesMascota(companero, {
+            aptitudes: (monstruoTieneDote) => aptitudesCompaneroDelNivel(this.progresionCompanero, nivelTabla, {
+                cumpleDote: (idDote) => {
+                    const dote = this.doteDelCatalogo(idDote);
+                    return !dote || cumpleArmasNaturalesDeLaDote(dote, armas);
+                },
+                monstruoTieneDote,
+            }),
+            esDotePropia: esDotePropiaDelCompanero,
+            extra: EXTRA_ESPECIAL_COMPANERO,
+            entidad: 'companero',
         });
+    }
+
+    /**
+     * Lo común de `ponerAptitudesFamiliar` y `ponerAptitudesCompanero`: lo que da la tabla de la mascota a su nivel
+     * (`aptitudes`, con las dotes que ya tiene su monstruo: las que no son suyas, `esDotePropia`). Las aptitudes del amo, al
+     * personaje con el `extra` de la mascota; las dotes del amo, con `dotesDelAmo` (Alerta, por el familiar); las aptitudes
+     * de la mascota, a ella con su `entidad`; sus dotes adicionales, con el `extra` de origen; y fuera de la mascota las aptitudes y
+     * las dotes suyas que aún no le tocan. Devuelve lo que añade.
+     */
+    private ponerAptitudesMascota<A extends MascotaAptitudNivel>(
+        mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle,
+        opciones: {
+            aptitudes: (monstruoTieneDote: (idDote: number) => boolean) => AptitudesMascotaDelNivel<A>;
+            esDotePropia: (item: { Contexto?: Record<string, any> | null; } | null | undefined) => boolean;
+            extra: string;
+            entidad: 'companero' | 'familiar';
+            dotesDelAmo?: (aptitud: A) => boolean;
+        },
+    ): AptitudesMascotaAgregadas {
+        const aptitudes = opciones.aptitudes((idDote) => (mascota?.Dotes ?? [])
+            .some((item) => toNumber(item?.Dote?.Id) === idDote && !opciones.esDotePropia(item)));
         const especialesAgregadosIds: number[] = [];
         aptitudes.delAmo.forEach((especial) => {
-            if (this.asegurarEspecialDelVinculo(especial.Id, especial.Nombre, EXTRA_ESPECIAL_COMPANERO))
+            if (this.asegurarEspecialDelVinculo(especial.Id, especial.Nombre, opciones.extra))
                 especialesAgregadosIds.push(especial.Id);
         });
         aptitudes.especiales.forEach((especial) => {
-            if (this.asegurarEspecialMascota(companero, especial.Id, especial.Nombre, 'companero'))
+            if (this.asegurarEspecialMascota(mascota, especial.Id, especial.Nombre, opciones.entidad))
                 especialesAgregadosIds.push(especial.Id);
         });
-        const dotesAgregadasIds = aptitudes.dotes
-            .filter((dote) => this.asegurarDoteMascota(companero, dote.Id, dote.Nombre, EXTRA_ESPECIAL_COMPANERO))
-            .map((dote) => dote.Id);
+        const dotesDelAmo = opciones.dotesDelAmo;
+        const dotesAgregadasIds = dotesDelAmo
+            ? aptitudes.dotesDelAmo.filter((aptitud) => dotesDelAmo(aptitud)).map((aptitud) => toInt(aptitud.Dote?.Id))
+            : [];
+        aptitudes.dotes.forEach((dote) => {
+            if (this.asegurarDoteMascota(mascota, dote.Id, dote.Nombre, opciones.extra))
+                dotesAgregadasIds.push(dote.Id);
+        });
         const tiene = new Set(aptitudes.especiales.map((especial) => especial.Id));
         const quitarEspeciales = new Set(aptitudes.especialesQueNo.filter((id) => !tiene.has(id)));
         const quitarDotes = new Set(aptitudes.dotesQueNo);
-        companero.Especiales = (companero.Especiales ?? [])
+        mascota.Especiales = (mascota.Especiales ?? [])
             .filter((item) => !quitarEspeciales.has(toNumber((item?.Especial as any)?.Id)));
-        companero.Dotes = (companero.Dotes ?? [])
-            .filter((item) => !(esDotePropiaDelCompanero(item) && quitarDotes.has(toNumber(item?.Dote?.Id))));
+        mascota.Dotes = (mascota.Dotes ?? [])
+            .filter((item) => !(opciones.esDotePropia(item) && quitarDotes.has(toNumber(item?.Dote?.Id))));
         return { especialesAgregadosIds, dotesAgregadasIds };
     }
 

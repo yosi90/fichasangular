@@ -4974,31 +4974,13 @@ export class NuevoPersonajeComponent {
      * La API no acepta el compañero que se mandó (`companero_no_disponible`, `companero_no_cuadra`): se quita y se vuelve a
      * abrir su selector con el motivo. `true` si se puede volver a guardar (otro compañero, o ninguno si lo omite).
      */
-    private async volverAElegirCompanero(motivo: string): Promise<boolean> {
-        this.nuevoPSvc.quitarCompanero();
-        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
-        const errorApi = motivo.length > 0 ? motivo : 'El compañero animal no cuadra con las reglas.';
-        const estado = this.nuevoPSvc.getEstadoCuposCompanero();
-        if (estado.cuposDisponibles < 1) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'No se pudo crear el personaje',
-                text: errorApi,
-                confirmButtonText: 'Entendido',
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-            });
-            return true;
-        }
-        const seleccion = await this.abrirSelectorCompanero(estado, errorApi);
-        if (seleccion === null)
-            return false;
-        if (seleccion === 'omitir')
-            return true;
-        const resultado = this.nuevoPSvc.registrarCompaneroSeleccionado(seleccion.companero, seleccion.nombre);
-        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
-        return resultado.registrado;
+    private volverAElegirCompanero(motivo: string): Promise<boolean> {
+        return this.volverAElegirMascota(motivo, 'El compañero animal no cuadra con las reglas.', {
+            quitar: () => this.nuevoPSvc.quitarCompanero(),
+            estado: () => this.nuevoPSvc.getEstadoCuposCompanero(),
+            elegir: (estado, errorApi) => this.abrirSelectorCompanero(estado, errorApi),
+            registrar: (seleccion) => this.nuevoPSvc.registrarCompaneroSeleccionado(seleccion.companero, seleccion.nombre).registrado,
+        });
     }
 
     /**
@@ -5006,11 +4988,34 @@ export class NuevoPersonajeComponent {
      * abrir su selector con el motivo, como el compañero. `true` si se puede volver a guardar (otro familiar, o ninguno si
      * lo omite).
      */
-    private async volverAElegirFamiliar(motivo: string): Promise<boolean> {
-        this.nuevoPSvc.quitarFamiliar();
+    private volverAElegirFamiliar(motivo: string): Promise<boolean> {
+        return this.volverAElegirMascota(motivo, 'El familiar no cuadra con las reglas.', {
+            quitar: () => this.nuevoPSvc.quitarFamiliar(),
+            estado: () => this.nuevoPSvc.getEstadoCuposFamiliar(),
+            elegir: (estado, errorApi) => this.abrirSelectorFamiliar(estado, errorApi),
+            registrar: (seleccion) => this.nuevoPSvc.registrarFamiliarSeleccionado(seleccion.familiar, seleccion.nombre).registrado,
+        });
+    }
+
+    /**
+     * Lo común de `volverAElegirCompanero` y `volverAElegirFamiliar`: quita la mascota que la API no aceptó y, si aún le
+     * queda cupo, abre su selector con el motivo (`porDefecto`, si la API no lo da) y registra la elegida; sin cupo, lo
+     * dice. `true` si se puede volver a guardar.
+     */
+    private async volverAElegirMascota<E extends { cuposDisponibles: number; }, S>(
+        motivo: string,
+        porDefecto: string,
+        mascota: {
+            quitar: () => void;
+            estado: () => E;
+            elegir: (estado: E, errorApi: string) => Promise<S | 'omitir' | null>;
+            registrar: (seleccion: S) => boolean;
+        },
+    ): Promise<boolean> {
+        mascota.quitar();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
-        const errorApi = motivo.length > 0 ? motivo : 'El familiar no cuadra con las reglas.';
-        const estado = this.nuevoPSvc.getEstadoCuposFamiliar();
+        const errorApi = motivo.length > 0 ? motivo : porDefecto;
+        const estado = mascota.estado();
         if (estado.cuposDisponibles < 1) {
             await Swal.fire({
                 icon: 'warning',
@@ -5023,14 +5028,14 @@ export class NuevoPersonajeComponent {
             });
             return true;
         }
-        const seleccion = await this.abrirSelectorFamiliar(estado, errorApi);
+        const seleccion = await mascota.elegir(estado, errorApi);
         if (seleccion === null)
             return false;
         if (seleccion === 'omitir')
             return true;
-        const resultado = this.nuevoPSvc.registrarFamiliarSeleccionado(seleccion.familiar, seleccion.nombre);
+        const registrado = mascota.registrar(seleccion);
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
-        return resultado.registrado;
+        return registrado;
     }
 
     private async abrirSelectorCompanero(
