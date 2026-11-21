@@ -11,17 +11,17 @@ import {
 } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { toInt, toPositiveInt } from 'src/app/services/utils/normalizacion';
-import { doteDeNivelClase, idPlantillaDeNivel, razonesAlineamientoMascota } from 'src/app/services/utils/nivel-clase-monstruo';
+import { idPlantillaDeNivel, razonesAlineamientoMascota } from 'src/app/services/utils/nivel-clase-monstruo';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import {
     AptitudesMascotaDelNivel,
     aptitudesMascotaDelNivel,
     catalogoDeMascotaDesdeMonstruos,
-    cumpleAtaqueBaseDeFila,
     EstadoMascota,
     filaDelNivel,
     FilaMascotaResuelta,
     filasDeSusListas,
+    filasQueLeValen,
     resolverEstadoMascota,
     resolverFilaMascota,
     TextosMascota,
@@ -155,12 +155,7 @@ export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput
  */
 function filasParaElAlineamiento(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>): MonstruoNivelClase[] {
     const deSusListas = filasDeSusListas(familiar, new Set(estado?.listasIds ?? []));
-    const conDote = deSusListas.filter((fila) => {
-        const dote = doteDeNivelClase(fila);
-        return !dote || dotes.has(dote.id);
-    });
-    const aSuNivel = conDote.filter((fila) => toInt(fila.Nivel) <= Math.max(0, toInt(estado?.nivelEfectivo)));
-    const conSuAtaque = aSuNivel.filter((fila) => cumpleAtaqueBaseDeFila(fila, toInt(estado?.ataqueBase)));
+    const { conDote, aSuNivel, conSuAtaque } = filasQueLeValen(deSusListas, estado, dotes);
     return [conSuAtaque, aSuNivel, conDote, deSusListas, familiar?.Niveles_clase ?? []].find((filas) => filas.length > 0) ?? [];
 }
 

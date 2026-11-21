@@ -308,6 +308,28 @@ export function cumpleAtaqueBaseDeFila(fila: MonstruoNivelClase, ataqueBase: num
     return minimo === null || minimo === undefined || toInt(ataqueBase) >= toInt(minimo);
 }
 
+/**
+ * Las `filas` de la mascota que le valen al personaje, paso a paso y en el orden de la API (`filas_a_su_nivel`): con la
+ * dote que la abre entre sus `dotes`, además a su nivel efectivo y, además, con el ataque base que pida la fila. Lo usan
+ * `resolverFilaMascota` (que dice el primer paso que falla) y el alineamiento del familiar (que juzga con el último que
+ * tenga filas).
+ */
+export function filasQueLeValen(
+    filas: MonstruoNivelClase[],
+    estado: Pick<EstadoMascota, 'nivelEfectivo' | 'ataqueBase'> | null | undefined,
+    dotes: ReadonlySet<number>,
+): { conDote: MonstruoNivelClase[]; aSuNivel: MonstruoNivelClase[]; conSuAtaque: MonstruoNivelClase[]; } {
+    const nivelEfectivo = Math.max(0, toInt(estado?.nivelEfectivo));
+    const ataqueBase = toInt(estado?.ataqueBase);
+    const conDote = filas.filter((fila) => {
+        const dote = doteDeNivelClase(fila);
+        return !dote || dotes.has(dote.id);
+    });
+    const aSuNivel = conDote.filter((fila) => toInt(fila.Nivel) <= nivelEfectivo);
+    const conSuAtaque = aSuNivel.filter((fila) => cumpleAtaqueBaseDeFila(fila, ataqueBase));
+    return { conDote, aSuNivel, conSuAtaque };
+}
+
 /** La fila de menos nivel. */
 function filaDeMenosNivel(filas: MonstruoNivelClase[]): MonstruoNivelClase {
     return filas.reduce((a, b) => toInt(b.Nivel) < toInt(a.Nivel) ? b : a);
@@ -343,24 +365,18 @@ export function resolverFilaMascota(
             ? `No está en la lista de ${textos.listaDe} de tus clases (${nombres.join(', ')}).`
             : `Ninguna de tus clases da un ${textos.mascota}.`], []);
     }
-    const conDote = filas.filter((fila) => {
-        const dote = doteDeNivelClase(fila);
-        return !dote || dotesPersonaje.has(dote.id);
-    });
+    const { conDote, aSuNivel, conSuAtaque } = filasQueLeValen(filas, estado, dotesPersonaje);
     if (conDote.length < 1) {
         const dotes = Array.from(new Set(filas.map((fila) => `«${doteDeNivelClase(fila)?.nombre || 'la dote de su lista'}»`)));
         return resultado([`Hace falta la dote ${dotes.join(' o ')} para tenerlo como ${textos.mascota}.`], filas);
     }
-    const aSuNivel = conDote.filter((fila) => toInt(fila.Nivel) <= nivelEfectivo);
     if (aSuNivel.length < 1) {
         const minima = filaDeMenosNivel(conDote);
         return resultado([`Pide un nivel efectivo de ${nombreDeLista(minima?.Clase?.Nombre, textos.listaPorDefecto)} ${Math.max(0, toInt(minima.Nivel))}, y tienes ${nivelEfectivo}.`], conDote);
     }
-    const ataqueBase = toInt(estado?.ataqueBase);
-    const conSuAtaque = aSuNivel.filter((fila) => cumpleAtaqueBaseDeFila(fila, ataqueBase));
     if (conSuAtaque.length < 1) {
         const minimo = Math.min(...aSuNivel.map((fila) => toInt(fila.Ataque_base_minimo)));
-        return resultado([`Pide un ataque base de ${textoConSigno(minimo)} (tienes ${textoConSigno(ataqueBase)}).`], aSuNivel);
+        return resultado([`Pide un ataque base de ${textoConSigno(minimo)} (tienes ${textoConSigno(toInt(estado?.ataqueBase))}).`], aSuNivel);
     }
     const fila = conSuAtaque.reduce((a, b) => toInt(b.Ajuste) > toInt(a.Ajuste) ? b : a);
     const nivelMinimo = Math.min(...conDote.map((item) => Math.max(0, toInt(item.Nivel))));
