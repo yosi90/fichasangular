@@ -192,6 +192,12 @@ describe('los trucos del compañero animal', () => {
             expect(textoDeLoQueSustituye(ATACA_TODAS, contexto)).toBe('Sustituye a «Ataca».');
             expect(textoDeLoQueSustituye(RASTREA, contexto)).toBeNull();
         });
+
+        it('lo que sustituye a uno de sus trucos adicionales no se le enseña: esos no se cambian', () => {
+            const conAtaca = lobo({ int: 2, Trucos: [deMascota(ATACA, 'adicional', 1)] });
+            expect(motivoTrucoEnsenado(ATACA_TODAS, contextoDelTrucoEnsenado(conAtaca, CATALOGO, [])))
+                .toBe('Sustituiría a «Ataca», que es uno de sus trucos adicionales: esos no se cambian.');
+        });
     });
 
     it('el catálogo y los trucos del monstruo: lo que falta, vacío; los de un monstruo, de su monstruo', () => {

@@ -181,6 +181,8 @@ export interface ContextoTrucoEnsenado extends Pick<ContextoTrucosDelCompanero, 
     aprendidos: readonly TrucoDeMascota[];
     /** Los trucos sueltos que sabe (de cualquier origen), aparte de los de su fin. */
     sueltos: ReadonlySet<number>;
+    /** Sus trucos adicionales, que no se cambian: lo que los sustituye no se le enseña. */
+    adicionales: readonly TrucoDeMascota[];
 }
 
 /** El contexto de un truco enseñado: lo que sabe, sus raciales, su tipo, su Inteligencia, su límite y lo que lleva. */
@@ -198,6 +200,7 @@ export function contextoDelTrucoEnsenado(companero: CompaneroMonstruoDetalle | n
         cuenta: costeDeLosTrucos(aprendidos),
         aprendidos,
         sueltos: new Set(trucosDelCompanero(companero).filter((t) => !t.Es_fin).map((t) => t.Id)),
+        adicionales: trucosAdicionalesDelCompanero(companero),
     };
 }
 
@@ -229,6 +232,9 @@ export function motivoTrucoEnsenado(truco: Truco, contexto: ContextoTrucoEnsenad
     const requisitos = motivoDeSusRequisitos(truco, contexto);
     if (requisitos !== null)
         return requisitos;
+    const adicional = contexto.adicionales.find((t) => t.Id === toInt(truco.Sustituye?.Id));
+    if (adicional)
+        return `Sustituiría a «${adicional.Nombre}», que es uno de sus trucos adicionales: esos no se cambian.`;
     const sustituidos = trucosQueSustituye(truco, contexto);
     if (truco.Es_fin) {
         const fin = contexto.aprendidos.find((t) => t.Es_fin && !sustituidos.includes(t));
