@@ -17,6 +17,7 @@ import {
     AptitudesMascotaDelNivel,
     aptitudesMascotaDelNivel,
     catalogoDeMascotaDesdeMonstruos,
+    cumpleAtaqueBaseDeFila,
     EstadoMascota,
     filaDelNivel,
     FilaMascotaResuelta,
@@ -33,7 +34,8 @@ import {
  * - **el nivel del amo** suma lo que aporta cada clase cuya tabla da una aptitud con `Otorga_familiar`, según su `Mascota`
  *   (el filo aojador, −3 y la lista del hechicero: con 4 niveles, un familiar de nivel 1), desde el nivel en que la da;
  * - **la lista**: las filas de `Niveles_clase` de las clases de su `Mascota.Lista`, con su pseudoplantilla, la dote que la
- *   abre (Dragón familiar, Familiar mejorado…) y el nivel mínimo del amo;
+ *   abre (Dragón familiar, Familiar mejorado…), el nivel mínimo del amo y, si la fila lo pide, su ataque base (el perro
+ *   intermitente del familiar mejorado, +5: *El combatiente completo*, pág. 99);
  * - **la tabla** de su pseudoplantilla (`GET /familiares/progresion`; sin la suya, la de por defecto, la del Manual del
  *   jugador): la armadura natural, la Inteligencia y la resistencia a conjuros de su nivel, y lo que da cada nivel, al amo
  *   o al familiar, sin lo que excluye su plantilla (el mejorado no se comunica con los animales de su mismo tipo).
@@ -129,7 +131,7 @@ export function claveFamiliar(familiar: FamiliarMonstruoDetalle | null | undefin
 
 /**
  * La fila de la lista con la que el personaje tiene a ese familiar (de sus listas, con su pseudoplantilla, con la dote que
- * la abre y al nivel de su amo) y el nivel de su tabla (el del amo: en el familiar, el ajuste es 0). Si no puede tenerlo,
+ * la abre, al nivel de su amo y, si la fila lo pide, con su ataque base) y el nivel de su tabla (el del amo: en el familiar, el ajuste es 0). Si no puede tenerlo,
  * `fila` es `null` y `razones` dice por qué.
  */
 export function resolverFilaFamiliar(
@@ -147,8 +149,8 @@ export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput
 }
 
 /**
- * Las filas de sus listas con las que se juzga el alineamiento: las que le valen (con su dote y a su nivel) o, si no hay,
- * las más cercanas. Cada fila es una forma de tenerlo, con su preferencia de alineamiento (en el convocador divino, la de
+ * Las filas de sus listas con las que se juzga el alineamiento: las que le valen (con su dote, a su nivel y con su ataque
+ * base) o, si no hay, las más cercanas. Cada fila es una forma de tenerlo, con su preferencia de alineamiento (en el convocador divino, la de
  * su senda).
  */
 function filasParaElAlineamiento(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>): MonstruoNivelClase[] {
@@ -158,7 +160,8 @@ function filasParaElAlineamiento(familiar: FamiliarMonstruoDetalle, estado: Esta
         return !dote || dotes.has(dote.id);
     });
     const aSuNivel = conDote.filter((fila) => toInt(fila.Nivel) <= Math.max(0, toInt(estado?.nivelEfectivo)));
-    return [aSuNivel, conDote, deSusListas, familiar?.Niveles_clase ?? []].find((filas) => filas.length > 0) ?? [];
+    const conSuAtaque = aSuNivel.filter((fila) => cumpleAtaqueBaseDeFila(fila, toInt(estado?.ataqueBase)));
+    return [conSuAtaque, aSuNivel, conDote, deSusListas, familiar?.Niveles_clase ?? []].find((filas) => filas.length > 0) ?? [];
 }
 
 /** Si un familiar vale con lo que tiene el personaje y, si no, por qué (su lista, su dote, el nivel de su amo, su alineamiento). */

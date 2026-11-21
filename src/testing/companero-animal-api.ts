@@ -25,10 +25,16 @@ export const EVASION_MEJORADA = 57;
 export const SEGUNDO_ATAQUE_NATURAL = 900;
 export const ATAQUE_MULTIPLE = 49;
 export const COMPANERO_ELEVADO = 53;
+export const COMPANERO_ARANA = 3101;
+export const COMPANERO_SABANDIJA = 3102;
 export const LOBO = 48;
 export const TEJON = 55;
 export const BISONTE = 56;
+export const ARANA_PEQUENA = 3201;
+export const ESCORPION_PEQUENO = 3202;
 export const CELESTIAL = 3;
+/** La lista del hechicero (la de las filas de familiar de la araña y del escorpión). */
+export const HECHICERO = 8;
 
 /** `GET /companeros/progresion` (Manual del jugador, pág. 36). */
 export const PROGRESION_API = {
@@ -94,22 +100,27 @@ export const CLASES_CON_COMPANERO: Clase[] = [
     }),
 ];
 
+const NOMBRES_DOTE: Record<number, string> = {
+    [COMPANERO_ELEVADO]: 'Compañero elevado', [COMPANERO_ARANA]: 'Compañero araña', [COMPANERO_SABANDIJA]: 'Compañero sabandija',
+};
+
 function fila(idClase: number, nombreClase: string, nivel: number, ajuste: number, plantilla = 0, dote = 0): MonstruoNivelClase {
     return {
         Clase: { Id: idClase, Nombre: nombreClase },
         Nivel: nivel,
         Ajuste: ajuste,
+        Ataque_base_minimo: null,
         Plantilla: { Id: plantilla, Nombre: plantilla === CELESTIAL ? 'Celestial' : 'No aplica' },
         Preferencia_legal: { Id: 0, Nombre: '' },
         Preferencia_moral: { Id: 0, Nombre: '' },
-        Dote: { Id: dote, Nombre: dote === COMPANERO_ELEVADO ? 'Compañero elevado' : '' },
+        Dote: { Id: dote, Nombre: NOMBRES_DOTE[dote] ?? '' },
         Mascota: 'companero',
     };
 }
 
-function monstruo(id: number, nombre: string, fue: number, des: number, an: number, armas: Array<[string, number]>, filas: MonstruoNivelClase[]): MonstruoDetalle {
+function monstruo(id: number, nombre: string, fue: number, des: number, an: number, armas: Array<[string, number]>, filas: MonstruoNivelClase[], familiar = false): MonstruoDetalle {
     return {
-        Id: id, Nombre: nombre, Companero: true, Familiar: false, Oficial: true,
+        Id: id, Nombre: nombre, Companero: true, Familiar: familiar, Oficial: true,
         Manual: { Id: 1, Nombre: 'Manual del jugador 1', Pagina: 1 },
         Tipo: { Id: 3, Nombre: 'Animal' },
         Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 3, Nombre: 'd8' }, Suma: 4 },
@@ -133,4 +144,22 @@ export const MONSTRUOS_COMPANERO: MonstruoDetalle[] = [
     ]),
     monstruo(TEJON, 'Tejón', 8, 17, 1, [['Mordisco', 1], ['Garra', 2]], [fila(DRUIDA, 'Druida', 1, 0), fila(EXPLORADOR, 'Explorador', 2, 0)]),
     monstruo(BISONTE, 'Bisonte', 22, 10, 4, [['Cornada', 1]], [fila(DRUIDA, 'Druida', 4, -3), fila(EXPLORADOR, 'Explorador', 8, 0)]),
+];
+
+/**
+ * Las filas nuevas del 2026-11-21 (tanda 3a, `scripts/sql/mascotas_listas_datos.sql`; catalogos.md, «El compañero animal,
+ * de los datos»): la araña monstruosa pequeña de Compañero araña (druida 1, 0; *Drow of the Underdark*, pág. 52) y la
+ * araña y el escorpión monstruosos pequeños de Compañero sabandija (druida 3, 0; *Escenario de campaña de Eberron*, pág.
+ * 51), que siguen siendo familiares (su fila de la lista del hechicero, de familiar). Los ids, inventados: las pruebas del
+ * backend los buscan por nombre.
+ */
+export const MONSTRUOS_SABANDIJA: MonstruoDetalle[] = [
+    monstruo(ARANA_PEQUENA, 'Araña monstruosa (pequeña)', 7, 17, 1, [['Mordisco', 1]], [
+        fila(DRUIDA, 'Druida', 1, 0, 0, COMPANERO_ARANA), fila(DRUIDA, 'Druida', 3, 0, 0, COMPANERO_SABANDIJA),
+        { ...fila(HECHICERO, 'Hechicero', 3, 0, 5, 48), Plantilla: { Id: 5, Nombre: 'Mejorado' }, Dote: { Id: 48, Nombre: 'Familiar mejorado' }, Mascota: 'familiar' },
+    ], true),
+    monstruo(ESCORPION_PEQUENO, 'Escorpión monstruoso (Pequeño)', 9, 10, 4, [['Pinza', 2], ['Aguijón', 1]], [
+        fila(DRUIDA, 'Druida', 3, 0, 0, COMPANERO_SABANDIJA),
+        { ...fila(HECHICERO, 'Hechicero', 3, 0, 5, 48), Plantilla: { Id: 5, Nombre: 'Mejorado' }, Dote: { Id: 48, Nombre: 'Familiar mejorado' }, Mascota: 'familiar' },
+    ], true),
 ];

@@ -1,10 +1,12 @@
 import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import {
-    ATAQUE_MULTIPLE, BISONTE, CELESTIAL, CLASES_CON_COMPANERO, COMPANERO_ELEVADO, COMPARTIR_CONJUROS, DEVOCION, DRUIDA, EVASION,
-    EVASION_MEJORADA, EXPLORADOR, LOBO, MEJOR_AMIGO_DEL_PIRATA, MONSTRUOS_COMPANERO, PELEA_SUCIA, PIRATA, PROGRESION_API,
-    SEGUNDO_ATAQUE_NATURAL, SENOR_DE_LAS_BESTIAS, TEJON, VINCULO,
+    ARANA_PEQUENA, ATAQUE_MULTIPLE, BISONTE, CELESTIAL, CLASES_CON_COMPANERO, COMPANERO_ARANA, COMPANERO_ELEVADO, COMPANERO_SABANDIJA,
+    COMPARTIR_CONJUROS, DEVOCION, DRUIDA, ESCORPION_PEQUENO, EVASION, EVASION_MEJORADA, EXPLORADOR, LOBO, MEJOR_AMIGO_DEL_PIRATA,
+    MONSTRUOS_COMPANERO, MONSTRUOS_SABANDIJA, PELEA_SUCIA, PIRATA, PROGRESION_API, SEGUNDO_ATAQUE_NATURAL, SENOR_DE_LAS_BESTIAS, TEJON,
+    VINCULO,
 } from 'src/testing/companero-animal-api';
+import { construirCatalogoFamiliaresDesdeMonstruos } from './familiar-reglas';
 import { leerCompaneroProgresion } from './monstruo-mapper';
 import {
     aptitudesCompaneroDelNivel,
@@ -151,6 +153,53 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
             const conAlineamiento = { ...delCatalogo(LOBO), Alineamientos_requeridos: { Familiar: [], Companero: [{ Id: 1, Nombre: 'Legal bueno' }] } };
             expect(evaluarCompanerosElegibilidad({ ...base, companeros: [conAlineamiento] })[0].razones).toContain('Requiere alineamiento Legal bueno.');
         });
+    });
+
+    // Las filas nuevas del 2026-11-21 (tanda 3a, `mascotas_listas_datos.sql`) salen solas: son datos de `Niveles_clase`.
+    describe('las filas de Compañero araña y Compañero sabandija (F13)', () => {
+        const sabandijas = construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_SABANDIJA);
+        const deSabandija = (id: number) => sabandijas.find((c) => claveCompanero(c) === `${id}:0`)!;
+        const conSabandija = new Set([COMPANERO_SABANDIJA]);
+
+        it('entran en el catálogo del compañero sin su fila de familiar, y siguen siendo familiares', () => {
+            expect(sabandijas.map(claveCompanero)).toEqual([`${ARANA_PEQUENA}:0`, `${ESCORPION_PEQUENO}:0`]);
+            expect(deSabandija(ARANA_PEQUENA).Niveles_clase.map((f) => [f.Nivel, f.Dote.Nombre]))
+                .toEqual([[1, 'Compañero araña'], [3, 'Compañero sabandija']]);
+            expect(construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_SABANDIJA).map((f) => f.Id_familiar))
+                .toEqual([ARANA_PEQUENA, ESCORPION_PEQUENO]);
+        });
+
+        it('un druida 3 con Compañero sabandija elige la araña o el escorpión, con los valores de druida 3 (ajuste 0)', () => {
+            const estado = estadoDe([['Druida', 3]]);
+            [ARANA_PEQUENA, ESCORPION_PEQUENO].forEach((id) => {
+                const resuelta = resolverFilaCompanero(deSabandija(id), estado, conSabandija);
+                expect(resuelta.fila?.Dote.Id).withContext(`${id}`).toBe(COMPANERO_SABANDIJA);
+                expect(resuelta.nivelTabla).withContext(`${id}`).toBe(3);
+                expect(resuelta.ajuste).withContext(`${id}`).toBe(0);
+            });
+            const elegibles = filtrarCompanerosElegibles({
+                companeros: sabandijas, estado, alineamientoPersonaje: 'Neutral autentico', incluirHomebrew: false, dotesPersonaje: conSabandija,
+            });
+            expect(elegibles.map((c) => c.Nombre)).toEqual(['Araña monstruosa (pequeña)', 'Escorpión monstruoso (Pequeño)']);
+        });
+
+        it('a druida 2, o sin la dote, no; la araña, con Compañero araña, desde druida 1', () => {
+            expect(resolverFilaCompanero(deSabandija(ESCORPION_PEQUENO), estadoDe([['Druida', 2]]), conSabandija).razones)
+                .toEqual(['Pide un nivel efectivo de druida 3, y tienes 2.']);
+            expect(resolverFilaCompanero(deSabandija(ARANA_PEQUENA), estadoDe([['Druida', 3]]), new Set()).razones)
+                .toEqual(['Hace falta la dote «Compañero araña» o «Compañero sabandija» para tenerlo como compañero animal.']);
+            const conArana = resolverFilaCompanero(deSabandija(ARANA_PEQUENA), estadoDe([['Druida', 1]]), new Set([COMPANERO_ARANA]));
+            expect(conArana.fila?.Dote.Id).toBe(COMPANERO_ARANA);
+            expect(conArana.nivelTabla).toBe(1);
+        });
+    });
+
+    it('una fila que pide un ataque base (hoy ninguna del compañero) tampoco se elige sin él', () => {
+        const lobo = delCatalogo(LOBO);
+        const conMinimo = { ...lobo, Niveles_clase: lobo.Niveles_clase.map((f) => ({ ...f, Ataque_base_minimo: 3 })) };
+        expect(resolverFilaCompanero(conMinimo, estadoDe([['Druida', 3]], { Ataque_base: '+2' }), new Set()).razones)
+            .toEqual(['Pide un ataque base de +3 (tienes +2).']);
+        expect(resolverFilaCompanero(conMinimo, estadoDe([['Druida', 4]], { Ataque_base: '+3' }), new Set()).fila).not.toBeNull();
     });
 
     describe('la tabla y las aptitudes', () => {

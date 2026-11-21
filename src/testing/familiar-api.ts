@@ -118,11 +118,12 @@ export const CLASES_CON_FAMILIAR: Clase[] = [
 const NOMBRES_PLANTILLA: Record<number, string> = { [BASICA]: 'Básica', [DRACONICO]: 'Dracónico', [CELESTIAL]: 'Celestial', [MEJORADO]: 'Mejorado' };
 const NOMBRES_DOTE: Record<number, string> = { [DRAGON_FAMILIAR]: 'Dragón familiar', [FAMILIAR_MEJORADO]: 'Familiar mejorado' };
 
-function fila(idClase: number, nivel: number, plantilla: number, dote = 0): MonstruoNivelClase {
+function fila(idClase: number, nivel: number, plantilla: number, dote = 0, ataqueBaseMinimo: number | null = null): MonstruoNivelClase {
     return {
         Clase: { Id: idClase, Nombre: idClase === MAGO ? 'Mago' : 'Hechicero' },
         Nivel: nivel,
         Ajuste: 0,
+        Ataque_base_minimo: ataqueBaseMinimo,
         Plantilla: { Id: plantilla, Nombre: NOMBRES_PLANTILLA[plantilla] ?? '' },
         Preferencia_legal: { Id: 0, Nombre: '' },
         Preferencia_moral: { Id: 0, Nombre: '' },
@@ -153,13 +154,14 @@ function monstruo(id: number, nombre: string, datos: { dg: string; dado: string;
 
 /**
  * Las criaturas de la lista del hechicero y del mago (`Niveles_clase`): el gato, básico (½ DG); el perro intermitente,
- * mejorado a 5 con Familiar mejorado (Int 10; 4d8 con Con 12: 22 PG); la cría de dragón negro, dracónica a 8 con Dragón
+ * mejorado a 5 con Familiar mejorado y un ataque base de +5 (*El combatiente completo*, pág. 99; Int 10; 4d8 con Con 12:
+ * 22 PG); la cría de dragón negro, dracónica a 8 con Dragón
  * familiar (4d12 con Con 13: 30 PG, ataque +4).
  */
 export const MONSTRUOS_FAMILIAR: MonstruoDetalle[] = [
     monstruo(GATO, 'Gato', { dg: '1/2', dado: 'd8', con: 10, int: 2, an: 0, ataque: 0 }, [fila(HECHICERO, 0, BASICA), fila(MAGO, 0, BASICA)]),
     monstruo(PERRO_INTERMITENTE, 'Perro intermitente', { dg: '4', dado: 'd8', con: 12, int: 10, an: 3, ataque: 4 }, [
-        fila(HECHICERO, 5, MEJORADO, FAMILIAR_MEJORADO), fila(MAGO, 5, MEJORADO, FAMILIAR_MEJORADO),
+        fila(HECHICERO, 5, MEJORADO, FAMILIAR_MEJORADO, 5), fila(MAGO, 5, MEJORADO, FAMILIAR_MEJORADO, 5),
     ]),
     monstruo(DRAGON_NEGRO, 'Dragón negro (Cría)', { dg: '4', dado: 'd12', con: 13, int: 8, an: 0, ataque: 4 }, [
         fila(HECHICERO, 8, DRACONICO, DRAGON_FAMILIAR), fila(MAGO, 8, DRACONICO, DRAGON_FAMILIAR),

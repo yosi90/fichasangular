@@ -51,6 +51,7 @@ function crearNivelClase(
         Clase: { Id: idClase, Nombre: `Clase ${idClase}` },
         Nivel: nivel,
         Ajuste: 0,
+        Ataque_base_minimo: null,
         Plantilla: { Id: plantilla, Nombre: `Plantilla ${plantilla}` },
         Preferencia_legal: { Id: prefLegal, Nombre: `${prefLegal}` },
         Preferencia_moral: { Id: prefMoral, Nombre: `${prefMoral}` },
@@ -87,6 +88,7 @@ function estadoMock(nivel: number, listas: number[] = [10]): EstadoCuposFamiliar
         nivelEfectivo: nivel,
         fuentesMascota: fuentes,
         listasIds: fuentes.map((f) => f.lista.id),
+        ataqueBase: 0,
     };
 }
 
@@ -542,8 +544,9 @@ describe('familiar-reglas: el familiar, de los datos', () => {
     const catalogo = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_FAMILIAR);
     const de = (id: number, plantilla: number) => catalogo.find((f) => f.Id_familiar === id && f.Plantilla.Id === plantilla)!;
 
-    function estadoDe(clases: Array<[string, number]>): EstadoCuposFamiliar {
-        const personaje = crearPersonajeMock({ desgloseClases: clases.map(([Nombre, Nivel]) => ({ Nombre, Nivel })) as any });
+    /** El estado de un personaje de esas clases y con ese ataque base (el de su creación, «+5» o «+7/+2»). */
+    function estadoDe(clases: Array<[string, number]>, ataqueBase = '+0'): EstadoCuposFamiliar {
+        const personaje = crearPersonajeMock({ desgloseClases: clases.map(([Nombre, Nivel]) => ({ Nombre, Nivel })) as any, Ataque_base: ataqueBase });
         return resolverEstadoCuposFamiliar(personaje, CLASES_CON_FAMILIAR);
     }
 
@@ -574,11 +577,57 @@ describe('familiar-reglas: el familiar, de los datos', () => {
     });
 
     it('la lista: la plantilla y la dote de cada fila', () => {
-        const estado = estadoDe([['Hechicero', 8]]);
+        // Hechicero 8 / guerrero 1: +5 (el guerrero no da familiar, pero suma al ataque base).
+        const estado = estadoDe([['Hechicero', 8], ['Guerrero', 1]], '+5');
         expect(resolverFilaFamiliar(de(DRAGON_NEGRO, DRACONICO), estado, SIN_DOTES).razones)
             .toEqual(['Hace falta la dote «Dragón familiar» para tenerlo como familiar.']);
         expect(resolverFilaFamiliar(de(DRAGON_NEGRO, DRACONICO), estado, new Set([DRAGON_FAMILIAR])).fila).not.toBeNull();
         expect(resolverFilaFamiliar(de(PERRO_INTERMITENTE, MEJORADO), estado, new Set([FAMILIAR_MEJORADO])).nivelTabla).toBe(8);
+    });
+
+    describe('el ataque base mínimo de la fila (El combatiente completo, pág. 99; F19)', () => {
+        const conLaDote = new Set([FAMILIAR_MEJORADO]);
+
+        it('el ataque base es el primero del de su creación, como la API («+7/+2» → 7)', () => {
+            expect(estadoDe([['Hechicero', 5]], '+7/+2').ataqueBase).toBe(7);
+            expect(estadoDe([['Hechicero', 5]], '0').ataqueBase).toBe(0);
+            expect(resolverEstadoCuposFamiliar(crearPersonajeMock(), CLASES_CON_FAMILIAR).ataqueBase).toBe(0);
+        });
+
+        it('un hechicero 5 (+2) no puede tener el perro intermitente, y el selector dice por qué', () => {
+            const estado = estadoDe([['Hechicero', 5]], '+2');
+            const perro = resolverFilaFamiliar(de(PERRO_INTERMITENTE, MEJORADO), estado, conLaDote);
+            expect(perro.fila).toBeNull();
+            expect(perro.razones).toEqual(['Pide un ataque base de +5 (tienes +2).']);
+            expect(perro.nivelMinimo).toBe(5);
+            const evaluacion = evaluarFamiliaresElegibilidad({
+                familiares: catalogo, estado, alineamientoPersonaje: 'Neutral auténtico', plantillaSeleccionada: null,
+                incluirHomebrew: false, dotesPersonaje: conLaDote,
+            }).find((item) => item.familiar.Id_familiar === PERRO_INTERMITENTE)!;
+            expect(evaluacion.elegible).toBeFalse();
+            expect(evaluacion.razones).toContain('Pide un ataque base de +5 (tienes +2).');
+        });
+
+        it('un hechicero 5 / guerrero 3 (+5), sí', () => {
+            const estado = estadoDe([['Hechicero', 5], ['Guerrero', 3]], '+5');
+            const perro = resolverFilaFamiliar(de(PERRO_INTERMITENTE, MEJORADO), estado, conLaDote);
+            expect(perro.fila?.Clase.Id).toBe(HECHICERO);
+            expect(perro.nivelTabla).toBe(5);
+            expect(perro.razones).toEqual([]);
+        });
+
+        it('el nivel se dice antes que el ataque base, como la API', () => {
+            const perro = resolverFilaFamiliar(de(PERRO_INTERMITENTE, MEJORADO), estadoDe([['Hechicero', 4]], '+2'), conLaDote);
+            expect(perro.razones).toEqual(['Pide un nivel efectivo de hechicero 5, y tienes 4.']);
+        });
+
+        it('una fila sin mínimo vale con cualquier ataque base, aunque otra del mismo monstruo lo pida', () => {
+            const perro = de(PERRO_INTERMITENTE, MEJORADO);
+            const sinMinimo = { ...perro, Niveles_clase: [...perro.Niveles_clase, { ...perro.Niveles_clase[1], Clase: { Id: 77, Nombre: 'Otra' }, Ataque_base_minimo: null }] };
+            const estado = estadoDe([['Hechicero', 5]], '+2');
+            const resuelta = resolverFilaFamiliar(sinMinimo, { ...estado, listasIds: [HECHICERO, 77] }, conLaDote);
+            expect(resuelta.fila?.Clase.Id).toBe(77);
+        });
     });
 
     it('el catálogo, solo con las filas de familiar (`Mascota`): el animal celestial de un compañero no es un familiar', () => {

@@ -10,7 +10,8 @@ import {
     PersonajeRefMonstruo,
 } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { doteDeNivelClase, idPlantillaDeNivel } from 'src/app/services/utils/nivel-clase-monstruo';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -22,8 +23,8 @@ import { porNombre } from 'src/app/services/utils/orden-texto';
  *   el nivel en que la da y, en un grupo opcional, solo si la eligió; cada una aporta máx(0, ⌊nivel / `Divisor`⌋ +
  *   `Ajuste`) de su `Mascota` y elige de la lista de `Mascota.Lista`. **El nivel efectivo** es la suma;
  * - **el cupo**: una mascota de cada clase por personaje, aunque la den varias clases;
- * - **la lista**: las filas de `Niveles_clase` de esas listas con la plantilla de la mascota, la dote que la abre y el
- *   nivel mínimo (`resolverFilaMascota`), y el catálogo de la creación, una entrada por monstruo y plantilla con las filas
+ * - **la lista**: las filas de `Niveles_clase` de esas listas con la plantilla de la mascota, la dote que la abre, el
+ *   nivel mínimo y, si la fila lo pide, el ataque base del personaje (`resolverFilaMascota`), y el catálogo de la creación, una entrada por monstruo y plantilla con las filas
  *   de esa mascota (`Mascota` de cada fila: `filasPorPlantilla`);
  * - **lo que da cada nivel** (`mascota_aptitudes`): al amo, a la mascota o a los dos (`aptitudesMascotaDelNivel`), y la
  *   fila de una tabla por nivel (`filaDelNivel`).
@@ -69,6 +70,11 @@ export interface EstadoMascota extends CupoMascota {
     fuentesMascota: FuenteMascota[];
     /** Las clases de cuyas filas de `Niveles_clase` elige (las `Mascota.Lista` de sus fuentes). */
     listasIds: number[];
+    /**
+     * El ataque base del personaje, el primero de su `Ataque_base` («+7/+2» → 7; sin número, 0), como la API: el que mira
+     * una fila de la lista con `Ataque_base_minimo`.
+     */
+    ataqueBase: number;
 }
 
 /** Lo que dicen las frases de la lista de una mascota. */
@@ -276,6 +282,7 @@ export function resolverEstadoMascota(
         nivelEfectivo: fuentes.length > 0 ? nivel : 0,
         fuentesMascota: fuentes,
         listasIds: Array.from(new Set(fuentes.map((fuente) => fuente.lista.id))).filter((id) => id > 0),
+        ataqueBase: primerEntero(personaje?.Ataque_base) ?? 0,
     };
 }
 
@@ -295,6 +302,12 @@ export function filasDeSusListas(
         listas.has(toInt(fila?.Clase?.Id)) && idPlantillaDeNivel(fila) === idPlantilla);
 }
 
+/** Si el personaje tiene el ataque base que pide la fila (`Ataque_base_minimo`; sin mínimo, sí). */
+export function cumpleAtaqueBaseDeFila(fila: MonstruoNivelClase, ataqueBase: number): boolean {
+    const minimo = fila?.Ataque_base_minimo;
+    return minimo === null || minimo === undefined || toInt(ataqueBase) >= toInt(minimo);
+}
+
 /** La fila de menos nivel. */
 function filaDeMenosNivel(filas: MonstruoNivelClase[]): MonstruoNivelClase {
     return filas.reduce((a, b) => toInt(b.Nivel) < toInt(a.Nivel) ? b : a);
@@ -302,13 +315,14 @@ function filaDeMenosNivel(filas: MonstruoNivelClase[]): MonstruoNivelClase {
 
 /**
  * La fila de la lista con la que el personaje tiene a esa mascota (de sus listas, con su plantilla, con la dote que la
- * abre y a su nivel efectivo; entre las que valen, la de más nivel de tabla, como la API) y el nivel de la tabla que le
- * toca (su nivel efectivo más el `Ajuste` de la fila: en el familiar, 0). Si no puede tenerla, `fila` es `null` y
- * `razones` dice por qué.
+ * abre, a su nivel efectivo y, si la fila lo pide, con su ataque base; entre las que valen, la de más nivel de tabla, como
+ * la API) y el nivel de la tabla que le toca (su nivel efectivo más el `Ajuste` de la fila: en el familiar, 0). Si no
+ * puede tenerla, `fila` es `null` y `razones` dice por qué, en el orden de la API: la lista, la dote, el nivel y el
+ * ataque base.
  */
 export function resolverFilaMascota(
     mascota: Pick<MonstruoDetalle, 'Nombre' | 'Niveles_clase'> & { Plantilla?: { Id: number; } | null; },
-    estado: Pick<EstadoMascota, 'nivelEfectivo' | 'listasIds' | 'fuentesMascota'> | null | undefined,
+    estado: Pick<EstadoMascota, 'nivelEfectivo' | 'listasIds' | 'fuentesMascota' | 'ataqueBase'> | null | undefined,
     dotesPersonaje: ReadonlySet<number>,
     textos: TextosMascota,
 ): FilaMascotaResuelta {
@@ -342,7 +356,13 @@ export function resolverFilaMascota(
         const minima = filaDeMenosNivel(conDote);
         return resultado([`Pide un nivel efectivo de ${nombreDeLista(minima?.Clase?.Nombre, textos.listaPorDefecto)} ${Math.max(0, toInt(minima.Nivel))}, y tienes ${nivelEfectivo}.`], conDote);
     }
-    const fila = aSuNivel.reduce((a, b) => toInt(b.Ajuste) > toInt(a.Ajuste) ? b : a);
+    const ataqueBase = toInt(estado?.ataqueBase);
+    const conSuAtaque = aSuNivel.filter((fila) => cumpleAtaqueBaseDeFila(fila, ataqueBase));
+    if (conSuAtaque.length < 1) {
+        const minimo = Math.min(...aSuNivel.map((fila) => toInt(fila.Ataque_base_minimo)));
+        return resultado([`Pide un ataque base de ${textoConSigno(minimo)} (tienes ${textoConSigno(ataqueBase)}).`], aSuNivel);
+    }
+    const fila = conSuAtaque.reduce((a, b) => toInt(b.Ajuste) > toInt(a.Ajuste) ? b : a);
     const nivelMinimo = Math.min(...conDote.map((item) => Math.max(0, toInt(item.Nivel))));
     return { fila, nivelTabla: nivelEfectivo + toInt(fila.Ajuste), nivelMinimo, ajuste: toInt(fila.Ajuste), razones: [] };
 }

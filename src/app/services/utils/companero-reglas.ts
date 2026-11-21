@@ -33,7 +33,8 @@ import { textoConSigno } from 'src/app/services/utils/equipo-texto';
  *   `Mascota` (máx(0, ⌊nivel / `Divisor`⌋ + `Ajuste`)), desde el nivel en que la da y, en un grupo opcional, solo si el
  *   personaje la eligió (el pirata que elige *Pelea sucia* no tiene compañero);
  * - la lista son las filas de `Niveles_clase` de la clase de su `Mascota.Lista` (el explorador, la del druida), cada una
- *   con su nivel mínimo, su `Ajuste` (lo que suma para la tabla), su plantilla y la dote que la abre;
+ *   con su nivel mínimo, su `Ajuste` (lo que suma para la tabla), su plantilla, la dote que la abre (Compañero elevado,
+ *   Compañero araña, Compañero sabandija) y, si lo pide, el ataque base del personaje;
  * - la tabla y las aptitudes de cada nivel, de `GET /companeros/progresion`, con el nivel efectivo más el ajuste de su fila.
  */
 

@@ -20,8 +20,9 @@ import { normalizeRazaApi } from './utils/raza-mapper';
 import { PROLE_SOBRE_API, RAZAS_API } from 'src/testing/razas-mutadas-api';
 import { SelectorIdiomaModalComponent } from '../components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
 import {
-    ATAQUE_MULTIPLE, BISONTE, CELESTIAL, CLASES_CON_COMPANERO, COMPANERO_ELEVADO, COMPARTIR_CONJUROS, DEVOCION, DOTE_ATAQUE_MULTIPLE,
-    EVASION, LOBO, MONSTRUOS_COMPANERO, PELEA_SUCIA, PROGRESION_API, SEGUNDO_ATAQUE_NATURAL, TEJON, VINCULO,
+    ARANA_PEQUENA, ATAQUE_MULTIPLE, BISONTE, CELESTIAL, CLASES_CON_COMPANERO, COMPANERO_ELEVADO, COMPANERO_SABANDIJA, COMPARTIR_CONJUROS,
+    DEVOCION, DOTE_ATAQUE_MULTIPLE, EVASION, LOBO, MONSTRUOS_COMPANERO, MONSTRUOS_SABANDIJA, PELEA_SUCIA, PROGRESION_API,
+    SEGUNDO_ATAQUE_NATURAL, TEJON, VINCULO,
 } from 'src/testing/companero-animal-api';
 import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos } from './utils/companero-reglas';
 import { leerCompaneroProgresion, leerFamiliarProgresion } from './utils/monstruo-mapper';
@@ -5999,6 +6000,22 @@ describe('NuevoPersonajeService (el compañero animal, de los datos)', () => {
         expect(svc.PersonajeCreacion.Claseas.filter((e) => e.Extra === 'Compañero animal').map((e) => e.Id)).toEqual([COMPARTIR_CONJUROS, VINCULO]);
     });
 
+    it('la araña de Compañero sabandija, a druida 3: los valores de druida 3 (+2 DG, Fue y Des +1, armadura natural +2) y Evasión (F13)', () => {
+        const arana = JSON.parse(JSON.stringify(construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_SABANDIJA)
+            .find((c) => claveCompanero(c) === `${ARANA_PEQUENA}:0`)));
+        const conLaDote = { DotesContextuales: [{ Dote: { Id: COMPANERO_SABANDIJA, Nombre: 'Compañero sabandija' }, Contexto: { Entidad: 'personaje', Id_extra: 0, Extra: '', Origen: 'Dote' } }] };
+        const svc = motor([['Druida', 3]], conLaDote);
+        const r = svc.registrarCompaneroSeleccionado(arana, 'Tejedora');
+        expect(r.registrado).toBeTrue();
+        expect(r.nivelTabla).toBe(3);
+        const dto = guardado(svc);
+        expect([dto.dgAdi, dto.trucosAdi, dto.fuerza, dto.destreza, dto.armaduraNatural]).toEqual([2, 2, 8, 18, 3]);
+        expect(dto.especiales.map((e) => e.idEspecial)).toContain(EVASION);
+        // Sin la dote, no.
+        expect(motor([['Druida', 3]]).registrarCompaneroSeleccionado(arana).razon)
+            .toBe('Hace falta la dote «Compañero araña» o «Compañero sabandija» para tenerlo como compañero animal.');
+    });
+
     it('druida 4 / explorador 4 (nivel efectivo 6): Devoción y los valores de druida 6', () => {
         const svc = motor([['Druida', 4], ['Explorador', 4]]);
         expect(svc.getEstadoCuposCompanero().nivelEfectivo).toBe(6);
@@ -9443,6 +9460,7 @@ describe('NuevoPersonajeService (el familiar, de los datos)', () => {
 
     it('el familiar mejorado transmite conjuros y escudriña, sin comunicarse con los animales de su tipo (F7)', () => {
         const svc = motor([['Hechicero', 13]], [FAMILIAR_MEJORADO]);
+        svc.PersonajeCreacion.Ataque_base = '+6/+1';
         expect(svc.registrarFamiliarSeleccionado(familiar(PERRO_INTERMITENTE, MEJORADO)).registrado).toBeTrue();
         expect(delFamiliar(svc)).toContain(TRANSMITIR);
         expect(delFamiliar(svc)).not.toContain(CON_ANIMALES);
@@ -9450,6 +9468,22 @@ describe('NuevoPersonajeService (el familiar, de los datos)', () => {
         // Sin la dote de su fila, no.
         expect(motor([['Hechicero', 13]]).registrarFamiliarSeleccionado(familiar(PERRO_INTERMITENTE, MEJORADO)).razon)
             .toBe('Hace falta la dote «Familiar mejorado» para tenerlo como familiar.');
+    });
+
+    it('el perro intermitente pide un ataque base de +5: el hechicero 5 (+2), no; el hechicero 5 / guerrero 3 (+5), sí (F19)', () => {
+        const hechicero = motor([['Hechicero', 5]], [FAMILIAR_MEJORADO]);
+        hechicero.PersonajeCreacion.Ataque_base = '+2';
+        const r = hechicero.registrarFamiliarSeleccionado(familiar(PERRO_INTERMITENTE, MEJORADO));
+        expect(r.registrado).toBeFalse();
+        expect(r.razon).toBe('Pide un ataque base de +5 (tienes +2).');
+        expect(hechicero.PersonajeCreacion.Familiares).toEqual([]);
+
+        const conGuerrero = motor([['Hechicero', 5], ['Guerrero', 3]], [FAMILIAR_MEJORADO]);
+        conGuerrero.PersonajeCreacion.Ataque_base = '+5';
+        const bien = conGuerrero.registrarFamiliarSeleccionado(familiar(PERRO_INTERMITENTE, MEJORADO));
+        expect(bien.registrado).toBeTrue();
+        expect(bien.nivel).toBe(5);
+        expect(conGuerrero.familiarParaGuardar()!.ataqueBase).toBe(5);
     });
 
     it('el dracónico, con su tabla y con los PG y el ataque mayores entre los de su amo y los suyos (F8)', () => {

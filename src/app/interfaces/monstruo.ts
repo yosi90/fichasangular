@@ -103,6 +103,12 @@ export interface MonstruoNivelClase {
      * alternativas de 4.º, −3; el animal celestial de Compañero elevado, −1). En el familiar, 0.
      */
     Ajuste: number;
+    /**
+     * El ataque base que tiene que tener el personaje para elegir la mascota de esta fila, además del `Nivel` (la lista del
+     * familiar mejorado de *El combatiente completo*, pág. 99: +3, +5 y +7); `null`, sin mínimo. Desde el 2026-11-21
+     * (cachés `Monstruos` 17, `Familiares` y `Compañeros animales` 14).
+     */
+    Ataque_base_minimo: number | null;
     Plantilla: {
         Id: number;
         Nombre: string;
@@ -379,6 +385,10 @@ export interface MonstruoNivelClaseRequest {
     id_preferencia_legal: number | null;
     id_preferencia_moral: number | null;
     id_dote: number | null;
+    /** Lo que la fila suma al nivel efectivo para la tabla del compañero: 0 o menos (en el familiar, 0). */
+    ajuste: number;
+    /** El ataque base que pide la fila (1 o más); `null`, sin mínimo. */
+    ataque_base_minimo: number | null;
 }
 
 /** El cuerpo de `POST /monstruos/add` y de `PUT /monstruos/<id>` (la edición reemplaza el monstruo entero). */
