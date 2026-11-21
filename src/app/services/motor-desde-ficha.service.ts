@@ -23,6 +23,7 @@ import { RazaService } from './raza.service';
 import { SesionesService } from './sesiones.service';
 import { SubtipoService } from './subtipo.service';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
+import { familiarConSuCriatura } from './utils/familiar-reglas';
 import { toInt } from './utils/normalizacion';
 
 /** Lo que da `cargarSesion`: la sesión abierta, su `entrada`, su ficha normalizada y los niveles que ha perdido. */
@@ -123,7 +124,7 @@ export class MotorDesdeFichaService {
 
     /** Los catálogos que usa el motor, como en la creación. */
     async cargarCatalogos(motor: NuevoPersonajeService): Promise<void> {
-        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos, deidades, progresionCompanero] = await Promise.all([
+        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos, deidades, progresionCompanero, progresionFamiliar] = await Promise.all([
             this.primero(this.claseSvc.getClases()), this.primero(this.doteSvc.getDotes()), this.primero(this.conjuroSvc.getConjuros()),
             this.primero(this.habilidadSvc.getHabilidades()), this.primero(this.habilidadSvc.getHabilidadesCustom()),
             this.primero(this.idiomaSvc.getIdiomas()), this.primero(this.dominioSvc.getDominios()), this.primero(this.escuelaSvc.getEscuelas()),
@@ -135,6 +136,8 @@ export class MotorDesdeFichaService {
             this.primero(this.deidadSvc.getDeidades()),
             // La tabla del compañero animal y sus aptitudes por nivel: la subida lo pone al día.
             this.primero(this.monstruoSvc.getCompanerosProgresion()),
+            // Las tablas del familiar, sus aptitudes por nivel y sus pseudoplantillas: la subida también lo pone al día.
+            this.primero(this.monstruoSvc.getFamiliaresProgresion()),
         ]);
         motor.setCatalogoClases(clases ?? []);
         motor.setCatalogoDotes(dotes ?? []);
@@ -151,6 +154,7 @@ export class MotorDesdeFichaService {
         motor.setCatalogoSubtipos(subtipos ?? []);
         motor.setCatalogoDeidades(deidades ?? []);
         motor.setProgresionCompanero(progresionCompanero);
+        motor.setProgresionFamiliar(progresionFamiliar);
     }
 
     /**
@@ -175,10 +179,14 @@ export class MotorDesdeFichaService {
                 idiomas: catalogo(motor.EstadoFlujo.ventajas.catalogoIdiomas ?? []),
             },
         };
-        // El compañero animal, con lo que le pone al día el motor (la subida: `fichaConLoDelMotor` pasa a la ficha lo que cambia).
+        // El compañero animal y el familiar, con lo que les pone al día el motor (la subida: `fichaConLoDelMotor` pasa a la
+        // ficha lo que cambia). Los PG del familiar, los de un amo sin PG (los suyos, si toma los mayores): los pone
+        // `fichaConLoDelMotor` con los de la ficha.
         const companero = motor.companeroParaGuardar();
+        const familiar = motor.familiarParaGuardar({ vidaAmo: 0 });
+        const mascotas = { ...(companero ? { companero } : {}), ...(familiar ? { familiar } : {}) };
         return this.personajeSvc.construirPayloadCreacionDesdePersonaje(personaje, contexto, null,
-            motor.getProgresionLanzadorPersistible(), companero ? { companero } : null);
+            motor.getProgresionLanzadorPersistible(), Object.keys(mascotas).length > 0 ? mascotas : null);
     }
 
     /**
@@ -214,6 +222,24 @@ export class MotorDesdeFichaService {
         const plantillas = (await Promise.all((entrada.colecciones?.plantillas ?? [])
             .map((p) => this.primero(this.plantillaSvc.getPlantilla(toInt(p.idPlantilla))))))
             .filter((p): p is NonNullable<typeof p> => !!p);
-        motor.iniciarSubidaDesdeFicha({ personaje: pj, entrada, raza, razaBase, plantillas, nivelesPerdidos });
+        motor.iniciarSubidaDesdeFicha({ personaje: await this.conLaCriaturaDelFamiliar(pj), entrada, raza, razaBase, plantillas, nivelesPerdidos });
+    }
+
+    /**
+     * El personaje con su familiar sobre los valores de su criatura (`familiarConSuCriatura`): el motor le suma lo del nivel
+     * de su amo al ponerlo al día, como en la creación. Sin la criatura no se sabría qué es de su nivel: un error.
+     */
+    private async conLaCriaturaDelFamiliar(pj: Personaje): Promise<Personaje> {
+        const familiares = pj?.Familiares ?? [];
+        if (familiares.length < 1)
+            return pj;
+        const conSuCriatura = await Promise.all(familiares.map(async (familiar) => {
+            const id = toInt(familiar?.Monstruo_origen?.Id) || toInt(familiar?.Id);
+            const monstruo = id > 0 ? await this.primero(this.monstruoSvc.getMonstruo(id)) : null;
+            if (!monstruo || toInt(monstruo.Id) <= 0)
+                throw new Error('No se ha podido cargar la criatura del familiar. Vuelve a intentarlo en unos segundos.');
+            return familiarConSuCriatura(familiar, monstruo);
+        }));
+        return { ...pj, Familiares: conSuCriatura };
     }
 }
