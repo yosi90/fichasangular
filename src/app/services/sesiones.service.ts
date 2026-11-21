@@ -56,7 +56,7 @@ const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
     'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'raza_mutada_adquirida',
     'conversion_muerto_viviente', 'nivel_perdido', 'vuelta_a_la_vida',
-    'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'nota',
+    'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado', 'nota',
 ]);
 
 /** Si el error es el `409 sesion_desactualizada` (otra persona apuntó algo entre medias). */

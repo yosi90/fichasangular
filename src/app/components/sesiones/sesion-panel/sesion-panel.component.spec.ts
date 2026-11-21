@@ -12,10 +12,12 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DeidadService } from 'src/app/services/deidad.service';
+import { DoteService } from 'src/app/services/dote.service';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { SesionesService, leerHistorial, leerRespuestaSesion } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { TrucoService, leerTrucos } from 'src/app/services/truco.service';
 import { POLITICA_TIENDA_LIBRE } from 'src/app/services/utils/tienda-equipo';
 import { crearEquipoFichaApi } from 'src/testing/equipo-api';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
@@ -23,6 +25,14 @@ import { respuestaSesiones } from 'src/testing/sesiones-api';
 import { SesionPanelComponent } from './sesion-panel.component';
 
 describe('SesionPanelComponent', () => {
+    // Los trucos de la caché (`Trucos`): Ataca, Busca, Ataca (todas las criaturas) y los fines Monta (Int 1) y Combate montado (Int 2).
+    const TRUCOS = leerTrucos({
+        1: { Id: 1, Nombre: 'Ataca', Coste: 1, Cd: 20, Oficial: true },
+        2: { Id: 2, Nombre: 'Busca', Coste: 1, Cd: 15, Oficial: true },
+        3: { Id: 3, Nombre: 'Ataca (todas las criaturas)', Coste: 2, Cd: 20, Oficial: true, Sustituye: { Id: 1, Nombre: 'Ataca' } },
+        4: { Id: 4, Nombre: 'Monta', Coste: 3, Es_fin: true, Int_minima: 1, Oficial: true, Trucos: [{ Id: 5, Nombre: 'Junta' }] },
+        6: { Id: 6, Nombre: 'Combate montado', Coste: 6, Es_fin: true, Int_minima: 2, Oficial: true, Sustituye: { Id: 4, Nombre: 'Monta' } },
+    });
     let fixture: ComponentFixture<SesionPanelComponent>;
     let component: SesionPanelComponent;
     let sesiones: jasmine.SpyObj<SesionesService>;
@@ -81,6 +91,8 @@ describe('SesionPanelComponent', () => {
                     },
                 },
                 { provide: DeidadService, useValue: { getDeidades: () => of([{ Id: 9, Nombre: 'Heironeous' }, { Id: 0, Nombre: 'No tener deidad' }]) } },
+                { provide: TrucoService, useValue: { getTrucos: () => of(TRUCOS) } },
+                { provide: DoteService, useValue: { getDotes: () => of([{ Id: 2138, Nombre: 'Truco adicional', Trucos_extra: 3 }]) } },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -135,6 +147,59 @@ describe('SesionPanelComponent', () => {
         component.motivoCaida = 'un acto maligno';
         await component.apuntar();
         expect(sesiones.apuntar.calls.mostRecent().args[2]).toEqual({ tipo: 'caida', clases: [11], motivo: 'un acto maligno' });
+    });
+
+    it('«Enseñar un truco», solo con compañero: los que puede aprender y por qué no los demás; manda el evento y lee la ficha', async () => {
+        crear();
+        expect(boton('Enseñar un truco')).toBeUndefined();
+
+        // Gruk (Int 2) sabe Ataca (adicional) y trae Monta (fin, de su monstruo): 3 de 6.
+        const pj = ficha();
+        pj.Companeros = [{
+            Nombre: 'Gruk', Tipo: { Id: 3, Nombre: 'Animal' }, Caracteristicas: { Inteligencia: 2 }, Dotes: [],
+            Trucos: [
+                { Id: 1, Nombre: 'Ataca', Origen: 'adicional', Orden: 1, Coste: 1, Es_fin: false },
+                { Id: 4, Nombre: 'Monta', Origen: 'monstruo', Orden: null, Coste: 3, Es_fin: true },
+            ],
+        } as any];
+        crear({ pj } as any);
+        sesiones.apuntar.and.resolveTo(leerRespuestaSesion(respuestaSesiones('dinero')));
+        const puerta = TestBed.inject(SubidaNivelPuertaService);
+        spyOn(puerta, 'subidaHecha');
+        boton('Enseñar un truco')!.click();
+        await estable();
+
+        const motivos = (c: SesionPanelComponent) => new Map(c.trucosEnsenables.map((o) => [o.truco.Nombre, o.motivo ?? o.sustituye]));
+        expect(motivos(component).get('Ataca')).toBe('Ya lo sabe.');
+        expect(motivos(component).get('Busca')).toBeNull();
+        // Combate montado sustituye a Monta: 3 - 3 + 6 = 6, le cabe.
+        expect(motivos(component).get('Combate montado')).toBe('Sustituye a «Monta».');
+        expect(component.notaTrucos).toContain('Ha aprendido 3 de 6');
+
+        const lista = Array.from(elemento().querySelectorAll<HTMLButtonElement>('.sesion__conjuro'));
+        const delTruco = (nombre: string) => lista.find((b) => limpio(b.querySelector('span')) === nombre);
+        expect(delTruco('Ataca')?.disabled).toBeTrue();
+        delTruco('Busca')!.click();
+        await estable();
+        await component.apuntar();
+
+        expect(sesiones.apuntar).toHaveBeenCalledWith(129, jasmine.anything(), { tipo: 'truco_ensenado', idTruco: 2 });
+        expect(puerta.subidaHecha).toHaveBeenCalledWith(129);
+
+        // Con Int 1 le caben 3 y ya lleva Monta: ni Busca ni el fin de Int 2.
+        (pj.Companeros[0].Caracteristicas as any)['Inteligencia'] = 1;
+        crear({ pj } as any);
+        boton('Enseñar un truco')!.click();
+        await estable();
+        expect(motivos(component).get('Busca')).toBe('Con Inteligencia 1 sabe como mucho 3 trucos, y llevaría 4.');
+        expect(motivos(component).get('Combate montado')).toBe('«Combate montado» pide Inteligencia 2, y tiene 1.');
+
+        // Con Truco adicional (Trucos_extra 3, del catálogo de dotes), le caben 6: Busca ya se puede.
+        pj.Companeros[0].Dotes = [{ Dote: { Id: 2138, Nombre: 'Truco adicional' }, Contexto: {} } as any];
+        crear({ pj } as any);
+        boton('Enseñar un truco')!.click();
+        await estable();
+        expect(motivos(component).get('Busca')).toBeNull();
     });
 
     it('apunta los PX con la versión de ahora y deja la sesión al día', async () => {

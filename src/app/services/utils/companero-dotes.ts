@@ -8,6 +8,7 @@ import { daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-ni
 import { DoteEvaluacionContexto, dotesConCuentaComo, nivelLanzadorMaximoDeSortilegas } from 'src/app/services/utils/dote-elegibilidad';
 import { HabilidadParaPrerrequisitos } from 'src/app/services/utils/prerrequisitos-evaluacion';
 import { normalizarTexto, primerEntero, sinRepetidos, toInt } from 'src/app/services/utils/normalizacion';
+import { costeDelTruco } from 'src/app/services/utils/truco-coste';
 
 /*
  * Las dotes y las mejoras de característica que elige el compañero animal con sus DG adicionales (contrato:
@@ -312,7 +313,7 @@ export function contextoDeDotesDelCompanero(companero: CompaneroMonstruoDetalle,
  * y un fin, los que suma (su `Coste`).
  */
 export function trucosQueSabeElCompanero(companero: CompaneroMonstruoDetalle | null | undefined): number {
-    return (companero?.Trucos ?? []).reduce((total, t) => total + (t?.Es_fin ? Math.max(1, toInt(t?.Coste)) : 1), 0);
+    return (companero?.Trucos ?? []).reduce((total, t) => total + (t?.Es_fin ? costeDelTruco(t) : 1), 0);
 }
 
 /** El texto del hueco de una dote del compañero («Compañero animal (Gruk): la de su 6.º DG»). */

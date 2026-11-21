@@ -246,7 +246,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
                 { que: 'Puntos de golpe', antes: `${con.pg.antes}`, ahora: `${con.pg.despues}` },
                 { que: 'PX', antes: this.px(px), ahora: `${this.px(px)} (los conserva)` },
                 ...this.filaSinPrerrequisitos(),
-                ...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado),
+                ...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado, this.svc.nombresDeLoQueEligeLaMascota()),
             ];
             return;
         }
@@ -279,7 +279,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         ];
         filas.push(...filasDelNivelPerdido(resultado, nombresDeLaFicha(this.svc, this.pj, entrada)));
         filas.push(...this.filaSinPrerrequisitos());
-        filas.push(...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado));
+        filas.push(...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado, this.svc.nombresDeLoQueEligeLaMascota()));
         this.filas = filas;
     }
 

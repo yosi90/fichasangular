@@ -3,8 +3,9 @@ import { PersonajeCreateCompaneroDto } from 'src/app/interfaces/personajes-api';
 import { Truco } from 'src/app/interfaces/truco';
 import { leerTrucos } from 'src/app/services/truco.service';
 import {
-    aplicarTrucosAdicionales, conLosTrucosDeSuMonstruo, contextoDeTrucosDelCompanero, hayTrucoAdicionalQueElegir, idsDeLoQueSabe,
-    motivoTrucoAdicional, quitarLosTrucosQueNoCaben, trucosAdicionalesPendientes, trucosParaGuardar, trucosParaLaFicha,
+    aplicarTrucosAdicionales, conLosTrucosDeSuMonstruo, contextoDelTrucoEnsenado, contextoDeTrucosDelCompanero, hayTrucoAdicionalQueElegir,
+    idsDeLoQueSabe, motivoTrucoAdicional, motivoTrucoEnsenado, quitarLosTrucosQueNoCaben, textoDeLoQueSustituye, trucosAdicionalesPendientes,
+    trucosExtraDeSusDotes, trucosParaGuardar, trucosParaLaFicha,
 } from './companero-trucos';
 import { construirCompaneroParaGuardar } from './mascota-payload';
 import { leerTrucosDeMascota } from './monstruo-mapper';
@@ -152,6 +153,51 @@ describe('los trucos del compañero animal', () => {
         const conUno = { ...base, trucos: [...(base.trucos ?? []), { idTruco: 1, origen: 'adicional' as const, orden: 1 }] };
         expect(companeroConLoDelMotor({ trucosAdi: 2 } as any, base, conUno).trucos).toEqual(conUno.trucos);
         expect(companeroConLoDelMotor({ trucosAdi: 2 } as any, base, base).trucos).toBeUndefined();
+    });
+
+    describe('los enseñados con Trato con animales (evento `truco_ensenado`)', () => {
+        const TRUCO_ADICIONAL = { Id: 2138, Nombre: 'Truco adicional', Trucos_extra: 3 } as any;
+        const ensenado = (c: CompaneroMonstruoDetalle, t: Truco) => motivoTrucoEnsenado(t, contextoDelTrucoEnsenado(c, CATALOGO, [TRUCO_ADICIONAL]));
+
+        it('sin Inteligencia o con 3 o más, ninguno; ya lo sabe si es suyo, de su fin o lo sustituye uno que sabe', () => {
+            expect(ensenado(lobo({ int: null }), ATRAS)).toBe('Sin Inteligencia no se le pueden enseñar trucos.');
+            expect(ensenado(lobo({ int: 10 }), ATRAS)).toContain('Con Inteligencia 10 ya no aprende trucos');
+            expect(ensenado(lobo({ Trucos: [deMascota(LUCHA, 'monstruo')] }), ATRAS)).toBe('Ya lo sabe.');
+            expect(ensenado(lobo({ Trucos: [deMascota(ATACA_TODAS, 'ensenado')] }), ATACA)).toBe('Ya lo sabe.');
+            // Los requisitos, los mismos que los de los adicionales.
+            expect(ensenado(lobo(), AYUDA)).toBe('Pide saber «Ataca» o «Ataca (todas las criaturas)».');
+            expect(ensenado(lobo(), LANZA)).toBe('Pide Telaraña.');
+        });
+
+        it('un solo fin, con su Inteligencia mínima, sin repetir uno que sabe suelto; y su límite, 3 × Int más sus dotes', () => {
+            const FIN = truco(8, 'Caza', { Es_fin: true, Coste: 2, Int_minima: 2, Trucos: [{ Id: 3, Nombre: 'Atrás' }] });
+            expect(ensenado(lobo({ Trucos: [deMascota(LUCHA, 'monstruo')] }), FIN)).toBe('Solo puede tener un fin, y ya sabe «Lucha».');
+            expect(ensenado(lobo({ int: 1 }), FIN)).toBe('«Caza» pide Inteligencia 2, y tiene 1.');
+            expect(ensenado(lobo({ Trucos: [deMascota(ATRAS, 'ensenado')] }), FIN)).toBe('Ya sabe «Atrás» suelto: el fin no puede repetirlo.');
+            // Int 1: 3; ya lleva 3 enseñados.
+            const lleno = lobo({ int: 1, Trucos: [deMascota(ATACA, 'ensenado'), deMascota(ATRAS, 'ensenado'), deMascota(RASTREA, 'ensenado')] });
+            expect(ensenado(lleno, truco(9, 'Busca'))).toBe('Con Inteligencia 1 sabe como mucho 3 trucos, y llevaría 4.');
+            // Los adicionales no cuentan; Truco adicional da 3 más cada vez que la tiene.
+            expect(ensenado(lobo({ int: 1, Trucos: [deMascota(ATACA, 'adicional', 1), deMascota(ATRAS, 'ensenado')] }), truco(9, 'Busca'))).toBeNull();
+            const conDote = { ...lleno, Dotes: [{ Dote: { Id: 2138, Nombre: 'Truco adicional' } }, { Dote: { Id: 2138, Nombre: 'Truco adicional' } }] } as any;
+            expect(trucosExtraDeSusDotes(conDote, [TRUCO_ADICIONAL])).toBe(6);
+            expect(ensenado(conDote, truco(9, 'Busca'))).toBeNull();
+        });
+
+        it('el que sustituye a uno que ha aprendido deja libre lo suyo y lo dice', () => {
+            const conAtaca = lobo({ int: 1, Trucos: [deMascota(ATACA, 'ensenado'), deMascota(ATRAS, 'ensenado')] });
+            const contexto = contextoDelTrucoEnsenado(conAtaca, CATALOGO, []);
+            // 2 - 1 + 2 = 3: le cabe con Int 1.
+            expect(motivoTrucoEnsenado(ATACA_TODAS, contexto)).toBeNull();
+            expect(textoDeLoQueSustituye(ATACA_TODAS, contexto)).toBe('Sustituye a «Ataca».');
+            expect(textoDeLoQueSustituye(RASTREA, contexto)).toBeNull();
+        });
+
+        it('lo que sustituye a uno de sus trucos adicionales no se le enseña: esos no se cambian', () => {
+            const conAtaca = lobo({ int: 2, Trucos: [deMascota(ATACA, 'adicional', 1)] });
+            expect(motivoTrucoEnsenado(ATACA_TODAS, contextoDelTrucoEnsenado(conAtaca, CATALOGO, [])))
+                .toBe('Sustituiría a «Ataca», que es uno de sus trucos adicionales: esos no se cambian.');
+        });
     });
 
     it('el catálogo y los trucos del monstruo: lo que falta, vacío; los de un monstruo, de su monstruo', () => {

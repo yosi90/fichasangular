@@ -1,3 +1,4 @@
+import type { NombresDeLaMascota } from './utils/mascota-al-dia';
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
@@ -2109,6 +2110,14 @@ export class NuevoPersonajeService {
 
     get CatalogoTrucos(): Truco[] {
         return [...this.catalogoTrucos];
+    }
+
+    /** Los nombres de lo que elige la mascota (sus dotes y sus trucos, por su id), para «Lo que cambia» de las sesiones. */
+    nombresDeLoQueEligeLaMascota(): NombresDeLaMascota {
+        return {
+            dote: (id) => this.doteDelCatalogo(id)?.Nombre ?? `dote ${id}`,
+            truco: (id) => this.catalogoTrucos.find((t) => t.Id === id)?.Nombre ?? `truco ${id}`,
+        };
     }
 
     /** Las tablas del familiar, sus aptitudes por nivel y sus pseudoplantillas (`GET /familiares/progresion` o su caché). */

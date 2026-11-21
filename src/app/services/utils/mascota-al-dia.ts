@@ -1,6 +1,7 @@
 import { PersonajeCreateCompaneroDto, PersonajeCreateFamiliarDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import type { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { abreviaturaCaracteristica, caracteristicaPorId } from './caracteristicas';
 import { sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { textoConSigno } from './equipo-texto';
 import { mismoExtra, toInt } from './normalizacion';
@@ -134,18 +135,74 @@ function filaDeLaMascota<T extends { nombre: string; inactiva?: boolean; }>(que:
     return a === d ? null : { que: titulo, antes: a, ahora: d };
 }
 
+/** Los nombres de lo que elige el compañero (sus dotes y sus trucos, por su id), para «Lo que cambia». */
+export interface NombresDeLaMascota {
+    dote(idDote: number): string;
+    truco(idTruco: number): string;
+}
+
+/** Sin catálogos: el id («dote 49»). */
+const NOMBRES_POR_ID: NombresDeLaMascota = {
+    dote: (id) => `dote ${id}`,
+    truco: (id) => `truco ${id}`,
+};
+
+/** Una lista para «Lo que cambia»: sus elementos separados por comas, o «Ninguna». */
+function lista(elementos: string[]): string {
+    return elementos.length > 0 ? elementos.join(', ') : 'Ninguna';
+}
+
+/**
+ * Lo que elige el compañero con sus DG adicionales y su tabla, para «Lo que cambia» (contrato: `personajes.md`, «Las dotes y
+ * las mejoras que elige el compañero» y «Los trucos del compañero»): las dotes elegidas (las que llevan `dg`) con su DG, las
+ * mejoras de característica con el suyo y los trucos adicionales por su orden. Una fila por lo que cambia.
+ */
+function filasDeLoQueElige(titulo: string, antes: PersonajeCreateCompaneroDto, despues: PersonajeCreateCompaneroDto,
+    nombres: NombresDeLaMascota): FilaDeLaMascota[] {
+    const dotes = (c: PersonajeCreateCompaneroDto) => (c.dotes ?? [])
+        .filter((d) => toInt(d.dg) > 0)
+        .sort((a, b) => toInt(a.dg) - toInt(b.dg))
+        .map((d) => `${nombres.dote(toInt(d.idDote))} (DG ${toInt(d.dg)})`);
+    const mejoras = (c: PersonajeCreateCompaneroDto) => (c.mejoras ?? [])
+        .slice()
+        .sort((a, b) => toInt(a.dg) - toInt(b.dg))
+        .map((m) => {
+            const caracteristica = caracteristicaPorId(toInt(m.idCaracteristica));
+            return `+1 ${caracteristica ? abreviaturaCaracteristica(caracteristica) : `característica ${toInt(m.idCaracteristica)}`} (DG ${toInt(m.dg)})`;
+        });
+    const adicionales = (c: PersonajeCreateCompaneroDto) => (c.trucos ?? [])
+        .filter((t) => t.origen === 'adicional')
+        .sort((a, b) => toInt(a.orden) - toInt(b.orden))
+        .map((t) => nombres.truco(toInt(t.idTruco)));
+    const filas: FilaDeLaMascota[] = [];
+    ([['dotes elegidas', dotes], ['mejoras de característica', mejoras], ['trucos adicionales', adicionales]] as const)
+        .forEach(([que, de]) => {
+            const a = lista(de(antes));
+            const d = lista(de(despues));
+            if (a !== d)
+                filas.push({ que: `${titulo}: ${que}`, antes: a, ahora: d });
+        });
+    return filas;
+}
+
 /**
  * Lo que cambia en las mascotas entre la `entrada` y la `ficha` que se manda, para «Lo que cambia» de cada vía: sus valores
  * de ahora o que queda inactiva hasta que vuelva a cumplir, con el motivo (`estado`, de `ponerMascotasAlDia`), o que vuelve
- * a estar activa. Sin cambios, nada.
+ * a estar activa; y, del compañero activo, las dotes elegidas, las mejoras y los trucos adicionales que gana o pierde, con
+ * sus `nombres` (de los catálogos del motor: `NuevoPersonajeService.nombresDeLoQueEligeLaMascota`). Sin cambios, nada.
  */
 export function filasDeLasMascotas(entrada: PersonajeCreateRequestDto, ficha: PersonajeCreateRequestDto,
-    estado: EstadoDeLasMascotas): FilaDeLaMascota[] {
+    estado: EstadoDeLasMascotas, nombres: NombresDeLaMascota = NOMBRES_POR_ID): FilaDeLaMascota[] {
     const filas: FilaDeLaMascota[] = [];
     if (entrada.companero && ficha.companero) {
         const fila = filaDeLaMascota('Compañero animal', entrada.companero, ficha.companero, valoresDelCompanero, estado.companero);
         if (fila)
             filas.push(fila);
+        // Inactivo vale su criatura tal cual: ya lo dice su fila.
+        if (!ficha.companero.inactiva) {
+            const titulo = `Compañero animal (${`${ficha.companero.nombre ?? ''}`.trim() || 'compañero animal'})`;
+            filas.push(...filasDeLoQueElige(titulo, entrada.companero, ficha.companero, nombres));
+        }
     }
     if (entrada.familiar && ficha.familiar) {
         const fila = filaDeLaMascota('Familiar', entrada.familiar, ficha.familiar, valoresDelFamiliar, estado.familiar);
@@ -161,8 +218,8 @@ export function filasDeLasMascotas(entrada: PersonajeCreateRequestDto, ficha: Pe
  * la `ficha` (lo que se manda) no se arma.
  */
 export function cambiosDeLasMascotas(entrada: PersonajeCreateRequestDto, ficha: () => PersonajeCreateRequestDto,
-    estado: EstadoDeLasMascotas): Array<FilaDeLaMascota & { porque: string; }> {
+    estado: EstadoDeLasMascotas, nombres: NombresDeLaMascota = NOMBRES_POR_ID): Array<FilaDeLaMascota & { porque: string; }> {
     if (!entrada.companero && !entrada.familiar)
         return [];
-    return filasDeLasMascotas(entrada, ficha(), estado).map((fila) => ({ ...fila, porque: PORQUE_DE_LA_MASCOTA }));
+    return filasDeLasMascotas(entrada, ficha(), estado, nombres).map((fila) => ({ ...fila, porque: PORQUE_DE_LA_MASCOTA }));
 }

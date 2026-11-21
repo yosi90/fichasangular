@@ -256,6 +256,11 @@
         border-color: $active
         background: $ficha-elegida
 
+    // Un truco que no se le puede enseñar: atenuado, con su motivo a la derecha.
+    &:disabled
+        opacity: .6
+        cursor: default
+
 .sesion__conjuro-dato
     color: $ficha-texto-suave
     white-space: nowrap

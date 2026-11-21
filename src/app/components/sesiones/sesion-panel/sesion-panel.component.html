@@ -246,6 +246,33 @@
                                     </p>
                                 }
                             }
+                            @case ('truco') {
+                                <p class="sesion__nota">Lo que aprende {{nombreCompanero}} con Trato con animales: un truco suelto o un fin.</p>
+                                @if (cargandoTrucos) {
+                                    <p class="sesion__nota" role="status">Cargando los trucos…</p>
+                                } @else {
+                                    <ul class="sesion__conjuros" [attr.aria-label]="'Trucos que puede aprender ' + nombreCompanero">
+                                        @for (opcion of trucosEnsenables; track opcion.truco.Id) {
+                                            <li>
+                                                <button type="button" class="sesion__conjuro" [attr.aria-pressed]="trucoElegido?.Id === opcion.truco.Id"
+                                                    [disabled]="opcion.motivo !== null" [attr.title]="opcion.motivo" (click)="elegirTruco(opcion)">
+                                                    <span>{{opcion.truco.Nombre}}{{opcion.truco.Es_fin ? ' (fin)' : ''}}</span>
+                                                    <span class="sesion__conjuro-dato">{{opcion.motivo ?? opcion.sustituye ?? ('CD ' + opcion.truco.Cd + (opcion.truco.Coste > 1 ? ' · cuenta ' + opcion.truco.Coste : ''))}}</span>
+                                                </button>
+                                            </li>
+                                        } @empty {
+                                            <li class="sesion__nota">No hay trucos en el catálogo.</li>
+                                        }
+                                    </ul>
+                                    @if (notaTrucos) {
+                                        <p class="sesion__nota">{{notaTrucos}}</p>
+                                    }
+                                }
+                                <label class="sesion__campo sesion__campo--ancho">
+                                    <span>Concepto (opcional)</span>
+                                    <input type="text" name="trucoConcepto" [(ngModel)]="trucoConcepto" [maxlength]="maximoConcepto">
+                                </label>
+                            }
                             @case ('nota') {
                                 <label class="sesion__campo sesion__campo--ancho">
                                     <span>Nota (solo la veis tú y el máster)</span>

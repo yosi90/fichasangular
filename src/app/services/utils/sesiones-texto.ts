@@ -121,5 +121,6 @@ export const ETIQUETA_EVENTO: Record<TipoEventoSesion, string> = {
     cambio_alineamiento: 'Alineamiento',
     caida: 'Caída',
     expiacion: 'Expiación',
+    truco_ensenado: 'Truco',
     nota: 'Nota',
 };

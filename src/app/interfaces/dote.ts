@@ -109,6 +109,11 @@ export interface Dote {
     Cuenta_como?: { Id: number; Nombre: string; }[];
     /** Bonificadores a una salvación que solo cuentan en un caso (no se suman al total; la API siempre los da). */
     Salvaciones_condicionales?: DoteSalvacionCondicional[];
+    /**
+     * Los trucos de más que puede aprender la criatura que la tiene, cada vez que la tenga (Truco adicional, 3; *El aventurero
+     * completo*, pág. 102): el límite de los enseñados es 3 × Int más la suma de las de sus dotes. 0 si no da trucos.
+     */
+    Trucos_extra?: number;
     Prerrequisitos: DotePrerrequisitos;
 }
 

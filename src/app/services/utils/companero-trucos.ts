@@ -1,10 +1,12 @@
 import { CompaneroMonstruoDetalle, TrucoDeMascota } from 'src/app/interfaces/monstruo';
 import { PersonajeCreateCompaneroDto } from 'src/app/interfaces/personajes-api';
+import { Dote } from 'src/app/interfaces/dote';
 import { Truco } from 'src/app/interfaces/truco';
 import { sinPuntuacion } from 'src/app/services/utils/caracteristicas';
 import { inteligenciaDelCompanero, nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { costeDelTruco, costeDeLosTrucos } from 'src/app/services/utils/truco-coste';
 
 /*
  * Los trucos del compañero animal (contrato: `docs/publica/endpoints/personajes.md`, «Los trucos del compañero»; reglas:
@@ -13,15 +15,7 @@ import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
  * y al perder un nivel se pierden los últimos que eligió.
  */
 
-/** Lo que cuenta un truco (su `Coste`; al menos 1: Ataca (todas las criaturas), 2). */
-export function costeDelTruco(truco: { Coste?: unknown; } | null | undefined): number {
-    return Math.max(1, toInt(truco?.Coste, 1));
-}
-
-/** Lo que cuentan unos trucos (sus adicionales, los que lleva elegidos en el selector). */
-export function costeDeLosTrucos(trucos: readonly { Coste?: unknown; }[]): number {
-    return trucos.reduce((total, t) => total + costeDelTruco(t), 0);
-}
+export { costeDelTruco, costeDeLosTrucos } from 'src/app/services/utils/truco-coste';
 
 /** El aviso de cuando lo elegido en el selector ya no vale al ponerlo (en la creación y en las sesiones). */
 export const AVISO_TRUCOS_QUE_YA_NO_VALEN = {
@@ -116,12 +110,11 @@ export function contextoDeTrucosDelCompanero(companero: CompaneroMonstruoDetalle
     };
 }
 
-/** Por qué no puede ser uno de sus trucos adicionales, o `null` si puede (contrato, «Los trucos del compañero»). */
-export function motivoTrucoAdicional(truco: Truco, contexto: ContextoTrucosDelCompanero): string | null {
-    if (truco.Es_fin)
-        return 'Es un fin: un truco adicional es siempre un truco suelto.';
-    if (contexto.sabe.has(truco.Id))
-        return 'Ya lo sabe.';
+/**
+ * Lo que no cumple de sus `Requisitos` (los trucos que pide, entre los que sabe; los raciales de su criatura, por su nombre y
+ * con su grupo «uno de estos»; su tipo), o `null` si los cumple: lo común de los adicionales y de los enseñados.
+ */
+function motivoDeSusRequisitos(truco: Truco, contexto: Pick<ContextoTrucosDelCompanero, 'sabe' | 'aptitudes' | 'idTipo'>): string | null {
     const obligatorios = truco.Requisitos.Trucos.filter((t) => !t.Opcional);
     const faltan = obligatorios.filter((t) => !contexto.sabe.has(t.Id));
     if (faltan.length > 0)
@@ -138,10 +131,130 @@ export function motivoTrucoAdicional(truco: Truco, contexto: ContextoTrucosDelCo
         return `Pide ${unirLista([...new Set(racialesOpcionales.map((r) => nombreDeAptitud(r.Nombre)))], 'o')}.`;
     if (truco.Requisitos.Tipos.length > 0 && !truco.Requisitos.Tipos.some((t) => t.Id === contexto.idTipo))
         return `Solo para ${unirLista(truco.Requisitos.Tipos.map((t) => t.Nombre), 'o')}.`;
+    return null;
+}
+
+/** Por qué no puede ser uno de sus trucos adicionales, o `null` si puede (contrato, «Los trucos del compañero»). */
+export function motivoTrucoAdicional(truco: Truco, contexto: ContextoTrucosDelCompanero): string | null {
+    if (truco.Es_fin)
+        return 'Es un fin: un truco adicional es siempre un truco suelto.';
+    if (contexto.sabe.has(truco.Id))
+        return 'Ya lo sabe.';
+    const requisitos = motivoDeSusRequisitos(truco, contexto);
+    if (requisitos !== null)
+        return requisitos;
     const coste = costeDelTruco(truco);
     if (coste > contexto.quedan)
         return `Cuenta ${coste} trucos y le ${contexto.quedan === 1 ? 'queda 1' : `quedan ${Math.max(0, contexto.quedan)}`}.`;
     return null;
+}
+
+/** Cuántos trucos aprende por cada punto de Inteligencia (MJ pág. 83: 3 con Int 1, 6 con Int 2). */
+export const TRUCOS_POR_INTELIGENCIA = 3;
+
+/**
+ * Los trucos de más que le dan sus dotes: la suma de los `Trucos_extra` de cada una (del catálogo de dotes, por su id; si
+ * no está, la de la dote de su ficha), contando cada vez que la tenga (Truco adicional, 3 cada vez).
+ */
+export function trucosExtraDeSusDotes(companero: CompaneroMonstruoDetalle | null | undefined, catalogoDotes: readonly Dote[]): number {
+    const porId = new Map(catalogoDotes.map((d) => [toInt(d.Id), d] as const));
+    return (companero?.Dotes ?? []).reduce((total, item) => {
+        const dote = porId.get(toInt(item?.Dote?.Id)) ?? (item?.Dote as Partial<Dote> | undefined);
+        return total + Math.max(0, toInt(dote?.Trucos_extra));
+    }, 0);
+}
+
+/** Los que ha aprendido (los enseñados y los de su monstruo): los que cuentan para su límite. */
+export function trucosAprendidosDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): TrucoDeMascota[] {
+    return trucosDelCompanero(companero).filter((t) => t.Origen !== 'adicional');
+}
+
+/** Lo que hace falta para juzgar un truco que se le enseña con Trato con animales. */
+export interface ContextoTrucoEnsenado extends Pick<ContextoTrucosDelCompanero, 'sabe' | 'aptitudes' | 'idTipo'> {
+    /** Su Inteligencia; `null` sin ella (una sabandija descerebrada). */
+    inteligencia: number | null;
+    /** Cuántos puede aprender: 3 × Int más lo que dan sus dotes. */
+    limite: number;
+    /** Lo que cuentan los que ha aprendido (un fin, lo que suman sus trucos). */
+    cuenta: number;
+    /** Los que ha aprendido, con su `Coste`. */
+    aprendidos: readonly TrucoDeMascota[];
+    /** Los trucos sueltos que sabe (de cualquier origen), aparte de los de su fin. */
+    sueltos: ReadonlySet<number>;
+    /** Sus trucos adicionales, que no se cambian: lo que los sustituye no se le enseña. */
+    adicionales: readonly TrucoDeMascota[];
+}
+
+/** El contexto de un truco enseñado: lo que sabe, sus raciales, su tipo, su Inteligencia, su límite y lo que lleva. */
+export function contextoDelTrucoEnsenado(companero: CompaneroMonstruoDetalle | null | undefined, catalogo: readonly Truco[],
+    catalogoDotes: readonly Dote[]): ContextoTrucoEnsenado {
+    const inteligencia = inteligenciaDelCompanero(companero);
+    const int = sinPuntuacion(inteligencia) ? null : toInt(inteligencia);
+    const aprendidos = trucosAprendidosDelCompanero(companero);
+    return {
+        sabe: idsDeLoQueSabe(trucosDelCompanero(companero).map((t) => t.Id), catalogo),
+        aptitudes: aptitudesDeLaCriatura(companero),
+        idTipo: toInt(companero?.Tipo?.Id),
+        inteligencia: int,
+        limite: int === null ? 0 : TRUCOS_POR_INTELIGENCIA * int + trucosExtraDeSusDotes(companero, catalogoDotes),
+        cuenta: costeDeLosTrucos(aprendidos),
+        aprendidos,
+        sueltos: new Set(trucosDelCompanero(companero).filter((t) => !t.Es_fin).map((t) => t.Id)),
+        adicionales: trucosAdicionalesDelCompanero(companero),
+    };
+}
+
+/** Los que ha aprendido y que el `truco` sustituye (Combate montado a Monta; Ataca (todas las criaturas) a Ataca). */
+export function trucosQueSustituye(truco: Truco, contexto: ContextoTrucoEnsenado): TrucoDeMascota[] {
+    const id = toInt(truco.Sustituye?.Id);
+    return id > 0 ? contexto.aprendidos.filter((t) => t.Id === id) : [];
+}
+
+/** «Sustituye a «Monta».» si ocupa el lugar de uno que ha aprendido; si no, `null`. */
+export function textoDeLoQueSustituye(truco: Truco, contexto: ContextoTrucoEnsenado): string | null {
+    const sustituidos = trucosQueSustituye(truco, contexto);
+    return sustituidos.length > 0 ? `Sustituye a ${unirLista(sustituidos.map((t) => `«${t.Nombre}»`), 'y')}.` : null;
+}
+
+/**
+ * Por qué no se le puede enseñar (evento `truco_ensenado`; contrato, «Los trucos del compañero»), o `null` si se puede: sin
+ * Inteligencia o con 3 o más, si ya lo sabe, sus requisitos, un solo fin con su Inteligencia mínima y sin repetir un truco
+ * que sabe suelto, y su límite (3 × Int más lo de sus dotes, con lo que deja libre el que sustituye). Como la API.
+ */
+export function motivoTrucoEnsenado(truco: Truco, contexto: ContextoTrucoEnsenado): string | null {
+    const int = contexto.inteligencia;
+    if (int === null)
+        return 'Sin Inteligencia no se le pueden enseñar trucos.';
+    if (int >= 3)
+        return `Con Inteligencia ${int} ya no aprende trucos: Trato con animales solo vale con Inteligencia 1 o 2.`;
+    if (contexto.sabe.has(truco.Id))
+        return 'Ya lo sabe.';
+    const requisitos = motivoDeSusRequisitos(truco, contexto);
+    if (requisitos !== null)
+        return requisitos;
+    const adicional = contexto.adicionales.find((t) => t.Id === toInt(truco.Sustituye?.Id));
+    if (adicional)
+        return `Sustituiría a «${adicional.Nombre}», que es uno de sus trucos adicionales: esos no se cambian.`;
+    const sustituidos = trucosQueSustituye(truco, contexto);
+    if (truco.Es_fin) {
+        const fin = contexto.aprendidos.find((t) => t.Es_fin && !sustituidos.includes(t));
+        if (fin)
+            return `Solo puede tener un fin, y ya sabe «${fin.Nombre}».`;
+        if (toInt(truco.Int_minima) > int)
+            return `«${truco.Nombre}» pide Inteligencia ${toInt(truco.Int_minima)}, y tiene ${int}.`;
+        const repetidos = truco.Trucos.filter((t) => contexto.sueltos.has(t.Id));
+        if (repetidos.length > 0)
+            return `Ya sabe ${unirLista(repetidos.map((t) => `«${t.Nombre}»`), 'y')} suelto: el fin no puede repetirlo.`;
+    }
+    const llevaria = contexto.cuenta - costeDeLosTrucos(sustituidos) + costeDelTruco(truco);
+    if (llevaria > contexto.limite)
+        return `Con Inteligencia ${int} sabe como mucho ${contexto.limite} trucos, y llevaría ${llevaria}.`;
+    return null;
+}
+
+/** Los trucos y los fines del catálogo que se le pueden enseñar (los oficiales, salvo en una ficha homebrew). */
+export function trucosQueSeEnsenan(catalogo: readonly Truco[], incluirHomebrew: boolean): Truco[] {
+    return catalogo.filter((t) => incluirHomebrew || t.Oficial);
 }
 
 /** Los trucos sueltos del catálogo que se le ofrecen como adicionales (los oficiales, salvo en una ficha homebrew), por nombre. */

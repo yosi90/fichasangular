@@ -426,7 +426,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             exClases: this.clasesContraAlineamiento,
             razaContraAlineamiento: this.razaContraElAlineamientoNuevo(),
         });
-        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(this.entrada!, () => this.fichaParaGuardar(), this.estadoMascotas)];
+        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(this.entrada!, () => this.fichaParaGuardar(), this.estadoMascotas, this.svc.nombresDeLoQueEligeLaMascota())];
     }
 
     /**

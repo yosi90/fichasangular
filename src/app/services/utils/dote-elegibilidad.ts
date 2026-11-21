@@ -385,7 +385,7 @@ function buildEvaluacionNumeroMinimo(
     razonUnknown: string
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
-    const requerido = parseNumber(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c', 'Minimo', 'minimo', 'Nivel_lanzador', 'nivel_lanzador']);
+    const requerido = parseNumber(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c', 'Nivel_lanzador']);
     const evaluable = Number.isFinite(requerido);
     return {
         grupoOpcional,
