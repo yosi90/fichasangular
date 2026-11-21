@@ -1,8 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Truco } from 'src/app/interfaces/truco';
-import { contextoDeTrucosDelCompanero, motivoTrucoAdicional, trucosAdicionalesPendientes, trucosQueSeOfrecen } from 'src/app/services/utils/companero-trucos';
-import { toInt } from 'src/app/services/utils/normalizacion';
+import { contextoDeTrucosDelCompanero, costeDeLosTrucos, motivoTrucoAdicional, trucosAdicionalesPendientes, trucosQueSeOfrecen } from 'src/app/services/utils/companero-trucos';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 /** Un truco de la lista, con por qué no se puede elegir ahora (`null` si se puede). */
@@ -44,7 +43,7 @@ export class SelectorTrucosModalComponent {
 
     /** Lo que le queda con los que lleva elegidos. */
     get quedan(): number {
-        return Math.max(0, this.pendientes - this.elegidos.reduce((total, t) => total + Math.max(1, toInt(t.Coste, 1)), 0));
+        return Math.max(0, this.pendientes - costeDeLosTrucos(this.elegidos));
     }
 
     /** Los que se ofrecen: primero los que puede elegir y después los demás, con su motivo; los elegidos, como elegibles. */

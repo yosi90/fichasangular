@@ -31,9 +31,14 @@ export function dgDelMonstruoDelCompanero(companero: CompaneroMonstruoDetalle | 
     return Math.max(0, primerEntero(companero?.Dados_golpe?.Cantidad) ?? 0);
 }
 
+/** Su Inteligencia tal cual (`null` o `undefined`, el «—»). La usan sus dotes y sus trucos (`companero-trucos.ts`). */
+export function inteligenciaDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): number | null | undefined {
+    return (companero?.Caracteristicas as Record<string, number | null> | undefined)?.['Inteligencia'];
+}
+
 /** Sin Inteligencia (el «—» de una sabandija descerebrada: `sinPuntuacion`). */
 export function companeroSinInteligencia(companero: CompaneroMonstruoDetalle | null | undefined): boolean {
-    return sinPuntuacion((companero?.Caracteristicas as Record<string, number | null> | undefined)?.['Inteligencia']);
+    return sinPuntuacion(inteligenciaDelCompanero(companero));
 }
 
 /** Su nombre, o `porDefecto` si no lo tiene, para los textos de sus huecos y sus selectores. */
