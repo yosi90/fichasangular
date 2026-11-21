@@ -1,6 +1,6 @@
-import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateCompaneroDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ENTRADA_ENANO_CLERIGO_1 } from 'src/testing/subida-nivel-api';
-import { claveBorradorSubida, fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida, tocaIntercambioConjuros } from './subida-nivel';
+import { claveBorradorSubida, companeroConLoDelMotor, fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida, tocaIntercambioConjuros } from './subida-nivel';
 import { fichaDeLaPlantilla } from './adquirir-plantilla';
 import { campoDelErrorASubida, PasoSubida } from './subida-nivel-vista';
 
@@ -134,5 +134,47 @@ describe('subida-nivel (la subida de nivel: PG, intercambio y la ficha que se ma
         // La adquisición de una plantilla, igual.
         const conPlantilla = fichaDeLaPlantilla({ entrada, antes, despues, idPlantilla: 3, puntosGolpe: 20, idAlineamiento: null });
         expect(conPlantilla.caracteristicas.constitucion).toEqual({ valor: 0, minimo: 0, perdido: true });
+    });
+});
+
+describe('subida-nivel: el compañero animal que pone al día el motor', () => {
+    const guardado: PersonajeCreateCompaneroDto = {
+        nombre: 'Colmillo', idMonstruo: 48, idPlantilla: 0, vida: 13, dgAdi: 0, armaduraNatural: 2, fuerza: 13, destreza: 15,
+        inteligencia: 2, trucosAdi: 1, habilidades: [{ idHabilidad: 6, idExtra: -1, rangos: 3 }],
+        especiales: [{ idEspecial: 157, idExtra: -1 }, { idEspecial: 158, idExtra: -1 }], dotes: [],
+    };
+    const antes: PersonajeCreateCompaneroDto = { ...guardado, vida: 15, especiales: [{ idEspecial: 157, idExtra: 0 }, { idEspecial: 158, idExtra: 0 }], habilidades: [] };
+
+    it('sus cifras y las aptitudes que gana, sin tocar lo demás ni lo que guardaba con otra forma', () => {
+        const despues: PersonajeCreateCompaneroDto = {
+            ...antes, vida: 27, dgAdi: 2, armaduraNatural: 4, fuerza: 14, destreza: 16, trucosAdi: 2,
+            especiales: [...antes.especiales, { idEspecial: 43, idExtra: 0 }],
+        };
+        const resultado = companeroConLoDelMotor(guardado, antes, despues);
+        expect([resultado.vida, resultado.dgAdi, resultado.armaduraNatural, resultado.fuerza, resultado.destreza, resultado.trucosAdi])
+            .toEqual([27, 2, 4, 14, 16, 2]);
+        expect(resultado.especiales).toEqual([{ idEspecial: 157, idExtra: -1 }, { idEspecial: 158, idExtra: -1 }, { idEspecial: 43, idExtra: 0 }]);
+        expect(resultado.habilidades).toEqual(guardado.habilidades);
+        expect([resultado.nombre, resultado.idMonstruo, resultado.idPlantilla]).toEqual(['Colmillo', 48, 0]);
+    });
+
+    it('lo que deja de tener se va (por id); la dote nueva entra', () => {
+        const conDevocion = { ...guardado, especiales: [...guardado.especiales, { idEspecial: 159, idExtra: -1 }] };
+        const antesConDevocion = { ...antes, especiales: [...antes.especiales, { idEspecial: 159, idExtra: 0 }] };
+        const despues = { ...antes, dotes: [{ idDote: 49, idExtra: 0 }] };
+        const resultado = companeroConLoDelMotor(conDevocion, antesConDevocion, despues);
+        expect(resultado.especiales.map((e) => e.idEspecial)).toEqual([157, 158]);
+        expect(resultado.dotes).toEqual([{ idDote: 49, idExtra: 0 }]);
+    });
+
+    it('la ficha de la subida lleva el compañero puesto al día; sin cambios del motor, el de la entrada tal cual', () => {
+        const entrada = { ...JSON.parse(JSON.stringify(ENTRADA_ENANO_CLERIGO_1)), companero: guardado } as PersonajeCreateRequestDto;
+        const base = { ...JSON.parse(JSON.stringify(ENTRADA_ENANO_CLERIGO_1)) } as PersonajeCreateRequestDto;
+        const datos = { entrada, idClase: 4, nivel: { idClase: 4, nivelClase: 2, elecciones: [] }, puntosGolpe: 20 };
+        const igual = fichaDeLaSubida({ ...datos, antes: { ...base, companero: antes }, despues: { ...base, companero: antes } });
+        expect(igual.companero).toEqual(guardado);
+        const subido = fichaDeLaSubida({ ...datos, antes: { ...base, companero: antes }, despues: { ...base, companero: { ...antes, dgAdi: 2 } } });
+        expect(subido.companero!.dgAdi).toBe(2);
+        expect(subido.companero!.especiales).toEqual(guardado.especiales);
     });
 });

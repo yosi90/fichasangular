@@ -15,6 +15,7 @@ import { GrupoArmaService } from './grupo-arma.service';
 import { GrupoArmaduraService } from './grupo-armadura.service';
 import { HabilidadService } from './habilidad.service';
 import { IdiomaService } from './idioma.service';
+import { MonstruoService } from './monstruo.service';
 import { NuevoPersonajeService } from './nuevo-personaje.service';
 import { PersonajeService } from './personaje.service';
 import { PlantillaService } from './plantilla.service';
@@ -60,6 +61,7 @@ export class MotorDesdeFichaService {
         private personajeSvc: PersonajeService,
         private subtipoSvc: SubtipoService,
         private deidadSvc: DeidadService,
+        private monstruoSvc: MonstruoService,
     ) { }
 
     /** El primer valor de un catálogo, o `null` si falla. */
@@ -121,7 +123,7 @@ export class MotorDesdeFichaService {
 
     /** Los catálogos que usa el motor, como en la creación. */
     async cargarCatalogos(motor: NuevoPersonajeService): Promise<void> {
-        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos, deidades] = await Promise.all([
+        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos, deidades, progresionCompanero] = await Promise.all([
             this.primero(this.claseSvc.getClases()), this.primero(this.doteSvc.getDotes()), this.primero(this.conjuroSvc.getConjuros()),
             this.primero(this.habilidadSvc.getHabilidades()), this.primero(this.habilidadSvc.getHabilidadesCustom()),
             this.primero(this.idiomaSvc.getIdiomas()), this.primero(this.dominioSvc.getDominios()), this.primero(this.escuelaSvc.getEscuelas()),
@@ -131,6 +133,8 @@ export class MotorDesdeFichaService {
             this.primero(this.subtipoSvc.getSubtipos()),
             // Las deidades: los dominios de la suya (el reciclaje de un dominio) y la deidad que piden sus clases.
             this.primero(this.deidadSvc.getDeidades()),
+            // La tabla del compañero animal y sus aptitudes por nivel: la subida lo pone al día.
+            this.primero(this.monstruoSvc.getCompanerosProgresion()),
         ]);
         motor.setCatalogoClases(clases ?? []);
         motor.setCatalogoDotes(dotes ?? []);
@@ -146,6 +150,7 @@ export class MotorDesdeFichaService {
         motor.setCatalogoGruposArmadurasDotes((gruposArmaduras ?? []).map((g) => extraDeDote(g)));
         motor.setCatalogoSubtipos(subtipos ?? []);
         motor.setCatalogoDeidades(deidades ?? []);
+        motor.setProgresionCompanero(progresionCompanero);
     }
 
     /**
@@ -170,8 +175,10 @@ export class MotorDesdeFichaService {
                 idiomas: catalogo(motor.EstadoFlujo.ventajas.catalogoIdiomas ?? []),
             },
         };
+        // El compañero animal, con lo que le pone al día el motor (la subida: `fichaConLoDelMotor` pasa a la ficha lo que cambia).
+        const companero = motor.companeroParaGuardar();
         return this.personajeSvc.construirPayloadCreacionDesdePersonaje(personaje, contexto, null,
-            motor.getProgresionLanzadorPersistible(), null);
+            motor.getProgresionLanzadorPersistible(), companero ? { companero } : null);
     }
 
     /**

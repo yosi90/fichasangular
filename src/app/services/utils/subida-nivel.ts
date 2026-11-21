@@ -1,5 +1,5 @@
 import { ClaseIntercambioConjuros } from 'src/app/interfaces/clase';
-import { PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { PersonajeCreateCompaneroDto, PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { modificadorCaracteristica } from './caracteristicas';
 import { toInt } from './normalizacion';
 
@@ -325,6 +325,34 @@ export function aplicarHabilidadesDelMotor(ficha: PersonajeCreateRequestDto, ant
     };
 }
 
+/** Las cifras del compañero que pone al día el motor: las de la tabla, sus PG y su Inteligencia. */
+const CIFRAS_COMPANERO_DEL_MOTOR = ['vida', 'dgAdi', 'trucosAdi', 'fuerza', 'destreza', 'armaduraNatural', 'inteligencia'] as const;
+
+/**
+ * El compañero de la `entrada` con lo que cambia el motor entre `antes` y `despues` (la web lo pone al día en cada nivel
+ * de clase: `docs/publica/endpoints/personajes.md`, «El compañero, comprobado por la API»): sus cifras y, por id, las
+ * aptitudes y las dotes que gana o pierde. Lo demás (el nombre, el animal, la plantilla, las habilidades) se queda como
+ * estaba, y lo que guardaba la ficha con otra forma (el extra de antes) también.
+ */
+export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, antes: PersonajeCreateCompaneroDto | undefined,
+    despues: PersonajeCreateCompaneroDto): PersonajeCreateCompaneroDto {
+    const resultado: PersonajeCreateCompaneroDto = JSON.parse(JSON.stringify(guardado));
+    CIFRAS_COMPANERO_DEL_MOTOR.forEach((k) => {
+        if (toInt(despues[k]) !== toInt(antes?.[k]))
+            resultado[k] = toInt(despues[k]);
+    });
+    const porId = <T>(guardadas: T[] | undefined, previas: T[] | undefined, nuevas: T[] | undefined, id: (x: T) => number): T[] => {
+        const idsAntes = new Set((previas ?? []).map(id));
+        const idsDespues = new Set((nuevas ?? []).map(id));
+        const quedan = (guardadas ?? []).filter((x) => !(idsAntes.has(id(x)) && !idsDespues.has(id(x))));
+        const yaEstan = new Set(quedan.map(id));
+        return [...quedan, ...(nuevas ?? []).filter((x) => !idsAntes.has(id(x)) && !yaEstan.has(id(x)))];
+    };
+    resultado.especiales = porId(guardado.especiales, antes?.especiales, despues.especiales, (x) => toInt(x?.idEspecial));
+    resultado.dotes = porId(guardado.dotes, antes?.dotes, despues.dotes, (x) => toInt(x?.idDote));
+    return resultado;
+}
+
 export interface EntradaFichaDelMotor {
     /** La `entrada` de la sesión abierta (`GET /personajes/{id}/sesiones/{numero}`). */
     entrada: PersonajeCreateRequestDto;
@@ -428,6 +456,10 @@ export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreate
             selecciones: aplicarDiferencia(ficha.progresionLanzador?.selecciones as any, antes.progresionLanzador?.selecciones as any,
                 despues.progresionLanzador?.selecciones as any, false) as any,
         };
+
+    // El compañero animal, puesto al día por el motor (la tabla y las aptitudes de su nivel).
+    if (ficha.companero && despues.companero && claveElemento(antes.companero ?? null) !== claveElemento(despues.companero))
+        ficha.companero = companeroConLoDelMotor(ficha.companero, antes.companero, despues.companero);
 
     ficha.niveles = (datos.entrada.niveles ?? []).map((n) => ({ ...n }));
     return ficha;
