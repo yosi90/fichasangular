@@ -6,10 +6,10 @@ describe('SelectorTrucosModalComponent', () => {
     const truco = (id: number, nombre: string, cambios: Partial<Truco> = {}): Truco => ({
         Id: id, Nombre: nombre, Nombre_original: '', Traducido: false, Descripcion: '', Manual: { Id: 54, Nombre: 'Manual del jugador 1', Pagina: 83 },
         Cd: 15, Coste: 1, Es_fin: false, Semanas: null, Int_minima: null, Sustituye: null, Semanas_mejora: null, Cd_mejora: null, Trucos: [],
-        Requisitos: { Trucos: [], Especiales: [], Tipos: [] }, Oficial: true, ...cambios,
+        Requisitos: { Trucos: [], Raciales: [], Tipos: [] }, Oficial: true, ...cambios,
     });
     const ATACA = truco(1, 'Ataca');
-    const AYUDA = truco(5, 'Ayuda en ataque', { Requisitos: { Trucos: [{ Id: 1, Nombre: 'Ataca', Opcional: false }], Especiales: [], Tipos: [] } });
+    const AYUDA = truco(5, 'Ayuda en ataque', { Requisitos: { Trucos: [{ Id: 1, Nombre: 'Ataca', Opcional: false }], Raciales: [], Tipos: [] } });
     const ATACA_TODAS = truco(2, 'Ataca (todas las criaturas)', { Coste: 2 });
     const LUCHA = truco(7, 'Lucha', { Es_fin: true });
     let component: SelectorTrucosModalComponent;

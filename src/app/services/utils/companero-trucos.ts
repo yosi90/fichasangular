@@ -113,9 +113,13 @@ export function motivoTrucoAdicional(truco: Truco, contexto: ContextoTrucosDelCo
     const opcionales = truco.Requisitos.Trucos.filter((t) => t.Opcional);
     if (opcionales.length > 0 && !opcionales.some((t) => contexto.sabe.has(t.Id)))
         return `Pide saber ${unirLista(opcionales.map((t) => `«${t.Nombre}»`), 'o')}.`;
-    const sinAptitud = truco.Requisitos.Especiales.filter((e) => !contexto.aptitudes.has(nombreDeAptitud(e.Nombre)));
-    if (sinAptitud.length > 0)
-        return `Pide ${unirLista(sinAptitud.map((e) => e.Nombre), 'y')}.`;
+    const tieneRacial = (r: { Nombre: string; }) => contexto.aptitudes.has(nombreDeAptitud(r.Nombre));
+    const sinRacial = truco.Requisitos.Raciales.filter((r) => !r.Opcional && !tieneRacial(r));
+    if (sinRacial.length > 0)
+        return `Pide ${unirLista(sinRacial.map((r) => r.Nombre), 'y')}.`;
+    const racialesOpcionales = truco.Requisitos.Raciales.filter((r) => r.Opcional);
+    if (racialesOpcionales.length > 0 && !racialesOpcionales.some(tieneRacial))
+        return `Pide ${unirLista([...new Set(racialesOpcionales.map((r) => nombreDeAptitud(r.Nombre)))], 'o')}.`;
     if (truco.Requisitos.Tipos.length > 0 && !truco.Requisitos.Tipos.some((t) => t.Id === contexto.idTipo))
         return `Solo para ${unirLista(truco.Requisitos.Tipos.map((t) => t.Nombre), 'o')}.`;
     const coste = Math.max(1, toInt(truco.Coste, 1));

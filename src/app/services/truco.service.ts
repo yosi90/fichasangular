@@ -42,9 +42,8 @@ export function normalizeTruco(raw: any): Truco {
         Requisitos: {
             Trucos: toArray(requisitos?.Trucos).map((t: any) => ({ ...normalizeTrucoRef(t), Opcional: toBoolean(t?.Opcional) }))
                 .filter((t) => t.Id > 0),
-            // Las aptitudes de la criatura que pide (Olfato, Veneno, Telaraña): `Especiales` o, si la API las da como
-            // raciales, `Raciales`; se juzgan por su nombre (`aptitudesDeLaCriatura`).
-            Especiales: [...toArray(requisitos?.Especiales), ...toArray(requisitos?.Raciales)].map(normalizeTrucoRef)
+            // Los raciales de la criatura que pide (su olfato, su veneno, su telaraña), por su nombre (`aptitudesDeLaCriatura`).
+            Raciales: toArray(requisitos?.Raciales).map((t: any) => ({ ...normalizeTrucoRef(t), Opcional: toBoolean(t?.Opcional) }))
                 .filter((t) => t.Nombre.length > 0),
             Tipos: toArray(requisitos?.Tipos).map(normalizeTrucoRef).filter((t) => t.Id > 0),
         },

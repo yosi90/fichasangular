@@ -10,10 +10,13 @@ export interface TrucoRef {
     Nombre: string;
 }
 
-/** Lo que pide un truco: los trucos (los `Opcional`, un grupo «uno de estos»), las aptitudes de la criatura y sus tipos. */
+/**
+ * Lo que pide un truco: los trucos y los raciales de la criatura (en los dos, los `Opcional` forman un grupo «uno de estos»:
+ * Ataca o Ataca (todas las criaturas); cualquiera de sus venenos) y sus tipos.
+ */
 export interface TrucoRequisitos {
     Trucos: (TrucoRef & { Opcional: boolean; })[];
-    Especiales: TrucoRef[];
+    Raciales: (TrucoRef & { Opcional?: boolean; })[];
     Tipos: TrucoRef[];
 }
 

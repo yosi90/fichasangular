@@ -16,15 +16,15 @@ describe('los trucos del compañero animal', () => {
     const truco = (id: number, nombre: string, cambios: Partial<Truco> = {}): Truco => ({
         Id: id, Nombre: nombre, Nombre_original: '', Traducido: false, Descripcion: `${nombre}.`, Manual: { Id: 54, Nombre: 'Manual del jugador 1', Pagina: 83 },
         Cd: 15, Coste: 1, Es_fin: false, Semanas: null, Int_minima: null, Sustituye: null, Semanas_mejora: null, Cd_mejora: null, Trucos: [],
-        Requisitos: { Trucos: [], Especiales: [], Tipos: [] }, Oficial: true, ...cambios,
+        Requisitos: { Trucos: [], Raciales: [], Tipos: [] }, Oficial: true, ...cambios,
     });
     const ATACA = truco(1, 'Ataca', { Cd: 20 });
     const ATACA_TODAS = truco(2, 'Ataca (todas las criaturas)', { Cd: 20, Coste: 2, Sustituye: { Id: 1, Nombre: 'Ataca' } });
     const ATRAS = truco(3, 'Atrás');
-    const RASTREA = truco(4, 'Rastrea', { Cd: 20, Requisitos: { Trucos: [], Especiales: [{ Id: 1862, Nombre: 'Olfato' }], Tipos: [] } });
+    const RASTREA = truco(4, 'Rastrea', { Cd: 20, Requisitos: { Trucos: [], Raciales: [{ Id: 1862, Nombre: 'Olfato' }], Tipos: [] } });
     const AYUDA = truco(5, 'Ayuda en ataque', { Cd: 20, Requisitos: {
-        Trucos: [{ Id: 1, Nombre: 'Ataca', Opcional: true }, { Id: 2, Nombre: 'Ataca (todas las criaturas)', Opcional: true }], Especiales: [], Tipos: [] } });
-    const LANZA = truco(6, 'Lanza telaraña', { Requisitos: { Trucos: [], Especiales: [{ Id: 9, Nombre: 'Telaraña' }], Tipos: [{ Id: 15, Nombre: 'Sabandija' }] } });
+        Trucos: [{ Id: 1, Nombre: 'Ataca', Opcional: true }, { Id: 2, Nombre: 'Ataca (todas las criaturas)', Opcional: true }], Raciales: [], Tipos: [] } });
+    const LANZA = truco(6, 'Lanza telaraña', { Requisitos: { Trucos: [], Raciales: [{ Id: 9, Nombre: 'Telaraña' }], Tipos: [{ Id: 15, Nombre: 'Sabandija' }] } });
     const LUCHA = truco(7, 'Lucha', { Es_fin: true, Cd: 20, Int_minima: 1, Trucos: [{ Id: 1, Nombre: 'Ataca' }, { Id: 3, Nombre: 'Atrás' }] });
     const CATALOGO = [ATACA, ATACA_TODAS, ATRAS, RASTREA, AYUDA, LANZA, LUCHA];
 
@@ -49,6 +49,14 @@ describe('los trucos del compañero animal', () => {
         expect(trucosAdicionalesPendientes(lobo({ int: 10 }))).toBe(0);
         expect(trucosAdicionalesPendientes(lobo({ int: null }))).toBe(2);
         expect(trucosAdicionalesPendientes(lobo({ int: 0 }))).toBe(2);
+    });
+
+    it('los raciales «uno de estos» (cualquiera de sus venenos) bastan con uno; los demás, todos', () => {
+        const ENTREGA = truco(8, 'Entrega veneno', { Requisitos: { Trucos: [], Tipos: [],
+            Raciales: [{ Id: 50, Nombre: 'veneno (víbora)', Opcional: true }, { Id: 51, Nombre: 'veneno (araña monstruosa)', Opcional: true }] } });
+        const conVeneno = lobo({ Raciales: [{ Id: 50, Nombre: 'veneno (víbora)' }] } as any);
+        expect(motivoTrucoAdicional(ENTREGA, contextoDeTrucosDelCompanero(conVeneno, [...CATALOGO, ENTREGA]))).toBeNull();
+        expect(motivoTrucoAdicional(ENTREGA, contextoDeTrucosDelCompanero(lobo(), [...CATALOGO, ENTREGA]))).toBe('Pide veneno.');
     });
 
     it('lo que sabe incluye los trucos de su fin y los que sustituye', () => {
@@ -144,7 +152,7 @@ describe('los trucos del compañero animal', () => {
 
     it('el catálogo y los trucos del monstruo: lo que falta, vacío; los de un monstruo, de su monstruo', () => {
         const [leido] = leerTrucos({ 4: { Id: 4, Nombre: 'Rastrea', Coste: 1, Requisitos: { Raciales: [{ Id: 43, Nombre: 'Olfato' }] } } });
-        expect(leido.Requisitos.Especiales.map((e) => e.Nombre)).toEqual(['Olfato']);
+        expect(leido.Requisitos.Raciales.map((e) => e.Nombre)).toEqual(['Olfato']);
         expect(leido.Sustituye).toBeNull();
         expect(leerTrucosDeMascota([{ Id: 7, Nombre: 'Lucha' }, { Id: 1, Nombre: 'Ataca', Origen: 'Adicional', Orden: 1 }, { Id: 0 }])
             .map((t) => [t.Origen, t.Orden])).toEqual([['monstruo', null], ['adicional', 1]]);
