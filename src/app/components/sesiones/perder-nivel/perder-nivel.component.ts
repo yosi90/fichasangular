@@ -23,6 +23,7 @@ import {
     ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import { filasDeLasMascotas, perdidaConSusMascotas } from 'src/app/services/utils/mascota-al-dia';
 import { esConversion } from 'src/app/services/utils/conversion-muerto-viviente';
 import { motivoRevivirSinConstitucion } from 'src/app/services/utils/vuelta-a-la-vida';
 
@@ -234,15 +235,18 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
                 return;
             }
             this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({ caracteristica: { clave: 'Constitucion', menos: con.antes - con.despues } });
-            this.resultado = {
+            // Sin el nivel, sus mascotas no cambian de nivel; el familiar, sí de PG (la mitad de los de su amo).
+            const conMascotas = perdidaConSusMascotas(this.svc, this.motor, entrada, {
                 ficha: marcarDotesSinPrerrequisitos(con.ficha, this.sinPrerrequisitos), quitado: quitadoVacio(),
                 pg: { ...con.pg, exacto: true }, ataqueBase: { antes: '', despues: '' }, salvaciones: {}, avisos: [],
-            };
+            }, null);
+            this.resultado = conMascotas.resultado;
             this.filas = [
                 { que: 'Constitución', antes: `${con.antes}`, ahora: `${con.despues}` },
                 { que: 'Puntos de golpe', antes: `${con.pg.antes}`, ahora: `${con.pg.despues}` },
                 { que: 'PX', antes: this.px(px), ahora: `${this.px(px)} (los conserva)` },
                 ...this.filaSinPrerrequisitos(),
+                ...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado),
             ];
             return;
         }
@@ -262,7 +266,11 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             rangos: resultado.quitado.rangos,
             dotesQuitadas: resultado.quitado.dotes,
         });
-        this.resultado = { ...resultado, ficha: marcarDotesSinPrerrequisitos(resultado.ficha, this.sinPrerrequisitos) };
+        // Sus mascotas, juzgadas otra vez sin el nivel (contrato, «La mascota inactiva…»): con los valores de su nivel nuevo o
+        // inactivas hasta que vuelvan a cumplir.
+        const conMascotas = perdidaConSusMascotas(this.svc, this.motor, entrada,
+            { ...resultado, ficha: marcarDotesSinPrerrequisitos(resultado.ficha, this.sinPrerrequisitos) }, { idClase: nivel.idClase, indice });
+        this.resultado = conMascotas.resultado;
         const filas: FilaPerdida[] = [
             filaDelNivel,
             { que: 'NEP', antes: `${nep}`, ahora: `${nep - 1}` },
@@ -271,6 +279,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         ];
         filas.push(...filasDelNivelPerdido(resultado, nombresDeLaFicha(this.svc, this.pj, entrada)));
         filas.push(...this.filaSinPrerrequisitos());
+        filas.push(...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado));
         this.filas = filas;
     }
 

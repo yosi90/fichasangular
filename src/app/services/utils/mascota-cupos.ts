@@ -30,6 +30,13 @@ import { porNombre } from 'src/app/services/utils/orden-texto';
  *   fila de una tabla por nivel (`filaDelNivel`).
  */
 
+/**
+ * Lo que dicen la ficha y la hoja de una mascota inactiva (`Inactiva`, contrato: `personajes.md`, «La mascota inactiva, y
+ * la mascota en los cambios de la ficha»): la ficha no trae el motivo, que sí dice «Lo que cambia» de la vía que la deja así.
+ */
+export const NOTA_MASCOTA_INACTIVA = 'inactivo hasta que vuelva a cumplir lo que pide su fila';
+export const AYUDA_MASCOTA_INACTIVA = 'No cumple lo que pide su fila de la lista (el nivel efectivo, la clase que la da, la dote que la abre o el ataque base de su amo): vale la criatura tal cual, sin lo que le da el nivel de su amo, y el amo pierde lo que le daba. Vuelve a estar activo, sin ceremonia, cuando vuelva a cumplir.';
+
 /** La columna de `Especial` que dice que una aptitud da cada mascota (el nombre de la columna del contrato, no un dato). */
 export type OtorgaMascota = 'Otorga_companero' | 'Otorga_familiar';
 

@@ -8,6 +8,7 @@ import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } fr
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { AYUDA_MASCOTA_INACTIVA, NOTA_MASCOTA_INACTIVA } from 'src/app/services/utils/mascota-cupos';
 import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
 import { extraHabilidadElegido, habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
@@ -488,6 +489,12 @@ export class FichaPersonajeService {
 
     private rellenarListasMonstruo(form: any, monstruo: MonstruoDetalle): void {
         let cont = 0;
+        // La mascota inactiva hasta que vuelva a cumplir (`Inactiva` de la ficha), lo primero.
+        if ((monstruo as { Inactiva?: boolean; })?.Inactiva) {
+            this.trySetText(form, `conjuro${cont}`, `Inactivo: ${NOTA_MASCOTA_INACTIVA}`);
+            this.trySetText(form, `desc_con${cont}`, AYUDA_MASCOTA_INACTIVA);
+            cont++;
+        }
         this.trySetText(form, `conjuro${cont}`, `Tipo de criatura: ${monstruo?.Tipo?.Nombre ?? '-'}`);
         this.trySetText(form, `pag_con${cont}`, `${(monstruo as any)?.Tipo?.Origen ?? monstruo?.Tipo?.Descripcion ?? ''}`);
         this.trySetText(form, `desc_con${cont}`, this.getNotasTipoCriatura(monstruo));

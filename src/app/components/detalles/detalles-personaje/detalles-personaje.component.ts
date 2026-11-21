@@ -45,6 +45,7 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { BarraExperiencia, barraExperiencia, fechaSesion, tituloPropioSesion } from 'src/app/services/utils/sesiones-texto';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
+import { AYUDA_MASCOTA_INACTIVA, NOTA_MASCOTA_INACTIVA } from 'src/app/services/utils/mascota-cupos';
 import {
     detallesPiezaEquipo,
     formatoNumero,
@@ -1747,7 +1748,11 @@ ${envejecimiento}` : edades;
             .map((item) => item as MonstruoDetalle)
             .filter((monstruo) => toNumber(monstruo?.Id) > 0 && this.esVisible(monstruo?.Nombre))
             .sort(porNombre)
-            .map((monstruo) => ({ texto: `${monstruo.Nombre}`.trim(), clave: `${monstruo.Id}`, ref: monstruo }));
+            .map((monstruo) => ({
+                texto: `${monstruo.Nombre}`.trim(), clave: `${monstruo.Id}`, ref: monstruo,
+                // La mascota inactiva hasta que vuelva a cumplir (`Inactiva` de la ficha; el motivo lo dice «Lo que cambia»).
+                ...((monstruo as { Inactiva?: boolean; }).Inactiva ? { nota: `(${NOTA_MASCOTA_INACTIVA})`, ayuda: AYUDA_MASCOTA_INACTIVA } : {}),
+            }));
     }
 
     private calcularPestanas(m: ModeloFicha): ModeloFicha['pestanas'] {

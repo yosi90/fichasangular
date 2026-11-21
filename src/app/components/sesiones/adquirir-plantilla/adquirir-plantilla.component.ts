@@ -34,6 +34,9 @@ import { evaluarPlantillaParaElegir, PlantillaEvaluacionParaElegir } from 'src/a
 import { campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import {
+    EstadoDeLasMascotas, filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota,
+} from 'src/app/services/utils/mascota-al-dia';
 
 export type PasoPlantilla = 'plantilla' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'resumen';
 
@@ -122,6 +125,8 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     tiradaElegida: number | null = null;
     pg: PgPlantilla | null = null;
     cambios: CambioPlantilla[] = [];
+    /** Cómo quedan sus mascotas, juzgadas otra vez antes del resumen (`ponerMascotasAlDia`). */
+    private estadoMascotas: EstadoDeLasMascotas = {};
     /** Las clases que dejan de admitir su alineamiento con la plantilla: ex, o mantenidas como homebrew. */
     clasesContraAlineamiento: ClaseContraAlineamiento[] = [];
     /** Las que se mantienen como homebrew (la decisión `alineamiento_clase`), por su id. */
@@ -405,6 +410,9 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     }
 
     private prepararResumen(): void {
+        // Sus mascotas, juzgadas otra vez: la plantilla puede cambiar los PG y el ataque base del amo (contrato, «La mascota
+        // inactiva…»).
+        this.estadoMascotas = this.svc.ponerMascotasAlDia();
         this.calcularPg();
         this.clasesContraAlineamiento = this.clasesQueDejanSuAlineamiento();
         this.cambios = cambiosDeLaPlantilla({
@@ -418,6 +426,9 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             exClases: this.clasesContraAlineamiento,
             razaContraAlineamiento: this.razaContraElAlineamientoNuevo(),
         });
+        const conMascota = !!this.entrada?.companero || !!this.entrada?.familiar;
+        const mascotas = conMascota ? filasDeLasMascotas(this.entrada!, this.fichaParaGuardar(), this.estadoMascotas) : [];
+        this.cambios = [...this.cambios, ...mascotas.map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
     }
 
     /**
@@ -502,15 +513,18 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
 
     private fichaParaGuardar(): PersonajeCreateRequestDto {
         const idAlineamiento = this.idAlineamientoDespues();
-        return fichaDeLaPlantilla({
+        const despues = this.motor.cuerpoDelMotor(this.svc, this.entrada!, idAlineamiento);
+        const ficha = fichaDeLaPlantilla({
             entrada: this.entrada!,
             antes: this.antes!,
-            despues: this.motor.cuerpoDelMotor(this.svc, this.entrada!, idAlineamiento),
+            despues,
             idPlantilla: toInt(this.elegida?.Id),
             puntosGolpe: this.pg?.total ?? toInt(this.entrada?.personaje.puntosGolpe),
             idAlineamiento,
             decisionesNuevas: this.decisionesNuevas(),
         });
+        // Lo que el amo pierde por su mascota, si queda inactiva.
+        return sinLoQueYaNoDaLaMascota(ficha, this.antes!, despues, this.svc.loQueDanLasMascotasAlAmo());
     }
 
     /** Lo que vuelve homebrew la adquisición: sin sus requisitos y las clases que se mantienen contra su alineamiento. */

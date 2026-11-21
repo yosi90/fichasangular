@@ -92,6 +92,7 @@ import {
     huecosDeMascota, nombreDeLaCriatura, nombreDeLaMascota, PlanMascota, planDeLaMascota,
 } from 'src/app/services/utils/reciclaje-mascota';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import { filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
@@ -1065,6 +1066,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 }
                 : null,
         });
+        // Lo que le pasa a su mascota con el nivel nuevo: sus valores, o que vuelve a cumplir su fila (o que queda inactiva).
+        const entrada = this.entradaDelNivel;
+        if (entrada.companero || entrada.familiar) {
+            const estado = this.svc.ponerMascotasAlDia();
+            const ficha = this.fichaDeLaSubidaSinMarcas(this.svc.getEleccionesDelNivelEnCurso());
+            this.cambios = [...this.cambios, ...filasDeLasMascotas(entrada, ficha, estado).map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
+        }
     }
 
     private fichaParaGuardar(): PersonajeCreateRequestDto {
@@ -1076,9 +1084,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     private fichaDeLaSubidaSinMarcas(elecciones: PersonajeCreateNivelEleccionDto[]): PersonajeCreateRequestDto {
+        // Sus mascotas, juzgadas otra vez con el nivel nuevo (la API lo hace aunque el bloque no cambie: contrato, «La mascota
+        // inactiva…»): la inactiva que vuelve a cumplir, activa; la que no cumple, inactiva. Al aplicar el nivel ya se activa.
+        this.svc.ponerMascotasAlDia();
         const despues = this.cuerpoDelMotor();
         // El compañero que se recicla, con los rangos que se han repartido otra vez.
-        return conLosRangosDelCompaneroNuevo(this.fichaDeLaSubidaDelMotor(elecciones, despues), this.plan?.tipo === 'mascota' ? this.plan : null, despues);
+        const ficha = conLosRangosDelCompaneroNuevo(this.fichaDeLaSubidaDelMotor(elecciones, despues), this.plan?.tipo === 'mascota' ? this.plan : null, despues);
+        return sinLoQueYaNoDaLaMascota(ficha, this.antes!, despues, this.svc.loQueDanLasMascotasAlAmo());
     }
 
     private fichaDeLaSubidaDelMotor(elecciones: PersonajeCreateNivelEleccionDto[], despues: PersonajeCreateRequestDto): PersonajeCreateRequestDto {

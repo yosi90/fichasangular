@@ -189,11 +189,14 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
         if (!sesion || this.restableciendo)
             return;
         const cuantos = this.nivelesRestablecibles;
+        const conMascota = (this.pj?.Companeros ?? []).length > 0 || (this.pj?.Familiares ?? []).length > 0;
         const r = await Swal.fire({
             icon: 'question',
             title: 'Restablecer un nivel',
             html: `<p>Devuelve el último nivel consumido por un nivel negativo, tal como era (su clase, lo que eligió y su tirada).
                 Solo si no ha pasado más de 1 día por nivel del lanzador (una semana con el mayor).</p>
+                ${conMascota ? `<p>Su compañero animal o su familiar vuelve también como era, activo si quedó inactivo por ese nivel,
+                con los PG y el ataque base de su amo restablecido.</p>` : ''}
                 <label style="display:block;margin-top:.75rem;text-align:left">Conjuro
                     <select id="restablecer-conjuro" class="swal2-select">
                         <option value="restablecimiento">Restablecimiento (un nivel)</option>

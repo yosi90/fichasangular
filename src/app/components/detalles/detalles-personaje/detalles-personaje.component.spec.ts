@@ -710,6 +710,14 @@ describe('DetallesPersonajeComponent', () => {
             expect(monstruo).toHaveBeenCalledWith(jasmine.objectContaining({ Id: 202 }));
         });
 
+        it('enseña la mascota inactiva hasta que vuelva a cumplir (`Inactiva` de la ficha), con el porqué en su ayuda', () => {
+            component.pj.Companeros = [{ Id: 202, Nombre: 'Lomo', Inactiva: true } as any, { Id: 203, Nombre: 'Lobo fiel' } as any];
+            verPagina();
+
+            expect(textos('li', lateral('Familiares y compañeros')))
+                .toEqual(['Lobo fiel', 'Lomo (inactivo hasta que vuelva a cumplir lo que pide su fila)']);
+        });
+
         it('usa el comodín de la API para los extras de los especiales', () => {
             component.pj = fichaDeLaApi({
                 especiales: [

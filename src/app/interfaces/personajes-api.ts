@@ -250,6 +250,11 @@ export interface PersonajeCreateFamiliarDto {
     habilidades: PersonajeCreateHabilidadMascotaDto[];
     especiales: Array<{ idEspecial: number; }>;
     dotes: Array<{ idDote: number; idExtra: number; }>;
+    /**
+     * Inactivo hasta que vuelva a cumplir lo que pide su fila de la lista (contrato: `personajes.md`, «La mascota inactiva,
+     * y la mascota en los cambios de la ficha»); sin él, activo. La web lo manda solo cuando lo está.
+     */
+    inactiva?: boolean;
 }
 
 /** El compañero animal del personaje (`POST /personajes/add`, bloque `companero`). */
@@ -267,6 +272,8 @@ export interface PersonajeCreateCompaneroDto {
     habilidades: PersonajeCreateHabilidadMascotaDto[];
     especiales: Array<{ idEspecial: number; idExtra: number; }>;
     dotes: Array<{ idDote: number; idExtra: number; }>;
+    /** Inactivo hasta que vuelva a cumplir lo que pide su fila de la lista (como el del familiar); sin él, activo. */
+    inactiva?: boolean;
 }
 
 export interface PersonajeCreateMascotasDto {

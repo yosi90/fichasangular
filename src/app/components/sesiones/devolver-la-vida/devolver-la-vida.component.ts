@@ -44,6 +44,7 @@ import {
 } from 'src/app/services/utils/perder-nivel';
 import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
+import { filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
 import { diferencia, fichaDeLaSubida, modConstitucionDeEntrada, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida } from 'src/app/services/utils/subida-nivel-vista';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
@@ -526,13 +527,16 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         const razaDelNep = this.combinada ?? this.raza!;
         const sustituidos = razaDelNep.Especiales_sustituidos ?? this.raza!.Especiales_sustituidos ?? [];
         const r = this.renumerado;
+        // Sus mascotas, juzgadas otra vez sin los niveles que pierde (contrato, «La mascota inactiva…»): los de la clase de
+        // monstruo no les suman, pero cambian los PG y el ataque base de su amo; el nivel de más, sí.
+        const estadoMascotas = svc.ponerMascotasAlDia();
         // Las dotes, vueltas a evaluar con todo: las que se quedan sin un prerrequisito y las que lo vuelven a cumplir.
         const despues = this.motor.cuerpoDelMotor(svc, entrada);
         const { marcar, desmarcar } = this.dotesVueltasAEvaluar(sin.rotasAntes);
-        this.ficha = fichaDeLaVuelta({
+        this.ficha = sinLoQueYaNoDaLaMascota(fichaDeLaVuelta({
             entrada, sinLosNiveles: ficha, antes: sin.antes, despues, sustituidos, marcar, desmarcar, dotesNuevas: r?.dotesNuevas,
             deLasTablas: especialesDeLasTablas((ficha.colecciones?.clases ?? []).map((c) => ({ clase: svc.claseDelCatalogo(c.idClase), nivel: toInt(c.nivel) }))),
-        });
+        }), sin.antes, despues, svc.loQueDanLasMascotasAlAmo());
 
         const nep = toInt(this.experiencia?.nivel);
         const nivelesClaseAntes = this.nivelesDeClaseAntes;
@@ -556,6 +560,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
             pg: { antes: toInt(entrada.personaje.puntosGolpe), despues: toInt(ficha.personaje.puntosGolpe), exacto: tras.exacto },
             renumerado: r?.resumen ?? null,
         });
+        this.cambios = [...this.cambios, ...filasDeLasMascotas(entrada, this.ficha, estadoMascotas).map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
         this.avisos = Array.from(new Set(tras.avisos));
     }
 

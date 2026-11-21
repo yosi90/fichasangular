@@ -222,6 +222,11 @@ export interface FamiliarMonstruoDetalle extends MonstruoDetalle {
     };
     Especiales: EspecialContextualMonstruo[];
     Personajes: PersonajeRefMonstruo[];
+    /**
+     * El de una ficha, inactivo hasta que vuelva a cumplir lo que pide su fila de la lista (`Inactiva` de la ficha: contrato,
+     * `personajes.md`, «La mascota inactiva…»). Sin él, activo.
+     */
+    Inactiva?: boolean;
 }
 
 /** Una fila de la tabla del compañero animal (`Bonos` de `GET /companeros/progresion`): lo que tiene desde ese nivel. */
@@ -319,6 +324,14 @@ export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
     };
     Especiales: EspecialContextualMonstruo[];
     Personajes: PersonajeRefMonstruo[];
+    /** El de una ficha, inactivo hasta que vuelva a cumplir lo que pide su fila de la lista (como el familiar). Sin él, activo. */
+    Inactiva?: boolean;
+    /**
+     * Las habilidades de su monstruo, sin las suyas: las pone la carga de las sesiones (`MotorDesdeFichaService`) para que sus
+     * rangos sigan el criterio «todo o nada» al bajar sus DG adicionales (`rangosDelCompaneroQueCaben`). Sin ellas, sus
+     * rangos se quedan como están.
+     */
+    Habilidades_monstruo?: MonstruoHabilidad[];
 }
 
 /**

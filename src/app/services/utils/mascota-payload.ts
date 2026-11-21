@@ -7,7 +7,7 @@ import {
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { primerEntero, toInt, toNumber } from './normalizacion';
 import { carasDado } from './puntos-golpe';
-import { dadosGolpeCompanero } from './companero-reglas';
+import { dadosGolpeCompanero, rangosDelCompaneroQueCaben } from './companero-reglas';
 import { TablaDelFamiliar } from './familiar-reglas';
 
 /**
@@ -137,6 +137,8 @@ export function construirFamiliarParaGuardar(
     amo: AmoDelFamiliar,
     tabla: TablaDelFamiliar,
 ): PersonajeCreateFamiliarDto {
+    if (familiar?.Inactiva)
+        return familiarInactivoParaGuardar(familiar);
     const bonos = tabla.bonos;
     const mayores = !!tabla.plantilla?.Pg_ataque_mayores;
     const caracteristicas = (familiar?.Caracteristicas ?? {}) as Record<string, number | null>;
@@ -171,6 +173,31 @@ export function construirFamiliarParaGuardar(
     return dto;
 }
 
+/**
+ * El familiar inactivo (contrato: `personajes.md`, «La mascota inactiva, y la mascota en los cambios de la ficha»): la
+ * criatura de su monstruo tal cual, sin lo que le da el nivel de su amo (ni sus PG, ni su ataque base, ni sus salvaciones
+ * base, ni sus rangos, ni la tabla). Sus aptitudes de la tabla ya no las lleva (las quita el motor).
+ */
+function familiarInactivoParaGuardar(familiar: FamiliarMonstruoDetalle): PersonajeCreateFamiliarDto {
+    const caracteristicas = (familiar?.Caracteristicas ?? {}) as Record<string, number | null>;
+    return {
+        nombre: nombreMascota(familiar?.Nombre, 'Familiar'),
+        idMonstruo: idMonstruo(familiar),
+        idPlantilla: Math.max(0, toInt(familiar?.Plantilla?.Id)),
+        vida: vidaMediaDelMonstruo(familiar),
+        ataqueBase: toInt(familiar?.Ataque?.Ataque_base),
+        fortaleza: toInt(familiar?.Salvaciones?.Fortaleza),
+        reflejos: toInt(familiar?.Salvaciones?.Reflejos),
+        voluntad: toInt(familiar?.Salvaciones?.Voluntad),
+        armaduraNatural: toInt(familiar?.Defensa?.Armadura_natural),
+        inteligencia: toInt(caracteristicas['Inteligencia']),
+        habilidades: habilidadesDelMonstruo(familiar?.Habilidades),
+        especiales: sinRepetidos(especialesDe(familiar).map(({ idEspecial }) => ({ idEspecial })), (item) => `${item.idEspecial}`),
+        dotes: dotesPropias(familiar),
+        inactiva: true,
+    };
+}
+
 /** Puntos de golpe medios de unos DG (como los del Manual de monstruos): por DG, la media del dado y la Constitución. */
 export function vidaMediaPorDados(dados: number, carasDado: number, modConstitucion: number): number {
     const cantidad = Math.max(0, toInt(dados));
@@ -182,7 +209,9 @@ export function vidaMediaPorDados(dados: number, carasDado: number, modConstituc
 
 /**
  * El compañero animal ya trae sus bonos por nivel del druida (DG adicionales, armadura natural, Fuerza, Destreza y
- * trucos; `clonarCompaneroParaPersonaje`). Sus puntos de golpe son los medios de sus DG (los suyos y los adicionales).
+ * trucos; `clonarCompaneroParaPersonaje`); inactivo, los de su monstruo (`inactiva`). Sus puntos de golpe son los medios de
+ * sus DG (los suyos y los adicionales). Con las habilidades de su monstruo (`Habilidades_monstruo`, en las sesiones), sus
+ * rangos son los que le caben con sus DG adicionales (`rangosDelCompaneroQueCaben`).
  */
 export function construirCompaneroParaGuardar(
     companero: CompaneroMonstruoDetalle,
@@ -192,6 +221,9 @@ export function construirCompaneroParaGuardar(
     const dgAdi = Math.max(0, toInt(companero?.Dg_adi));
     const dados = dadosGolpeCompanero(companero);
     const caras = carasDado(companero?.Dados_golpe?.Tipo_dado?.Nombre);
+    const habilidades = companero?.Habilidades_monstruo
+        ? rangosDelCompaneroQueCaben(companero.Habilidades ?? [], companero.Habilidades_monstruo, dgAdi, caracteristicas['Inteligencia'])
+        : companero?.Habilidades;
     return {
         nombre: nombreMascota(companero?.Nombre, 'Compañero'),
         idMonstruo: idMonstruo(companero),
@@ -203,11 +235,12 @@ export function construirCompaneroParaGuardar(
         destreza: toInt(caracteristicas['Destreza']),
         inteligencia: toInt(caracteristicas['Inteligencia']),
         trucosAdi: Math.max(0, toInt(companero?.Trucos_adi)),
-        habilidades: habilidadesDelMonstruo(companero?.Habilidades),
+        habilidades: habilidadesDelMonstruo(habilidades),
         especiales: sinRepetidos(
             [...especialesDe(companero), ...idsEspecialesDelVinculo.filter((id) => id > 0).map((idEspecial) => ({ idEspecial, idExtra: 0 }))],
             (item) => `${item.idEspecial}|${item.idExtra}`
         ),
         dotes: dotesPropias(companero),
+        ...(companero?.Inactiva ? { inactiva: true } : {}),
     };
 }
