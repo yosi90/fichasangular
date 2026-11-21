@@ -135,9 +135,9 @@ export function criaturaDelRasgo(criatura: CriaturaDeMascota): CriaturaDelRasgo 
 
 /**
  * Las mascotas del personaje (las de la ficha guardada, `entrada`), cada una en la primera clase que se la da (el motor,
- * recién hidratado: el personaje de antes de subir), con la criatura que tiene y el nivel de la elección: el `Nivel` de la
- * fila de su lista con la que la tiene y, nunca por debajo, lo que aporta su clase en el nivel en que se la da (el druida,
- * 1; el explorador, que la da a 4 con la mitad, 2). Sin la clase, sin el catálogo o sin otra criatura en su lista hasta
+ * recién hidratado: el personaje de antes de subir), con la criatura que tiene y el nivel de la elección: el `Nivel` más bajo
+ * de las filas de su lista con las que la tiene (como la API) y, nunca por debajo, lo que aporta su clase en el nivel en que
+ * se la da (el druida, 1; el explorador, que la da a 4 con la mitad, 2). Sin la clase, sin el catálogo o sin otra criatura en su lista hasta
  * ese nivel, con su motivo. Lo que depende de la que se va lo mira `motivoDeLaMascota` al elegir la nueva.
  */
 export function huecosDeMascota(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto, catalogos: CatalogosDeMascotas): HuecoDeMascota[] {
@@ -172,7 +172,8 @@ export function huecosDeMascota(motor: NuevoPersonajeService, entrada: Personaje
                 ? resolverFilaCompanero(conSusFilas as CompaneroMonstruoDetalle, estado, motor.idsDotesDelPersonaje())
                 : resolverFilaFamiliar(conSusFilas as FamiliarMonstruoDetalle, estado, motor.idsDotesDelPersonaje()))
             : null;
-        const deSuFila = resuelta?.fila ? Math.max(0, toInt(resuelta.fila.Nivel)) : Math.max(0, toInt(resuelta?.nivelMinimo));
+        // El mínimo de las filas con las que la tiene (su plantilla y, si las hay, las de una dote suya), como la API.
+        const deSuFila = Math.max(0, toInt(resuelta?.nivelMinimo));
         const nivelEleccion = Math.max(deSuFila, aportaAlDarLaMascota(motor.claseDelCatalogo(fuente.idClase), textos.otorga));
         const hueco: HuecoDeMascota = { ...base, nivelEleccion, nivelPorDote: nivelesPorDote(motor, tipo, catalogo, estado.nivelEfectivo), motivo: null };
         return [catalogoDelReciclaje(catalogo, hueco, estado).length > 0 ? hueco
