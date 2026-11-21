@@ -19,6 +19,9 @@ import { fichaDeLaConversion } from './utils/conversion-muerto-viviente';
 import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { fichaSinElNivel, sinLoQueDabanLasDotes } from './utils/perder-nivel';
 import { MotorDesdeFichaService } from './motor-desde-ficha.service';
+import { construirCatalogoCompanerosDesdeMonstruos, claveCompanero } from './utils/companero-reglas';
+import { leerCompaneroProgresion } from './utils/monstruo-mapper';
+import { COMPARTIR_CONJUROS, DEVOCION, EVASION, LOBO, MONSTRUOS_COMPANERO, PROGRESION_API, VINCULO } from 'src/testing/companero-animal-api';
 import {
     aplicarReciclajeAlMotor, aptitudesDelReciclaje, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dominiosParaReciclar, dotesParaReciclar,
     fichaConElReciclaje, filasDelReciclaje, habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, motivoDeLaEscuela,
@@ -1929,5 +1932,60 @@ describe('El reciclaje de un dominio y de la escuela del mago (R3, segunda tanda
             expect(planDeLaEscuela(motor, hueco, especialista(5, [2, 6]), ESCUELAS).motivo).toBe('Tiene que prohibir 2 escuelas que se puedan prohibir.');
             expect(planDeLaEscuela(motor, hueco, especialista(9, []), ESCUELAS).motivo).toBe('No se puede especializar en Universal.');
         });
+    });
+});
+
+describe('Subida de nivel: el druida pone al día su compañero animal (el compañero, de los datos)', () => {
+    const HUMANO = crearRaza('Humano');
+    const PROGRESION = leerCompaneroProgresion(PROGRESION_API);
+    const DRUIDA = clase({
+        Id: 5, Nombre: 'Druida', Tipo_dado: { Id: 2, Nombre: 'd8' }, Puntos_habilidad: { Id: 1, Valor: 4 },
+        Habilidades: { Base: [ref(2, 'Trepar')], Custom: [] },
+        Desglose_niveles: [
+            nivel(1, { Especiales: [{
+                Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true }, Nivel: 1, Opcional: 0, Id_interno: 291,
+                Mascota: { Divisor: 1, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } },
+            }] }),
+            nivel(2), nivel(3), nivel(4), nivel(5), nivel(6),
+        ],
+    });
+    const CLASES_DRUIDA = [...CLASES, DRUIDA];
+    const catalogoDeClases = { clases: CLASES_DRUIDA.map((c) => ({ id: c.Id, nombre: c.Nombre })) };
+    /** `MotorDesdeFichaService.cuerpoDelMotor` (con el compañero del motor), con el servicio de personajes de estas pruebas. */
+    const cuerpoDelMotor = (motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto) => MotorDesdeFichaService.prototype.cuerpoDelMotor
+        .call({ personajeSvc: new PersonajeService({ currentUser: null } as any, {} as any) } as any, motor, entrada);
+
+    it('la subida a druida 3 manda el compañero con la fila de druida 3 y Evasión; lo demás, como estaba', () => {
+        const svc = crear(HUMANO, { Sabiduria: 15 });
+        svc.setCatalogoClases(CLASES_DRUIDA);
+        svc.setProgresionCompanero(PROGRESION);
+        aplicarNivel(svc, DRUIDA);
+        aplicarNivel(svc, DRUIDA);
+        const lobo = construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_COMPANERO).find((c) => claveCompanero(c) === `${LOBO}:0`)!;
+        expect(svc.registrarCompaneroSeleccionado(JSON.parse(JSON.stringify(lobo)), 'Colmillo').registrado).toBeTrue();
+        const guardado = guardar(svc, catalogoDeClases);
+        guardado.entrada.companero = svc.companeroParaGuardar();
+        expect([guardado.entrada.companero!.dgAdi, guardado.entrada.companero!.fuerza]).toEqual([0, 13]);
+
+        const subida = subir(guardado, HUMANO, CLASES_DRUIDA);
+        subida.setProgresionCompanero(PROGRESION);
+        const antes = cuerpoDelMotor(subida, guardado.entrada);
+        aplicarNivel(subida, DRUIDA);
+        const ficha = fichaDeLaSubida({
+            entrada: guardado.entrada, antes, despues: cuerpoDelMotor(subida, guardado.entrada), idClase: 5,
+            nivel: { idClase: 5, nivelClase: 3, elecciones: subida.getEleccionesDelNivelEnCurso() }, puntosGolpe: 20,
+        });
+        const companero = ficha.companero!;
+        expect([companero.dgAdi, companero.trucosAdi, companero.fuerza, companero.destreza, companero.armaduraNatural]).toEqual([2, 2, 14, 16, 4]);
+        expect(companero.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayWithExactContents([COMPARTIR_CONJUROS, VINCULO, EVASION]));
+        expect(companero.especiales.map((e) => e.idEspecial)).not.toContain(DEVOCION);
+        expect([companero.nombre, companero.idMonstruo, companero.idPlantilla]).toEqual(['Colmillo', LOBO, 0]);
+        // Sin el nivel, nada cambia: la ficha lleva el compañero tal cual.
+        const sinSubir = subir(guardado, HUMANO, CLASES_DRUIDA);
+        sinSubir.setProgresionCompanero(PROGRESION);
+        const igual = cuerpoDelMotor(sinSubir, guardado.entrada);
+        expect(fichaDeLaSubida({
+            entrada: guardado.entrada, antes: igual, despues: igual, idClase: 5, nivel: { idClase: 5, nivelClase: 3, elecciones: [] }, puntosGolpe: 20,
+        }).companero).toEqual(guardado.entrada.companero);
     });
 });

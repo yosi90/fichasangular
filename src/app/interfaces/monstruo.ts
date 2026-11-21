@@ -93,7 +93,13 @@ export interface MonstruoNivelClase {
         Id: number;
         Nombre: string;
     };
+    /** El nivel efectivo mínimo de la mascota en la lista de esa clase (el del compañero, nivel efectivo de druida). */
     Nivel: number;
+    /**
+     * Lo que la lista suma al nivel efectivo para la tabla del compañero (`GET /companeros/progresion`): 0 o menos (las
+     * alternativas de 4.º, −3; el animal celestial de Compañero elevado, −1). En el familiar, 0.
+     */
+    Ajuste: number;
     Plantilla: {
         Id: number;
         Nombre: string;
@@ -201,6 +207,39 @@ export interface FamiliarMonstruoDetalle extends MonstruoDetalle {
     };
     Especiales: EspecialContextualMonstruo[];
     Personajes: PersonajeRefMonstruo[];
+}
+
+/** Una fila de la tabla del compañero animal (`Bonos` de `GET /companeros/progresion`): lo que tiene desde ese nivel. */
+export interface CompaneroBonosNivel {
+    Nivel: number;
+    Dg_adicionales: number;
+    /** Se suma a la armadura natural de su monstruo. */
+    Armadura_natural: number;
+    /** Se suma a la Fuerza y a la Destreza de su monstruo. */
+    Fuerza_destreza: number;
+    Trucos_adicionales: number;
+}
+
+/** A quién va lo que da un nivel del compañero. */
+export type DestinatarioAptitudMascota = 'amo' | 'mascota' | 'ambos';
+
+/**
+ * Lo que gana el compañero o su amo desde un nivel (`Aptitudes` de `GET /companeros/progresion`): una aptitud
+ * (`Especial`) o una dote (`Dote`) y, si es una dote, la aptitud que gana el compañero que no cumple sus prerrequisitos.
+ */
+export interface CompaneroAptitudNivel {
+    Id: number;
+    Nivel: number;
+    Especial: { Id: number; Nombre: string; } | null;
+    Dote: { Id: number; Nombre: string; } | null;
+    Destinatario: DestinatarioAptitudMascota;
+    Alternativa: { Id: number; Nombre: string; } | null;
+}
+
+/** `GET /companeros/progresion` (caché `CompanerosProgresion`): la tabla del compañero animal y lo que da cada nivel. */
+export interface CompaneroProgresion {
+    Bonos: CompaneroBonosNivel[];
+    Aptitudes: CompaneroAptitudNivel[];
 }
 
 export interface CompaneroMonstruoDetalle extends MonstruoDetalle {

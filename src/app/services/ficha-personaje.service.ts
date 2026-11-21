@@ -564,21 +564,13 @@ export class FichaPersonajeService {
 
     private resolverEtiquetaRazaCompania(monstruo: MonstruoDetalle, esFamiliar: boolean): string {
         const nombreBase = `${monstruo?.Nombre ?? ''}`.trim();
-        const idPlantilla = toNumber((monstruo as any)?.Plantilla?.Id ?? (monstruo as any)?.Id_plantilla);
         if (nombreBase.length < 1)
             return '-';
-
-        if (esFamiliar) {
-            // La pseudoplantilla del familiar, por su nombre del catálogo (cualquiera, no solo las del Manual del jugador).
-            const plantilla = `${(monstruo as any)?.Plantilla?.Nombre ?? ''}`.trim();
-            return plantilla.length > 0 ? `${nombreBase} (${plantilla})` : nombreBase;
-        }
-
-        if (idPlantilla === 2)
-            return `${nombreBase} (Elevado)`;
-        if (idPlantilla === 3)
-            return `${nombreBase} (Sabandija)`;
-        return nombreBase;
+        // La pseudoplantilla del familiar o la plantilla del compañero (el animal celestial), por su nombre del catálogo; el
+        // compañero sin plantilla (la fila 0, «No aplica») va sin ella.
+        const idPlantilla = toNumber((monstruo as any)?.Plantilla?.Id ?? (monstruo as any)?.Id_plantilla);
+        const plantilla = `${(monstruo as any)?.Plantilla?.Nombre ?? ''}`.trim();
+        return plantilla.length > 0 && (esFamiliar || idPlantilla > 0) ? `${nombreBase} (${plantilla})` : nombreBase;
     }
 
     private getNotasTipoCriatura(monstruo: MonstruoDetalle): string {

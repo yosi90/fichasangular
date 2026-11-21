@@ -68,6 +68,10 @@
       ".read": "true",
       ".write": "false"
     },
+    "CompanerosProgresion": {
+      ".read": "true",
+      ".write": "false"
+    },
     "ComponentesConjuros": {
       ".read": "true",
       ".write": "false"

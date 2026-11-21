@@ -4,7 +4,11 @@ import { Conjuro } from "src/app/interfaces/conjuro";
 import { DoteContextual } from "src/app/interfaces/dote-contextual";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import {
+    CompaneroAptitudNivel,
+    CompaneroBonosNivel,
     CompaneroMonstruoDetalle,
+    CompaneroProgresion,
+    DestinatarioAptitudMascota,
     DIETAS_MONSTRUO,
     EspecialContextualMonstruo,
     FamiliarMonstruoDetalle,
@@ -34,7 +38,7 @@ import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeRacial } from "./racial-mapper";
-import { toArray, toBoolean, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toInt, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizeManualLegacy } from './manual-mapper';
 import { leerArmasNaturales } from './armas-naturales';
@@ -186,6 +190,8 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
             Nombre: toText(raw?.Clase?.Nombre),
         },
         Nivel: toNumber(raw?.Nivel),
+        // Sin él (una caché de antes del 2026-11-21), 0: la fila no ajusta la tabla del compañero.
+        Ajuste: Math.min(0, toInt(raw?.Ajuste)),
         Plantilla: {
             Id: toNumber(raw?.Plantilla?.Id),
             Nombre: toText(raw?.Plantilla?.Nombre),
@@ -354,6 +360,43 @@ export function normalizeCompaneroMonstruoDetalle(raw: any, depth = 1): Companer
         Especiales: toArray(raw?.Especiales).map((item) => normalizeEspecialContextual(item)),
         Personajes: toArray(raw?.Personajes).map((item) => normalizePersonajeRef(item)),
     };
+}
+
+const DESTINATARIOS_APTITUD_MASCOTA: readonly DestinatarioAptitudMascota[] = ['amo', 'mascota', 'ambos'];
+
+function idNombreONulo(raw: any): { Id: number; Nombre: string; } | null {
+    const id = toInt(raw?.Id);
+    return raw && typeof raw === 'object' && id > 0 ? { Id: id, Nombre: toText(raw?.Nombre) } : null;
+}
+
+/**
+ * `GET /companeros/progresion` y su caché `CompanerosProgresion` (que la guarda tal cual; la RTDB puede dar las listas como
+ * objetos): la tabla del compañero animal, de menor a mayor nivel, y lo que da cada nivel. Una aptitud sin aptitud ni
+ * dote, o con un destinatario que no es del contrato, no cuenta.
+ */
+export function leerCompaneroProgresion(raw: any): CompaneroProgresion {
+    const bonos: CompaneroBonosNivel[] = toArray(raw?.Bonos)
+        .map((fila: any) => ({
+            Nivel: toInt(fila?.Nivel),
+            Dg_adicionales: toInt(fila?.Dg_adicionales),
+            Armadura_natural: toInt(fila?.Armadura_natural),
+            Fuerza_destreza: toInt(fila?.Fuerza_destreza),
+            Trucos_adicionales: toInt(fila?.Trucos_adicionales),
+        }))
+        .filter((fila) => fila.Nivel > 0)
+        .sort((a, b) => a.Nivel - b.Nivel);
+    const aptitudes: CompaneroAptitudNivel[] = toArray(raw?.Aptitudes)
+        .map((fila: any) => ({
+            Id: toInt(fila?.Id),
+            Nivel: toInt(fila?.Nivel),
+            Especial: idNombreONulo(fila?.Especial),
+            Dote: idNombreONulo(fila?.Dote),
+            Destinatario: fila?.Destinatario,
+            Alternativa: idNombreONulo(fila?.Alternativa),
+        }))
+        .filter((fila) => (fila.Especial || fila.Dote) && DESTINATARIOS_APTITUD_MASCOTA.includes(fila.Destinatario))
+        .sort((a, b) => a.Nivel - b.Nivel || a.Id - b.Id);
+    return { Bonos: bonos, Aptitudes: aptitudes };
 }
 
 export function normalizeMonstruoDetalleArray(raw: any, depth = 1): MonstruoDetalle[] {

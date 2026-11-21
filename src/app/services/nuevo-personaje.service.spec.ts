@@ -1,5 +1,5 @@
 import { GeneradorAutoCuestionario, NuevoPersonajeService } from './nuevo-personaje.service';
-import { Clase } from '../interfaces/clase';
+import { Clase, ClaseEspecialMascota } from '../interfaces/clase';
 import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
 import { VentajaDetalle } from '../interfaces/ventaja';
@@ -19,6 +19,12 @@ import { claveDeHabilidad } from './utils/habilidad-clave';
 import { normalizeRazaApi } from './utils/raza-mapper';
 import { PROLE_SOBRE_API, RAZAS_API } from 'src/testing/razas-mutadas-api';
 import { SelectorIdiomaModalComponent } from '../components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
+import {
+    ATAQUE_MULTIPLE, BISONTE, CELESTIAL, CLASES_CON_COMPANERO, COMPANERO_ELEVADO, COMPARTIR_CONJUROS, DEVOCION, DOTE_ATAQUE_MULTIPLE,
+    EVASION, LOBO, MONSTRUOS_COMPANERO, PELEA_SUCIA, PROGRESION_API, SEGUNDO_ATAQUE_NATURAL, TEJON, VINCULO,
+} from 'src/testing/companero-animal-api';
+import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos } from './utils/companero-reglas';
+import { leerCompaneroProgresion } from './utils/monstruo-mapper';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -1896,13 +1902,17 @@ describe('NuevoPersonajeService (clases)', () => {
         );
     }
 
+    /** El lobo de la lista del druida (sin plantilla), con su habilidad. */
+    const FILA_LOBO_DRUIDA = { Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 1, Ajuste: 0, Plantilla: { Id: 0, Nombre: '' }, Preferencia_legal: { Id: 0, Nombre: '' }, Preferencia_moral: { Id: 0, Nombre: '' }, Dote: { Id: 0, Nombre: '' } };
+
     it('un druida guarda su compañero animal con su plantilla, sus bonos por nivel, sus habilidades, dotes y especiales', () => {
         const druida = crearClaseBase({ Id: 5, Nombre: 'Druida', Desglose_niveles: [nivelConEspecial(29, 'Compañero animal')] });
         service.setCatalogoClases([druida]);
+        service.setProgresionCompanero(leerCompaneroProgresion(PROGRESION_API));
         service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 3 }] as any;
         const lobo = {
             Id: 55, Id_companero: 55, Nombre: 'Lobo', Monstruo_origen: { Id: 55, Nombre: 'Lobo' },
-            Plantilla: { Id: 1, Nombre: 'Base' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [],
+            Plantilla: { Id: 0, Nombre: '' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [FILA_LOBO_DRUIDA],
             Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
             Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 3, Nombre: 'd8' }, Suma: 4 },
             Caracteristicas: { Fuerza: 13, Destreza: 15, Constitucion: 15, Constitucion_modificador: 2, Inteligencia: 2, Sabiduria: 12, Carisma: 6 },
@@ -1911,7 +1921,7 @@ describe('NuevoPersonajeService (clases)', () => {
             Dotes: [], Especiales: [],
         } as any;
 
-        expect(service.registrarCompaneroSeleccionado(lobo, 'base', { 157: 'Vínculo', 158: 'Compartir conjuros' }, 'Colmillo').registrado).toBeTrue();
+        expect(service.registrarCompaneroSeleccionado(lobo, 'Colmillo').registrado).toBeTrue();
         // El druida sube al nivel 6: el compañero pasa a la fila de ese nivel.
         service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 6 }] as any;
         (service as any).actualizarMascotasPorNivel();
@@ -1919,17 +1929,20 @@ describe('NuevoPersonajeService (clases)', () => {
         const companero = payloadDeLaCreacion().companero!;
         expect(companero.nombre).toBe('Colmillo');
         expect(companero.idMonstruo).toBe(55);
-        expect(companero.idPlantilla).toBe(1);
+        // Sin plantilla: 0 (la fila «No aplica»), como la del lobo en su lista.
+        expect(companero.idPlantilla).toBe(0);
         expect([companero.dgAdi, companero.trucosAdi, companero.armaduraNatural, companero.fuerza, companero.destreza]).toEqual([4, 3, 6, 15, 17]);
         expect(companero.vida).toBe(39);
         expect(companero.habilidades).toEqual([{ idHabilidad: 6, idExtra: -1, rangos: 3 }]);
-        expect(companero.especiales.map((especial) => especial.idEspecial).sort((a, b) => a - b)).toEqual([157, 158, 159]);
+        // Evasión (3) y Devoción (6), suyas; compartir conjuros y vínculo, del amo, con el extra «Compañero animal».
+        expect(companero.especiales.map((especial) => especial.idEspecial).sort((a, b) => a - b)).toEqual([EVASION, COMPARTIR_CONJUROS, VINCULO, DEVOCION]);
         expect(companero.dotes).toEqual([]);
     });
 
     it('los DG adicionales del compañero dan puntos de habilidad por su tipo y su Int, y se reparten en la pestaña de habilidades', () => {
         const druida = crearClaseBase({ Id: 5, Nombre: 'Druida', Desglose_niveles: [nivelConEspecial(29, 'Compañero animal')] });
         service.setCatalogoClases([druida]);
+        service.setProgresionCompanero(leerCompaneroProgresion(PROGRESION_API));
         service.setCatalogoTiposCriatura([{ ...crearTipoBase(), Id: 3, Nombre: 'Animal', Puntos_habilidad: 2 }]);
         service.setCatalogoHabilidades([
             { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
@@ -1939,7 +1952,7 @@ describe('NuevoPersonajeService (clases)', () => {
         service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 3 }] as any;
         const lobo = {
             Id: 55, Id_companero: 55, Nombre: 'Lobo', Monstruo_origen: { Id: 55, Nombre: 'Lobo' }, Tipo: { Id: 3, Nombre: 'Animal' },
-            Plantilla: { Id: 1, Nombre: 'Base' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [],
+            Plantilla: { Id: 0, Nombre: '' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [FILA_LOBO_DRUIDA],
             Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
             Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 3, Nombre: 'd8' }, Suma: 4 },
             Caracteristicas: { Fuerza: 13, Destreza: 15, Constitucion: 15, Constitucion_modificador: 2, Inteligencia: 2, Inteligencia_modificador: -4, Sabiduria: 12, Sabiduria_modificador: 1, Carisma: 6 },
@@ -1947,7 +1960,7 @@ describe('NuevoPersonajeService (clases)', () => {
             Habilidades: [{ Id_habilidad: 6, Habilidad: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Id_extra: -1, Extra: '', Rangos: 3 }],
             Dotes: [], Especiales: [],
         } as any;
-        expect(service.registrarCompaneroSeleccionado(lobo, 'base', {}, 'Colmillo').registrado).toBeTrue();
+        expect(service.registrarCompaneroSeleccionado(lobo, 'Colmillo').registrado).toBeTrue();
 
         // 2 DG adicionales (druida 3) × máx(1, 2 del animal − 4 de Int) = 2 puntos; tope de rangos con 4 DG en total.
         expect(service.iniciarDistribucionHabilidadesCompanero('clases')).toBeTrue();
@@ -5703,7 +5716,7 @@ describe('NuevoPersonajeService (clases)', () => {
 });
 
 describe('NuevoPersonajeService (familiar)', () => {
-    function crearEspecialNivel(idEspecial: number, nombre: string) {
+    function crearEspecialNivel(idEspecial: number, nombre: string, mascota: ClaseEspecialMascota | null = null) {
         return {
             Especial: { Id: idEspecial, Nombre: nombre, ...BANDERAS_ESPECIAL_MASCOTA[nombre] },
             Nivel: 1,
@@ -5713,6 +5726,7 @@ describe('NuevoPersonajeService (familiar)', () => {
             Id_interno: idEspecial,
             Id_especial_requerido: 0,
             Id_dote_requerida: 0,
+            Mascota: mascota,
         };
     }
 
@@ -5729,14 +5743,14 @@ describe('NuevoPersonajeService (familiar)', () => {
         };
     }
 
-    function crearCompaneroSeleccionable(idCompanero: number, nombre = 'Lobo', plantilla = 1): any {
+    function crearCompaneroSeleccionable(idCompanero: number, nombre = 'Lobo'): any {
         return {
             Id: idCompanero + 700,
             Id_companero: idCompanero,
             Nombre: nombre,
-            Plantilla: { Id: plantilla, Nombre: plantilla === 2 ? 'Elevado' : (plantilla === 3 ? 'Sabandija' : 'Base') },
+            Plantilla: { Id: 0, Nombre: '' },
             Manual: { Id: 1, Nombre: 'Manual base', Pagina: 20 },
-            Niveles_clase: [],
+            Niveles_clase: [{ Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 1, Ajuste: 0, Plantilla: { Id: 0, Nombre: '' }, Preferencia_legal: { Id: 0, Nombre: '' }, Preferencia_moral: { Id: 0, Nombre: '' }, Dote: { Id: 0, Nombre: '' } }],
             Alineamientos_requeridos: { Familiar: [], Companero: [] },
             Oficial: true,
             Caracteristicas: {
@@ -5974,7 +5988,7 @@ describe('NuevoPersonajeService (familiar)', () => {
         expect(svc.tieneCompaneroPendienteSinSelector()).toBeFalse();
     });
 
-    it('getEstadoCuposCompaneroEspecial29 calcula fuentes, cupos y nivel efectivo', () => {
+    it('getEstadoCuposCompanero calcula fuentes, cupos y nivel efectivo con el Mascota de cada clase', () => {
         const svc = new NuevoPersonajeService();
         const druida = crearClaseBase({
             Id: 5,
@@ -6007,7 +6021,7 @@ describe('NuevoPersonajeService (familiar)', () => {
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [],
-                Especiales: [crearEspecialNivel(29, 'Compañero animal')],
+                Especiales: [crearEspecialNivel(29, 'Compañero animal', { Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } })],
             }],
         });
         svc.setCatalogoClases([druida, ranger]);
@@ -6016,12 +6030,13 @@ describe('NuevoPersonajeService (familiar)', () => {
             { Nombre: 'Ranger', Nivel: 5 } as any,
         ];
 
-        const estado = svc.getEstadoCuposCompaneroEspecial29();
+        const estado = svc.getEstadoCuposCompanero();
         expect(estado.fuentesClaseIds.sort((a, b) => a - b)).toEqual([5, 6]);
         expect(estado.fuentesTotales).toBe(2);
         // Druida y explorador dan un solo compañero, con sus niveles sumados (MJ, cap. 3).
         expect(estado.cuposDisponibles).toBe(1);
-        expect(estado.nivelEfectivoCompanero).toBe(6); // 4 + floor(5/2)
+        expect(estado.nivelEfectivoCompanero).toBe(6); // 4 + floor(5/2), por el `Divisor` 2 de su tabla
+        expect(estado.listasIds).toEqual([5]);
     });
 
     it('registrarCompaneroSeleccionado aplica beneficios y no deja un segundo compañero', () => {
@@ -6065,61 +6080,156 @@ describe('NuevoPersonajeService (familiar)', () => {
             { Nombre: 'Druida', Nivel: 15 } as any,
             { Nombre: 'Bestiario', Nivel: 1 } as any,
         ];
-        svc.setCatalogoDotes([{
-            Id: 49,
-            Nombre: 'Evasión mejorada',
-            Descripcion: '',
-            Beneficio: '',
-            Normal: '',
-            Especial: '',
-            Manual: { Id: 0, Nombre: '', Pagina: 0 },
-            Tipos: [],
-            Repetible: 0,
-            Repetible_distinto_extra: 0,
-            Repetible_comb: 0,
-            Comp_arma: 0,
-            Oficial: true,
-            Extras_soportados: {
-                Extra_arma: 0,
-                Extra_armadura: 0,
-                Extra_escuela: 0,
-                Extra_habilidad: 0,
-            },
-            Extras_disponibles: {
-                Armas: [],
-                Armaduras: [],
-                Escuelas: [],
-                Habilidades: [],
-            },
-            Modificadores: {},
-            Prerrequisitos: {},
-        } as any]);
+        svc.setCatalogoDotes([DOTE_ATAQUE_MULTIPLE]);
+        svc.setProgresionCompanero(leerCompaneroProgresion(PROGRESION_API));
 
-        const primero = svc.registrarCompaneroSeleccionado(
-            crearCompaneroSeleccionable(100, 'Lobo', 1),
-            'base',
-            { 157: 'Compañero animal', 158: 'Vínculo con compañero', 159: 'Devoción', 57: 'Vínculo maestro' },
-            'Compañero de Aldric'
-        );
-        const segundo = svc.registrarCompaneroSeleccionado(
-            crearCompaneroSeleccionable(100, 'Lobo', 1),
-            'base',
-            {}
-        );
+        const primero = svc.registrarCompaneroSeleccionado(crearCompaneroSeleccionable(100, 'Lobo'), 'Compañero de Aldric');
+        const segundo = svc.registrarCompaneroSeleccionado(crearCompaneroSeleccionable(100, 'Lobo'));
 
+        // Druida 15 / bestiario 1 = druida 16: Evasión, Devoción y Evasión mejorada; sin armas naturales, el segundo ataque en
+        // vez de Ataque múltiple; y lo del amo.
         expect(primero.registrado).toBeTrue();
-        expect(primero.dote49Agregada).toBeTrue();
-        expect(primero.especialesAgregadosIds).toContain(157);
-        expect(primero.especialesAgregadosIds).toContain(158);
-        expect(primero.especialesAgregadosIds).toContain(159);
-        expect(primero.especialesAgregadosIds).toContain(57);
-        expect(primero.bonosAplicados.dgAdi).toBe(10);
-        expect(primero.bonosAplicados.trucosAdi).toBe(6);
+        expect(primero.nivelTabla).toBe(16);
+        expect(primero.dotesAgregadasIds).toEqual([]);
+        expect(primero.especialesAgregadosIds).toEqual(jasmine.arrayWithExactContents([157, 158, 43, 159, SEGUNDO_ATAQUE_NATURAL, 57]));
+        expect(primero.bonosAplicados.Dg_adicionales).toBe(10);
+        expect(primero.bonosAplicados.Trucos_adicionales).toBe(6);
         expect(svc.PersonajeCreacion.Companeros.length).toBe(1);
         expect(svc.PersonajeCreacion.Companeros[0].Nombre).toBe('Compañero de Aldric');
         expect(segundo.registrado).toBeFalse();
         // Druida y bestiario dan un solo compañero: el segundo ya no tiene cupo.
         expect((segundo.razon ?? '').toLowerCase()).toContain('cupos');
+    });
+});
+
+describe('NuevoPersonajeService (el compañero animal, de los datos)', () => {
+    const PROGRESION = leerCompaneroProgresion(PROGRESION_API);
+    const CATALOGO = construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_COMPANERO);
+    const companero = (idMonstruo: number, idPlantilla = 0) => JSON.parse(JSON.stringify(
+        CATALOGO.find((c) => claveCompanero(c) === `${idMonstruo}:${idPlantilla}`)));
+
+    function motor(clases: Array<[string, number]>, partial: Record<string, any> = {}): NuevoPersonajeService {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoClases(CLASES_CON_COMPANERO);
+        svc.setCatalogoDotes([DOTE_ATAQUE_MULTIPLE]);
+        svc.setProgresionCompanero(PROGRESION);
+        Object.assign(svc.PersonajeCreacion, { desgloseClases: clases.map(([Nombre, Nivel]) => ({ Nombre, Nivel })), ...partial });
+        return svc;
+    }
+
+    function guardado(svc: NuevoPersonajeService) {
+        return svc.companeroParaGuardar()!;
+    }
+
+    it('Faren, druida 6 con el bisonte (−3): los valores de druida 3, con Evasión y sin Devoción (F2)', () => {
+        const svc = motor([['Druida', 6], ['Monje', 4]]);
+        const r = svc.registrarCompaneroSeleccionado(companero(BISONTE), 'Faren');
+        expect(r.registrado).toBeTrue();
+        expect(r.nivelTabla).toBe(3);
+        const dto = guardado(svc);
+        expect([dto.dgAdi, dto.trucosAdi, dto.fuerza, dto.destreza, dto.armaduraNatural]).toEqual([2, 2, 23, 11, 6]);
+        expect(dto.idPlantilla).toBe(0);
+        expect(dto.especiales.map((e) => e.idEspecial)).toContain(EVASION);
+        expect(dto.especiales.map((e) => e.idEspecial)).not.toContain(DEVOCION);
+        // Lo del amo va al personaje, con el extra de su vínculo.
+        expect(svc.PersonajeCreacion.Claseas.filter((e) => e.Extra === 'Compañero animal').map((e) => e.Id)).toEqual([COMPARTIR_CONJUROS, VINCULO]);
+    });
+
+    it('druida 4 / explorador 4 (nivel efectivo 6): Devoción y los valores de druida 6', () => {
+        const svc = motor([['Druida', 4], ['Explorador', 4]]);
+        expect(svc.getEstadoCuposCompanero().nivelEfectivoCompanero).toBe(6);
+        expect(svc.registrarCompaneroSeleccionado(companero(LOBO)).registrado).toBeTrue();
+        const dto = guardado(svc);
+        expect([dto.dgAdi, dto.trucosAdi, dto.fuerza, dto.destreza, dto.armaduraNatural]).toEqual([4, 3, 15, 17, 6]);
+        expect(dto.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayContaining([EVASION, DEVOCION]));
+    });
+
+    it('el explorador 8 elige el bisonte de la lista del druida: druida 4 con −3, la tabla de druida 1 (F1)', () => {
+        const svc = motor([['Explorador', 8]]);
+        const r = svc.registrarCompaneroSeleccionado(companero(BISONTE));
+        expect(r.registrado).toBeTrue();
+        expect(r.nivelTabla).toBe(1);
+        const dto = guardado(svc);
+        expect([dto.dgAdi, dto.trucosAdi, dto.fuerza, dto.destreza, dto.armaduraNatural]).toEqual([0, 1, 22, 10, 4]);
+        expect(dto.especiales.map((e) => e.idEspecial)).not.toContain(EVASION);
+    });
+
+    it('druida 5 / señor de las bestias 2 es druida 10 (El aventurero completo, pág. 78)', () => {
+        const svc = motor([['Druida', 5], ['Señor de las bestias', 2]]);
+        const r = svc.registrarCompaneroSeleccionado(companero(TEJON));
+        expect(r.nivelTabla).toBe(10);
+        // El tejón (mordisco y dos garras) cumple Ataque múltiple: la gana como dote adicional.
+        expect(r.dotesAgregadasIds).toEqual([ATAQUE_MULTIPLE]);
+        expect(guardado(svc).dotes).toEqual([{ idDote: ATAQUE_MULTIPLE, idExtra: 0 }]);
+        expect(guardado(svc).especiales.map((e) => e.idEspecial)).not.toContain(SEGUNDO_ATAQUE_NATURAL);
+    });
+
+    it('el lobo de druida 9 gana el segundo mordisco y no la dote (F4)', () => {
+        const svc = motor([['Druida', 9]]);
+        expect(svc.registrarCompaneroSeleccionado(companero(LOBO)).registrado).toBeTrue();
+        const dto = guardado(svc);
+        expect(dto.dotes).toEqual([]);
+        expect(dto.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayContaining([EVASION, DEVOCION, SEGUNDO_ATAQUE_NATURAL]));
+        expect([dto.dgAdi, dto.fuerza]).toEqual([6, 16]);
+    });
+
+    it('Evasión a 3, y no antes (F3)', () => {
+        const a2 = motor([['Druida', 2]]);
+        a2.registrarCompaneroSeleccionado(companero(LOBO));
+        expect(guardado(a2).especiales.map((e) => e.idEspecial)).not.toContain(EVASION);
+        const a3 = motor([['Druida', 3]]);
+        a3.registrarCompaneroSeleccionado(companero(LOBO));
+        expect(guardado(a3).especiales.map((e) => e.idEspecial)).toContain(EVASION);
+    });
+
+    it('el animal celestial a druida 2 con Compañero elevado: la plantilla Celestial y −1 (F12)', () => {
+        const sinDote = motor([['Druida', 2]]);
+        const r = sinDote.registrarCompaneroSeleccionado(companero(LOBO, CELESTIAL));
+        expect(r.registrado).toBeFalse();
+        expect(r.razon).toContain('Compañero elevado');
+        const svc = motor([['Druida', 2]], { DotesContextuales: [{ Dote: { Id: COMPANERO_ELEVADO, Nombre: 'Compañero elevado' }, Contexto: {} }] });
+        const conDote = svc.registrarCompaneroSeleccionado(companero(LOBO, CELESTIAL));
+        expect(conDote.registrado).toBeTrue();
+        expect(conDote.nivelTabla).toBe(1);
+        expect(guardado(svc).idPlantilla).toBe(CELESTIAL);
+        expect(guardado(svc).dgAdi).toBe(0);
+    });
+
+    it('el pirata que elige Pelea sucia no tiene compañero (F11)', () => {
+        const svc = motor([['Pirata', 4]], { Claseas: [{ Id: PELEA_SUCIA, Nombre: 'Pelea sucia', Extra: '' }] });
+        expect(svc.tieneCompaneroPendienteSinSelector()).toBeFalse();
+        expect(svc.registrarCompaneroSeleccionado(companero(LOBO)).registrado).toBeFalse();
+    });
+
+    it('sin la tabla del compañero no lo registra (la API no lo aceptaría)', () => {
+        const svc = motor([['Druida', 3]]);
+        svc.setProgresionCompanero(null);
+        expect(svc.registrarCompaneroSeleccionado(companero(LOBO)).razon).toContain('tabla del compañero');
+    });
+
+    it('al subir de nivel el druida pone al día su compañero: la fila de su nivel y las aptitudes que tocan', () => {
+        const svc = motor([['Druida', 2]]);
+        svc.registrarCompaneroSeleccionado(companero(LOBO));
+        expect(guardado(svc).dgAdi).toBe(0);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 3 }] as any;
+        (svc as any).actualizarMascotasPorNivel();
+        let dto = guardado(svc);
+        expect([dto.dgAdi, dto.trucosAdi, dto.fuerza, dto.destreza, dto.armaduraNatural]).toEqual([2, 2, 14, 16, 4]);
+        expect(dto.especiales.map((e) => e.idEspecial)).toContain(EVASION);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 9 }] as any;
+        (svc as any).actualizarMascotasPorNivel();
+        dto = guardado(svc);
+        expect([dto.dgAdi, dto.fuerza, dto.armaduraNatural]).toEqual([6, 16, 8]);
+        expect(dto.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayContaining([DEVOCION, SEGUNDO_ATAQUE_NATURAL]));
+    });
+
+    it('quitarCompanero quita el compañero y lo que el amo llevaba por él', () => {
+        const svc = motor([['Druida', 3]]);
+        svc.registrarCompaneroSeleccionado(companero(LOBO));
+        svc.quitarCompanero();
+        expect(svc.PersonajeCreacion.Companeros).toEqual([]);
+        expect(svc.PersonajeCreacion.Claseas.some((e) => e.Extra === 'Compañero animal')).toBeFalse();
+        expect(svc.tieneCompaneroPendienteSinSelector()).toBeTrue();
     });
 });
 
