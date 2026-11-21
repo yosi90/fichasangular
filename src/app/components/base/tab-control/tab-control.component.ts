@@ -68,9 +68,9 @@ type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
 
 /**
  * Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección, la plantilla, la raza
- * mutada, la pérdida y la vuelta a la vida.
+ * mutada, la pérdida, la vuelta a la vida y completar el compañero.
  */
-export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida' | 'vuelta';
+export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida' | 'vuelta' | 'companero';
 
 /** Lo que enseña la pestaña de cada modo y cómo se carga su componente (carga diferida: el bundle inicial va al tope). */
 export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; corta: string; icono: string; cargar: () => Promise<Type<unknown>>; }> = {
@@ -97,6 +97,9 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
     vuelta: {
         titulo: 'Devolver la vida', corta: 'Vuelta', icono: 'favorite',
         cargar: async () => (await import('src/app/components/sesiones/devolver-la-vida/devolver-la-vida.component')).DevolverLaVidaComponent,
+    },    companero: {
+        titulo: 'Completar el compañero', corta: 'Compañero', icono: 'pets',
+        cargar: async () => (await import('src/app/components/sesiones/completar-companero/completar-companero.component')).CompletarCompaneroComponent,
     },
 };
 
@@ -277,6 +280,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.puertaSubida?.vueltas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'vuelta'));
+        this.puertaSubida?.companeros$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'companero'));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));

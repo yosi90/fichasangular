@@ -2,7 +2,7 @@ import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import {
     aplicarMejoraAlCompanero, ataqueBaseDelCompaneroConDg, contextoDeDotesDelCompanero, dgDeLaDote, dgsDeLasMejorasDelCompanero,
     dotesDeDgs, dotesQueLeTocanAlCompanero, huecosDeDotesDelCompanero, huecosDeMejorasDelCompanero,
-    quitarLoDeLosDgQueNoTieneElCompanero,
+    quitarLoDeLosDgQueNoTieneElCompanero, tiposQueCuentaElCompanero,
 } from './companero-dotes';
 import { evaluarElegibilidadDote } from './dote-elegibilidad';
 import { construirCompaneroParaGuardar } from './mascota-payload';
@@ -100,6 +100,21 @@ describe('las dotes y las mejoras del compañero animal', () => {
         expect(evaluarElegibilidadDote({ dote: trucoAdicional, contexto: contextoDeDotesDelCompanero(sinTrucos, 3, () => undefined) }).estado).toBe('blocked_failed');
         const listo = companero({ dg: 2, int: 3, Trucos: [rastrea] } as any);
         expect(evaluarElegibilidadDote({ dote: trucoAdicional, contexto: contextoDeDotesDelCompanero(listo, 3, () => undefined) }).estado).toBe('blocked_failed');
+    });
+
+    it('para los prerrequisitos de tipo valen el de su monstruo y el de su progresión (bestia mágica)', () => {
+        const pideBestia = { Id: 901, Nombre: 'De bestia', Prerrequisitos: {
+            tipo_criatura: [{ Id_tipo_criatura: 4, Tipo_criatura: 'Bestia mágica', Opcional: 0 }],
+        } } as any;
+        const pideAnimal = { Id: 902, Nombre: 'De animal', Prerrequisitos: {
+            tipo_criatura: [{ Id_tipo_criatura: 3, Tipo_criatura: 'Animal', Opcional: 0 }],
+        } } as any;
+        const sinProgresion = companero({ dg: 2 });
+        expect(evaluarElegibilidadDote({ dote: pideBestia, contexto: contextoDeDotesDelCompanero(sinProgresion, 3, () => undefined) }).estado).toBe('blocked_failed');
+        const conProgresion = companero({ dg: 2, Tipo_prerrequisitos: { Id: 4, Nombre: 'Bestia mágica' } } as any);
+        expect(tiposQueCuentaElCompanero(conProgresion).map((t) => t.Nombre)).toEqual(['Animal', 'Bestia mágica']);
+        expect(evaluarElegibilidadDote({ dote: pideBestia, contexto: contextoDeDotesDelCompanero(conProgresion, 3, () => undefined) }).estado).toBe('eligible');
+        expect(evaluarElegibilidadDote({ dote: pideAnimal, contexto: contextoDeDotesDelCompanero(conProgresion, 3, () => undefined) }).estado).toBe('eligible');
     });
 
     it('lo de su monstruo para las dotes de monstruo: su vuelo, su armadura natural, sus sortílegas, sus ataques especiales y sus trucos', () => {

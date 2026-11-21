@@ -1,0 +1,62 @@
+<section class="subida" aria-live="polite">
+    <header class="subida__cabecera">
+        <div class="subida__titulos">
+            <span class="subida__antetitulo">Completar el compañero<ng-container *ngIf="sesion"> · {{sesion.numero === 0 ? 'Creación' : 'Sesión ' + sesion.numero}}</ng-container></span>
+            <h1 class="subida__titulo">{{pj?.Nombre || 'Personaje'}}</h1>
+        </div>
+    </header>
+
+    <p *ngIf="cargando" class="subida__estado">Preparando el compañero…</p>
+    <div *ngIf="!cargando && error" class="subida__aviso subida__aviso--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{error}}</span>
+    </div>
+
+    <ng-container *ngIf="!cargando && listo">
+        <ng-container [ngSwitch]="paso">
+            <section *ngSwitchCase="'inicio'" class="subida__tarjeta">
+                <h2 class="subida__seccion">Lo que le falta a {{nombre}}</h2>
+                <p *ngIf="falta.length === 0" class="subida__nota">No le falta nada: ya ha elegido todo lo de sus DG adicionales y su tabla.</p>
+                <ul *ngIf="falta.length > 0">
+                    <li *ngFor="let f of falta">{{f}}</li>
+                </ul>
+                <p class="subida__nota">Se elige con los mismos pasos que al subir de nivel y queda como una corrección de la
+                    ficha, que solo cambia el compañero y se puede deshacer mientras siga abierta la sesión.</p>
+            </section>
+
+            <ng-container *ngSwitchCase="'rangos'">
+                <app-reparto-rangos [motor]="svc" [titulo]="'Habilidades de ' + nombre"></app-reparto-rangos>
+                <p class="subida__nota">Los puntos de sus DG adicionales que aún no ha gastado: las habilidades de su criatura son de
+                    clase. Al continuar, sus mejoras de característica, sus dotes y sus trucos, si le tocan, en sus selectores.</p>
+            </ng-container>
+
+            <section *ngSwitchCase="'resumen'" class="subida__tarjeta">
+                <h2 class="subida__seccion">Lo que cambia</h2>
+                <p *ngIf="filas.length === 0" class="subida__nota">No has elegido nada: no hay nada que guardar.</p>
+                <table *ngIf="filas.length > 0" class="subida__tabla">
+                    <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let f of filas">
+                            <th scope="row">{{f.que}}</th>
+                            <td>{{f.antes}}</td>
+                            <td class="subida__ahora">{{f.ahora}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="subida__nota">Queda en {{sesion?.numero === 0 ? 'la sesión de creación' : 'la sesión ' + sesion?.numero}} como una corrección («{{motivo}}»).</p>
+            </section>
+        </ng-container>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+            <button *ngIf="paso !== 'inicio'" mat-button type="button" (click)="empezarDeNuevo()" [disabled]="guardando">Empezar de nuevo</button>
+            <span class="subida__hueco"></span>
+            <button *ngIf="paso === 'inicio' && falta.length > 0" mat-flat-button color="primary" type="button" [disabled]="eligiendo" (click)="elegir()">Elegir</button>
+            <button *ngIf="paso === 'rangos'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades() || eligiendo" (click)="cerrarRangos()">Continuar</button>
+            <button *ngIf="paso === 'resumen'" mat-flat-button color="primary" type="button" [disabled]="!puedeGuardar" (click)="guardar()">
+                {{guardando ? 'Guardando…' : 'Guardar'}}
+            </button>
+        </footer>
+    </ng-container>
+    <ng-container #modalHost></ng-container>
+</section>

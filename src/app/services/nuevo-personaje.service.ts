@@ -84,6 +84,8 @@ import {
     dadosGolpeCompanero,
     esDotePropiaDelCompanero,
     EstadoCuposCompanero as EstadoCuposCompaneroUtil,
+    puntosPendientesDelCompanero,
+    puntosPorDgDelCompanero,
     resolverEstadoCuposCompanero,
     resolverFilaCompanero,
 } from './utils/companero-reglas';
@@ -1379,6 +1381,8 @@ export class NuevoPersonajeService {
     private dgRacialSinClasesRepartido = false;
     /** DG adicionales del compañero cuyos puntos de habilidad ya se repartieron. */
     private dgsCompaneroRepartidos = 0;
+    /** Si ya ha repartido en esta sesión del motor los puntos pendientes del compañero (los no gastados no se vuelven a pedir). */
+    private rangosDelCompaneroRepartidos = false;
     /**
      * De dónde es de clase cada habilidad, por su clave: cada clase (`origenDeClase`, con las de sus dominios), las que lo
      * son siempre (`ORIGEN_SIEMPRE_DE_CLASE`, los raciales) y las de la criatura de los DG raciales o de plantilla. Un rango
@@ -1788,6 +1792,7 @@ export class NuevoPersonajeService {
         this.dotesRasgosGanadosConcedidas.clear();
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
+        this.rangosDelCompaneroRepartidos = false;
         this.habilidadesDeClasePorOrigen = {};
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
@@ -1943,6 +1948,7 @@ export class NuevoPersonajeService {
         this.dotesRasgosGanadosConcedidas.clear();
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
+        this.rangosDelCompaneroRepartidos = false;
         this.habilidadesDeClasePorOrigen = {};
         this.firmasDotesPlantillaAplicadas.clear();
         this.plantillasConDotesDecididas.clear();
@@ -2808,23 +2814,33 @@ export class NuevoPersonajeService {
         const companero = (this.personajeCreacion.Companeros ?? [])[0];
         if (!companero)
             return false;
-        const pendientes = Math.max(0, toInt(companero.Dg_adi) - this.dgsCompaneroRepartidos);
-        if (pendientes < 1)
+        const total = this.puntosDelCompaneroPorRepartir(companero);
+        if (total < 1)
             return false;
-
-        const caracteristicas = (companero.Caracteristicas ?? {}) as Record<string, number | null>;
-        const modInteligencia = caracteristicas['Inteligencia_modificador'] ?? modificadorCaracteristica(toNumber(caracteristicas['Inteligencia']));
-        const tipo = this.buscarTipoCriaturaPorId(toNumber(companero?.Tipo?.Id));
-        const total = puntosHabilidadDgRaciales({
-            puntosPorDg: toNumber(tipo?.Puntos_habilidad),
-            multiplicador: pendientes,
-            modInteligencia: toNumber(modInteligencia),
-        });
         this.iniciarDistribucionHabilidadesInterna('companero_dg', returnStep, total, [], {
             habilidades: this.habilidadesCompaneroParaSesion(companero),
             dados: dadosGolpeCompanero(companero),
         });
         return true;
+    }
+
+    /**
+     * Los puntos de habilidad que le quedan por repartir al compañero. Con las habilidades de su monstruo y los puntos de su
+     * tipo (`Habilidades_monstruo` y `Puntos_habilidad_tipo`, que pone la carga de las sesiones), los que no ha gastado de
+     * todos sus DG adicionales (`puntosPendientesDelCompanero`: también los que les faltaban a las fichas de antes), salvo
+     * si ya los ha repartido en esta sesión del motor; sin ellas (la creación), los de sus DG adicionales aún sin repartir.
+     */
+    private puntosDelCompaneroPorRepartir(companero: CompaneroMonstruoDetalle): number {
+        const inteligencia = (companero.Caracteristicas as Record<string, number | null> | undefined)?.['Inteligencia'];
+        if (companero.Habilidades_monstruo && companero.Puntos_habilidad_tipo !== undefined) {
+            if (this.rangosDelCompaneroRepartidos)
+                return 0;
+            return puntosPendientesDelCompanero(companero.Habilidades ?? [], companero.Habilidades_monstruo, toInt(companero.Dg_adi),
+                companero.Puntos_habilidad_tipo, inteligencia);
+        }
+        const pendientes = Math.max(0, toInt(companero.Dg_adi) - this.dgsCompaneroRepartidos);
+        const tipo = this.buscarTipoCriaturaPorId(toNumber(companero?.Tipo?.Id));
+        return pendientes * puntosPorDgDelCompanero(toNumber(tipo?.Puntos_habilidad), inteligencia);
     }
 
     /** Las habilidades del compañero con la forma de las del personaje: todas las del catálogo, con los rangos que tiene. */
@@ -2869,6 +2885,7 @@ export class NuevoPersonajeService {
                 };
             });
         this.dgsCompaneroRepartidos = Math.max(0, toInt(companero.Dg_adi));
+        this.rangosDelCompaneroRepartidos = true;
     }
 
     puedeCerrarDistribucionHabilidades(): boolean {
@@ -3597,13 +3614,39 @@ export class NuevoPersonajeService {
      * de característica que le falta (también las que les faltaban a las fichas de antes). La subida le abre su paso.
      */
     companeroTieneAlgoQueElegir(): boolean {
+        const falta = this.loQueLeFaltaAlCompanero();
+        return !!falta && (falta.puntos > 0 || falta.dotes.length > 0 || falta.mejoras.length > 0 || falta.trucos > 0);
+    }
+
+    /**
+     * El tipo con el que cuenta el compañero para sus prerrequisitos (el `Tipo_prerrequisitos` de su progresión), en el
+     * compañero; sin el dato, nada (vale el de su monstruo).
+     */
+    private conSuTipoDePrerrequisitos(companero: CompaneroMonstruoDetalle | null | undefined): void {
+        if (!companero)
+            return;
+        const tipo = this.progresionCompanero?.Tipo_prerrequisitos ?? null;
+        if (tipo && toInt(tipo.Id) > 0)
+            companero.Tipo_prerrequisitos = { ...tipo };
+        else
+            delete companero.Tipo_prerrequisitos;
+    }
+
+    /**
+     * Lo que le falta al compañero activo (contrato: SESIONES_FRONT, «Lo que la mascota tiene pendiente»): los puntos de
+     * habilidad por gastar, los DG de las dotes y de las mejoras que le faltan y los trucos adicionales por elegir. `null`
+     * sin compañero o inactivo.
+     */
+    loQueLeFaltaAlCompanero(): { puntos: number; dotes: number[]; mejoras: number[]; trucos: number; } | null {
         const companero = (this.personajeCreacion.Companeros ?? [])[0];
         if (!companero || companero.Inactiva)
-            return false;
-        return toInt(companero.Dg_adi) > this.dgsCompaneroRepartidos
-            || huecosDeDotesDelCompanero(companero).length > 0
-            || huecosDeMejorasDelCompanero(companero).length > 0
-            || this.getTrucosPendientesDelCompanero() > 0;
+            return null;
+        return {
+            puntos: this.puntosDelCompaneroPorRepartir(companero),
+            dotes: huecosDeDotesDelCompanero(companero),
+            mejoras: huecosDeMejorasDelCompanero(companero),
+            trucos: this.getTrucosPendientesDelCompanero(),
+        };
     }
 
     /**
@@ -4018,6 +4061,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Companeros = [];
         this.quitarLoQueLeDaSuMascota('companero');
         this.dgsCompaneroRepartidos = 0;
+        this.rangosDelCompaneroRepartidos = false;
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
     }
@@ -5373,6 +5417,7 @@ export class NuevoPersonajeService {
      * Devuelve lo que añade.
      */
     private ponerAptitudesCompanero(companero: CompaneroMonstruoDetalle, nivelTabla: number): AptitudesMascotaAgregadas {
+        this.conSuTipoDePrerrequisitos(companero);
         const armas = armasNaturalesDelCompanero(companero);
         return this.ponerAptitudesMascota(companero, {
             aptitudes: (monstruoTieneDote) => aptitudesCompaneroDelNivel(this.progresionCompanero, nivelTabla, {
@@ -12015,6 +12060,8 @@ export class NuevoPersonajeService {
         this.dgRacialSinClasesRepartido = this.getNivelClasesActual() < 1;
         // Los rangos de los DG adicionales que ya tenía su compañero ya están repartidos: al subir, solo los de los nuevos.
         this.dgsCompaneroRepartidos = Math.max(0, toInt((pj.Companeros ?? [])[0]?.Dg_adi));
+        this.rangosDelCompaneroRepartidos = false;
+        this.conSuTipoDePrerrequisitos((pj.Companeros ?? [])[0]);
 
         // Las clases cerradas por multiclase, con el orden real (sin contar las de sus compatibles).
         const libres = new Set((this.razaSeleccionada?.Clases_multiclase_libre ?? []).map((libre) => toInt(libre?.Id)));
