@@ -115,8 +115,11 @@ function valoresDelFamiliar(f: PersonajeCreateFamiliarDto): string {
         + `Int ${toInt(f.inteligencia)}, ${rc}`;
 }
 
-/** El título de sus filas: «Compañero animal (Gruk)»; sin nombre, «Compañero animal (compañero animal)». */
-function tituloDeLaMascota(que: string, mascota: { nombre?: string | null; }): string {
+/**
+ * El título de sus filas: «Compañero animal (Gruk)»; sin nombre, «Compañero animal (compañero animal)». También el de sus
+ * rangos al completar el compañero (`completar-companero.rangosQueCambian`).
+ */
+export function tituloDeLaMascota(que: string, mascota: { nombre?: string | null; }): string {
     return `${que} (${`${mascota.nombre ?? ''}`.trim() || que.toLocaleLowerCase('es')})`;
 }
 
@@ -140,16 +143,18 @@ function filaDeLaMascota<T extends { nombre: string; inactiva?: boolean; }>(que:
     return a === d ? null : { que: titulo, antes: a, ahora: d };
 }
 
-/** Los nombres de lo que elige el compañero (sus dotes y sus trucos, por su id), para «Lo que cambia». */
+/** Los nombres de lo que elige el compañero (sus dotes, sus trucos y sus habilidades, por su id), para «Lo que cambia». */
 export interface NombresDeLaMascota {
     dote(idDote: number): string;
     truco(idTruco: number): string;
+    habilidad(idHabilidad: number): string;
 }
 
 /** Sin catálogos: el id («dote 49»). */
 const NOMBRES_POR_ID: NombresDeLaMascota = {
     dote: (id) => `dote ${id}`,
     truco: (id) => `truco ${id}`,
+    habilidad: (id) => `habilidad ${id}`,
 };
 
 /** Una lista para «Lo que cambia»: sus elementos separados por comas, o «Ninguna». */

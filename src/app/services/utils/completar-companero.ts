@@ -1,6 +1,6 @@
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { PersonajeCreateHabilidadMascotaDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { FilaDeLaMascota } from './mascota-al-dia';
+import { FilaDeLaMascota, NombresDeLaMascota, tituloDeLaMascota } from './mascota-al-dia';
 import { toInt } from './normalizacion';
 import { compararTexto } from './orden-texto';
 import { companeroConLoDelMotor } from './subida-nivel';
@@ -42,9 +42,13 @@ export function companeroCompletado(entrada: PersonajeCreateRequestDto, antes: P
     return ficha;
 }
 
-/** Los rangos del compañero que cambian entre la `entrada` y la `ficha`, en una fila de «Lo que cambia» («Avistar 4 → 5»). */
+/**
+ * Los rangos del compañero que cambian entre la `entrada` y la `ficha`, en una fila de «Lo que cambia» («Avistar 4 → 5»),
+ * con el título de las demás filas de la mascota (`tituloDeLaMascota`) y los nombres del motor (`nombresDeLoQueEligeLaMascota`).
+ */
 export function rangosQueCambian(entrada: PersonajeCreateRequestDto, ficha: PersonajeCreateRequestDto,
-    nombre: (idHabilidad: number) => string): FilaDeLaMascota[] {
+    nombres: Pick<NombresDeLaMascota, 'habilidad'>): FilaDeLaMascota[] {
+    const nombre = (id: number) => nombres.habilidad(id);
     if (!entrada.companero || !ficha.companero)
         return [];
     const clave = (h: PersonajeCreateHabilidadMascotaDto) => `${toInt(h.idHabilidad)}|${toInt(h.idExtra)}`;
@@ -56,7 +60,7 @@ export function rangosQueCambian(entrada: PersonajeCreateRequestDto, ficha: Pers
         .sort((x, y) => compararTexto(nombre(toInt(x.h.idHabilidad)), nombre(toInt(y.h.idHabilidad))));
     if (cambios.length < 1)
         return [];
-    const titulo = `Compañero animal (${`${ficha.companero.nombre ?? ''}`.trim() || 'compañero animal'}): rangos`;
+    const titulo = `${tituloDeLaMascota('Compañero animal', ficha.companero)}: rangos`;
     return [{
         que: titulo,
         antes: cambios.map((c) => `${nombre(toInt(c.h.idHabilidad))} ${c.a}`).join(', '),

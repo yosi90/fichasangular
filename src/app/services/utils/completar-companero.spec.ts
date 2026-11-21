@@ -26,8 +26,8 @@ describe('completar-companero (lo que le falta al compañero, fuera de una subid
         expect(entrada.companero?.habilidades?.[0].rangos).toBe(4);
     });
 
-    it('los rangos que cambian, en una fila', () => {
-        const nombre = (id: number) => id === 1 ? 'Avistar' : `habilidad ${id}`;
+    it('los rangos que cambian, en una fila (con el título de las demás filas de la mascota)', () => {
+        const nombre = { habilidad: (id: number) => id === 1 ? 'Avistar' : `habilidad ${id}` };
         expect(rangosQueCambian(ficha(4), ficha(5), nombre)).toEqual([{ que: 'Compañero animal (Gruk): rangos', antes: 'Avistar 4', ahora: 'Avistar 5' }]);
         expect(rangosQueCambian(ficha(4), ficha(4), nombre)).toEqual([]);
     });

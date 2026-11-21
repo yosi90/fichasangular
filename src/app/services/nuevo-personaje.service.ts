@@ -2119,11 +2119,12 @@ export class NuevoPersonajeService {
         return [...this.catalogoTrucos];
     }
 
-    /** Los nombres de lo que elige la mascota (sus dotes y sus trucos, por su id), para «Lo que cambia» de las sesiones. */
+    /** Los nombres de lo que elige la mascota (sus dotes, sus trucos y sus habilidades, por su id), para «Lo que cambia» de las sesiones. */
     nombresDeLoQueEligeLaMascota(): NombresDeLaMascota {
         return {
             dote: (id) => this.doteDelCatalogo(id)?.Nombre ?? `dote ${id}`,
             truco: (id) => this.catalogoTrucos.find((t) => t.Id === id)?.Nombre ?? `truco ${id}`,
+            habilidad: (id) => (this.estadoFlujo.ventajas.catalogoHabilidades ?? []).find((h) => h.Id_habilidad === id)?.Nombre ?? `habilidad ${id}`,
         };
     }
 
