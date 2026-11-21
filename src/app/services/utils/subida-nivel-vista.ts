@@ -9,9 +9,10 @@ import { PgSubida } from './subida-nivel';
 
 /**
  * Los pasos de la subida, en el orden del MJ (p. 58-59); solo salen los que dispara el nivel. «Reciclar» va antes de todos
- * (*Manual del jugador II*, pág. 194: antes de añadir nada del nivel nuevo), si la campaña lo deja.
+ * (*Manual del jugador II*, pág. 194: antes de añadir nada del nivel nuevo), si la campaña lo deja. «Compañero» (los rangos del
+ * compañero animal que se recicla, de nuevo, con sus DG adicionales) va al final, antes del resumen.
  */
-export type PasoSubida = 'reciclar' | 'clase' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'conjuros' | 'intercambio' | 'resumen';
+export type PasoSubida = 'reciclar' | 'clase' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'conjuros' | 'intercambio' | 'companero' | 'resumen';
 
 /**
  * Cómo se pinta un paso en la cabecera de pasos: hecho (antes del de ahora), el de ahora o pendiente. La usan la subida, la
