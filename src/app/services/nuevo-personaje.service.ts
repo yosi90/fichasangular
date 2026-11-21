@@ -1,4 +1,5 @@
 import type { NombresDeLaMascota } from './utils/mascota-al-dia';
+import type { LoQueLeFaltaAlCompanero } from './utils/completar-companero';
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
@@ -3638,7 +3639,7 @@ export class NuevoPersonajeService {
      * habilidad por gastar, los DG de las dotes y de las mejoras que le faltan y los trucos adicionales por elegir. `null`
      * sin compañero o inactivo.
      */
-    loQueLeFaltaAlCompanero(): { puntos: number; dotes: number[]; mejoras: number[]; trucos: number; } | null {
+    loQueLeFaltaAlCompanero(): LoQueLeFaltaAlCompanero | null {
         const companero = (this.personajeCreacion.Companeros ?? [])[0];
         if (!companero || companero.Inactiva)
             return null;

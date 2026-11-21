@@ -13,8 +13,19 @@ import { companeroConLoDelMotor } from './subida-nivel';
 /** El motivo de la corrección que lo guarda. */
 export const MOTIVO_COMPLETAR_COMPANERO = 'lo que le faltaba al compañero';
 
+/**
+ * Lo que le falta al compañero activo (`NuevoPersonajeService.loQueLeFaltaAlCompanero`): los puntos de habilidad por gastar,
+ * los DG de las dotes y de las mejoras que le faltan y los trucos adicionales por elegir.
+ */
+export interface LoQueLeFaltaAlCompanero {
+    puntos: number;
+    dotes: number[];
+    mejoras: number[];
+    trucos: number;
+}
+
 /** Lo que le falta (`NuevoPersonajeService.loQueLeFaltaAlCompanero`), en frases: «2 puntos de habilidad», «1 dote (la de su 6.º DG)». */
-export function frasesDeLoQueLeFalta(falta: { puntos: number; dotes: number[]; mejoras: number[]; trucos: number; } | null): string[] {
+export function frasesDeLoQueLeFalta(falta: LoQueLeFaltaAlCompanero | null): string[] {
     if (!falta)
         return [];
     const dgs = (lista: number[]) => unirLista(lista.map((dg) => `${dg}.º`), 'y');
