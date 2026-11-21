@@ -278,6 +278,11 @@ export interface PersonajeCreateCompaneroDto {
     dotes: Array<{ idDote: number; idExtra: number; dg?: number; }>;
     /** Sus mejoras de característica (+1 al llegar a cada múltiplo de 4 DG por sus DG adicionales). */
     mejoras?: Array<{ dg: number; idCaracteristica: number; }>;
+    /**
+     * Los trucos que sabe (contrato: «Los trucos del compañero»): los de su monstruo (`monstruo`), los adicionales de su tabla
+     * (`adicional`, con el `orden` en que los eligió) y los enseñados (`ensenado`). Sin ellos, la API guarda los de su monstruo.
+     */
+    trucos?: Array<{ idTruco: number; origen: 'adicional' | 'monstruo' | 'ensenado'; orden?: number; }>;
     /** Inactivo hasta que vuelva a cumplir lo que pide su fila de la lista (como el del familiar); sin él, activo. */
     inactiva?: boolean;
 }

@@ -20,7 +20,7 @@ import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { ClasesDelNivelComponent } from 'src/app/components/sesiones/clases-del-nivel/clases-del-nivel.component';
 import { ConjurosDelNivelComponent, nombreDeConjuro } from 'src/app/components/sesiones/conjuros-del-nivel/conjuros-del-nivel.component';
 import {
-    avisarPaso, catalogosDelNivel, ClaseDelNivel, clasesParaElNivel, doteElegidaEnElHueco, resolverDotesPendientes, resolverDotesYMejorasDelCompanero, resolverIncrementoPendiente,
+    avisarPaso, catalogosDelNivel, ClaseDelNivel, clasesParaElNivel, doteElegidaEnElHueco, resolverDotesPendientes, resolverLoQueEligeElCompanero, resolverIncrementoPendiente,
     tiradasPermitidasDe, tomarNivelDeClase,
 } from 'src/app/components/sesiones/pasos-con-selectores';
 import { PasosSesionComponent } from 'src/app/components/sesiones/pasos-sesion/pasos-sesion.component';
@@ -942,7 +942,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         // Los rangos del compañero (el nuevo, o los de sus DG adicionales nuevos), con sus puntos; sin ellos, sus mejoras y
         // sus dotes, si las tiene (en sus selectores), y el paso sobra.
         if (siguiente === 'companero' && !this.svc.iniciarDistribucionHabilidadesCompanero('clases')) {
-            await resolverDotesYMejorasDelCompanero(this.svc, this.selectores);
+            await resolverLoQueEligeElCompanero(this.svc, this.selectores);
             this.pasos = this.pasos.filter((p) => p !== 'companero');
             await this.siguiente();
             return;
@@ -1014,7 +1014,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.svc.cerrarDistribucionHabilidades();
         // Con los rangos del compañero ya puestos, sus mejoras y sus dotes.
         if (this.paso === 'companero')
-            await resolverDotesYMejorasDelCompanero(this.svc, this.selectores);
+            await resolverLoQueEligeElCompanero(this.svc, this.selectores);
         await this.siguiente();
     }
 

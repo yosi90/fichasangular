@@ -18,6 +18,7 @@ import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristi
 import { MascotaDeFila, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { UserService } from 'src/app/services/user.service';
 import { esMonstruoDerivado } from 'src/app/services/utils/monstruo-mapper';
+import { trucosParaLaFicha } from 'src/app/services/utils/companero-trucos';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
@@ -112,6 +113,8 @@ export class DetallesMonstruoComponent {
     sortilegas: SortilegaFicha[] = [];
     habilidades: { nombre: string; rangos: number; }[] = [];
     dotes: DoteFicha[] = [];
+    /** Los trucos que sabe (contrato: «Los trucos del compañero»): en el compañero, con su origen. */
+    trucos: string[] = [];
     raciales: RacialDetalle[] = [];
     ataquesEspeciales: RacialDetalle[] = [];
     subtipos: { Id: number; Nombre: string; }[] = [];
@@ -127,7 +130,8 @@ export class DetallesMonstruoComponent {
     personajesPorCompanero = '';
 
     get hayAptitudes(): boolean {
-        return this.habilidades.length > 0 || this.dotes.length > 0 || this.raciales.length > 0 || this.ataquesEspeciales.length > 0;
+        return this.habilidades.length > 0 || this.dotes.length > 0 || this.trucos.length > 0 || this.raciales.length > 0
+            || this.ataquesEspeciales.length > 0;
     }
 
     get hayPersonajesRelacionados(): boolean {
@@ -260,6 +264,7 @@ export class DetallesMonstruoComponent {
             .filter((h) => tieneTextoVisible(h.habilidad) && h.rangos > 0)
             .map(({ nombre, rangos }) => ({ nombre, rangos }));
         this.dotes = dotesVisibles(m?.Dotes);
+        this.trucos = trucosParaLaFicha(m, esMonstruoDerivado(m));
         this.raciales = (m?.Raciales ?? []).filter((racial) => tieneTextoVisible(racial?.Nombre));
         this.ataquesEspeciales = (m?.Ataques_especiales ?? []).filter((ataque) => tieneTextoVisible(ataque?.Nombre));
         this.subtipos = (m?.Subtipos ?? [])

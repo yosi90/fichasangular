@@ -9,6 +9,7 @@ import { primerEntero, sinRepetidos, toInt, toNumber } from './normalizacion';
 import { carasDado } from './puntos-golpe';
 import { dadosGolpeCompanero, rangosDelCompaneroQueCaben } from './companero-reglas';
 import { dgDeLaDoteDelCompanero, esDoteDelMonstruoDelCompanero, quitarLoDeLosDgQueNoTieneElCompanero } from './companero-dotes';
+import { quitarLosTrucosQueNoCaben, trucosParaGuardar } from './companero-trucos';
 import { TablaDelFamiliar } from './familiar-reglas';
 import { idDelMonstruo } from './mascota-cupos';
 
@@ -231,9 +232,12 @@ export function construirCompaneroParaGuardar(
     // Sin las dotes elegidas ni las mejoras de los DG que no tiene (al perder un nivel o quedar inactivo).
     const companero: CompaneroMonstruoDetalle = companeroDelMotor
         ? { ...companeroDelMotor, Caracteristicas: { ...(companeroDelMotor.Caracteristicas ?? {}) } as any,
-            Dotes: [...(companeroDelMotor.Dotes ?? [])], ...(companeroDelMotor.Mejoras ? { Mejoras: [...companeroDelMotor.Mejoras] } : {}) }
+            Dotes: [...(companeroDelMotor.Dotes ?? [])], ...(companeroDelMotor.Mejoras ? { Mejoras: [...companeroDelMotor.Mejoras] } : {}),
+            ...(companeroDelMotor.Trucos ? { Trucos: [...companeroDelMotor.Trucos] } : {}) }
         : companeroDelMotor;
     quitarLoDeLosDgQueNoTieneElCompanero(companero);
+    // Y sin los trucos adicionales que ya no le caben (contrato, «Los trucos del compañero»).
+    quitarLosTrucosQueNoCaben(companero);
     const caracteristicas = (companero?.Caracteristicas ?? {}) as Record<string, number | null>;
     const dgAdi = Math.max(0, toInt(companero?.Dg_adi));
     const dados = dadosGolpeCompanero(companero);
@@ -261,6 +265,8 @@ export function construirCompaneroParaGuardar(
         dotes: dotesDelCompanero(companero),
         mejoras: (companero?.Mejoras ?? []).map((m) => ({ dg: toInt(m.Dg), idCaracteristica: toInt(m.Id_caracteristica) }))
             .filter((m) => m.dg > 0 && m.idCaracteristica > 0),
+        // Sin trucos conocidos (la ficha de antes de los trucos), no se mandan: la API guarda los de su monstruo.
+        ...(companero?.Trucos ? { trucos: trucosParaGuardar(companero) } : {}),
         ...(companero?.Inactiva ? { inactiva: true } : {}),
     };
 }

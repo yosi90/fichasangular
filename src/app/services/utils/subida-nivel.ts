@@ -333,7 +333,8 @@ const CIFRAS_COMPANERO_DEL_MOTOR = ['vida', 'dgAdi', 'trucosAdi', 'fuerza', 'des
  * El compañero de la `entrada` con lo que cambia el motor entre `antes` y `despues` (la web lo pone al día en cada nivel
  * de clase y en los demás cambios de la ficha: `docs/publica/endpoints/personajes.md`, «El compañero, comprobado por la
  * API» y «La mascota inactiva…»): sus cifras, si está inactivo (`inactiva`) y, por id, las aptitudes y las dotes que gana
- * o pierde; sus rangos, si bajan sus DG adicionales y el motor los cambia («todo o nada»: `rangosDelCompaneroQueCaben`).
+ * o pierde; sus rangos, si bajan sus DG adicionales y el motor los cambia («todo o nada»: `rangosDelCompaneroQueCaben`);
+ * y sus mejoras y sus trucos, si el motor los cambia.
  * Lo demás (el nombre, el animal, la plantilla) se queda como estaba, y lo que guardaba la ficha con otra forma (el extra
  * de antes) también.
  */
@@ -355,6 +356,10 @@ export function companeroConLoDelMotor(guardado: PersonajeCreateCompaneroDto, an
     // Sus mejoras de característica, como las deja el motor si cambian (contrato: «Las dotes y las mejoras que elige…»).
     if (claveElemento(antes?.mejoras ?? []) !== claveElemento(despues.mejoras ?? []))
         resultado.mejoras = JSON.parse(JSON.stringify(despues.mejoras ?? []));
+    // Sus trucos, como los deja el motor si cambian: los adicionales que elige al subir y los que pierde al bajar (contrato:
+    // «Los trucos del compañero»); los enseñados y los de su monstruo van con ellos.
+    if (claveElemento(antes?.trucos ?? []) !== claveElemento(despues.trucos ?? []))
+        resultado.trucos = JSON.parse(JSON.stringify(despues.trucos ?? []));
     conSuActividad(resultado, despues);
     return resultado;
 }

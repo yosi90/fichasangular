@@ -24,6 +24,8 @@ import { RazaService } from './raza.service';
 import { SesionesService } from './sesiones.service';
 import { SubtipoService } from './subtipo.service';
 import { TipoCriaturaService } from './tipo-criatura.service';
+import { TrucoService } from './truco.service';
+import { conLosTrucosDeSuMonstruo } from './utils/companero-trucos';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
 import { familiarConSuCriatura } from './utils/familiar-reglas';
 import { idDelMonstruo } from './utils/mascota-cupos';
@@ -67,6 +69,7 @@ export class MotorDesdeFichaService {
         private deidadSvc: DeidadService,
         private monstruoSvc: MonstruoService,
         private tipoCriaturaSvc: TipoCriaturaService,
+        private trucoSvc: TrucoService,
     ) { }
 
     /** El primer valor de un catálogo, o `null` si falla. */
@@ -128,7 +131,7 @@ export class MotorDesdeFichaService {
 
     /** Los catálogos que usa el motor, como en la creación. */
     async cargarCatalogos(motor: NuevoPersonajeService): Promise<void> {
-        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos, deidades, progresionCompanero, progresionFamiliar] = await Promise.all([
+        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras, subtipos, deidades, progresionCompanero, progresionFamiliar, trucos] = await Promise.all([
             this.primero(this.claseSvc.getClases()), this.primero(this.doteSvc.getDotes()), this.primero(this.conjuroSvc.getConjuros()),
             this.primero(this.habilidadSvc.getHabilidades()), this.primero(this.habilidadSvc.getHabilidadesCustom()),
             this.primero(this.idiomaSvc.getIdiomas()), this.primero(this.dominioSvc.getDominios()), this.primero(this.escuelaSvc.getEscuelas()),
@@ -142,6 +145,8 @@ export class MotorDesdeFichaService {
             this.primero(this.monstruoSvc.getCompanerosProgresion()),
             // Las tablas del familiar, sus aptitudes por nivel y sus pseudoplantillas: la subida también lo pone al día.
             this.primero(this.monstruoSvc.getFamiliaresProgresion()),
+            // Los trucos de Trato con animales: los adicionales del compañero, que se eligen al subir.
+            this.primero(Promise.resolve().then(() => this.trucoSvc.getTrucos())),
         ]);
         motor.setCatalogoClases(clases ?? []);
         motor.setCatalogoDotes(dotes ?? []);
@@ -159,6 +164,7 @@ export class MotorDesdeFichaService {
         motor.setCatalogoDeidades(deidades ?? []);
         motor.setProgresionCompanero(progresionCompanero);
         motor.setProgresionFamiliar(progresionFamiliar);
+        motor.setCatalogoTrucos(trucos ?? []);
     }
 
     /**
@@ -246,8 +252,11 @@ export class MotorDesdeFichaService {
             const tipo = idTipo > 0 ? await this.primero(Promise.resolve().then(() => this.tipoCriaturaSvc.getTipoCriatura(idTipo))) : null;
             if (!monstruo)
                 return companero;
-            // Las dotes de su monstruo: con ellas se cuentan las que le tocan elegir con sus DG.
-            const conSusDotes = { ...companero, Dotes_monstruo: [...(monstruo.Dotes ?? [])] };
+            // Las dotes de su monstruo: con ellas se cuentan las que le tocan elegir con sus DG; y sus trucos, con los que
+            // trae su monstruo (contrato: «Los trucos del compañero»).
+            const conSusDotes = {
+                ...companero, Dotes_monstruo: [...(monstruo.Dotes ?? [])], Trucos: conLosTrucosDeSuMonstruo(companero.Trucos, monstruo),
+            };
             if (!tipo || tipo.Puntos_habilidad === undefined || tipo.Puntos_habilidad === null)
                 return conSusDotes;
             return {

@@ -1081,6 +1081,13 @@
         </app-selector-idioma-modal>
     </ng-container>
 
+    <ng-container *ngIf="modalSelectorTrucosAbierto">
+        <app-selector-trucos-modal [titulo]="tituloDelSelectorTrucos" [companero]="companeroDelSelectorTrucos"
+            [catalogo]="catalogoDelSelectorTrucos" [incluirHomebrew]="incluirHomebrewTrucos"
+            (confirmar)="onConfirmarTrucosDelCompanero($event)" (omitir)="onOmitirTrucosDelCompanero()">
+        </app-selector-trucos-modal>
+    </ng-container>
+
     <ng-container *ngIf="modalSelectorDominiosAbierto">
         <app-selector-dominios-modal [opciones]="selectorDominiosOpciones" [titulo]="selectorDominiosTitulo"
             [cantidadObjetivo]="selectorDominiosCantidadObjetivo"

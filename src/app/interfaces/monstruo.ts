@@ -167,6 +167,23 @@ export interface EspecialContextualMonstruo {
     Contexto: Record<string, any>;
 }
 
+/** De dónde le viene un truco a una mascota (contrato: `personajes.md`, «Los trucos del compañero»). */
+export type OrigenTruco = 'adicional' | 'monstruo' | 'ensenado';
+
+/**
+ * Un truco que sabe una criatura: los que trae entrenados su monstruo (`Trucos` de su detalle, con `Origen` `monstruo`) o,
+ * en el compañero de una ficha, también los adicionales de su tabla (con su `Orden`) y los enseñados.
+ */
+export interface TrucoDeMascota {
+    Id: number;
+    Nombre: string;
+    Origen: OrigenTruco;
+    /** El orden en que eligió los adicionales (1, 2…); `null` en los demás. */
+    Orden: number | null;
+    Coste: number;
+    Es_fin: boolean;
+}
+
 export interface MonstruoDetalle {
     Id: number;
     Nombre: string;
@@ -207,6 +224,8 @@ export interface MonstruoDetalle {
     Ataques_especiales: RacialDetalle[];
     /** Las armas naturales como dato (`Ataque.Ataque_completo` es su descripción); los familiares y compañeros, las de su monstruo. */
     Armas_naturales?: ArmaNatural[];
+    /** Los trucos que sabe (los de su monstruo, entrenados; en el compañero de una ficha, también los suyos). */
+    Trucos?: TrucoDeMascota[];
     Familiares: FamiliarMonstruoDetalle[];
     Companeros: CompaneroMonstruoDetalle[];
     Personajes_relacionados: MonstruoPersonajesRelacionados;

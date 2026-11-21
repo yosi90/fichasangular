@@ -77,6 +77,7 @@ import { DetallesManualComponent } from './components/detalles/detalles-manual/d
 import { ListadoPlantillasComponent } from './components/shared/listado-plantillas/listado-plantillas.component';
 import { DetallesPlantillaComponent } from './components/detalles/detalles-plantilla/detalles-plantilla.component';
 import { SelectorIdiomaModalComponent } from './components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
+import { SelectorTrucosModalComponent } from './components/nuevo-personaje/selector-trucos-modal/selector-trucos-modal.component';
 import { SelectorDominiosModalComponent } from './components/nuevo-personaje/selector-dominios-modal/selector-dominios-modal.component';
 import { SelectorRazaBaseModalComponent } from './components/nuevo-personaje/selector-raza-base-modal/selector-raza-base-modal.component';
 import { SelectorRacialesOpcionalesModalComponent } from './components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
@@ -240,6 +241,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         DetallesRacialComponent,
         GeneradorCaracteristicasModalComponent,
         SelectorIdiomaModalComponent,
+        SelectorTrucosModalComponent,
         SelectorDominiosModalComponent,
         SelectorAumentosCaracteristicaModalComponent,
         SelectorEspecialidadMagicaModalComponent,
