@@ -16,11 +16,11 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import {
     AptitudesMascotaDelNivel,
     aptitudesMascotaDelNivel,
+    catalogoDeMascotaDesdeMonstruos,
     EstadoMascota,
     filaDelNivel,
     FilaMascotaResuelta,
     filasDeSusListas,
-    filasPorPlantilla,
     resolverEstadoMascota,
     resolverFilaMascota,
     TextosMascota,
@@ -118,28 +118,8 @@ export function plantillasFamiliarDisponibles(
  * elevado) no hacen un familiar.
  */
 export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDetalle[]): FamiliarMonstruoDetalle[] {
-    const resultado: FamiliarMonstruoDetalle[] = [];
-    (Array.isArray(monstruos) ? monstruos : []).forEach((monstruo) => {
-        const id = toInt(monstruo?.Id);
-        if (!monstruo?.Familiar || id <= 0)
-            return;
-        filasPorPlantilla(monstruo, 'familiar').forEach((filas, idPlantilla) => {
-            resultado.push({
-                ...monstruo,
-                Id_familiar: id,
-                Monstruo_origen: { Id: id, Nombre: `${monstruo?.Nombre ?? ''}`.trim() },
-                Vida: 0,
-                Plantilla: {
-                    Id: idPlantilla,
-                    Nombre: filas.map((fila) => `${fila?.Plantilla?.Nombre ?? ''}`.trim()).find((nombre) => nombre.length > 0) ?? '',
-                },
-                Niveles_clase: filas,
-                Especiales: [],
-                Personajes: [],
-            });
-        });
-    });
-    return resultado.sort((a, b) => porNombre(a, b) || toInt(a.Plantilla?.Id) - toInt(b.Plantilla?.Id));
+    return catalogoDeMascotaDesdeMonstruos(monstruos, 'familiar', (monstruo) => !!monstruo?.Familiar,
+        (entrada, id): FamiliarMonstruoDetalle => ({ ...entrada, Id_familiar: id }));
 }
 
 /** La clave de un familiar del catálogo de la creación: su monstruo y su pseudoplantilla. */

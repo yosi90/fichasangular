@@ -9,15 +9,15 @@ import {
 import { Personaje } from 'src/app/interfaces/personaje';
 import { normalizarTexto, primerEntero, toInt } from 'src/app/services/utils/normalizacion';
 import { razonesAlineamientoMascota } from 'src/app/services/utils/nivel-clase-monstruo';
-import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 import {
     AptitudesMascotaDelNivel,
     aptitudesMascotaDelNivel,
+    catalogoDeMascotaDesdeMonstruos,
     EstadoMascota,
     filaDelNivel,
     FilaMascotaResuelta,
     filasDeSusListas,
-    filasPorPlantilla,
     resolverEstadoMascota,
     resolverFilaMascota,
     TextosMascota,
@@ -184,30 +184,8 @@ export function claveCompanero(companero: CompaneroMonstruoDetalle | null | unde
  * esas filas: las de compañero (su `Mascota`); las de un familiar no hacen un compañero.
  */
 export function construirCatalogoCompanerosDesdeMonstruos(monstruos: MonstruoDetalle[]): CompaneroMonstruoDetalle[] {
-    const resultado: CompaneroMonstruoDetalle[] = [];
-    (Array.isArray(monstruos) ? monstruos : []).forEach((monstruo) => {
-        const id = toInt(monstruo?.Id);
-        if (!monstruo?.Companero || id <= 0)
-            return;
-        filasPorPlantilla(monstruo, 'companero').forEach((filas, idPlantilla) => {
-            resultado.push({
-                ...monstruo,
-                Id_companero: id,
-                Monstruo_origen: { Id: id, Nombre: `${monstruo?.Nombre ?? ''}`.trim() },
-                Vida: 0,
-                Dg_adi: 0,
-                Trucos_adi: 0,
-                Plantilla: {
-                    Id: idPlantilla,
-                    Nombre: idPlantilla > 0 ? `${filas[0]?.Plantilla?.Nombre ?? ''}`.trim() : '',
-                },
-                Niveles_clase: filas,
-                Especiales: [],
-                Personajes: [],
-            });
-        });
-    });
-    return resultado.sort((a, b) => porNombre(a, b) || toInt(a.Plantilla?.Id) - toInt(b.Plantilla?.Id));
+    return catalogoDeMascotaDesdeMonstruos(monstruos, 'companero', (monstruo) => !!monstruo?.Companero,
+        (entrada, id): CompaneroMonstruoDetalle => ({ ...entrada, Id_companero: id, Dg_adi: 0, Trucos_adi: 0 }));
 }
 
 /** La fila de la tabla del compañero que toca a ese nivel (la última que empieza en él o antes); sin ninguna, todo a 0. */
