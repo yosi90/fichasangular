@@ -2351,11 +2351,13 @@ describe('La mascota en los cambios de la ficha: con los valores de su nivel o i
         expect(ids(resultado.ficha.colecciones?.especiales)).not.toContain(VINCULO);
         expect(ids(resultado.ficha.colecciones?.especiales)).not.toContain(COMPARTIR_CONJUROS);
         expect(resultado.ficha.colecciones?.clases).toEqual([{ idClase: DRUIDA.Id, nivel: 3 }]);
-        expect(estado.companero).toEqual({ nombre: 'Lomo', inactiva: true, motivo: 'Pide un nivel efectivo de druida 4, y tienes 3.' });
+        // El motivo, con la frase de la API (contrato, «Las frases de "queda inactivo"»).
+        expect(estado.companero).toEqual({ nombre: 'Lomo', inactiva: true, motivo: 'El compañero animal «Bisonte» pide un nivel efectivo de druida 4, y el personaje tiene 3' });
         const [fila] = filasDeLasMascotas(guardado.entrada, resultado.ficha, estado);
         expect(fila.que).toBe('Compañero animal (Lomo)');
         expect(fila.antes).toBe('+0 DG, 1 truco, Fue 22, Des 10, armadura natural 4, 13 PG');
-        expect(fila.ahora).toMatch(/^Queda inactivo hasta que vuelva a cumplir: pide un nivel efectivo de druida 4, y tienes 3\./);
+        expect(fila.ahora).toBe('El compañero animal «Bisonte» pide un nivel efectivo de druida 4, y el personaje tiene 3: queda inactivo hasta que '
+            + 'vuelva a cumplir. Vale su criatura tal cual y el amo pierde lo que le daba');
         // El motor de la sesión, como estaba.
         expect(motor.PersonajeCreacion.Companeros[0].Inactiva).toBeUndefined();
         expect(motor.PersonajeCreacion.Claseas.some((e) => toInt(e.Id) === VINCULO)).toBeTrue();
@@ -2383,7 +2385,7 @@ describe('La mascota en los cambios de la ficha: con los valores de su nivel o i
         expect([ficha.companero!.dgAdi, ficha.companero!.trucosAdi]).toEqual([0, 1]);
         expect(ids(ficha.companero!.especiales)).toContain(VINCULO);
         expect(ids(ficha.colecciones?.especiales)).toContain(VINCULO);
-        expect(filasDeLasMascotas(druida3.entrada, ficha, {})[0].ahora).toMatch(/^Vuelve a cumplir su fila y está activo otra vez/);
+        expect(filasDeLasMascotas(druida3.entrada, ficha, {})[0].ahora).toMatch(/^Vuelve a cumplir lo que pide su fila: ya no está inactivo \(/);
     });
 
     it('el mago 3 pierde un nivel: su familiar, con la tabla de 2, sin transmitir conjuros de toque y la mitad de los PG nuevos', () => {
@@ -2471,7 +2473,7 @@ describe('La mascota en los cambios de la ficha: con los valores de su nivel o i
             (elevado.Contexto as any).Sin_prerrequisitos = true;
             const estado = svc.ponerMascotasAlDia();
             expect(estado.companero?.inactiva).toBeTrue();
-            expect(estado.companero?.motivo).toBe('Hace falta la dote «Compañero elevado» para tenerlo como compañero animal.');
+            expect(estado.companero?.motivo).toBe('El compañero animal «Lobo» pide la dote «Compañero elevado», y el personaje la tiene sin sus prerrequisitos');
         });
     });
 });

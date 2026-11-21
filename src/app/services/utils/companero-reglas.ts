@@ -15,6 +15,7 @@ import {
     AptitudesMascotaDelNivel,
     aptitudesMascotaDelNivel,
     catalogoDeMascotaDesdeMonstruos,
+    criaturaDeLaMascota,
     EstadoMascota,
     filaDelNivel,
     FilaMascotaResuelta,
@@ -132,23 +133,27 @@ export function armasNaturalesDelCompanero(companero: MonstruoDetalle | null | u
 }
 
 /**
- * La fila de la lista con la que el personaje tiene a ese compañero (`resolverFilaMascota`) y el nivel de la tabla que le
- * toca: su nivel efectivo más el ajuste de su fila. Si el ajuste lo deja en 0 o menos, aún no se puede elegir.
+ * La fila de la lista con la que el personaje tiene a ese compañero (`resolverFilaMascota`, con `sinPrerrequisitos`) y el
+ * nivel de la tabla que le toca: su nivel efectivo más el ajuste de su fila. Si el ajuste lo deja en 0 o menos, aún no se
+ * puede elegir (y el que ya tiene queda inactivo: `motivo`).
  */
 export function resolverFilaCompanero(
     companero: CompaneroMonstruoDetalle,
     estado: EstadoCuposCompanero,
     dotesPersonaje: ReadonlySet<number>,
+    sinPrerrequisitos?: ReadonlySet<number>,
 ): FilaCompaneroResuelta {
-    const resuelta = resolverFilaMascota(companero, estado, dotesPersonaje, TEXTOS_COMPANERO);
+    const resuelta = resolverFilaMascota(companero, estado, dotesPersonaje, TEXTOS_COMPANERO, sinPrerrequisitos);
     if (!resuelta.fila || resuelta.nivelTabla >= 1)
         return resuelta;
     const nombre = `${companero?.Nombre ?? ''}`.trim();
     const lista = `${resuelta.fila?.Clase?.Nombre ?? ''}`.trim().toLocaleLowerCase('es') || TEXTOS_COMPANERO.listaPorDefecto;
+    const ajuste = textoConSigno(resuelta.ajuste, '−');
     return {
         ...resuelta,
         fila: null,
-        razones: [`Con el ajuste de su lista (${textoConSigno(resuelta.ajuste, '−')}), «${nombre}» se queda sin nivel efectivo de ${lista}: aún no se puede elegir.`],
+        razones: [`Con el ajuste de su lista (${ajuste}), «${nombre}» se queda sin nivel efectivo de ${lista}: aún no se puede elegir.`],
+        motivo: `Con el ajuste de su lista (${ajuste}), el ${TEXTOS_COMPANERO.mascota} «${criaturaDeLaMascota(companero)}» se queda sin nivel efectivo de ${lista}`,
     };
 }
 

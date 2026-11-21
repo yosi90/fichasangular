@@ -204,6 +204,29 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
         expect(resolverFilaCompanero(conMinimo, estadoDe([['Druida', 4]], { Ataque_base: '+3' }), new Set()).fila).not.toBeNull();
     });
 
+    it('de la que ya tiene, lo que no cumple con las frases de la API (`motivo`; contrato, «Las frases de "queda inactivo"»)', () => {
+        const motivo = (companero: any, estado: any, dotes = new Set<number>(), sin?: Set<number>) =>
+            resolverFilaCompanero(companero, estado, dotes, sin).motivo;
+        const bisonte = { ...delCatalogo(BISONTE), Nombre: 'Lomo', Monstruo_origen: { Id: BISONTE, Nombre: 'Bisonte' } };
+        expect(motivo(bisonte, estadoDe([['Explorador', 6]]))).toBe('El compañero animal «Bisonte» pide un nivel efectivo de druida 4, y el personaje tiene 3');
+        expect(motivo({ ...bisonte, Niveles_clase: [{ ...bisonte.Niveles_clase[0], Nivel: 3 }] }, estadoDe([['Druida', 3]])))
+            .toBe('Con el ajuste de su lista (−3), el compañero animal «Bisonte» se queda sin nivel efectivo de druida');
+        const celestial = delCatalogo(LOBO, CELESTIAL);
+        expect(motivo(celestial, estadoDe([['Druida', 2]]))).toBe('Para tener «Lobo» como compañero animal hace falta la dote «Compañero elevado»');
+        expect(motivo(celestial, estadoDe([['Druida', 2]]), new Set(), new Set([COMPANERO_ELEVADO])))
+            .toBe('El compañero animal «Lobo» pide la dote «Compañero elevado», y el personaje la tiene sin sus prerrequisitos');
+        expect(motivo({ ...celestial, Plantilla: { Id: 999, Nombre: 'Otra' } }, estadoDe([['Druida', 2]])))
+            .toBe('El compañero animal «Lobo», con su plantilla, no está en la lista de compañeros animales de sus clases');
+        expect(motivo({ ...delCatalogo(TEJON), Nombre: 'Halcón', Monstruo_origen: { Id: 99, Nombre: 'Halcón' }, Niveles_clase: [] }, estadoDe([['Druida', 1]])))
+            .toBe('El compañero animal «Halcón» no está en la lista de compañeros animales de sus clases (druida)');
+        expect(motivo(bisonte, estadoDe([]))).toBe('Ninguna clase del personaje le da ya un compañero animal');
+        const lobo = delCatalogo(LOBO);
+        const conMinimo = { ...lobo, Niveles_clase: lobo.Niveles_clase.map((f) => ({ ...f, Ataque_base_minimo: 3 })) };
+        expect(motivo(conMinimo, estadoDe([['Druida', 3]], { Ataque_base: '+2' })))
+            .toBe('El compañero animal «Lobo» pide un ataque base de +3, y el personaje tiene +2');
+        expect(motivo(lobo, estadoDe([['Druida', 3]]))).toBe('');
+    });
+
     describe('la tabla y las aptitudes', () => {
         it('la fila de cada nivel y la que ya lleva un compañero por sus DG adicionales', () => {
             expect(bonosCompaneroDelNivel(PROGRESION, 0).Dg_adicionales).toBe(0);

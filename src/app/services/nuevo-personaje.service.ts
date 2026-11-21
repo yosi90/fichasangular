@@ -4962,20 +4962,24 @@ export class NuevoPersonajeService {
         return this.estadoDeLasMascotas(dotes);
     }
 
-    /** Cómo está cada mascota (la primera de cada clase) y, si está inactiva, por qué (la frase de su fila). */
+    /**
+     * Cómo está cada mascota (la primera de cada clase) y, si está inactiva, por qué: el `motivo` de su fila, con las frases
+     * de la API (con las dotes que tiene sin sus prerrequisitos, que no la abren).
+     */
     private estadoDeLasMascotas(dotes: ReadonlySet<number>): EstadoDeLasMascotas {
         const estado: EstadoDeLasMascotas = {};
+        const sinPrerrequisitos = new Set([...this.idsDotesDelPersonaje()].filter((id) => !dotes.has(id)));
         const companero = (this.personajeCreacion.Companeros ?? [])[0];
         if (companero)
             estado.companero = {
                 nombre: `${companero.Nombre ?? ''}`.trim(), inactiva: !!companero.Inactiva,
-                motivo: companero.Inactiva ? resolverFilaCompanero(companero, this.getEstadoCuposCompanero(), dotes).razones[0] ?? '' : '',
+                motivo: companero.Inactiva ? resolverFilaCompanero(companero, this.getEstadoCuposCompanero(), dotes, sinPrerrequisitos).motivo : '',
             };
         const familiar = (this.personajeCreacion.Familiares ?? [])[0];
         if (familiar)
             estado.familiar = {
                 nombre: `${familiar.Nombre ?? ''}`.trim(), inactiva: !!familiar.Inactiva,
-                motivo: familiar.Inactiva ? resolverFilaFamiliar(familiar, this.getEstadoCuposFamiliar(), dotes).razones[0] ?? '' : '',
+                motivo: familiar.Inactiva ? resolverFilaFamiliar(familiar, this.getEstadoCuposFamiliar(), dotes, sinPrerrequisitos).motivo : '',
             };
         return estado;
     }

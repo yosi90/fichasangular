@@ -35,7 +35,7 @@ import { campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, mo
 import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import {
-    EstadoDeLasMascotas, filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota,
+    cambiosDeLasMascotas, EstadoDeLasMascotas, sinLoQueYaNoDaLaMascota,
 } from 'src/app/services/utils/mascota-al-dia';
 
 export type PasoPlantilla = 'plantilla' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'resumen';
@@ -426,9 +426,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             exClases: this.clasesContraAlineamiento,
             razaContraAlineamiento: this.razaContraElAlineamientoNuevo(),
         });
-        const conMascota = !!this.entrada?.companero || !!this.entrada?.familiar;
-        const mascotas = conMascota ? filasDeLasMascotas(this.entrada!, this.fichaParaGuardar(), this.estadoMascotas) : [];
-        this.cambios = [...this.cambios, ...mascotas.map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
+        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(this.entrada!, () => this.fichaParaGuardar(), this.estadoMascotas)];
     }
 
     /**

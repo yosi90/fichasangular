@@ -63,7 +63,7 @@ import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
 import { clasesQueDejanDeCumplir, DoteReciclable, dotesParaReciclar, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import {
-    EstadoDeLasMascotas, filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota,
+    cambiosDeLasMascotas, EstadoDeLasMascotas, sinLoQueYaNoDaLaMascota,
 } from 'src/app/services/utils/mascota-al-dia';
 import { pgTrasCambioDeCon, PgSubida } from 'src/app/services/utils/subida-nivel';
 
@@ -854,9 +854,7 @@ export class AdquirirRazaMutadaComponent implements OnInit, OnDestroy {
         });
         // Sus mascotas, con los valores de su nivel nuevo o inactivas hasta que vuelvan a cumplir (la conversión pierde un nivel;
         // las dos cambian los PG y el ataque base del amo): contrato, «La mascota inactiva…».
-        const conMascota = !!this.entrada?.companero || !!this.entrada?.familiar;
-        const mascotas = conMascota ? filasDeLasMascotas(this.entrada!, this.fichaParaGuardar(), this.estadoMascotas) : [];
-        this.cambios = [...this.cambios, ...mascotas.map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
+        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(this.entrada!, () => this.fichaParaGuardar(), this.estadoMascotas)];
     }
 
     /** Lo propio de la conversión en el resumen: el nivel perdido y el ganado, los PX, las dotes sin usar y las aptitudes. */

@@ -17,7 +17,10 @@ import { aplicarLoQueDanLasDotes, conLasMascotasDelMotor, diferencia } from './s
  * lo que le daba. Aquí, lo que eso cambia en la ficha que se manda y en «Lo que cambia».
  */
 
-/** Cómo queda una mascota al ponerla al día y, si está inactiva, por qué (la frase de su fila). */
+/**
+ * Cómo queda una mascota al ponerla al día y, si está inactiva, por qué: lo que no cumple de su fila, con la frase de la API
+ * sin el punto (el `motivo` de `resolverFilaMascota`).
+ */
 export interface EstadoDeLaMascota {
     nombre: string;
     inactiva: boolean;
@@ -87,8 +90,8 @@ export function perdidaConSusMascotas(svc: NuevoPersonajeService, motor: MotorDe
     }
 }
 
-/** El porqué de las filas de la mascota en los resúmenes que lo piden (la plantilla, la raza mutada, la vuelta a la vida). */
-export const PORQUE_DE_LA_MASCOTA = 'Su mascota se juzga otra vez con lo que tiene ahora su amo (Guía del DM, pág. 295; Manual del jugador, págs. 35 y 44)';
+/** El porqué de las filas de la mascota en los resúmenes que lo piden (`cambiosDeLasMascotas`). */
+const PORQUE_DE_LA_MASCOTA = 'Su mascota se juzga otra vez con lo que tiene ahora su amo (Guía del DM, pág. 295; Manual del jugador, págs. 35 y 44)';
 
 /** Una fila de «Lo que cambia» de la mascota: qué, antes, ahora. */
 export interface FilaDeLaMascota {
@@ -111,24 +114,19 @@ function valoresDelFamiliar(f: PersonajeCreateFamiliarDto): string {
         + `Int ${toInt(f.inteligencia)}, ${rc}`;
 }
 
-/** La frase de la fila, en minúscula para seguir a los dos puntos. */
-function enMinuscula(texto: string): string {
-    const t = `${texto ?? ''}`.trim();
-    return t ? `${t.charAt(0).toLocaleLowerCase('es')}${t.slice(1)}` : '';
-}
-
 function filaDeLaMascota<T extends { nombre: string; inactiva?: boolean; }>(que: string, antes: T, despues: T,
     valores: (m: T) => string, estado: EstadoDeLaMascota | undefined): FilaDeLaMascota | null {
     const titulo = `${que} (${`${despues.nombre ?? ''}`.trim() || que.toLocaleLowerCase('es')})`;
+    // Las frases de la API (`utils/mascota_inactiva.py`; contrato: `personajes.md`, «Las frases de "queda inactivo"»).
     if (despues.inactiva && !antes.inactiva) {
-        const motivo = enMinuscula(estado?.motivo ?? '');
+        const motivo = `${estado?.motivo ?? ''}`.trim();
         return {
             que: titulo, antes: valores(antes),
-            ahora: `Queda inactivo hasta que vuelva a cumplir${motivo ? `: ${motivo}` : ''}. Vale su criatura tal cual y el amo pierde lo que le daba`,
+            ahora: `${motivo ? `${motivo}: queda` : 'Queda'} inactivo hasta que vuelva a cumplir. Vale su criatura tal cual y el amo pierde lo que le daba`,
         };
     }
     if (antes.inactiva && !despues.inactiva)
-        return { que: titulo, antes: 'Inactivo', ahora: `Vuelve a cumplir su fila y está activo otra vez: ${valores(despues)}` };
+        return { que: titulo, antes: 'Inactivo', ahora: `Vuelve a cumplir lo que pide su fila: ya no está inactivo (${valores(despues)})` };
     if (despues.inactiva)
         return null;
     const a = valores(antes);
@@ -155,4 +153,16 @@ export function filasDeLasMascotas(entrada: PersonajeCreateRequestDto, ficha: Pe
             filas.push(fila);
     }
     return filas;
+}
+
+/**
+ * Las filas de la mascota en «Lo que cambia» de las vías que lo piden (adquirir una plantilla o una raza mutada, devolver
+ * la vida, subir de nivel), con su porqué (`PORQUE_DE_LA_MASCOTA`): las de `filasDeLasMascotas`. Sin mascota, ninguna, y
+ * la `ficha` (lo que se manda) no se arma.
+ */
+export function cambiosDeLasMascotas(entrada: PersonajeCreateRequestDto, ficha: () => PersonajeCreateRequestDto,
+    estado: EstadoDeLasMascotas): Array<FilaDeLaMascota & { porque: string; }> {
+    if (!entrada.companero && !entrada.familiar)
+        return [];
+    return filasDeLasMascotas(entrada, ficha(), estado).map((fila) => ({ ...fila, porque: PORQUE_DE_LA_MASCOTA }));
 }

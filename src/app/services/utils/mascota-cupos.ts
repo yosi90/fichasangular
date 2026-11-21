@@ -103,6 +103,12 @@ export interface FilaMascotaResuelta {
     nivelMinimo: number | null;
     ajuste: number;
     razones: string[];
+    /**
+     * Lo que no cumple, dicho de la mascota que ya tiene (la que queda inactiva), con las frases de la API sin el punto
+     * (`utils/mascotas.py`, `frase_de_inactiva`; contrato: `personajes.md`, «Las frases de "queda inactivo"»): «El
+     * compañero animal «Bisonte» pide un nivel efectivo de druida 4, y el personaje tiene 3». Vacío si puede tenerla.
+     */
+    motivo: string;
 }
 
 /**
@@ -354,52 +360,77 @@ function filaDeMenosNivel(filas: MonstruoNivelClase[]): MonstruoNivelClase {
     return filas.reduce((a, b) => toInt(b.Nivel) < toInt(a.Nivel) ? b : a);
 }
 
+/** El id del monstruo de una mascota: el de su `Monstruo_origen` (la de una ficha) o su `Id` (la del catálogo). */
+export function idDelMonstruo(mascota: { Id?: number; Monstruo_origen?: { Id?: number; } | null; } | null | undefined): number {
+    return toInt(mascota?.Monstruo_origen?.Id) || toInt(mascota?.Id);
+}
+
+/** El nombre de la criatura de una mascota en las frases de la que ya tiene: el de su monstruo, como la API («Lobo»). */
+export function criaturaDeLaMascota(mascota: { Nombre?: string; Monstruo_origen?: { Nombre?: string; } | null; }): string {
+    return `${mascota?.Monstruo_origen?.Nombre ?? ''}`.trim() || `${mascota?.Nombre ?? ''}`.trim();
+}
+
 /**
  * La fila de la lista con la que el personaje tiene a esa mascota (de sus listas, con su plantilla, con la dote que la
  * abre, a su nivel efectivo y, si la fila lo pide, con su ataque base; entre las que valen, la de más nivel de tabla, como
  * la API) y el nivel de la tabla que le toca (su nivel efectivo más el `Ajuste` de la fila: en el familiar, 0). Si no
- * puede tenerla, `fila` es `null` y `razones` dice por qué, en el orden de la API: la lista, la dote, el nivel y el
- * ataque base.
+ * puede tenerla, `fila` es `null`, `razones` dice por qué al elegirla, en el orden de la API (la lista, la dote, el nivel
+ * y el ataque base), y `motivo`, lo mismo de la que ya tiene. `sinPrerrequisitos`, las dotes que tiene sin sus
+ * prerrequisitos (no van en `dotesPersonaje`): si es la de la fila, el `motivo` lo dice.
  */
 export function resolverFilaMascota(
-    mascota: Pick<MonstruoDetalle, 'Nombre' | 'Niveles_clase'> & { Plantilla?: { Id: number; } | null; },
+    mascota: Pick<MonstruoDetalle, 'Nombre' | 'Niveles_clase'> & { Plantilla?: { Id: number; } | null; Monstruo_origen?: { Nombre?: string; } | null; },
     estado: Pick<EstadoMascota, 'nivelEfectivo' | 'listasIds' | 'fuentesMascota' | 'ataqueBase'> | null | undefined,
     dotesPersonaje: ReadonlySet<number>,
     textos: TextosMascota,
+    sinPrerrequisitos: ReadonlySet<number> = new Set<number>(),
 ): FilaMascotaResuelta {
     const nivelEfectivo = Math.max(0, toInt(estado?.nivelEfectivo));
-    const nombre = `${mascota?.Nombre ?? ''}`.trim();
-    const filas = filasDeSusListas(mascota, new Set(estado?.listasIds ?? [])).filter((fila) => toInt(fila?.Nivel) >= 0);
-    const resultado = (razones: string[], filasMinimo: MonstruoNivelClase[]): FilaMascotaResuelta => {
+    const listas = new Set(estado?.listasIds ?? []);
+    const filas = filasDeSusListas(mascota, listas).filter((fila) => toInt(fila?.Nivel) >= 0);
+    const criatura = criaturaDeLaMascota(mascota);
+    const la = `El ${textos.mascota} «${criatura}»`;
+    const resultado = (razones: string[], motivo: string, filasMinimo: MonstruoNivelClase[]): FilaMascotaResuelta => {
         const minima = filasMinimo.length > 0 ? filaDeMenosNivel(filasMinimo) : null;
         return {
-            fila: null, nivelTabla: 0, razones,
+            fila: null, nivelTabla: 0, razones, motivo,
             nivelMinimo: minima ? Math.max(0, toInt(minima.Nivel)) : null,
             ajuste: minima ? toInt(minima.Ajuste) : 0,
         };
     };
     if (filas.length < 1) {
         const nombres = Array.from(new Set((estado?.fuentesMascota ?? []).map((fuente) => nombreDeLista(fuente.lista.nombre, textos.listaPorDefecto))));
-        return resultado([nombres.length > 0
-            ? `No está en la lista de ${textos.listaDe} de tus clases (${nombres.join(', ')}).`
-            : `Ninguna de tus clases da un ${textos.mascota}.`], []);
+        if (nombres.length < 1)
+            return resultado([`Ninguna de tus clases da un ${textos.mascota}.`], `Ninguna clase del personaje le da ya un ${textos.mascota}`, []);
+        const conOtraPlantilla = (mascota?.Niveles_clase ?? []).some((fila) => listas.has(toInt(fila?.Clase?.Id)) && toInt(fila?.Nivel) >= 0);
+        return resultado([`No está en la lista de ${textos.listaDe} de tus clases (${nombres.join(', ')}).`],
+            conOtraPlantilla
+                ? `${la}, con su plantilla, no está en la lista de ${textos.listaDe} de sus clases`
+                : `${la} no está en la lista de ${textos.listaDe} de sus clases (${nombres.join(', ')})`, []);
     }
     const { conDote, aSuNivel, conSuAtaque } = filasQueLeValen(filas, estado, dotesPersonaje);
     if (conDote.length < 1) {
-        const dotes = Array.from(new Set(filas.map((fila) => `«${doteDeNivelClase(fila)?.nombre || 'la dote de su lista'}»`)));
-        return resultado([`Hace falta la dote ${dotes.join(' o ')} para tenerlo como ${textos.mascota}.`], filas);
+        const dotes = Array.from(new Set(filas.map((fila) => `«${doteDeNivelClase(fila)?.nombre || 'la dote de su lista'}»`))).join(' o ');
+        const sinLosSuyos = filas.some((fila) => sinPrerrequisitos.has(toInt(doteDeNivelClase(fila)?.id)));
+        return resultado([`Hace falta la dote ${dotes} para tenerlo como ${textos.mascota}.`],
+            sinLosSuyos
+                ? `${la} pide la dote ${dotes}, y el personaje la tiene sin sus prerrequisitos`
+                : `Para tener «${criatura}» como ${textos.mascota} hace falta la dote ${dotes}`, filas);
     }
     if (aSuNivel.length < 1) {
         const minima = filaDeMenosNivel(conDote);
-        return resultado([`Pide un nivel efectivo de ${nombreDeLista(minima?.Clase?.Nombre, textos.listaPorDefecto)} ${Math.max(0, toInt(minima.Nivel))}, y tienes ${nivelEfectivo}.`], conDote);
+        const pide = `un nivel efectivo de ${nombreDeLista(minima?.Clase?.Nombre, textos.listaPorDefecto)} ${Math.max(0, toInt(minima.Nivel))}`;
+        return resultado([`Pide ${pide}, y tienes ${nivelEfectivo}.`], `${la} pide ${pide}, y el personaje tiene ${nivelEfectivo}`, conDote);
     }
     if (conSuAtaque.length < 1) {
         const minimo = Math.min(...aSuNivel.map((fila) => toInt(fila.Ataque_base_minimo)));
-        return resultado([`Pide un ataque base de ${textoConSigno(minimo)} (tienes ${textoConSigno(toInt(estado?.ataqueBase))}).`], aSuNivel);
+        const ataqueBase = toInt(estado?.ataqueBase);
+        return resultado([`Pide un ataque base de ${textoConSigno(minimo)} (tienes ${textoConSigno(ataqueBase)}).`],
+            `${la} pide un ataque base de ${textoConSigno(minimo, '−')}, y el personaje tiene ${textoConSigno(ataqueBase, '−')}`, aSuNivel);
     }
     const fila = conSuAtaque.reduce((a, b) => toInt(b.Ajuste) > toInt(a.Ajuste) ? b : a);
     const nivelMinimo = Math.min(...conDote.map((item) => Math.max(0, toInt(item.Nivel))));
-    return { fila, nivelTabla: nivelEfectivo + toInt(fila.Ajuste), nivelMinimo, ajuste: toInt(fila.Ajuste), razones: [] };
+    return { fila, nivelTabla: nivelEfectivo + toInt(fila.Ajuste), nivelMinimo, ajuste: toInt(fila.Ajuste), razones: [], motivo: '' };
 }
 
 /**

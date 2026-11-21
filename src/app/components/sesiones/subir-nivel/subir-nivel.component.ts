@@ -92,7 +92,7 @@ import {
     huecosDeMascota, nombreDeLaCriatura, nombreDeLaMascota, PlanMascota, planDeLaMascota,
 } from 'src/app/services/utils/reciclaje-mascota';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
+import { cambiosDeLasMascotas, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
@@ -1070,8 +1070,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const entrada = this.entradaDelNivel;
         if (entrada.companero || entrada.familiar) {
             const estado = this.svc.ponerMascotasAlDia();
-            const ficha = this.fichaDeLaSubidaSinMarcas(this.svc.getEleccionesDelNivelEnCurso());
-            this.cambios = [...this.cambios, ...filasDeLasMascotas(entrada, ficha, estado).map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
+            this.cambios = [...this.cambios, ...cambiosDeLasMascotas(entrada, () => this.fichaDeLaSubidaSinMarcas(this.svc.getEleccionesDelNivelEnCurso()), estado)];
         }
     }
 

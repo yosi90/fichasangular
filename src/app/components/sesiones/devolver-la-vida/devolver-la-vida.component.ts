@@ -44,7 +44,7 @@ import {
 } from 'src/app/services/utils/perder-nivel';
 import { razaPorEdades } from 'src/app/services/utils/razas-por-edades';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { filasDeLasMascotas, PORQUE_DE_LA_MASCOTA, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
+import { cambiosDeLasMascotas, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
 import { diferencia, fichaDeLaSubida, modConstitucionDeEntrada, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida } from 'src/app/services/utils/subida-nivel-vista';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
@@ -560,7 +560,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
             pg: { antes: toInt(entrada.personaje.puntosGolpe), despues: toInt(ficha.personaje.puntosGolpe), exacto: tras.exacto },
             renumerado: r?.resumen ?? null,
         });
-        this.cambios = [...this.cambios, ...filasDeLasMascotas(entrada, this.ficha, estadoMascotas).map((f) => ({ ...f, porque: PORQUE_DE_LA_MASCOTA }))];
+        this.cambios = [...this.cambios, ...cambiosDeLasMascotas(entrada, () => this.ficha!, estadoMascotas)];
         this.avisos = Array.from(new Set(tras.avisos));
     }
 
