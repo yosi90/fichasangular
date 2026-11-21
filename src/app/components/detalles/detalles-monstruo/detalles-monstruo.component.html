@@ -46,6 +46,11 @@
                     </li>
                 </ul>
             </app-ficha-seccion>
+            <app-ficha-seccion titulo="Trucos" *ngIf="trucos.length > 0">
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let truco of trucos">{{truco}}</li>
+                </ul>
+            </app-ficha-seccion>
             <app-ficha-seccion titulo="Aptitudes raciales" *ngIf="raciales.length > 0">
                 <ul class="ficha-lista">
                     <li class="ficha-lista__item" *ngFor="let racial of raciales">

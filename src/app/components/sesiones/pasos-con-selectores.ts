@@ -6,6 +6,7 @@ import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/
 import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
+import { SelectorTrucosModalComponent } from 'src/app/components/nuevo-personaje/selector-trucos-modal/selector-trucos-modal.component';
 import { CampaignCreationPolicy } from 'src/app/interfaces/campaign-management';
 import { Clase } from 'src/app/interfaces/clase';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
@@ -23,6 +24,7 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { extrasElegiblesEspecial } from 'src/app/services/utils/aptitudes-clase';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { nombreDelCompanero, tituloDeLasMejorasDelCompanero } from 'src/app/services/utils/companero-dotes';
+import { hayTrucoAdicionalQueElegir, tituloDeLosTrucosDelCompanero } from 'src/app/services/utils/companero-trucos';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { HuecoDeSelectores } from './hueco-selectores';
@@ -123,11 +125,12 @@ export async function resolverDotesPendientes(svc: NuevoPersonajeService, select
 }
 
 /**
- * Las mejoras de característica y las dotes que le tocan al compañero animal con sus DG (contrato: «Las dotes y las mejoras
- * que elige el compañero»): las mejoras en el selector de los incrementos, con sus características (no se cierra hasta
- * ponerlas); las dotes en el de dotes, juzgadas como criatura. Las que se cierran sin elegir quedan pendientes.
+ * Lo que elige el compañero animal con sus DG y su tabla (contrato: «Las dotes y las mejoras que elige el compañero» y «Los
+ * trucos del compañero»): las mejoras en el selector de los incrementos, con sus características (no se cierra hasta
+ * ponerlas); las dotes en el de dotes, juzgadas como criatura; y sus trucos adicionales en el de trucos. Lo que se cierra
+ * sin elegir queda pendiente.
  */
-export async function resolverDotesYMejorasDelCompanero(svc: NuevoPersonajeService, selectores: HuecoDeSelectores): Promise<void> {
+export async function resolverLoQueEligeElCompanero(svc: NuevoPersonajeService, selectores: HuecoDeSelectores): Promise<void> {
     const nombre = nombreDelCompanero(svc.PersonajeCreacion.Companeros?.[0], 'el compañero animal');
     while (svc.getMejorasPendientesDelCompanero().length > 0) {
         const asignaciones = await selectores.abrir<any[]>(SelectorAumentosCaracteristicaModalComponent, {
@@ -143,6 +146,24 @@ export async function resolverDotesYMejorasDelCompanero(svc: NuevoPersonajeServi
     }
     if (svc.registrarDotesPendientesDelCompanero() > 0 && !await resolverDotesPendientes(svc, selectores))
         svc.omitirDotesPendientesDelCompanero();
+    if (svc.getTrucosPendientesDelCompanero() > 0)
+        await resolverTrucosDelCompanero(svc, selectores);
+}
+
+/** Sus trucos adicionales, en el selector de trucos: «Omitir» los deja pendientes. */
+async function resolverTrucosDelCompanero(svc: NuevoPersonajeService, selectores: HuecoDeSelectores): Promise<void> {
+    const incluirHomebrew = svc.PersonajeCreacion.Oficial === false;
+    while (svc.getTrucosPendientesDelCompanero() > 0
+        && hayTrucoAdicionalQueElegir(svc.PersonajeCreacion.Companeros?.[0], svc.CatalogoTrucos, incluirHomebrew)) {
+        const companero = svc.PersonajeCreacion.Companeros?.[0] ?? null;
+        const elegidos = await selectores.abrir<number[] | 'omitir'>(SelectorTrucosModalComponent, {
+            titulo: tituloDeLosTrucosDelCompanero(companero), companero, catalogo: svc.CatalogoTrucos, incluirHomebrew,
+        }, ['confirmar'], [], { omitir: 'omitir' });
+        if (!elegidos || elegidos === 'omitir')
+            return;
+        if (!svc.aplicarTrucosDelCompanero(elegidos))
+            await avisarPaso('No se pudieron poner los trucos', 'La selección ya no vale con el compañero de ahora. Elige otros.');
+    }
 }
 
 /**

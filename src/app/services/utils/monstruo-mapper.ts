@@ -35,7 +35,9 @@ import {
     MonstruoSubtipoRef,
     MonstruoTipoRef,
     MonstruoTipoDadoRef,
+    OrigenTruco,
     PersonajeRefMonstruo,
+    TrucoDeMascota,
 } from "src/app/interfaces/monstruo";
 import { CARACTERISTICAS } from "src/app/interfaces/caracteristica";
 import { RacialDetalle } from "src/app/interfaces/racial";
@@ -239,6 +241,29 @@ function normalizeIdiomaArray(raw: any): IdiomaDetalle[] {
     return toArray(raw).map((item) => normalizeIdioma(item));
 }
 
+const ORIGENES_TRUCO: readonly OrigenTruco[] = ['adicional', 'monstruo', 'ensenado'];
+
+/**
+ * Los trucos de una criatura (contrato: `catalogos.md`, «Los trucos», y `personajes.md`, «Los trucos del compañero»): los
+ * de su monstruo llegan sin `Origen` (son `monstruo`); los del compañero de una ficha, con el suyo y su `Orden`.
+ */
+export function leerTrucosDeMascota(raw: unknown): TrucoDeMascota[] {
+    return toArray(raw)
+        .map((t: any): TrucoDeMascota => {
+            const origen = `${t?.Origen ?? ''}`.trim().toLowerCase() as OrigenTruco;
+            const orden = toInt(t?.Orden);
+            return {
+                Id: toInt(t?.Id),
+                Nombre: toText(t?.Nombre),
+                Origen: ORIGENES_TRUCO.includes(origen) ? origen : 'monstruo',
+                Orden: orden > 0 ? orden : null,
+                Coste: Math.max(1, toInt(t?.Coste, 1)),
+                Es_fin: toBoolean(t?.Es_fin),
+            };
+        })
+        .filter((t) => t.Id > 0);
+}
+
 function normalizeDoteArray(raw: any): DoteContextual[] {
     return toDoteContextualArray(raw);
 }
@@ -311,6 +336,7 @@ function normalizeMonstruoBase(raw: any, depth: number): MonstruoDetalle {
         Raciales: normalizeRacialArray(raw?.Raciales),
         Ataques_especiales: normalizeRacialArray(raw?.Ataques_especiales),
         Armas_naturales: leerArmasNaturales(raw?.Armas_naturales),
+        Trucos: leerTrucosDeMascota(raw?.Trucos),
         Familiares: nestedDepth >= 0
             ? normalizeFamiliarMonstruoDetalleArray(raw?.Familiares, nestedDepth)
             : [],

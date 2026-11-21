@@ -1,0 +1,57 @@
+<app-creacion-ventana [titulo]="titulo" [subtitulo]="textoPendiente" [cerrable]="false" ancho="ancha" [relleno]="false">
+    <span ventanaCabecera class="creacion-etiqueta" [class.creacion-etiqueta--aviso]="quedan > 0">
+        {{quedan > 0 ? 'Faltan ' + quedan : 'Completo'}}
+    </span>
+    <div class="creacion-ventana__columnas">
+        <div class="creacion-ventana__lista">
+            <ul class="creacion-opciones" role="group" [attr.aria-label]="titulo" *ngIf="opciones.length > 0; else sinTrucosTpl">
+                <li *ngFor="let opcion of opciones; trackBy: trackByTruco">
+                    <button type="button" class="creacion-opcion" [class.creacion-opcion--activa]="esElegido(opcion.truco)"
+                        [class.creacion-opcion--bloqueada]="opcion.motivo !== null" role="checkbox"
+                        [attr.aria-checked]="esElegido(opcion.truco)" (click)="alternar(opcion)">
+                        <span class="creacion-opcion__texto">
+                            {{opcion.truco.Nombre}}
+                            <span class="creacion-opcion__nota">{{opcion.motivo ?? opcion.truco.Descripcion}}</span>
+                        </span>
+                        <span class="creacion-etiqueta" *ngIf="opcion.truco.Coste > 1">Cuenta {{opcion.truco.Coste}}</span>
+                        <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="!opcion.truco.Oficial">Homebrew</span>
+                        <mat-icon class="creacion-opcion__marca" aria-hidden="true">{{esElegido(opcion.truco) ? 'check_box' : 'check_box_outline_blank'}}</mat-icon>
+                    </button>
+                </li>
+            </ul>
+            <ng-template #sinTrucosTpl>
+                <p class="creacion-vacio">No hay trucos en el catálogo.</p>
+            </ng-template>
+        </div>
+
+        <div class="creacion-ventana__detalle">
+            <ng-container *ngIf="enDetalle as truco; else sinSeleccion">
+                <div>
+                    <p class="creacion-ventana__detalle-tipo">Truco · CD {{truco.Cd}}<ng-container *ngIf="truco.Coste > 1"> · cuenta {{truco.Coste}}</ng-container></p>
+                    <h3 class="creacion-ventana__detalle-nombre">{{truco.Nombre}}</h3>
+                    <p class="creacion-texto-suave">
+                        {{truco.Manual.Nombre}}<ng-container *ngIf="truco.Manual.Pagina"> (p. {{truco.Manual.Pagina}})</ng-container>
+                    </p>
+                </div>
+                <section class="creacion-ventana__seccion" *ngIf="truco.Descripcion">
+                    <h4 class="creacion-titulo">Qué hace</h4>
+                    <p class="creacion-ventana__prosa">{{truco.Descripcion}}</p>
+                </section>
+                <section class="creacion-ventana__seccion" *ngIf="motivoDe(truco) as motivo">
+                    <h4 class="creacion-titulo">Por qué no se puede elegir</h4>
+                    <ul class="creacion-motivos">
+                        <li>{{motivo}}</li>
+                    </ul>
+                </section>
+            </ng-container>
+            <ng-template #sinSeleccion>
+                <p class="creacion-vacio">Elige un truco de la lista para ver qué hace. Los trucos adicionales no piden entrenamiento y no se cambian.</p>
+            </ng-template>
+        </div>
+    </div>
+
+    <button ventanaSecundaria mat-stroked-button type="button" (click)="onOmitir()">Omitir</button>
+    <button ventanaPrincipal mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+        Continuar
+    </button>
+</app-creacion-ventana>

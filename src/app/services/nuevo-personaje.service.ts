@@ -99,6 +99,13 @@ import {
     puntuacionesDelCompanero,
     quitarLoDeLosDgQueNoTieneElCompanero,
 } from './utils/companero-dotes';
+import {
+    aplicarTrucosAdicionales,
+    quitarLosTrucosQueNoCaben,
+    trucosAdicionalesPendientes,
+    trucosDeSuMonstruo,
+} from './utils/companero-trucos';
+import { Truco } from '../interfaces/truco';
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
@@ -1294,6 +1301,8 @@ export class NuevoPersonajeService {
     private catalogoSubtipos: SubtipoResumen[] = [];
     /** La tabla del compañero animal y lo que da cada nivel (`GET /companeros/progresion`); `null` sin cargar. */
     private progresionCompanero: CompaneroProgresion | null = null;
+    /** Los trucos y los fines de Trato con animales (`GET /trucos` o su caché): los adicionales del compañero. */
+    private catalogoTrucos: Truco[] = [];
     /** Las tablas del familiar y lo que sigue cada pseudoplantilla (`GET /familiares/progresion`); `null` sin cargar. */
     private progresionFamiliar: FamiliarProgresion | null = null;
     /** Las caras de los tipos de dado del catálogo: la escalera de los cambios de dado de las plantillas. */
@@ -2090,6 +2099,15 @@ export class NuevoPersonajeService {
     /** La tabla del compañero animal y sus aptitudes por nivel (`GET /companeros/progresion` o su caché). */
     setProgresionCompanero(progresion: CompaneroProgresion | null): void {
         this.progresionCompanero = progresion;
+    }
+
+    /** Los trucos y los fines de Trato con animales (`GET /trucos` o su caché `Trucos`). */
+    setCatalogoTrucos(trucos: Truco[] | null | undefined): void {
+        this.catalogoTrucos = [...(trucos ?? [])];
+    }
+
+    get CatalogoTrucos(): Truco[] {
+        return [...this.catalogoTrucos];
     }
 
     /** Las tablas del familiar, sus aptitudes por nivel y sus pseudoplantillas (`GET /familiares/progresion` o su caché). */
@@ -3573,7 +3591,28 @@ export class NuevoPersonajeService {
             return false;
         return toInt(companero.Dg_adi) > this.dgsCompaneroRepartidos
             || huecosDeDotesDelCompanero(companero).length > 0
-            || huecosDeMejorasDelCompanero(companero).length > 0;
+            || huecosDeMejorasDelCompanero(companero).length > 0
+            || this.getTrucosPendientesDelCompanero() > 0;
+    }
+
+    /**
+     * Los trucos adicionales que le quedan por elegir al compañero (contrato: «Los trucos del compañero»): sus `Trucos_adi`
+     * menos lo que cuentan los que tiene; ninguno sin el catálogo de trucos, inactivo o con Inteligencia 3 o más.
+     */
+    getTrucosPendientesDelCompanero(): number {
+        if (this.catalogoTrucos.length < 1)
+            return 0;
+        return trucosAdicionalesPendientes((this.personajeCreacion.Companeros ?? [])[0]);
+    }
+
+    /** Pone sus trucos adicionales (`idsTrucos`, en el orden en que se eligieron), si todos valen. */
+    aplicarTrucosDelCompanero(idsTrucos: readonly number[]): boolean {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        const porId = new Map(this.catalogoTrucos.map((t) => [t.Id, t] as const));
+        const elegidos = (idsTrucos ?? []).map((id) => porId.get(toInt(id)));
+        if (elegidos.some((t) => !t))
+            return false;
+        return aplicarTrucosAdicionales(companero, elegidos as Truco[], this.catalogoTrucos);
     }
 
     /** Las del compañero que siguen pendientes quedan sin elegir (en la ficha, pendientes para otra vez). */
@@ -5254,8 +5293,10 @@ export class NuevoPersonajeService {
             companero.Defensa.Armadura_natural = toNumber(companero.Defensa.Armadura_natural) + nueva.Armadura_natural - anterior.Armadura_natural;
         companero.Dg_adi = nueva.Dg_adicionales;
         companero.Trucos_adi = nueva.Trucos_adicionales;
-        // Con menos DG, pierde las dotes elegidas y las mejoras de los que ya no tiene (contrato, «Al perder un nivel…»).
+        // Con menos DG, pierde las dotes elegidas y las mejoras de los que ya no tiene (contrato, «Al perder un nivel…»); con
+        // menos trucos adicionales, los últimos que eligió (contrato, «Los trucos del compañero»).
         quitarLoDeLosDgQueNoTieneElCompanero(companero);
+        quitarLosTrucosQueNoCaben(companero);
         if (resuelta.fila) {
             delete companero.Inactiva;
             this.ponerAptitudesCompanero(companero, resuelta.nivelTabla);
@@ -5443,6 +5484,8 @@ export class NuevoPersonajeService {
             Dotes_monstruo: [...(companero?.Dotes ?? [])],
             Limite_inteligencia_tipo: toInt(this.buscarTipoCriaturaPorId(toNumber(companero?.Tipo?.Id))?.Limite_inteligencia),
             Mejoras: [],
+            // Los que trae entrenados su monstruo; los adicionales se eligen después (contrato: «Los trucos del compañero»).
+            Trucos: trucosDeSuMonstruo(companero),
         };
     }
 

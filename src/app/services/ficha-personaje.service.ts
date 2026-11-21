@@ -9,6 +9,7 @@ import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/se
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { AYUDA_MASCOTA_INACTIVA, NOTA_MASCOTA_INACTIVA } from 'src/app/services/utils/mascota-cupos';
+import { trucosParaLaFicha } from 'src/app/services/utils/companero-trucos';
 import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
 import { extraHabilidadElegido, habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
@@ -526,6 +527,12 @@ export class FichaPersonajeService {
             this.trySetText(form, `conjuro${cont}`, extra.length > 0 ? `${nombre} (${extra})` : nombre);
             this.trySetText(form, `desc_con${cont}`, `${doteCtx?.Dote?.Descripcion ?? ''}`.trim());
             this.trySetText(form, `pag_con${cont}`, `${doteCtx?.Dote?.Manual?.Nombre ?? ''} ${toNumber(doteCtx?.Dote?.Manual?.Pagina)}`.trim());
+            cont++;
+        });
+
+        // Sus trucos (contrato: «Los trucos del compañero»), con su origen.
+        trucosParaLaFicha(monstruo).forEach((truco) => {
+            this.trySetText(form, `conjuro${cont}`, `Truco: ${truco}`);
             cont++;
         });
 

@@ -93,6 +93,9 @@ import {
     entradasDelSelectorCompanero,
 } from 'src/app/services/utils/companero-reglas';
 import { tituloDeLasMejorasDelCompanero } from 'src/app/services/utils/companero-dotes';
+import { hayTrucoAdicionalQueElegir, tituloDeLosTrucosDelCompanero } from 'src/app/services/utils/companero-trucos';
+import { TrucoService } from 'src/app/services/truco.service';
+import { Truco } from 'src/app/interfaces/truco';
 import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
 import { SelectorCompaneroConfirmacion } from './selector-companero-modal/selector-companero-modal.component';
 import { SelectorEspecialidadMagicaConfirmacion } from './selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
@@ -538,6 +541,9 @@ export class NuevoPersonajeComponent {
     modalSelectorDotesAbierto = false;
     modalSelectorExtraHabilidadAbierto = false;
     modalSelectorEnemigoPredilectoAbierto = false;
+    /** Los trucos adicionales del compañero (`app-selector-trucos-modal`). */
+    modalSelectorTrucosAbierto = false;
+    private resolverSelectorTrucos: ((elegidos: number[] | null) => void) | null = null;
     modalSelectorFamiliarAbierto = false;
     modalSelectorCompaneroAbierto = false;
     modalSelectorRazaBaseAbierto = false;
@@ -1320,6 +1326,7 @@ export class NuevoPersonajeComponent {
         private subtipoSvc?: SubtipoService,
         private razaCatalogosSvc?: RazaCatalogosService,
         private incarnumSvc?: IncarnumService,
+        private trucoSvc?: TrucoService,
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -3057,6 +3064,7 @@ export class NuevoPersonajeComponent {
             || this.modalSelectorEspecialidadMagicaAbierto
             || this.modalSelectorDotesAbierto
             || this.modalSelectorEnemigoPredilectoAbierto
+            || this.modalSelectorTrucosAbierto
             || this.modalSelectorFamiliarAbierto
             || this.modalSelectorExtraHabilidadAbierto
             || this.modalSelectorRazaBaseAbierto
@@ -4811,7 +4819,7 @@ export class NuevoPersonajeComponent {
         // Con sus rangos ya puestos, las mejoras y las dotes que elige el compañero con sus DG.
         if (origenHabilidades === 'companero_dg') {
             this.Personaje = this.nuevoPSvc.PersonajeCreacion;
-            await this.resolverDotesYMejorasDelCompanero();
+            await this.resolverLoQueEligeElCompanero();
         }
         this.nuevoPSvc.actualizarPasoActual(returnStep);
         this.sincronizarTabConPaso();
@@ -4895,24 +4903,74 @@ export class NuevoPersonajeComponent {
      */
     private async siguienteTrasElCompanero(siguientePaso: StepNuevoPersonaje): Promise<void> {
         if (!this.nuevoPSvc.iniciarDistribucionHabilidadesCompanero(siguientePaso)) {
-            await this.resolverDotesYMejorasDelCompanero();
+            await this.resolverLoQueEligeElCompanero();
             this.nuevoPSvc.actualizarPasoActual(siguientePaso);
         }
         this.sincronizarTabConPaso();
     }
 
     /**
-     * Las mejoras de característica y las dotes que le tocan al compañero con sus DG (contrato: «Las dotes y las mejoras
-     * que elige el compañero»): las mejoras en el selector de los incrementos, con sus características; las dotes en el de
-     * dotes, juzgadas como criatura. Lo que se cierra sin elegir queda pendiente.
+     * Lo que elige el compañero con sus DG y su tabla (contrato: «Las dotes y las mejoras que elige el compañero» y «Los
+     * trucos del compañero»): las mejoras en el selector de los incrementos, con sus características; las dotes en el de
+     * dotes, juzgadas como criatura; y sus trucos adicionales en el de trucos. Lo que se cierra sin elegir queda pendiente.
      */
-    private async resolverDotesYMejorasDelCompanero(): Promise<void> {
+    private async resolverLoQueEligeElCompanero(): Promise<void> {
         const mejoras = this.nuevoPSvc.getMejorasPendientesDelCompanero();
         if (mejoras.length > 0)
             await this.abrirSelectorMejorasDelCompanero(mejoras);
         if (this.nuevoPSvc.registrarDotesPendientesDelCompanero() > 0 && !await this.resolverDotesPendientes())
             this.nuevoPSvc.omitirDotesPendientesDelCompanero();
+        if (this.nuevoPSvc.getTrucosPendientesDelCompanero() > 0)
+            await this.resolverTrucosDelCompanero();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+    }
+
+    /** Sus trucos adicionales: «Omitir» los deja pendientes. */
+    private async resolverTrucosDelCompanero(): Promise<void> {
+        while (this.nuevoPSvc.getTrucosPendientesDelCompanero() > 0
+            && hayTrucoAdicionalQueElegir(this.companeroDelSelectorTrucos, this.nuevoPSvc.CatalogoTrucos, this.incluirHomebrewTrucos)) {
+            const elegidos = await new Promise<number[] | null>((resolve) => {
+                this.resolverSelectorTrucos = resolve;
+                this.modalSelectorTrucosAbierto = true;
+            });
+            if (!elegidos)
+                return;
+            if (!this.nuevoPSvc.aplicarTrucosDelCompanero(elegidos))
+                await Swal.fire({ icon: 'warning', title: 'No se pudieron poner los trucos', text: 'La selección ya no vale con el compañero de ahora. Elige otros.', confirmButtonText: 'Entendido' });
+        }
+    }
+
+    /** El compañero de la ficha que se crea, para el selector de sus trucos. */
+    get companeroDelSelectorTrucos(): CompaneroMonstruoDetalle | null {
+        return this.nuevoPSvc.PersonajeCreacion.Companeros?.[0] ?? null;
+    }
+
+    get catalogoDelSelectorTrucos(): Truco[] {
+        return this.nuevoPSvc.CatalogoTrucos;
+    }
+
+    get tituloDelSelectorTrucos(): string {
+        return tituloDeLosTrucosDelCompanero(this.companeroDelSelectorTrucos);
+    }
+
+    /** Una ficha que ya no es oficial ve también los homebrew. */
+    get incluirHomebrewTrucos(): boolean {
+        return this.nuevoPSvc.PersonajeCreacion.Oficial === false;
+    }
+
+    onConfirmarTrucosDelCompanero(elegidos: number[]): void {
+        this.cerrarSelectorTrucos(elegidos);
+    }
+
+    onOmitirTrucosDelCompanero(): void {
+        this.cerrarSelectorTrucos(null);
+    }
+
+    private cerrarSelectorTrucos(elegidos: number[] | null): void {
+        this.modalSelectorTrucosAbierto = false;
+        const resolver = this.resolverSelectorTrucos;
+        this.resolverSelectorTrucos = null;
+        resolver?.(elegidos);
     }
 
     private abrirSelectorMejorasDelCompanero(pendientes: AumentoCaracteristicaPendiente[]): Promise<boolean> {
@@ -7596,6 +7654,8 @@ export class NuevoPersonajeComponent {
         const progresionFamiliar = this.monstruoSvc?.getFamiliaresProgresion?.();
         if (progresionFamiliar)
             this.catalogosCifrasSubs.push(progresionFamiliar.subscribe({ next: (valor) => this.nuevoPSvc.setProgresionFamiliar(valor), error: () => undefined }));
+        // Los trucos de Trato con animales: los adicionales del compañero (contrato: «Los trucos del compañero»).
+        escuchar(this.trucoSvc?.getTrucos(), (trucos) => this.nuevoPSvc.setCatalogoTrucos(trucos));
     }
 
     private cargarTiposCriatura(): void {
