@@ -133,14 +133,15 @@ export function claveFamiliar(familiar: FamiliarMonstruoDetalle | null | undefin
 /**
  * La fila de la lista con la que el personaje tiene a ese familiar (de sus listas, con su pseudoplantilla, con la dote que
  * la abre, al nivel de su amo y, si la fila lo pide, con su ataque base) y el nivel de su tabla (el del amo: en el familiar, el ajuste es 0). Si no puede tenerlo,
- * `fila` es `null` y `razones` dice por qué.
+ * `fila` es `null`, y `razones` y `motivo` dicen por qué (`sinPrerrequisitos`: `resolverFilaMascota`).
  */
 export function resolverFilaFamiliar(
     familiar: FamiliarMonstruoDetalle,
     estado: EstadoCuposFamiliar,
     dotesPersonaje: ReadonlySet<number>,
+    sinPrerrequisitos?: ReadonlySet<number>,
 ): FilaMascotaResuelta {
-    return resolverFilaMascota(familiar, estado, dotesPersonaje, TEXTOS_FAMILIAR);
+    return resolverFilaMascota(familiar, estado, dotesPersonaje, TEXTOS_FAMILIAR, sinPrerrequisitos);
 }
 
 export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput): FamiliarMonstruoDetalle[] {
