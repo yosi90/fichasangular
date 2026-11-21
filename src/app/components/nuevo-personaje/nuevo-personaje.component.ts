@@ -82,20 +82,15 @@ import {
 } from 'src/app/services/nuevo-personaje.service';
 import { extrasElegiblesEspecial } from 'src/app/services/utils/aptitudes-clase';
 import {
-    claveFamiliar,
     construirCatalogoFamiliaresDesdeMonstruos,
-    evaluarFamiliaresElegibilidad,
+    entradasDelSelectorFamiliar,
     FamiliarPlantillaId,
     FamiliarPlantillaOpcion,
-    FamiliarElegibilidadEvaluadaItem,
-    plantillasFamiliarDisponibles,
 } from 'src/app/services/utils/familiar-reglas';
 import {
     claveCompanero,
     construirCatalogoCompanerosDesdeMonstruos,
-    CompaneroElegibilidadEvaluadaItem,
-    evaluarCompanerosElegibilidad,
-    resolverNivelesCompaneroDisponibles
+    entradasDelSelectorCompanero,
 } from 'src/app/services/utils/companero-reglas';
 import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
 import { SelectorCompaneroConfirmacion } from './selector-companero-modal/selector-companero-modal.component';
@@ -6051,38 +6046,18 @@ export class NuevoPersonajeComponent {
             this.selectorFamiliarNivelesRequeridos = {};
             return;
         }
-        this.selectorFamiliarPlantillas = plantillasFamiliarDisponibles(
-            this.selectorFamiliarCatalogoCompleto,
-            this.selectorFamiliarEstadoCupos.listasIds
-        );
-        const incluirHomebrewEfectivo = this.selectorFamiliarIncluirHomebrew || !this.Personaje.Oficial;
-        const evaluaciones = evaluarFamiliaresElegibilidad({
+        const entradas = entradasDelSelectorFamiliar({
             familiares: this.selectorFamiliarCatalogoCompleto,
             estado: this.selectorFamiliarEstadoCupos,
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
             plantillaSeleccionada: this.selectorFamiliarPlantillaSeleccionada,
-            incluirHomebrew: incluirHomebrewEfectivo,
+            incluirHomebrew: this.selectorFamiliarIncluirHomebrew || !this.Personaje.Oficial,
             dotesPersonaje: this.nuevoPSvc.idsDotesDelPersonaje(),
         });
-        const nivelesRequeridos: Record<string, number> = {};
-        evaluaciones.forEach((item) => {
-            const nivel = Number(item?.nivelMinimoRequerido ?? 0);
-            if (!Number.isFinite(nivel) || nivel <= 0)
-                return;
-            const clave = claveFamiliar(item.familiar);
-            nivelesRequeridos[clave] = Math.trunc(nivel);
-        });
-        this.selectorFamiliarNivelesRequeridos = nivelesRequeridos;
-        this.selectorFamiliarElegibles = evaluaciones
-            .filter((item) => item.elegible)
-            .map((item: FamiliarElegibilidadEvaluadaItem) => item.familiar);
-        this.selectorFamiliarBloqueados = evaluaciones
-            .filter((item) => !item.elegible)
-            .map((item: FamiliarElegibilidadEvaluadaItem) => ({
-                familiar: item.familiar,
-                razones: [...(item.razones ?? [])],
-                nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
-            }));
+        this.selectorFamiliarPlantillas = entradas.plantillas;
+        this.selectorFamiliarNivelesRequeridos = entradas.nivelesRequeridos;
+        this.selectorFamiliarElegibles = entradas.elegibles;
+        this.selectorFamiliarBloqueados = entradas.bloqueados;
     }
 
     /** Los compañeros de la lista de las clases (de los monstruos marcados como compañero) y la tabla del compañero. */
@@ -6118,50 +6093,20 @@ export class NuevoPersonajeComponent {
             return;
         }
 
-        const incluirHomebrewEfectivo = this.selectorCompaneroIncluirHomebrew || !this.Personaje.Oficial;
-        const dotesPersonaje = this.nuevoPSvc.idsDotesDelPersonaje();
-
-        this.selectorCompaneroNivelesDisponibles = resolverNivelesCompaneroDisponibles({
+        const entradas = entradasDelSelectorCompanero({
             companeros: this.selectorCompaneroCatalogoCompleto,
             estado: this.selectorCompaneroEstadoCupos,
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
-            incluirHomebrew: incluirHomebrewEfectivo,
-            dotesPersonaje,
-        });
-        if (this.selectorCompaneroNivelSeleccionado !== null
-            && !this.selectorCompaneroNivelesDisponibles.includes(this.selectorCompaneroNivelSeleccionado)) {
-            this.selectorCompaneroNivelSeleccionado = null;
-        }
-
-        const evaluaciones = evaluarCompanerosElegibilidad({
-            companeros: this.selectorCompaneroCatalogoCompleto,
-            estado: this.selectorCompaneroEstadoCupos,
-            alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
-            incluirHomebrew: incluirHomebrewEfectivo,
-            dotesPersonaje,
+            incluirHomebrew: this.selectorCompaneroIncluirHomebrew || !this.Personaje.Oficial,
+            dotesPersonaje: this.nuevoPSvc.idsDotesDelPersonaje(),
             nivelSeleccionado: this.selectorCompaneroNivelSeleccionado,
         });
-        const nivelesRequeridos: Record<string, number> = {};
-        const ajustes: Record<string, number> = {};
-        evaluaciones.forEach((item) => {
-            const clave = claveCompanero(item.companero);
-            ajustes[clave] = Math.trunc(Number(item?.ajuste ?? 0));
-            const nivel = Number(item?.nivelMinimoRequerido ?? 0);
-            if (Number.isFinite(nivel) && nivel > 0)
-                nivelesRequeridos[clave] = Math.trunc(nivel);
-        });
-        this.selectorCompaneroNivelesRequeridos = nivelesRequeridos;
-        this.selectorCompaneroAjustes = ajustes;
-        this.selectorCompaneroElegibles = evaluaciones
-            .filter((item) => item.elegible)
-            .map((item: CompaneroElegibilidadEvaluadaItem) => item.companero);
-        this.selectorCompaneroBloqueados = evaluaciones
-            .filter((item) => !item.elegible)
-            .map((item: CompaneroElegibilidadEvaluadaItem) => ({
-                companero: item.companero,
-                razones: [...(item.razones ?? [])],
-                nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
-            }));
+        this.selectorCompaneroNivelesDisponibles = entradas.nivelesDisponibles;
+        this.selectorCompaneroNivelSeleccionado = entradas.nivelSeleccionado;
+        this.selectorCompaneroNivelesRequeridos = entradas.nivelesRequeridos;
+        this.selectorCompaneroAjustes = entradas.ajustes;
+        this.selectorCompaneroElegibles = entradas.elegibles;
+        this.selectorCompaneroBloqueados = entradas.bloqueados;
     }
 
     private cerrarSelectorFamiliarContexto(

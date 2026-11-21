@@ -5,10 +5,16 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
+import {
+    SelectorCompaneroConfirmacion, SelectorCompaneroModalComponent,
+} from 'src/app/components/nuevo-personaje/selector-companero-modal/selector-companero-modal.component';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import {
     SelectorEspecialidadMagicaConfirmacion, SelectorEspecialidadMagicaModalComponent,
 } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
+import {
+    SelectorFamiliarConfirmacion, SelectorFamiliarModalComponent,
+} from 'src/app/components/nuevo-personaje/selector-familiar-modal/selector-familiar-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { ClasesDelNivelComponent } from 'src/app/components/sesiones/clases-del-nivel/clases-del-nivel.component';
@@ -31,6 +37,7 @@ import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.se
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { EspecialService } from 'src/app/services/especial.service';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
+import { MonstruoService } from 'src/app/services/monstruo.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import {
     DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService,
@@ -38,6 +45,8 @@ import {
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
+import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos } from 'src/app/services/utils/companero-reglas';
+import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos } from 'src/app/services/utils/familiar-reglas';
 import { mismoExtra, toInt } from 'src/app/services/utils/normalizacion';
 import { dotesQueVuelvenACumplir, marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
@@ -65,6 +74,7 @@ import {
     MAXIMO_CONJUROS_RECICLADOS,
     MAXIMO_RANGOS_RECICLADOS,
     motivoDeLaEscuela,
+    motivoDeLaMascota,
     PlanReciclaje,
     rasgosParaReciclar,
     reciclajeDelPlan,
@@ -77,6 +87,10 @@ import {
     claseConEspecializacion, HuecoDeDominio, HuecoDeEscuela, huecoDeEscuela, nombreDeLaEspecializacion, OpcionDeDominio, PlanDominio,
     planDelDominio, planDeLaEscuela, PlanEscuela,
 } from 'src/app/services/utils/reciclaje-dominio-escuela';
+import {
+    CatalogosDeMascotas, conLosRangosDelCompaneroNuevo, CriaturaDeMascota, entradasDelCompaneroReciclado, entradasDelFamiliarReciclado, HuecoDeMascota,
+    huecosDeMascota, nombreDeLaCriatura, nombreDeLaMascota, PlanMascota, planDeLaMascota,
+} from 'src/app/services/utils/reciclaje-mascota';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
@@ -100,10 +114,10 @@ interface BorradorSubida {
 }
 
 /**
- * Lo que se puede elegir en el paso «Reciclar» (MJ II, tablas 8-1 y 8-2; aún sin niveles de sustitución): un dominio y la
- * escuela del mago van con «Reciclar un rasgo de clase».
+ * Lo que se puede elegir en el paso «Reciclar» (MJ II, tablas 8-1 y 8-2; aún sin niveles de sustitución): un dominio, la
+ * escuela del mago y la mascota van con «Reciclar un rasgo de clase».
  */
-type TipoDeReciclaje = 'ninguno' | Exclude<PlanReciclaje['tipo'], 'dominio' | 'escuela'>;
+type TipoDeReciclaje = 'ninguno' | Exclude<PlanReciclaje['tipo'], 'dominio' | 'escuela' | 'mascota'>;
 
 /** Un cambio de conjuros a medio elegir: la clase, el que olvida y el que aprende en su lugar. */
 interface CambioDeConjuro {
@@ -203,6 +217,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     planEscuela: PlanEscuela | null = null;
     /** El catálogo de escuelas (solo si una de sus clases da especialización). */
     private escuelas: EscuelaConjuros[] = [];
+    /** Su compañero animal y su familiar, en la clase que se los da, y la criatura que entra en lugar de una. */
+    mascotasReciclables: HuecoDeMascota[] = [];
+    planMascota: PlanMascota | null = null;
+    /** Los catálogos de la creación de las mascotas (solo si tiene alguna). */
+    private catalogosMascotas: CatalogosDeMascotas = { companeros: null, familiares: null };
+    readonly nombreDeLaCriatura = nombreDeLaCriatura;
+    readonly nombreDeLaMascota = nombreDeLaMascota;
     readonly nombreDeLoQueTiene = nombreDeLoQueTiene;
     readonly nombreDeOpcion = nombreDeOpcion;
     readonly nombreDeLaEspecializacion = nombreDeLaEspecializacion;
@@ -228,6 +249,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         private disciplinaSvc: DisciplinaConjurosService,
         private enemigoSvc: EnemigoPredilectoService,
         private especialSvc: EspecialService,
+        private monstruoSvc: MonstruoService,
     ) {
         this.cuenta = new MismaCuenta(auth);
     }
@@ -268,6 +290,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             dotes: 'Dotes',
             conjuros: 'Conjuros',
             intercambio: 'Cambiar un conjuro',
+            companero: 'Habilidades del compañero',
             resumen: 'Resumen',
         };
         return `${this.pasos.indexOf(paso) + 1} · ${nombres[paso]}`;
@@ -374,9 +397,18 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             ...(this.svc.getDotesPendientes().some((d) => d.estado === 'pendiente') ? ['dotes' as const] : []),
             ...(this.svc.getConjurosSesionActual().activa ? ['conjuros' as const] : []),
             ...(this.intercambio ? ['intercambio' as const] : []),
+            ...(this.repartirRangosDelCompanero ? ['companero' as const] : []),
             'resumen',
         ];
         await this.siguiente();
+    }
+
+    /**
+     * Si recicla el compañero animal: sus rangos se eligen de nuevo, como al crearlo (los puntos de sus DG adicionales, con el
+     * nivel ya subido), en el paso «Habilidades del compañero», antes del resumen.
+     */
+    private get repartirRangosDelCompanero(): boolean {
+        return this.plan?.tipo === 'mascota' && this.plan.hueco.mascota === 'companero';
     }
 
     // --- El reciclaje (Manual del jugador II, págs. 194-196) ------------------------------------------------------------
@@ -393,6 +425,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.planDominio = null;
         this.escuelaReciclable = null;
         this.planEscuela = null;
+        this.mascotasReciclables = [];
+        this.planMascota = null;
         this.idiomaQuita = this.idiomaPone = null;
         this.rangosOrigen = this.rangosDestino = null;
         this.rangosCantidad = 1;
@@ -410,6 +444,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.dominiosReciclables = dominiosParaReciclar(this.svc, this.entrada, this.nivelDeAntes, this.conHomebrew);
         this.escuelas = claseConEspecializacion(this.svc) ? await this.catalogoDeEscuelas() : [];
         this.escuelaReciclable = huecoDeEscuela(this.svc, this.escuelas);
+        this.catalogosMascotas = await this.catalogosDeMascotas();
+        this.mascotasReciclables = huecosDeMascota(this.svc, this.entrada, this.catalogosMascotas);
         this.dotesReciclables = dotesParaReciclar(this.svc, this.rasgosReciclables);
         const idiomas = idiomasParaReciclar(this.svc, this.entrada, this.conHomebrew);
         this.idiomasReciclables = idiomas.quitables;
@@ -433,6 +469,26 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             return (await this.motor.primero(this.escuelaSvc.getEscuelas())) ?? [];
         } catch {
             return [];
+        }
+    }
+
+    /**
+     * Los catálogos de la creación del compañero y del familiar (de los monstruos), solo de las mascotas que tiene; `null` el
+     * que no se puede leer (el hueco lo dice).
+     */
+    private async catalogosDeMascotas(): Promise<CatalogosDeMascotas> {
+        const conCompanero = !!this.entrada?.companero;
+        const conFamiliar = !!this.entrada?.familiar;
+        if (!conCompanero && !conFamiliar)
+            return { companeros: null, familiares: null };
+        try {
+            const monstruos = (await this.motor.primero(this.monstruoSvc.getMonstruos())) ?? [];
+            return {
+                companeros: conCompanero ? construirCatalogoCompanerosDesdeMonstruos(monstruos) : null,
+                familiares: conFamiliar ? construirCatalogoFamiliaresDesdeMonstruos(monstruos) : null,
+            };
+        } catch {
+            return { companeros: null, familiares: null };
         }
     }
 
@@ -460,8 +516,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             { tipo: 'conjuros', etiqueta: 'Reciclar conjuros', motivo: this.clasesConConocidos.length ? '' : 'Ninguna de sus clases tiene conocidos limitados (una tabla de conocidos).' },
             {
                 tipo: 'rasgo', etiqueta: 'Reciclar un rasgo de clase',
-                motivo: this.rasgosReciclables.length || this.dominiosReciclables.length || this.escuelaReciclable
-                    ? '' : 'Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios ni una escuela.',
+                motivo: this.rasgosReciclables.length || this.dominiosReciclables.length || this.escuelaReciclable || this.mascotasReciclables.length
+                    ? '' : 'Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios, una escuela ni una mascota.',
             },
         ];
     }
@@ -503,8 +559,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.rasgoElegido = hueco;
     }
 
-    /** Al elegir un hueco de un tipo, los otros dos se olvidan: se recicla un solo rasgo. */
-    private soloElRasgo(tipo: 'tabla' | 'dominio' | 'escuela'): void {
+    /** Al elegir un hueco de un tipo, los otros se olvidan: se recicla un solo rasgo. */
+    private soloElRasgo(tipo: 'tabla' | 'dominio' | 'escuela' | 'mascota'): void {
         if (tipo !== 'tabla') {
             this.rasgoElegido = null;
             this.planRasgo = null;
@@ -515,6 +571,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         }
         if (tipo !== 'escuela')
             this.planEscuela = null;
+        if (tipo !== 'mascota')
+            this.planMascota = null;
     }
 
     /** Enseña los dominios que puede poner en lugar de ese (los de su deidad que no tiene). */
@@ -567,6 +625,85 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         }
         this.soloElRasgo('escuela');
         this.planEscuela = plan;
+    }
+
+    /**
+     * Otra criatura para la mascota del hueco, con el selector de la creación: las de la lista de sus clases con una fila del
+     * nivel de la elección o menos, cada una con su motivo si no vale (su dote, su ajuste o su ataque base, con el personaje
+     * de antes de subir). Si lo que eligió después depende de la que se va, no la cambia (`motivoDeLaMascota`). El motor se
+     * deja como estaba: el cambio se hace al continuar.
+     */
+    async cambiarMascota(hueco: HuecoDeMascota): Promise<void> {
+        if (hueco.motivo || this.empezada)
+            return;
+        const elegida = hueco.mascota === 'companero' ? await this.otroCompanero(hueco) : await this.otroFamiliar(hueco);
+        if (!elegida)
+            return;
+        const { plan, motivo } = planDeLaMascota(this.svc, hueco, elegida.criatura, elegida.nombre);
+        const bloqueo = plan ? motivoDeLaMascota(this.svc, plan) : motivo;
+        if (!plan || bloqueo) {
+            await avisarPaso(`No se puede elegir ${elegida.criatura.Nombre}`, bloqueo ?? `No puede tenerlo como ${nombreDeLaMascota(hueco.mascota)}.`);
+            return;
+        }
+        this.soloElRasgo('mascota');
+        this.planMascota = plan;
+    }
+
+    /** Si tiene un compañero animal que reciclar: la nota de liberarlo y llamar a otro (MJ, pág. 36), que no es el reciclaje. */
+    get tieneCompaneroReciclable(): boolean {
+        return this.mascotasReciclables.some((m) => m.mascota === 'companero');
+    }
+
+    /** El homebrew del selector de una mascota al abrirlo, como al crear: con una ficha homebrew, sí. */
+    private get homebrewDelSelector(): boolean {
+        return this.pj?.Oficial === false;
+    }
+
+    /** El compañero que entra, del selector del compañero de la creación (con sus filtros); `null` si se cancela. */
+    private async otroCompanero(hueco: HuecoDeMascota): Promise<{ criatura: CriaturaDeMascota; nombre: string; } | null> {
+        const catalogo = this.catalogosMascotas.companeros ?? [];
+        let homebrew = this.homebrewDelSelector;
+        let nivel: number | null = null;
+        const entradas = () => {
+            const e = entradasDelCompaneroReciclado(this.svc, hueco, catalogo, { incluirHomebrew: this.conHomebrew && homebrew, nivelSeleccionado: nivel });
+            nivel = e.nivelSeleccionado;
+            return {
+                companerosElegibles: e.elegibles, companerosBloqueados: e.bloqueados, nivelesRequeridos: e.nivelesRequeridos, ajustes: e.ajustes,
+                nivelesDisponibles: e.nivelesDisponibles, nivelSeleccionado: e.nivelSeleccionado, incluirHomebrew: homebrew,
+            };
+        };
+        const seleccion = await this.abrirModal<SelectorCompaneroConfirmacion>(SelectorCompaneroModalComponent, {
+            titulo: `Reciclar el compañero animal ${hueco.nombrePropio || nombreDeLaCriatura(hueco.tiene)}`, cuposDisponibles: 0, nombreCompanero: '', ...entradas(),
+        }, ['confirmar'], ['omitir'], {}, {
+            incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
+            nivelChange: (valor: number | null) => { nivel = valor; return entradas(); },
+            nombreCompaneroChange: (valor: string) => ({ nombreCompanero: `${valor ?? ''}` }),
+        });
+        const criatura = seleccion ? catalogo.find((c) => claveCompanero(c) === claveCompanero(seleccion.companero)) : null;
+        return criatura && seleccion ? { criatura, nombre: seleccion.nombre } : null;
+    }
+
+    /** El familiar que entra, del selector del familiar de la creación (con sus filtros); `null` si se cancela. */
+    private async otroFamiliar(hueco: HuecoDeMascota): Promise<{ criatura: CriaturaDeMascota; nombre: string; } | null> {
+        const catalogo = this.catalogosMascotas.familiares ?? [];
+        let homebrew = this.homebrewDelSelector;
+        let plantilla: number | null = null;
+        const entradas = () => {
+            const e = entradasDelFamiliarReciclado(this.svc, hueco, catalogo, { incluirHomebrew: this.conHomebrew && homebrew, plantillaSeleccionada: plantilla });
+            return {
+                familiaresElegibles: e.elegibles, familiaresBloqueados: e.bloqueados, nivelesRequeridos: e.nivelesRequeridos,
+                plantillasDisponibles: e.plantillas, plantillaSeleccionada: plantilla, incluirHomebrew: homebrew,
+            };
+        };
+        const seleccion = await this.abrirModal<SelectorFamiliarConfirmacion>(SelectorFamiliarModalComponent, {
+            titulo: `Reciclar el familiar ${hueco.nombrePropio || nombreDeLaCriatura(hueco.tiene)}`, cuposDisponibles: 0, nombreFamiliar: '', ...entradas(),
+        }, ['confirmar'], ['omitir'], {}, {
+            incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
+            plantillaChange: (valor: number | null) => { plantilla = valor === null || valor === undefined ? null : toInt(valor) || null; return entradas(); },
+            nombreFamiliarChange: (valor: string) => ({ nombreFamiliar: `${valor ?? ''}` }),
+        });
+        const criatura = seleccion ? catalogo.find((c) => claveFamiliar(c) === claveFamiliar(seleccion.familiar)) : null;
+        return criatura && seleccion ? { criatura, nombre: seleccion.nombre } : null;
     }
 
     /** El texto de una opción del hueco: la aptitud que da una dote, también la que se elija con ella. */
@@ -723,7 +860,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         if (this.tipoReciclaje === 'dote')
             return this.planDote;
         if (this.tipoReciclaje === 'rasgo')
-            return this.planRasgo ?? this.planDominio ?? this.planEscuela;
+            return this.planRasgo ?? this.planDominio ?? this.planEscuela ?? this.planMascota;
         if (this.tipoReciclaje === 'idioma') {
             const quita = this.idiomasReciclables.find((i) => i.idIdioma === toInt(this.idiomaQuita) && !i.motivo);
             const pone = this.idiomasAprendibles.find((i) => i.idIdioma === toInt(this.idiomaPone));
@@ -801,6 +938,12 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     async siguiente(): Promise<void> {
         const i = this.pasos.indexOf(this.paso);
         const siguiente = this.pasos[i + 1] ?? 'resumen';
+        // Los rangos del compañero nuevo, con los puntos de sus DG adicionales; sin ellos, el paso sobra.
+        if (siguiente === 'companero' && !this.svc.iniciarDistribucionHabilidadesCompanero('clases')) {
+            this.pasos = this.pasos.filter((p) => p !== 'companero');
+            await this.siguiente();
+            return;
+        }
         this.irA(siguiente);
         if (siguiente === 'incremento')
             await this.resolverIncremento();
@@ -861,7 +1004,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         return !this.daDg || this.tiradaElegida !== null;
     }
 
-    // Habilidades (la tabla es `app-reparto-rangos`)
+    // Habilidades (la tabla es `app-reparto-rangos`), también las del compañero que se recicla
     cerrarHabilidades(): void {
         if (!this.svc.puedeCerrarDistribucionHabilidades())
             return;
@@ -933,10 +1076,16 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     private fichaDeLaSubidaSinMarcas(elecciones: PersonajeCreateNivelEleccionDto[]): PersonajeCreateRequestDto {
+        const despues = this.cuerpoDelMotor();
+        // El compañero que se recicla, con los rangos que se han repartido otra vez.
+        return conLosRangosDelCompaneroNuevo(this.fichaDeLaSubidaDelMotor(elecciones, despues), this.plan?.tipo === 'mascota' ? this.plan : null, despues);
+    }
+
+    private fichaDeLaSubidaDelMotor(elecciones: PersonajeCreateNivelEleccionDto[], despues: PersonajeCreateRequestDto): PersonajeCreateRequestDto {
         return fichaDeLaSubida({
             entrada: this.entradaDelNivel,
             antes: this.antes!,
-            despues: this.cuerpoDelMotor(),
+            despues,
             idClase: toInt(this.claseElegida?.Id),
             nivel: { idClase: toInt(this.claseElegida?.Id), nivelClase: this.nivelClase, elecciones },
             puntosGolpe: this.pg?.total ?? toInt(this.entrada?.personaje.puntosGolpe),
@@ -1097,8 +1246,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     // --- Los selectores de la creación ---------------------------------------------------------------------------------
 
     private abrirModal<T>(tipo: Type<unknown>, entradas: Record<string, unknown>, aceptar: string[], rechazar: string[],
-        fijos: Record<string, unknown> = {}): Promise<T | null> {
-        return this.selectores.abrir<T>(tipo, entradas, aceptar, rechazar, fijos);
+        fijos: Record<string, unknown> = {}, cambios: Record<string, (valor: any) => Record<string, unknown>> = {}): Promise<T | null> {
+        return this.selectores.abrir<T>(tipo, entradas, aceptar, rechazar, fijos, cambios);
     }
 
     private cerrarModal(): void {

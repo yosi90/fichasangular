@@ -198,6 +198,38 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
         .sort((a, b) => compararTexto(a?.familiar?.Nombre, b?.familiar?.Nombre));
 }
 
+/** Lo que enseña el selector del familiar (`selector-familiar-modal`), del catálogo y del personaje. */
+export interface EntradasSelectorFamiliar {
+    /** Las pseudoplantillas del filtro (`plantillasFamiliarDisponibles` de sus listas). */
+    plantillas: FamiliarPlantillaOpcion[];
+    elegibles: FamiliarMonstruoDetalle[];
+    bloqueados: Array<{ familiar: FamiliarMonstruoDetalle; razones: string[]; nivelMinimoRequerido: number | null; }>;
+    /** El nivel del amo que pide cada uno, por `claveFamiliar`. */
+    nivelesRequeridos: Record<string, number>;
+}
+
+/**
+ * Las entradas del selector del familiar: las pseudoplantillas del filtro, los que puede elegir y los que no (con su
+ * motivo) y el nivel que pide cada uno. Lo usan la creación y el reciclaje de la subida (`reciclaje-mascota.ts`).
+ */
+export function entradasDelSelectorFamiliar(input: FiltroFamiliaresElegiblesInput): EntradasSelectorFamiliar {
+    const evaluaciones = evaluarFamiliaresElegibilidad(input);
+    const nivelesRequeridos: Record<string, number> = {};
+    evaluaciones.forEach((item) => {
+        const nivel = Number(item?.nivelMinimoRequerido ?? 0);
+        if (Number.isFinite(nivel) && nivel > 0)
+            nivelesRequeridos[claveFamiliar(item.familiar)] = Math.trunc(nivel);
+    });
+    return {
+        plantillas: plantillasFamiliarDisponibles(input?.familiares ?? [], input?.estado?.listasIds ?? []),
+        nivelesRequeridos,
+        elegibles: evaluaciones.filter((item) => item.elegible).map((item) => item.familiar),
+        bloqueados: evaluaciones.filter((item) => !item.elegible).map((item) => ({
+            familiar: item.familiar, razones: [...(item.razones ?? [])], nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
+        })),
+    };
+}
+
 /**
  * El familiar de una ficha guardada con los valores de su criatura (`monstruo`, su `Monstruo_origen`): la ficha trae sus
  * totales (la armadura natural, la Inteligencia y el ataque con lo del nivel de su amo) y lo de su nivel se le suma al

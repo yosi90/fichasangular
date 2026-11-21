@@ -220,6 +220,20 @@ export function aptitudesMascotaDeLaClase(clase: Clase | null | undefined, otorg
     return Array.from(porEspecial.values());
 }
 
+/** Lo que aporta una clase a su nivel al nivel efectivo de la mascota: máx(0, ⌊nivel / `Divisor`⌋ + `Ajuste`) de su `Mascota`. */
+export function aportaDeLaClase(nivelClase: number, mascota: Pick<ClaseEspecialMascota, 'Divisor' | 'Ajuste'>): number {
+    return Math.max(0, Math.floor(Math.max(0, toInt(nivelClase)) / Math.max(1, toInt(mascota?.Divisor, 1))) + toInt(mascota?.Ajuste));
+}
+
+/**
+ * Lo que aporta la clase al nivel efectivo de la mascota en el nivel en que su tabla se la da (el druida 1, 1; el explorador
+ * 4, 2; el filo aojador 4, 1); sin ninguna aptitud que la dé, 0. El reciclaje no baja de él (`reciclaje-mascota.ts`).
+ */
+export function aportaAlDarLaMascota(clase: Clase | null | undefined, otorga: OtorgaMascota): number {
+    const aptitudes = aptitudesMascotaDeLaClase(clase, otorga);
+    return aptitudes.length > 0 ? Math.min(...aptitudes.map((aptitud) => aportaDeLaClase(aptitud.nivel, aptitud.mascota))) : 0;
+}
+
 /**
  * Las clases del personaje que le dan la mascota: las de su tabla con la aptitud a su nivel o antes y, si es de un grupo
  * opcional, elegida (está entre sus aptitudes, `Claseas`), con lo que aporta cada una.
@@ -237,16 +251,14 @@ export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], ot
         aptitudesMascotaDeLaClase(clase, otorga).forEach((aptitud) => {
             if (nivelActual < aptitud.nivel || (aptitud.opcional && !elegidas.has(aptitud.idEspecial)))
                 return;
-            const divisor = Math.max(1, toInt(aptitud.mascota.Divisor, 1));
-            const ajuste = toInt(aptitud.mascota.Ajuste);
             const fuente: FuenteMascota = {
                 idClase: toInt(clase.Id),
                 nombreClase: `${clase.Nombre ?? nombreClase}`.trim(),
                 nivelActual,
                 idEspecial: aptitud.idEspecial,
-                divisor,
-                ajuste,
-                aporta: Math.max(0, Math.floor(nivelActual / divisor) + ajuste),
+                divisor: Math.max(1, toInt(aptitud.mascota.Divisor, 1)),
+                ajuste: toInt(aptitud.mascota.Ajuste),
+                aporta: aportaDeLaClase(nivelActual, aptitud.mascota),
                 lista: {
                     id: toInt(aptitud.mascota.Lista?.Id) || toInt(clase.Id),
                     nombre: `${aptitud.mascota.Lista?.Nombre || clase.Nombre || ''}`.trim(),

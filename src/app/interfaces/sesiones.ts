@@ -169,7 +169,15 @@ export type ReciclajeSubidaDto =
     /** Un dominio de una clase que los da (R3, segunda tanda): uno que tiene por otro que puede elegir. */
     | { tipo: 'rasgo'; hueco: { idClase: number; dominio: true; }; quita: { dominio: number; }; pone: { dominio: number; }; }
     /** La escuela del mago (R3, segunda tanda): la especialización y las prohibidas juntas; `especialista: null`, generalista. */
-    | { tipo: 'rasgo'; hueco: { idClase: number; escuela: true; }; quita: { escuela: EscuelaRasgoDto; }; pone: { escuela: EscuelaRasgoDto; }; };
+    | { tipo: 'rasgo'; hueco: { idClase: number; escuela: true; }; quita: { escuela: EscuelaRasgoDto; }; pone: { escuela: EscuelaRasgoDto; }; }
+    /** La mascota (R3, tercera tanda): el compañero animal o el familiar, otra criatura de la misma elección. */
+    | { tipo: 'rasgo'; hueco: { idClase: number; mascota: 'companero' | 'familiar'; }; quita: { mascota: MascotaRasgoDto; }; pone: { mascota: MascotaRasgoDto; }; };
+
+/** La criatura de la mascota en el reciclaje: su monstruo y su plantilla (sin plantilla, 0). */
+export interface MascotaRasgoDto {
+    idMonstruo: number;
+    idPlantilla: number;
+}
 
 /** La especialización del mago en el reciclaje: la escuela especialista (`null`, generalista) y sus prohibidas. */
 export interface EscuelaRasgoDto {

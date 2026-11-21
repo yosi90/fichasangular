@@ -164,7 +164,19 @@
                                 </div>
                                 <button *ngIf="!e.motivo" mat-stroked-button type="button" (click)="cambiarEscuela()">{{planEscuela ? 'Elegir otra' : 'Cambiar'}}</button>
                             </li>
+                            <!-- La mascota (el compañero animal o el familiar): otra criatura de la lista de sus clases, hasta el nivel de la elección -->
+                            <li *ngFor="let m of mascotasReciclables" class="subida__fila" [class.subida__fila--bloqueada]="!!m.motivo">
+                                <div class="subida__fila-texto">
+                                    <span class="subida__fila-nombre">{{m.mascota === 'companero' ? 'Compañero animal' : 'Familiar'}}: {{nombreDeLaCriatura(m.tiene)}}<ng-container *ngIf="m.nombrePropio && m.nombrePropio !== m.tiene.nombre"> («{{m.nombrePropio}}»)</ng-container>
+                                        <ng-container *ngIf="planMascota?.hueco === m"> → <strong>{{nombreDeLaCriatura(planMascota!.pone)}}</strong></ng-container>
+                                    </span>
+                                    <span class="subida__etiqueta">{{m.clase || 'Sin clase'}}<ng-container *ngIf="!m.motivo">, de su lista hasta el nivel {{m.nivelEleccion}}</ng-container></span>
+                                    <span *ngIf="m.motivo" class="subida__fila-motivo">{{m.motivo}}</span>
+                                </div>
+                                <button *ngIf="!m.motivo" mat-stroked-button type="button" (click)="cambiarMascota(m)">{{planMascota?.hueco === m ? 'Elegir otra' : 'Cambiar'}}</button>
+                            </li>
                         </ul>
+                        <p *ngIf="tieneCompaneroReciclable" class="subida__nota">Se elige entre los de la lista con la que tiene al suyo, o una anterior. Para un animal de otra lista, libera a tu compañero y llama a otro (<em>Manual del jugador</em>, pág. 36).</p>
                         <ng-container *ngIf="rasgoElegido as h">
                             <h3 class="subida__seccion">En lugar de {{nombreDeLoQueTiene(h)}} ({{h.clase.toLowerCase()}}, nivel {{h.nivelClase}})</h3>
                             <div class="subida__opciones" role="radiogroup" [attr.aria-label]="'Otra opción en lugar de ' + nombreDeLoQueTiene(h)">
@@ -189,6 +201,9 @@
                             </div>
                         </ng-container>
                         <p *ngIf="derivadosDelDominioOLaEscuela" class="subida__nota">Cambia solo: {{derivadosDelDominioOLaEscuela}}.</p>
+                        <p *ngIf="planMascota" class="subida__nota">Sin coste. {{planMascota.hueco.mascota === 'companero'
+                            ? 'Sus DG adicionales, sus trucos, su Fuerza, su Destreza, su armadura natural y sus aptitudes, los de su nivel; sus rangos los repartes de nuevo después de la clase.'
+                            : 'Su armadura natural, su Inteligencia, su resistencia a conjuros, sus PG, su ataque y sus aptitudes, los del nivel de su amo.'}}</p>
                         <p *ngIf="planEscuela?.libroSinPreparar?.length" class="subida__nota">Se quedan en su libro, pero no se pueden preparar: {{planEscuela!.libroSinPreparar.join(', ')}}.</p>
                     </ng-container>
                 </ng-container>
@@ -227,6 +242,12 @@
             <!-- Habilidades -->
             <ng-container *ngSwitchCase="'habilidades'">
                 <app-reparto-rangos [motor]="svc"></app-reparto-rangos>
+            </ng-container>
+
+            <!-- Las habilidades del compañero que se recicla: sus rangos, de nuevo (como al crearlo) -->
+            <ng-container *ngSwitchCase="'companero'">
+                <app-reparto-rangos [motor]="svc" [titulo]="'Habilidades de ' + (svc.PersonajeCreacion.Companeros[0]?.Nombre || 'tu compañero animal')"></app-reparto-rangos>
+                <p class="subida__nota">Los puntos de sus DG adicionales, como al elegirlo: las habilidades de su criatura son de clase.</p>
             </ng-container>
 
             <!-- Dotes: en el selector de la creación -->
@@ -283,6 +304,7 @@
                 </ng-container>
                 <button *ngSwitchCase="'pg'" mat-flat-button color="primary" type="button" [disabled]="!puedeSeguirPg" (click)="siguiente()">Continuar</button>
                 <button *ngSwitchCase="'habilidades'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades()" (click)="cerrarHabilidades()">Continuar</button>
+                <button *ngSwitchCase="'companero'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades()" (click)="cerrarHabilidades()">Continuar</button>
                 <button *ngSwitchCase="'conjuros'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarSesionConjuros()" (click)="cerrarConjuros()">Continuar</button>
                 <ng-container *ngSwitchCase="'intercambio'">
                     <button mat-stroked-button type="button" (click)="cerrarIntercambio(false)">No cambiar ninguno</button>

@@ -12,6 +12,7 @@ import { claveDeHabilidad, claveHabilidad } from './utils/habilidad-clave';
 import { mismoExtra, toInt, toNumber } from './utils/normalizacion';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
+import { campoDelErrorASubida } from './utils/subida-nivel-vista';
 import { fichaDeLaPlantilla } from './utils/adquirir-plantilla';
 import { fichaDeLaMutacion, loQuePierdeEnSuHueco } from './utils/adquirir-raza-mutada';
 import { fichaDeLaCorreccion } from './utils/correccion-ficha';
@@ -23,15 +24,24 @@ import { construirCatalogoCompanerosDesdeMonstruos, claveCompanero } from './uti
 import { leerCompaneroProgresion, leerFamiliarProgresion } from './utils/monstruo-mapper';
 import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos } from './utils/familiar-reglas';
 import {
-    BASICA as FAMILIAR_BASICO, COMPARTIR as COMPARTIR_FAMILIAR, EVASION_MEJORADA as EVASION_MEJORADA_FAMILIAR, GATO,
-    MONSTRUOS_FAMILIAR, PROGRESION_FAMILIAR_API, TRANSMITIR,
+    ALERTA as ALERTA_FAMILIAR, BASICA as FAMILIAR_BASICO, CLASES_CON_FAMILIAR, COMPARTIR as COMPARTIR_FAMILIAR,
+    EVASION_MEJORADA as EVASION_MEJORADA_FAMILIAR, FILO_AOJADOR, GATO, MONSTRUOS_FAMILIAR, PROGRESION_FAMILIAR_API, TRANSMITIR,
+    VINCULO as VINCULO_FAMILIAR,
 } from 'src/testing/familiar-api';
-import { COMPARTIR_CONJUROS, DEVOCION, EVASION, LOBO, MONSTRUOS_COMPANERO, PROGRESION_API, VINCULO } from 'src/testing/companero-animal-api';
+import {
+    BISONTE, CELESTIAL as CELESTIAL_COMPANERO, CLASES_CON_COMPANERO, COMPANERO_ELEVADO, COMPARTIR_CONJUROS, DEVOCION, DRUIDA as DRUIDA_API, EVASION, EXPLORADOR, LOBO,
+    MONSTRUOS_COMPANERO, PROGRESION_API, SENOR_DE_LAS_BESTIAS, TEJON, VINCULO,
+} from 'src/testing/companero-animal-api';
 import {
     aplicarReciclajeAlMotor, aptitudesDelReciclaje, conjurosParaAprender, conocidosParaReciclar, destinosDeRangos, dominiosParaReciclar, dotesParaReciclar,
-    fichaConElReciclaje, filasDelReciclaje, habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir, motivoDeLaEscuela,
-    PlanReciclaje, rasgosParaReciclar, reciclajeDelPlan,
+    fichaConElReciclaje, filaDelReciclaje, filasDelReciclaje, habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir,
+    motivoDeLaEscuela, motivoDeLaMascota, PlanReciclaje, rasgosParaReciclar, reciclajeDelPlan,
 } from './utils/reciclaje';
+import { aportaAlDarLaMascota } from './utils/mascota-cupos';
+import {
+    catalogoDelReciclaje, conLosRangosDelCompaneroNuevo, entradasDelCompaneroReciclado, entradasDelFamiliarReciclado, huecosDeMascota, nombreDeLaCriatura,
+    planDeLaMascota,
+} from './utils/reciclaje-mascota';
 import { huecoDeEscuela, nombreDeLaEspecializacion, planDelDominio, planDeLaEscuela } from './utils/reciclaje-dominio-escuela';
 import {
     aptitudesConElegir, cambiosDelRasgo, huecoDeLaDoteDelRasgo, nombreDeLoQueTiene, nombreDeOpcion, PlanRasgo,
@@ -1940,25 +1950,38 @@ describe('El reciclaje de un dominio y de la escuela del mago (R3, segunda tanda
     });
 });
 
+/** El druida (su compañero animal, de 1.er nivel) y el mago (su familiar), con su `Mascota` en la tabla de su clase. */
+const DRUIDA = clase({
+    Id: 5, Nombre: 'Druida', Tipo_dado: { Id: 2, Nombre: 'd8' }, Puntos_habilidad: { Id: 1, Valor: 4 },
+    Habilidades: { Base: [ref(2, 'Trepar')], Custom: [] },
+    Desglose_niveles: [
+        nivel(1, { Especiales: [{
+            Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true }, Nivel: 1, Opcional: 0, Id_interno: 291,
+            Mascota: { Divisor: 1, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } },
+        }] }),
+        nivel(2), nivel(3), nivel(4), nivel(5), nivel(6), nivel(7),
+    ],
+});
+const CLASES_DRUIDA = [...CLASES, DRUIDA];
+const MAGO_CON_FAMILIAR = clase({
+    Id: 9, Nombre: 'Mago', Tipo_dado: { Id: 1, Nombre: 'd4' }, Puntos_habilidad: { Id: 1, Valor: 2 },
+    Habilidades: { Base: [ref(3, 'Concentración')], Custom: [] },
+    Desglose_niveles: [
+        nivel(1, { Especiales: [{
+            Especial: { Id: 47, Nombre: 'Convocar a un familiar', Otorga_familiar: true }, Nivel: 1, Opcional: 0, Id_interno: 471, Mascota: null,
+        }] }),
+        nivel(2), nivel(3), nivel(4),
+    ],
+});
+const CLASES_MAGO = [GUERRERO, PALADIN, MAGO_CON_FAMILIAR, HECHICERO];
+/** `MotorDesdeFichaService.cuerpoDelMotor` (con las mascotas del motor), con el servicio de personajes de estas pruebas. */
+const cuerpoDelMotor = (motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto) => MotorDesdeFichaService.prototype.cuerpoDelMotor
+    .call({ personajeSvc: new PersonajeService({ currentUser: null } as any, {} as any) } as any, motor, entrada);
+
 describe('Subida de nivel: el druida pone al día su compañero animal (el compañero, de los datos)', () => {
     const HUMANO = crearRaza('Humano');
     const PROGRESION = leerCompaneroProgresion(PROGRESION_API);
-    const DRUIDA = clase({
-        Id: 5, Nombre: 'Druida', Tipo_dado: { Id: 2, Nombre: 'd8' }, Puntos_habilidad: { Id: 1, Valor: 4 },
-        Habilidades: { Base: [ref(2, 'Trepar')], Custom: [] },
-        Desglose_niveles: [
-            nivel(1, { Especiales: [{
-                Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true }, Nivel: 1, Opcional: 0, Id_interno: 291,
-                Mascota: { Divisor: 1, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } },
-            }] }),
-            nivel(2), nivel(3), nivel(4), nivel(5), nivel(6),
-        ],
-    });
-    const CLASES_DRUIDA = [...CLASES, DRUIDA];
     const catalogoDeClases = { clases: CLASES_DRUIDA.map((c) => ({ id: c.Id, nombre: c.Nombre })) };
-    /** `MotorDesdeFichaService.cuerpoDelMotor` (con el compañero del motor), con el servicio de personajes de estas pruebas. */
-    const cuerpoDelMotor = (motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto) => MotorDesdeFichaService.prototype.cuerpoDelMotor
-        .call({ personajeSvc: new PersonajeService({ currentUser: null } as any, {} as any) } as any, motor, entrada);
 
     it('la subida a druida 3 manda el compañero con la fila de druida 3 y Evasión; lo demás, como estaba', () => {
         const svc = crear(HUMANO, { Sabiduria: 15 });
@@ -1998,21 +2021,7 @@ describe('Subida de nivel: el druida pone al día su compañero animal (el compa
 describe('Subida de nivel: el mago pone al día su familiar (el familiar, de los datos)', () => {
     const HUMANO = crearRaza('Humano');
     const PROGRESION = leerFamiliarProgresion(PROGRESION_FAMILIAR_API);
-    const MAGO_CON_FAMILIAR = clase({
-        Id: 9, Nombre: 'Mago', Tipo_dado: { Id: 1, Nombre: 'd4' }, Puntos_habilidad: { Id: 1, Valor: 2 },
-        Habilidades: { Base: [ref(3, 'Concentración')], Custom: [] },
-        Desglose_niveles: [
-            nivel(1, { Especiales: [{
-                Especial: { Id: 47, Nombre: 'Convocar a un familiar', Otorga_familiar: true }, Nivel: 1, Opcional: 0, Id_interno: 471, Mascota: null,
-            }] }),
-            nivel(2), nivel(3), nivel(4),
-        ],
-    });
-    const CLASES_MAGO = [GUERRERO, PALADIN, MAGO_CON_FAMILIAR, HECHICERO];
     const catalogoDeClases = { clases: CLASES_MAGO.map((c) => ({ id: c.Id, nombre: c.Nombre })) };
-    /** `MotorDesdeFichaService.cuerpoDelMotor` (con el familiar del motor), con el servicio de personajes de estas pruebas. */
-    const cuerpoDelMotor = (motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto) => MotorDesdeFichaService.prototype.cuerpoDelMotor
-        .call({ personajeSvc: new PersonajeService({ currentUser: null } as any, {} as any) } as any, motor, entrada);
 
     it('la subida a mago 3 manda el familiar con la tabla de 3, transmitir conjuros de toque y la mitad de los PG nuevos', () => {
         const svc = crear(HUMANO, { Inteligencia: 15 });
@@ -2051,5 +2060,216 @@ describe('Subida de nivel: el mago pone al día su familiar (el familiar, de los
             entrada: guardado.entrada, antes: igual, despues: igual, idClase: 9, nivel: { idClase: 9, nivelClase: 3, elecciones: [] },
             puntosGolpe: toInt(guardado.entrada.personaje.puntosGolpe),
         }).familiar).toEqual(guardado.entrada.familiar);
+    });
+});
+
+describe('El reciclaje de la mascota (R3, tercera tanda; Manual del jugador II, tabla 8-2; dictamen D4 y D5)', () => {
+    const HUMANO = crearRaza('Humano');
+
+    it('el nivel de la elección no baja de lo que aporta la clase al dar la mascota: druida 1, explorador 2 (a 4, la mitad), filo aojador 1', () => {
+        const de = (clases: Clase[], id: number) => clases.find((c) => toInt(c.Id) === id);
+        expect(aportaAlDarLaMascota(de(CLASES_CON_COMPANERO, DRUIDA_API), 'Otorga_companero')).toBe(1);
+        expect(aportaAlDarLaMascota(de(CLASES_CON_COMPANERO, EXPLORADOR), 'Otorga_companero')).toBe(2);
+        expect(aportaAlDarLaMascota(de(CLASES_CON_COMPANERO, SENOR_DE_LAS_BESTIAS), 'Otorga_companero')).toBe(4);
+        expect(aportaAlDarLaMascota(de(CLASES_CON_FAMILIAR, FILO_AOJADOR), 'Otorga_familiar')).toBe(1);
+    });
+
+    describe('el compañero animal del druida (MJ págs. 35-36)', () => {
+        const PROGRESION = leerCompaneroProgresion(PROGRESION_API);
+        const catalogoDeClases = { clases: CLASES_DRUIDA.map((c) => ({ id: c.Id, nombre: c.Nombre })) };
+        const CATALOGO = construirCatalogoCompanerosDesdeMonstruos(MONSTRUOS_COMPANERO);
+        const delCatalogo = (id: number, plantilla = 0) => CATALOGO.find((c) => claveCompanero(c) === `${id}:${plantilla}`)!;
+
+        const DOTE_ELEVADO = dote(COMPANERO_ELEVADO, 'Compañero elevado');
+
+        /**
+         * El druida 6, neutral auténtico, que eligió su lobo a nivel 1 (Colmillo), guardado con él, y la subida hidratada desde
+         * la ficha; con `elevado`, tomó Compañero elevado como dote de su 3.er nivel (nivel efectivo 3).
+         */
+        function druidaConLobo(elevado = false): { guardado: ReturnType<typeof guardar>; subida: NuevoPersonajeService; } {
+            const dotes = [...DOTES, DOTE_ELEVADO];
+            const svc = crear(HUMANO, { Sabiduria: 15 });
+            svc.PersonajeCreacion.Alineamiento = 'Neutral autentico';
+            svc.setCatalogoClases(CLASES_DRUIDA);
+            svc.setCatalogoDotes(dotes);
+            svc.setProgresionCompanero(PROGRESION);
+            aplicarNivel(svc, DRUIDA);
+            expect(svc.registrarCompaneroSeleccionado(JSON.parse(JSON.stringify(delCatalogo(LOBO))), 'Colmillo').registrado).toBeTrue();
+            for (let n = 2; n <= 6; n++)
+                aplicarNivel(svc, DRUIDA, 'Fuerza', undefined, n === 3 && elevado ? { dotes: [DOTE_ELEVADO] } : {});
+            if (elevado)
+                expect(svc.idsDotesDelPersonaje().has(COMPANERO_ELEVADO)).withContext('Compañero elevado, a nivel 3').toBeTrue();
+            const guardado = guardar(svc, catalogoDeClases);
+            guardado.entrada.companero = svc.companeroParaGuardar();
+            const subida = subir(guardado, HUMANO, CLASES_DRUIDA, dotes);
+            subida.setProgresionCompanero(PROGRESION);
+            return { guardado, subida };
+        }
+
+        it('el druida 6 con un lobo de nivel 1 ve los de la lista básica, no el bisonte ni el lobo celestial', () => {
+            const { guardado, subida } = druidaConLobo();
+            const [hueco] = huecosDeMascota(subida, guardado.entrada, { companeros: CATALOGO, familiares: null });
+            expect(hueco).withContext('el hueco del compañero').toBeDefined();
+            expect([hueco.mascota, hueco.idClase, hueco.clase, hueco.nombrePropio, hueco.nivelEleccion, hueco.motivo])
+                .toEqual(['companero', 5, 'Druida', 'Colmillo', 1, null]);
+            expect(nombreDeLaCriatura(hueco.tiene)).toBe('Lobo');
+            const entradas = entradasDelCompaneroReciclado(subida, hueco, CATALOGO, { incluirHomebrew: false });
+            expect(entradas.elegibles.map((c) => c.Nombre)).withContext(JSON.stringify(entradas.bloqueados.map((b) => [b.companero.Nombre, b.razones]))).toEqual(['Tejón']);
+            const listados = [...entradas.elegibles, ...entradas.bloqueados.map((b) => b.companero)].map((c) => claveCompanero(c));
+            expect(listados).not.toContain(`${BISONTE}:0`);
+            expect(listados).not.toContain(`${LOBO}:${CELESTIAL_COMPANERO}`);
+            expect(listados).not.toContain(`${LOBO}:0`);
+        });
+
+        it('con Compañero elevado (tomado con nivel efectivo 3) ve también el lobo celestial, que es de nivel 2 con esa dote', () => {
+            const { guardado, subida } = druidaConLobo(true);
+            const [hueco] = huecosDeMascota(subida, guardado.entrada, { companeros: CATALOGO, familiares: null });
+            expect([hueco.nivelEleccion, hueco.nivelPorDote[COMPANERO_ELEVADO]]).toEqual([1, 3]);
+            const entradas = entradasDelCompaneroReciclado(subida, hueco, CATALOGO, { incluirHomebrew: false });
+            expect(entradas.elegibles.map((c) => claveCompanero(c))).toEqual(jasmine.arrayWithExactContents([`${LOBO}:${CELESTIAL_COMPANERO}`, `${TEJON}:0`]));
+            const { plan } = planDeLaMascota(subida, hueco, delCatalogo(LOBO, CELESTIAL_COMPANERO), 'Colmillo');
+            // La API nombra la plantilla solo si no la comparten: «Lobo por Lobo (Celestial)».
+            expect([filaDelReciclaje(plan!).antes, filaDelReciclaje(plan!).ahora]).toEqual(['Lobo', 'Lobo (Celestial)']);
+            expect(reciclajeDelPlan(plan!)).toEqual(jasmine.objectContaining({ pone: { mascota: { idMonstruo: LOBO, idPlantilla: CELESTIAL_COMPANERO } } }));
+            // Sus errores (`reciclaje_no_valido`, `field` en `reciclaje…`) se enseñan en «Reciclar».
+            expect(campoDelErrorASubida('reciclaje_no_valido', 'reciclaje.pone.mascota.idMonstruo', ['reciclar', 'clase', 'resumen'])).toBe('reciclar');
+            expect(campoDelErrorASubida('reciclaje_no_valido', 'reciclaje', ['reciclar', 'clase', 'resumen'])).toBe('reciclar');
+        });
+
+        it('cambia el lobo por el tejón: el motor lo da con los valores de su nivel de ahora y sus rangos se reparten de nuevo', () => {
+            const { guardado, subida } = druidaConLobo();
+            const [hueco] = huecosDeMascota(subida, guardado.entrada, { companeros: CATALOGO, familiares: null });
+            const { plan, motivo } = planDeLaMascota(subida, hueco, delCatalogo(TEJON), 'Garra');
+            expect(motivo).toBeNull();
+            expect(motivoDeLaMascota(subida, plan!)).toBeNull();
+            // El plan deja el motor como estaba.
+            expect(subida.companeroParaGuardar()!.idMonstruo).toBe(LOBO);
+
+            const antes = cuerpoDelMotor(subida, guardado.entrada);
+            expect(aplicarReciclajeAlMotor(subida, plan!)).toBeTrue();
+            const despues = cuerpoDelMotor(subida, guardado.entrada);
+            const reciclaje = reciclajeDelPlan(plan!);
+            expect(reciclaje).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 5, mascota: 'companero' },
+                quita: { mascota: { idMonstruo: LOBO, idPlantilla: 0 } }, pone: { mascota: { idMonstruo: TEJON, idPlantilla: 0 } },
+            } as any);
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclaje, { rasgo: plan!, motor: { antes, despues } });
+            const companero = ficha.companero!;
+            // Druida 6, lista básica: la fila 6 de la tabla (+4 DG, +4 armadura natural, +2 Fue y Des, 3 trucos) sobre el tejón.
+            expect([companero.nombre, companero.idMonstruo, companero.idPlantilla]).toEqual(['Garra', TEJON, 0]);
+            expect([companero.dgAdi, companero.trucosAdi, companero.fuerza, companero.destreza, companero.armaduraNatural]).toEqual([4, 3, 10, 19, 5]);
+            expect(companero.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayContaining([COMPARTIR_CONJUROS, VINCULO, EVASION, DEVOCION]));
+            // Lo que el druida lleva por su compañero (el vínculo) no cambia: es la misma tabla.
+            expect(ficha.colecciones?.especiales).toEqual(guardado.entrada.colecciones?.especiales);
+
+            const filas = filasDelReciclaje(plan!);
+            expect(filas[0]).toEqual(jasmine.objectContaining({ que: 'Reciclaje: compañero animal', antes: 'Lobo', ahora: 'Tejón' }));
+            expect(filas[0].porque).toContain('nivel 1 o menos');
+            expect(filas[1].que).toBe('Reciclaje: lo que cambia solo');
+
+            // El nivel 7 sigue con el tejón y, después, sus rangos se reparten otra vez con los puntos de sus DG adicionales.
+            aplicarNivel(subida, DRUIDA);
+            expect(subida.iniciarDistribucionHabilidadesCompanero('clases')).toBeTrue();
+            expect(toInt(subida.EstadoFlujo.habilidades.puntosRestantes)).toBeGreaterThan(0);
+            for (const h of subida.getHabilidadesSesion())
+                for (let i = 0; i < 20 && subida.puedeSubirRangoHabilidad(claveHabilidad(h)); i++)
+                    subida.ajustarRangoHabilidad(claveHabilidad(h), 1);
+            expect(subida.cerrarDistribucionHabilidades()).not.toBeNull();
+            const alFinal = cuerpoDelMotor(subida, guardado.entrada);
+            const subidaFicha = conLosRangosDelCompaneroNuevo(fichaDeLaSubida({
+                entrada: ficha, antes: despues, despues: alFinal, idClase: 5,
+                nivel: { idClase: 5, nivelClase: 7, elecciones: subida.getEleccionesDelNivelEnCurso() }, puntosGolpe: 40,
+            }), plan, alFinal);
+            expect([subidaFicha.companero!.idMonstruo, subidaFicha.companero!.nombre]).toEqual([TEJON, 'Garra']);
+            expect(subidaFicha.companero!.habilidades.some((h) => h.rangos > 0)).withContext('los rangos repartidos').toBeTrue();
+        });
+    });
+
+    describe('el familiar del mago (MJ págs. 44-45)', () => {
+        const LECHUZA = 901;
+        const RATA = 902;
+        /** Una pseudoplantilla simulada sin el vínculo de empatía (`Sin_aptitudes`): para ver lo que depende del que se va. */
+        const SIN_VINCULO = 9;
+        const PROGRESION = leerFamiliarProgresion({
+            ...PROGRESION_FAMILIAR_API,
+            Plantillas: [...PROGRESION_FAMILIAR_API.Plantillas,
+                { Id: SIN_VINCULO, Nombre: 'Sin vínculo', Tabla: { Id: 1, Nombre: 'Manual del jugador' }, Pg_ataque_mayores: false, Sin_aptitudes: [4] }],
+        });
+        const gato = MONSTRUOS_FAMILIAR.find((m) => toInt(m.Id) === GATO)!;
+        const filaDelMago = gato.Niveles_clase.find((f) => toInt(f.Clase.Id) === 9)!;
+        const otro = (id: number, nombre: string, plantilla: { Id: number; Nombre: string; }) =>
+            ({ ...JSON.parse(JSON.stringify(gato)), Id: id, Nombre: nombre, Niveles_clase: [{ ...filaDelMago, Plantilla: plantilla }] });
+        const CATALOGO = construirCatalogoFamiliaresDesdeMonstruos([...MONSTRUOS_FAMILIAR, otro(LECHUZA, 'Lechuza', { Id: FAMILIAR_BASICO, Nombre: 'Básica' }),
+            otro(RATA, 'Rata', { Id: SIN_VINCULO, Nombre: 'Sin vínculo' })]);
+        const delCatalogo = (id: number, plantilla: number) => CATALOGO.find((c) => claveFamiliar(c) === `${id}:${plantilla}`)!;
+        const DOTE_DEL_VINCULO = { ...dote(60, 'Dote del vínculo'), Prerrequisitos: { clase_especial: [{ Id_especial: VINCULO_FAMILIAR, Opcional: 0 }] } };
+        const catalogoDeClases = { clases: CLASES_MAGO.map((c) => ({ id: c.Id, nombre: c.Nombre })) };
+
+        /** El mago 3 con su gato (Bigotes); con `doteDelVinculo`, la dote de su 3.er nivel pide el vínculo con su familiar. */
+        function magoConGato(doteDelVinculo = false): { guardado: ReturnType<typeof guardar>; subida: NuevoPersonajeService; } {
+            const dotes = [...DOTES, DOTE_DEL_VINCULO];
+            const svc = crear(HUMANO, { Inteligencia: 15 });
+            svc.PersonajeCreacion.Alineamiento = 'Neutral autentico';
+            svc.setCatalogoClases(CLASES_MAGO);
+            svc.setCatalogoDotes(dotes);
+            svc.setProgresionFamiliar(PROGRESION);
+            aplicarNivel(svc, MAGO_CON_FAMILIAR);
+            expect(svc.registrarFamiliarSeleccionado(JSON.parse(JSON.stringify(delCatalogo(GATO, FAMILIAR_BASICO))), 'Bigotes').registrado).toBeTrue();
+            aplicarNivel(svc, MAGO_CON_FAMILIAR);
+            aplicarNivel(svc, MAGO_CON_FAMILIAR, 'Fuerza', undefined, doteDelVinculo ? { dotes: [DOTE_DEL_VINCULO] } : {});
+            if (doteDelVinculo)
+                expect(svc.dotesDelPersonaje().map((d) => d.Dote?.Nombre)).withContext('la dote de 3.er nivel').toContain('Dote del vínculo');
+            const guardado = guardar(svc, catalogoDeClases);
+            guardado.entrada.familiar = svc.familiarParaGuardar();
+            const subida = subir(guardado, HUMANO, CLASES_MAGO, dotes);
+            subida.setProgresionFamiliar(PROGRESION);
+            return { guardado, subida };
+        }
+
+        it('el mago cambia su gato por una lechuza: de su lista de nivel 1 o menos, con los valores del nivel de su amo', () => {
+            const { guardado, subida } = magoConGato();
+            const [hueco] = huecosDeMascota(subida, guardado.entrada, { companeros: null, familiares: CATALOGO });
+            // El gato es de la fila 0; el mago da el familiar a nivel 1.
+            expect([hueco.mascota, hueco.idClase, hueco.nivelEleccion, hueco.motivo]).toEqual(['familiar', 9, 1, null]);
+            expect(nombreDeLaCriatura(hueco.tiene)).toBe('Gato (Básica)');
+            const entradas = entradasDelFamiliarReciclado(subida, hueco, CATALOGO, { incluirHomebrew: false });
+            expect(entradas.elegibles.map((f) => f.Nombre)).withContext(JSON.stringify(entradas.bloqueados.map((b) => [b.familiar.Nombre, b.razones]))).toEqual(['Lechuza', 'Rata']);
+            expect([...entradas.elegibles, ...entradas.bloqueados.map((b) => b.familiar)].map((f) => f.Nombre))
+                .not.toContain('Perro intermitente');
+            expect(entradas.plantillas.map((p) => p.Nombre)).toEqual(['Básica', 'Sin vínculo']);
+
+            const { plan } = planDeLaMascota(subida, hueco, delCatalogo(LECHUZA, FAMILIAR_BASICO), 'Ulula');
+            expect(motivoDeLaMascota(subida, plan!)).toBeNull();
+            const antes = cuerpoDelMotor(subida, guardado.entrada);
+            expect(aplicarReciclajeAlMotor(subida, plan!)).toBeTrue();
+            const reciclaje = reciclajeDelPlan(plan!);
+            expect(reciclaje).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 9, mascota: 'familiar' },
+                quita: { mascota: { idMonstruo: GATO, idPlantilla: FAMILIAR_BASICO } }, pone: { mascota: { idMonstruo: LECHUZA, idPlantilla: FAMILIAR_BASICO } },
+            } as any);
+            const ficha = fichaConElReciclaje(guardado.entrada, reciclaje, { rasgo: plan!, motor: { antes, despues: cuerpoDelMotor(subida, guardado.entrada) } });
+            const familiar = ficha.familiar!;
+            expect([familiar.nombre, familiar.idMonstruo, familiar.idPlantilla]).toEqual(['Ulula', LECHUZA, FAMILIAR_BASICO]);
+            // Amo de nivel 3: armadura natural +2, Inteligencia 7, la mitad de sus PG, su ataque base y transmitir conjuros de toque.
+            expect([familiar.armaduraNatural, familiar.inteligencia, familiar.vida, familiar.ataqueBase])
+                .toEqual([2, 7, Math.max(1, Math.floor(toInt(guardado.entrada.personaje.puntosGolpe) / 2)), guardado.entrada.familiar!.ataqueBase]);
+            expect(familiar.especiales.map((e) => e.idEspecial)).toEqual(jasmine.arrayContaining([COMPARTIR_FAMILIAR, EVASION_MEJORADA_FAMILIAR, TRANSMITIR]));
+            // Alerta, lo que gana el amo con su familiar, sigue una vez.
+            const alertas = (f: PersonajeCreateRequestDto) => (f.colecciones?.dotes ?? []).filter((d: any) => toInt(d?.idDote ?? d) === ALERTA_FAMILIAR).length;
+            expect(alertas(ficha)).toBe(alertas(guardado.entrada));
+            // Las dos son básicas: la frase no nombra la plantilla («Gato por Lechuza»).
+            expect(filaDelReciclaje(plan!)).toEqual(jasmine.objectContaining({ que: 'Reciclaje: familiar', antes: 'Gato', ahora: 'Lechuza' }));
+            expect(aptitudesDelReciclaje(plan!)).toEqual([]);
+        });
+
+        it('no cambia de familiar si una dote que eligió después pide lo que le da el que se va; el motor se queda como estaba', () => {
+            const { guardado, subida } = magoConGato(true);
+            const [hueco] = huecosDeMascota(subida, guardado.entrada, { companeros: null, familiares: CATALOGO });
+            const sinVinculo = planDeLaMascota(subida, hueco, delCatalogo(RATA, SIN_VINCULO), 'Roedor').plan!;
+            expect(motivoDeLaMascota(subida, sinVinculo)).toContain('Dote del vínculo');
+            expect(subida.familiarParaGuardar()!.idMonstruo).toBe(GATO);
+            // Con otro que también le da el vínculo, sí.
+            expect(motivoDeLaMascota(subida, planDeLaMascota(subida, hueco, delCatalogo(LECHUZA, FAMILIAR_BASICO), '').plan!)).toBeNull();
+        });
     });
 });

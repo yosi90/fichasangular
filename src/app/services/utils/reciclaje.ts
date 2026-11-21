@@ -19,13 +19,16 @@ import {
     aplicarEspecializacion, EspecializacionElegida, especializacionDelPlan, fichaConElDominio, fichaConLaEscuela, HuecoDeDominio, huecosDeDominio, loQueDaElDominio,
     nombreDeLaEspecializacion, PlanDominio, PlanEscuela, reciclajeDelDominioOLaEscuela,
 } from './reciclaje-dominio-escuela';
+import {
+    aplicarMascotaAlMotor, derivadosDeLaMascota, fichaConLaMascota, nombreDeLaMascota, nombresDelCambio, PlanMascota, reciclajeDeLaMascota,
+} from './reciclaje-mascota';
 
 /*
  * El reciclaje de la subida de nivel (*Manual del jugador II*, cap. 8, págs. 194-196; contrato en
  * `docs/publica/endpoints/personajes.md`, «Subida de nivel», «El reciclaje»; guía `docs/publica/SESIONES_FRONT.md`): al
  * subir, antes de añadir nada del nivel nuevo, el personaje cambia una sola cosa que eligió antes (una dote, un idioma,
  * rangos de una habilidad, conjuros conocidos o la opción de un rasgo de clase: de su tabla, `reciclaje-rasgos.ts`; un
- * dominio o la escuela del mago, `reciclaje-dominio-escuela.ts`) por otra legal. Todo se juzga con el personaje de antes de subir; lo que
+ * dominio o la escuela del mago, `reciclaje-dominio-escuela.ts`; la mascota, `reciclaje-mascota.ts`) por otra legal. Todo se juzga con el personaje de antes de subir; lo que
  * depende de lo reciclado (una dote, una clase) bloquea el cambio, no se quita en cascada. Después, el motor sigue con el
  * nivel ya con el cambio hecho. Lo usa solo la subida (`components/sesiones/subir-nivel`, con carga diferida).
  */
@@ -57,14 +60,15 @@ export type PlanReciclaje =
     }
     | PlanRasgo
     | PlanDominio
-    | PlanEscuela;
+    | PlanEscuela
+    | PlanMascota;
 
-/** Los planes de un rasgo de clase (en el cuerpo, todos `tipo: "rasgo"`): de su tabla, un dominio o la escuela del mago. */
-export type PlanDeRasgoDeClase = PlanRasgo | PlanDominio | PlanEscuela;
+/** Los planes de un rasgo de clase (en el cuerpo, todos `tipo: "rasgo"`): de su tabla, un dominio, la escuela del mago o la mascota. */
+export type PlanDeRasgoDeClase = PlanRasgo | PlanDominio | PlanEscuela | PlanMascota;
 
 /** Si el plan es de un rasgo de clase. */
 export function esPlanDeRasgo(plan: PlanReciclaje | null | undefined): plan is PlanDeRasgoDeClase {
-    return plan?.tipo === 'rasgo' || plan?.tipo === 'dominio' || plan?.tipo === 'escuela';
+    return plan?.tipo === 'rasgo' || plan?.tipo === 'dominio' || plan?.tipo === 'escuela' || plan?.tipo === 'mascota';
 }
 
 /** Una dote del personaje en el paso «Reciclar»: si se puede reciclar y, si no, por qué. */
@@ -137,6 +141,8 @@ export function reciclajeDelPlan(plan: PlanReciclaje): ReciclajeSubidaDto {
         return { tipo: 'rasgo', hueco: huecoDelCuerpo(plan.hueco), ...opcionesDelCuerpo(plan) };
     if (plan.tipo === 'dominio' || plan.tipo === 'escuela')
         return reciclajeDelDominioOLaEscuela(plan);
+    if (plan.tipo === 'mascota')
+        return reciclajeDeLaMascota(plan);
     return { tipo: 'conjuros', cambios: plan.cambios.map((c) => ({ idClase: c.idClase, olvida: c.olvida.id, aprende: c.aprende.id })) };
 }
 
@@ -174,6 +180,14 @@ export function filaDelReciclaje(plan: PlanReciclaje): CambioSubida {
             porque: `${hueco.clase}, nivel 1: otro dominio ${hueco.deidad ? `de ${hueco.deidad}` : 'que puede elegir sin deidad'}; Manual del jugador II, pág. 195`,
         };
     }
+    if (plan.tipo === 'mascota') {
+        const { hueco } = plan;
+        const [antes, ahora] = nombresDelCambio(hueco.tiene, plan.pone);
+        return {
+            que: `Reciclaje: ${nombreDeLaMascota(hueco.mascota)}`, antes, ahora,
+            porque: `${hueco.clase}: otra criatura de la misma elección, de su lista (nivel ${hueco.nivelEleccion} o menos); Manual del jugador II, pág. 195`,
+        };
+    }
     if (plan.tipo === 'escuela')
         return {
             que: 'Reciclaje: especialización', antes: nombreDeLaEspecializacion(plan.hueco.tiene), ahora: nombreDeLaEspecializacion(plan.pone),
@@ -207,6 +221,12 @@ export function filasDelReciclaje(plan: PlanReciclaje): CambioSubida[] {
             });
         return filas;
     }
+    if (plan.tipo === 'mascota') {
+        derivadosDeLaMascota(plan).forEach((d) => filas.push({
+            que: `Reciclaje: ${d.que.toLowerCase()}`, antes: d.antes, ahora: d.ahora, porque: 'Como al elegirla, con su nivel de ahora; Manual del jugador II, pág. 195',
+        }));
+        return filas;
+    }
     const derivados = plan.tipo === 'rasgo' ? plan.cambios.filter((c) => c.derivado) : [];
     if (derivados.length > 0)
         filas.push({
@@ -220,7 +240,7 @@ export function filasDelReciclaje(plan: PlanReciclaje): CambioSubida[] {
 
 /** Las aptitudes que entran con lo reciclado (un rasgo de clase): no son del nivel nuevo. */
 export function aptitudesDelReciclaje(plan: PlanReciclaje | null): Array<{ nombre: string; extra: string; }> {
-    if (plan?.tipo === 'dominio')
+    if (plan?.tipo === 'dominio' || plan?.tipo === 'mascota')
         return plan.aptitudesNuevas.map((a) => ({ ...a }));
     if (plan?.tipo !== 'rasgo')
         return [];
@@ -240,7 +260,7 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
         origenDote?: string; claseaDestino?: boolean; motor?: { antes: PersonajeCreateRequestDto; despues: PersonajeCreateRequestDto; } | null;
         /**
          * El plan de un rasgo de clase: lo que cambia, con sus orígenes y lo derivado (`fichaConElRasgo`); un dominio, con lo
-         * que cambia el motor (`fichaConElDominio`), o la escuela (`fichaConLaEscuela`).
+         * que cambia el motor (`fichaConElDominio`); la escuela (`fichaConLaEscuela`), o la mascota, la del motor (`fichaConLaMascota`).
          */
         rasgo?: PlanDeRasgoDeClase;
     } = {})
@@ -249,10 +269,11 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
     const ficha: PersonajeCreateRequestDto = rasgo?.tipo === 'rasgo' ? fichaConElRasgo(entrada, rasgo)
         : rasgo?.tipo === 'dominio' ? fichaConElDominio(entrada, rasgo, opciones.motor)
             : rasgo?.tipo === 'escuela' ? fichaConLaEscuela(entrada, rasgo)
-                : JSON.parse(JSON.stringify(entrada));
+                : rasgo?.tipo === 'mascota' ? fichaConLaMascota(entrada, rasgo, opciones.motor)
+                    : JSON.parse(JSON.stringify(entrada));
     const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) };
     if (reciclaje.tipo === 'rasgo') {
-        // Ya hecho: `fichaConElRasgo`, `fichaConElDominio` o `fichaConLaEscuela`, con lo de la opción y lo derivado.
+        // Ya hecho: `fichaConElRasgo`, `fichaConElDominio`, `fichaConLaEscuela` o `fichaConLaMascota`, con lo de la opción y lo derivado.
     } else if (reciclaje.tipo === 'dote') {
         const { quita, pone } = reciclaje;
         const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
@@ -315,6 +336,11 @@ export interface LoQueQuita {
      * especializarse en una escuela o lanzar conjuros de una que pasa a estar prohibida.
      */
     escuela?: EspecializacionElegida;
+    /**
+     * Otra mascota (la que se recicla): la que tiene se va con lo que su amo lleva por ella y entra la del plan. Cambia más
+     * de lo que se restaura aquí: quien lo pide guarda y restaura el motor (`motivoDeLaMascota`).
+     */
+    mascota?: PlanMascota;
 }
 
 /** Las clases que tiene, del catálogo del motor. */
@@ -395,6 +421,8 @@ export function loQueDejariaDeCumplir(motor: NuevoPersonajeService, quita: LoQue
         (quita.dominios ?? []).forEach((nombre) => sacarPrimero(pj.Dominios ?? [], (x) => normalizarTexto(x?.Nombre ?? '') === normalizarTexto(nombre)));
         if (quita.escuela)
             aplicarEspecializacion(motor, quita.escuela);
+        if (quita.mascota)
+            aplicarMascotaAlMotor(motor, quita.mascota);
 
         const sinDote = (d: DoteDeLaFicha) => !quitadas.some((q) => claveDoteDeLaFicha(d) === claveDoteDeLaFicha(q));
         const motivos = motor.dotesSinSusPrerrequisitos()
@@ -521,6 +549,20 @@ export function dominiosParaReciclar(motor: NuevoPersonajeService, entrada: Pers
  */
 export function motivoDeLaEscuela(motor: NuevoPersonajeService, plan: PlanEscuela): string | null {
     return motivoDeLoQueLoNecesita(loQueDejariaDeCumplir(motor, { escuela: especializacionDelPlan(plan) }));
+}
+
+/**
+ * Lo que dejaría de cumplir con otra mascota (`plan`, la que se recicla): lo elegido después que dependa de la que se va
+ * (una dote o una clase de prestigio que pide algo que le da ella al amo). Se bloquea, no se quita en cascada; el motor se
+ * queda como estaba. `null` si no rompe nada.
+ */
+export function motivoDeLaMascota(motor: NuevoPersonajeService, plan: PlanMascota): string | null {
+    const estado = motor.exportarEstadoSubida();
+    try {
+        return motivoDeLoQueLoNecesita(loQueDejariaDeCumplir(motor, { mascota: plan }));
+    } finally {
+        motor.restaurarEstadoSubida(estado);
+    }
 }
 
 /**
@@ -658,6 +700,8 @@ export function aplicarReciclajeAlMotor(motor: NuevoPersonajeService, plan: Plan
         return motor.cambiarDominio(plan.hueco.idClase, plan.hueco.tiene.id, plan.pone.id);
     if (plan.tipo === 'escuela')
         return aplicarEspecializacion(motor, especializacionDelPlan(plan));
+    if (plan.tipo === 'mascota')
+        return aplicarMascotaAlMotor(motor, plan);
     if (plan.tipo === 'dote') {
         const hueco = huecoDeLaDoteReciclada(motor, plan.quita, true);
         return !!hueco && motor.aplicarDotePendiente(hueco.pendiente.id, plan.seleccion);

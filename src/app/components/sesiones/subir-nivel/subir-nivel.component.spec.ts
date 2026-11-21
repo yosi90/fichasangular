@@ -128,7 +128,7 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             // Sin clases que den a elegir en su tabla, el rasgo de clase sale desactivado, con su motivo.
             expect(texto).toContain('Reciclar un rasgo de clase');
             expect(radios[5].disabled).toBeTrue();
-            expect(texto).toContain('Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios ni una escuela.');
+            expect(texto).toContain('Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios, una escuela ni una mascota.');
             expect(texto).toContain('Continuar sin reciclar');
         });
 
@@ -260,6 +260,43 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             sesiones.subirNivel.and.resolveTo({ subida: { nivelesPorSubir: 0 } } as any);
             await componente.guardar(false);
             expect(sesiones.subirNivel.calls.mostRecent().args[1].reciclaje).toEqual({ tipo: 'rasgo', hueco: { idClase: 4, dominio: true }, quita: { dominio: 1 }, pone: { dominio: 2 } });
+        });
+
+        it('la mascota sale en la lista del rasgo de clase, con la nota de liberar al compañero; va en el cuerpo y en el resumen', async () => {
+            const componente = await crear({}, { pj: { PoliticaCompra: null } });
+            const c = componente as any;
+            const hueco = {
+                tipo: 'mascota' as const, clave: 'mascota:companero', mascota: 'companero' as const, idClase: 5, clase: 'Druida',
+                tiene: { idMonstruo: 48, idPlantilla: 0, nombre: 'Lobo', plantilla: '' }, nombrePropio: 'Colmillo', nivelEleccion: 1, nivelPorDote: {}, motivo: null,
+            };
+            c.mascotasReciclables = [hueco];
+            c.opcionesReciclaje = c.opcionesDeReciclaje();
+            componente.elegirTipoReciclaje('rasgo');
+            fixture.detectChanges();
+            const texto = fixture.nativeElement.textContent;
+            expect(texto).toContain('Compañero animal: Lobo («Colmillo»)');
+            expect(texto).toContain('Druida, de su lista hasta el nivel 1');
+            expect(texto).toContain('Para un animal de otra lista, libera a tu compañero y llama a otro (Manual del jugador, pág. 36).');
+
+            c.plan = {
+                tipo: 'mascota', hueco, pone: { idMonstruo: 55, idPlantilla: 0, nombre: 'Tejón', plantilla: '' }, nombrePropio: 'Garra',
+                criatura: { Id: 55, Nombre: 'Tejón' }, aptitudesNuevas: [],
+            };
+            c.entradaReciclada = JSON.parse(JSON.stringify(ENTRADA_ENANO_CLERIGO_1));
+            componente.claseElegida = { Id: 4, Nombre: 'Clérigo' } as any;
+            componente.daDg = false;
+            componente.pasos = ['reciclar', 'clase', 'companero', 'resumen'];
+            componente.paso = 'clase';
+            // Sin compañero en el motor, no hay rangos que repartir: el paso sobra y va al resumen.
+            await componente.siguiente();
+            expect(componente.pasos).toEqual(['reciclar', 'clase', 'resumen']);
+            expect(componente.paso).toBe('resumen');
+            expect(componente.cambios[0]).toEqual(jasmine.objectContaining({ que: 'Reciclaje: compañero animal', antes: 'Lobo', ahora: 'Tejón' }));
+            sesiones.subirNivel.and.resolveTo({ subida: { nivelesPorSubir: 0 } } as any);
+            await componente.guardar(false);
+            expect(sesiones.subirNivel.calls.mostRecent().args[1].reciclaje).toEqual({
+                tipo: 'rasgo', hueco: { idClase: 5, mascota: 'companero' }, quita: { mascota: { idMonstruo: 48, idPlantilla: 0 } }, pone: { mascota: { idMonstruo: 55, idPlantilla: 0 } },
+            });
         });
     });
 });
