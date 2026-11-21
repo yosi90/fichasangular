@@ -12,7 +12,7 @@ import {
 } from 'src/app/interfaces/monstruo';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
-import { idsUnicosOrdenados, toInt, toNumber, toNumberOrNull, toPositiveInt, toText } from './normalizacion';
+import { idsUnicosOrdenados, toInt, toIntOrNull, toNumber, toNumberOrNull, toPositiveInt, toText } from './normalizacion';
 
 // El formulario de los monstruos (hito 6 del roadmap de inserciones, 2026-10-31): los pasos, los campos con su etiqueta
 // y su paso, el cuerpo de `POST /monstruos/add` y de `PUT /monstruos/<id>` (`MonstruoCreateRequest` en
@@ -159,6 +159,10 @@ export interface FilaNivelClaseMonstruo {
     id_preferencia_legal: number;
     id_preferencia_moral: number;
     id_dote: number;
+    /** Lo que la fila suma al nivel efectivo para la tabla del compañero: 0 o menos (las alternativas de 4.º, −3). */
+    ajuste: number;
+    /** El ataque base que pide la fila (1 o más); `null`, vacío: sin mínimo. */
+    ataque_base_minimo: number | null;
 }
 
 /** Las listas del formulario. */
@@ -322,15 +326,20 @@ export function listasDesdeMonstruo(monstruo: MonstruoDetalle, uid: () => string
             id_preferencia_legal: Math.max(0, toInt(item?.Preferencia_legal?.Id)),
             id_preferencia_moral: Math.max(0, toInt(item?.Preferencia_moral?.Id)),
             id_dote: Math.max(0, toInt(item?.Dote?.Id)),
+            ajuste: toInt(item?.Ajuste),
+            ataque_base_minimo: toIntOrNull(item?.Ataque_base_minimo),
         })).filter((fila) => fila.id_clase > 0),
         alineamientos_familiar: idsUnicosOrdenados((monstruo.Alineamientos_requeridos?.Familiar ?? []).map((item) => item?.Id)),
         alineamientos_companero: idsUnicosOrdenados((monstruo.Alineamientos_requeridos?.Companero ?? []).map((item) => item?.Id)),
     };
 }
 
-/** Una fila nueva de los niveles de clase: la clase elegida, nivel 1 y sin plantilla, dote ni preferencias. */
+/** Una fila nueva de los niveles de clase: la clase elegida, nivel 1, sin ajuste ni ataque base mínimo y sin plantilla, dote ni preferencias. */
 export function filaNivelClaseNueva(uid: string, idClase: number): FilaNivelClaseMonstruo {
-    return { uid, id_clase: toInt(idClase), nivel: 1, id_plantilla: 0, id_preferencia_legal: 0, id_preferencia_moral: 0, id_dote: 0 };
+    return {
+        uid, id_clase: toInt(idClase), nivel: 1, id_plantilla: 0, id_preferencia_legal: 0, id_preferencia_moral: 0, id_dote: 0,
+        ajuste: 0, ataque_base_minimo: null,
+    };
 }
 
 /** El cuerpo de `POST /monstruos/add` (y del `PUT` de la modificación, que lleva el mismo). */
@@ -376,6 +385,9 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
             id_preferencia_legal: toPositiveInt(fila.id_preferencia_legal),
             id_preferencia_moral: toPositiveInt(fila.id_preferencia_moral),
             id_dote: toPositiveInt(fila.id_dote),
+            // Tal como se escriben: la API rechaza un ajuste mayor que 0 o un mínimo menor que 1 con su `field`.
+            ajuste: toInt(fila.ajuste),
+            ataque_base_minimo: toIntOrNull(fila.ataque_base_minimo),
         })),
         alineamientos_requeridos: {
             familiar: idsUnicosOrdenados(listas.alineamientos_familiar),

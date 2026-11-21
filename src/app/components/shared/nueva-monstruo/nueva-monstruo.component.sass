@@ -53,7 +53,7 @@
 // Una clase con la que se tiene: la clase, su nivel, la plantilla, la dote y las dos preferencias.
 .monstruo-nivel
     display: grid
-    grid-template-columns: minmax(0, 1.2fr) 80px minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 42px
+    grid-template-columns: minmax(0, 1.2fr) 80px 80px 120px minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 42px
     gap: 8px
     align-items: center
     margin-bottom: 8px
@@ -62,7 +62,7 @@
 
 @container insercion (max-width: 1100px)
     .monstruo-nivel
-        grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr) 42px
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 42px
 
         > .row-action-btn
             grid-column: 4

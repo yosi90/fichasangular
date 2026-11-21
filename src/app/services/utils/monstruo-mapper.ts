@@ -45,7 +45,7 @@ import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeRacial } from "./racial-mapper";
-import { idNombre, toArray, toBoolean, toInt, toIntOrNull, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { idNombre, toArray, toBoolean, toInt, toIntOrNull, toNumber, toNumberOrNull, toPositiveInt, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizeManualLegacy } from './manual-mapper';
 import { leerArmasNaturales } from './armas-naturales';
@@ -201,6 +201,8 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
         Nivel: toNumber(raw?.Nivel),
         // Sin él (una caché de antes del 2026-11-21), 0: la fila no ajusta la tabla del compañero.
         Ajuste: Math.min(0, toInt(raw?.Ajuste)),
+        // Sin él, `null` o menos de 1 (una caché de antes del 2026-11-21), sin mínimo.
+        Ataque_base_minimo: toPositiveInt(raw?.Ataque_base_minimo),
         Plantilla: {
             Id: toNumber(raw?.Plantilla?.Id),
             Nombre: toText(raw?.Plantilla?.Nombre),

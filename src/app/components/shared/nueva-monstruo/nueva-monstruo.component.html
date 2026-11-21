@@ -221,6 +221,16 @@
                             <input matInput type="number" min="0" step="1" [(ngModel)]="fila.nivel" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
                         </mat-form-field>
                         <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>Ajuste</mat-label>
+                            <input matInput type="number" max="0" step="1" [(ngModel)]="fila.ajuste" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()"
+                                [attr.aria-label]="'Ajuste de ' + nombreClase(fila.id_clase)">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>Pide ataque base</mat-label>
+                            <input matInput type="number" min="1" step="1" placeholder="Sin mínimo" [(ngModel)]="fila.ataque_base_minimo" [ngModelOptions]="{ standalone: true }"
+                                (ngModelChange)="alCambiar()" [attr.aria-label]="'Ataque base mínimo de ' + nombreClase(fila.id_clase)">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" subscriptSizing="dynamic">
                             <mat-label>Plantilla</mat-label>
                             <mat-select [(ngModel)]="fila.id_plantilla" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
                                 <mat-option [value]="0">Ninguna</mat-option>
@@ -248,6 +258,7 @@
                             <mat-icon>delete</mat-icon>
                         </button>
                     </div>
+                    <p class="monstruo-nota" *ngIf="listas.niveles_clase.length > 0">Ajuste: lo que la lista suma al nivel efectivo para la tabla del compañero (0 o menos; en el familiar, 0). «Pide ataque base»: el que tiene que tener el personaje, además del nivel; vacío, sin mínimo.</p>
                     <app-catalogo-buscador etiqueta="Añadir clase" [anadir]="true" [opciones]="clases" [deshabilitado]="edicion.cargando"
                         (elegir)="anadirNivelClase($event)">
                     </app-catalogo-buscador>

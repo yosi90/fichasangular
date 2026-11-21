@@ -138,12 +138,41 @@ describe('NuevaMonstruoComponent', () => {
             expect(cuerpo.sortilegas).toEqual([{ id_conjuro: 40, nivel_lanzador: 1, usos_diarios: '' }]);
             expect(cuerpo.raciales).toEqual([18]);
             expect(cuerpo.idiomas).toEqual([22]);
-            expect(cuerpo.niveles_clase).toEqual([{ id_clase: 9, nivel: 1, id_plantilla: 3, id_preferencia_legal: null, id_preferencia_moral: 4, id_dote: null }]);
+            expect(cuerpo.niveles_clase).toEqual([{
+                id_clase: 9, nivel: 1, id_plantilla: 3, id_preferencia_legal: null, id_preferencia_moral: 4, id_dote: null, ajuste: 0, ataque_base_minimo: null,
+            }]);
             expect(cuerpo.alineamientos_requeridos).toEqual({ familiar: [1, 3], companero: [] });
             expect(swal).toHaveBeenCalledWith(jasmine.objectContaining({ icon: 'success', title: 'Monstruo creado' }));
             expect(creados.length).toBe(1);
             expect(component.form.controls.nombre.value).toBe('');
             expect(component.listas.dotes).toEqual([]);
+        });
+
+        it('cada nivel de clase manda su ajuste y el ataque base que pide: vacío, null (sin mínimo)', async () => {
+            component.form.patchValue({ nombre: 'Perro intermitente', id_manual: 47, id_tipo: 3, id_tamano: 3, id_tipo_dado: 3, id_alineamiento: 2, familiar: true });
+            component.anadirNivelClase(9);
+            component.anadirNivelClase(5);
+            expect(component.listas.niveles_clase.map((fila) => [fila.ajuste, fila.ataque_base_minimo])).toEqual([[0, null], [0, null]]);
+            Object.assign(component.listas.niveles_clase[0], { nivel: 5, ajuste: 0, ataque_base_minimo: 5 });
+            Object.assign(component.listas.niveles_clase[1], { nivel: 4, ajuste: -3, ataque_base_minimo: null });
+
+            await component.guardar();
+
+            const cuerpo = monstruoSvc.crearMonstruo.calls.argsFor(0)[0];
+            expect(cuerpo.niveles_clase.map((fila: any) => [fila.id_clase, fila.nivel, fila.ajuste, fila.ataque_base_minimo]))
+                .toEqual([[9, 5, 0, 5], [5, 4, -3, null]]);
+        });
+
+        it('el ataque base mínimo que la API no acepta va a la tarjeta de los niveles de clase y a su paso', async () => {
+            monstruoSvc.crearMonstruo.and.rejectWith(new ProfileApiError("'niveles_clase[0].ataque_base_minimo' debe ser 1 o más.", 'peticion_no_valida', 400, 'niveles_clase[0].ataque_base_minimo'));
+            component.form.patchValue({ nombre: 'Perro intermitente', id_manual: 47, id_tipo: 3, id_tamano: 3, id_tipo_dado: 3, id_alineamiento: 2 });
+            component.anadirNivelClase(9);
+            component.listas.niveles_clase[0].ataque_base_minimo = 0;
+            await component.guardar();
+
+            expect(monstruoSvc.crearMonstruo.calls.argsFor(0)[0].niveles_clase[0].ataque_base_minimo).toBe(0);
+            expect(component.errorCampo?.campo).toBe('niveles_clase');
+            expect(component.pasoActual).toBe(4);
         });
 
         it('sin permiso, el aviso ámbar y no llama a la API', async () => {
@@ -214,6 +243,26 @@ describe('NuevaMonstruoComponent', () => {
             expect(swal).toHaveBeenCalledWith(jasmine.objectContaining({ icon: 'success', title: 'Monstruo actualizado' }));
             expect(actualizados.length).toBe(1);
             expect(cerrados.length).toBe(1);
+        });
+
+        it('carga el ajuste y el ataque base mínimo de cada nivel de clase, y cambiarlos marca la tarjeta', async () => {
+            const get = JSON.parse(JSON.stringify(entrada(13).get));
+            get.Niveles_clase[0] = { ...get.Niveles_clase[0], Ajuste: -3, Ataque_base_minimo: 5 };
+            monstruoSvc.getMonstruoFresco.and.callFake(() => of(normalizeMonstruoDetalle(get, 1)));
+            component = crear('editar', 13);
+            const fila = component.listas.niveles_clase[0];
+            expect([fila.ajuste, fila.ataque_base_minimo]).toEqual([-3, 5]);
+            expect(component.listas.niveles_clase.slice(1).every((otra) => otra.ajuste === 0 && otra.ataque_base_minimo === null)).toBeTrue();
+            expect(component.hayCambios).toBeFalse();
+
+            fila.ataque_base_minimo = null;
+            component.alCambiar();
+            expect(component.cambios).toEqual(['niveles_clase']);
+            expect(component.pasosConCambios).toEqual([4]);
+
+            await component.guardar();
+            const [, cuerpo] = monstruoSvc.actualizarMonstruo.calls.argsFor(0);
+            expect([cuerpo.niveles_clase[0].ajuste, cuerpo.niveles_clase[0].ataque_base_minimo]).toEqual([-3, null]);
         });
 
         it('«Descartar» vuelve a lo que llegó y cerrar con cambios pregunta', async () => {
