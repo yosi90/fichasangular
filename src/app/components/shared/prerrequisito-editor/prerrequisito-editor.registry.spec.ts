@@ -69,11 +69,11 @@ describe('prerrequisito-editor.registry', () => {
             row({ tipo: 'caracteristica', id: 4, valor: 1, maximo: 2 }),
             row({ uid: 'otra', tipo: 'caracteristica', id: 1, valor: 13 }),
         ], context);
-        expect(payload['volar']).toEqual([{ Minimo: 1 }]);
-        expect(payload['armadura_natural']).toEqual([{ Opcional: 2, Minimo: 1 }]);
+        expect(payload['volar']).toEqual([{ Cantidad: 1 }]);
+        expect(payload['armadura_natural']).toEqual([{ Opcional: 2, Cantidad: 1 }]);
         expect(payload['sortilega']).toEqual([{ Nivel_lanzador: 10 }]);
-        expect(payload['ataque_especial']).toEqual([{ Minimo: 1 }]);
-        expect(payload['trucos']).toEqual([{ Minimo: 1 }]);
+        expect(payload['ataque_especial']).toEqual([{ Cantidad: 1 }]);
+        expect(payload['trucos']).toEqual([{ Cantidad: 1 }]);
         expect(payload['caracteristica'][0]).toEqual(jasmine.objectContaining({ Id_caracteristica: 4, Cantidad: 1, Maximo: 2 }));
         expect(Object.keys(payload['caracteristica'][1])).not.toContain('Maximo');
     });

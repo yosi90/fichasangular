@@ -51,11 +51,11 @@ describe('filaDeLectura (los prerrequisitos de la API como filas del editor)', (
     });
 
     it('lee las dotes de monstruo y el tope de una característica', () => {
-        expect(filaDeLectura('volar', { Minimo: 1, Frase: 'Velocidad de vuelo' }, 'u').valor).toBe(1);
-        expect(filaDeLectura('armadura_natural', { Minimo: 2 }, 'u').valor).toBe(2);
+        expect(filaDeLectura('volar', { Cantidad: 1, Frase: 'Velocidad de vuelo' }, 'u').valor).toBe(1);
+        expect(filaDeLectura('armadura_natural', { Cantidad: 2 }, 'u').valor).toBe(2);
         expect(filaDeLectura('sortilega', { Nivel_lanzador: 10 }, 'u').valor).toBe(10);
-        expect(filaDeLectura('ataque_especial', { Minimo: 1 }, 'u').valor).toBe(1);
-        expect(filaDeLectura('trucos', { Minimo: 1 }, 'u').valor).toBe(1);
+        expect(filaDeLectura('ataque_especial', { Cantidad: 1 }, 'u').valor).toBe(1);
+        expect(filaDeLectura('trucos', { Cantidad: 1 }, 'u').valor).toBe(1);
         expect(filaDeLectura('caracteristica', { Id_caracteristica: 4, Cantidad: 1, Maximo: 2 }, 'u').maximo).toBe(2);
         expect(filaDeLectura('caracteristica', { Id_caracteristica: 4, Cantidad: 13, Maximo: null }, 'u').maximo).toBeUndefined();
     });

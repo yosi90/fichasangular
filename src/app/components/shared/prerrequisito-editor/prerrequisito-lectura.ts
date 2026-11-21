@@ -55,8 +55,8 @@ export const VALOR_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>
     caracteristica: 'Cantidad',
     conjuros_escuela: 'Cantidad',
     armas_naturales: 'Cantidad',
-    armadura_natural: 'Minimo',
-    ataque_especial: 'Minimo',
+    armadura_natural: 'Cantidad',
+    ataque_especial: 'Cantidad',
     dg: 'Cantidad',
     escuela_nivel: 'Nivel',
     habilidad: 'Cantidad',
@@ -72,8 +72,8 @@ export const VALOR_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>
     nivel_max: 'Nivel',
     reserva_psionica: 'Cantidad',
     sortilega: 'Nivel_lanzador',
-    trucos: 'Minimo',
-    volar: 'Minimo',
+    trucos: 'Cantidad',
+    volar: 'Cantidad',
 };
 
 /**

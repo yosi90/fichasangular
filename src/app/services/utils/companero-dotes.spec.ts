@@ -91,7 +91,7 @@ describe('las dotes y las mejoras del compañero animal', () => {
         const trucoAdicional = { Id: 900, Nombre: 'Truco adicional', Prerrequisitos: {
             tipo_criatura: [{ Id_tipo_criatura: 3, Tipo_criatura: 'Animal', Opcional: 1 }, { Id_tipo_criatura: 4, Tipo_criatura: 'Bestia mágica', Opcional: 1 }],
             caracteristica: [{ Id_caracteristica: 4, Caracteristica: 'Inteligencia', Cantidad: 1, Maximo: 2, Opcional: 0 }],
-            trucos: [{ Minimo: 1, Opcional: 0, Frase: 'Conocer al menos 1 truco' }],
+            trucos: [{ Cantidad: 1, Opcional: 0, Frase: 'Conocer al menos 1 truco' }],
         } } as any;
         const rastrea = { Id: 4, Nombre: 'Rastrea', Origen: 'adicional', Orden: 1, Coste: 1, Es_fin: false };
         const lobo = companero({ dg: 2, Nombre: 'Colmillo', Trucos: [rastrea] } as any);

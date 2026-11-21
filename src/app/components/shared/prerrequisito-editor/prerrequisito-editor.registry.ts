@@ -167,12 +167,11 @@ function buildValuePayload(row: PrerequisiteRowModel): Record<string, any> {
     const valor = toInt(row.valor, 0);
     const base = buildBase(row);
 
+    // Con `Cantidad`, también las dotes de monstruo (catalogos.md, «Los prerrequisitos de las dotes de monstruo»).
     if (tipo === 'ataque_base' || tipo === 'dg' || tipo === 'nivel' || tipo === 'nivel_max' || tipo === 'reserva_psionica'
-        || tipo === 'armas_naturales')
+        || tipo === 'armas_naturales' || tipo === 'volar' || tipo === 'armadura_natural' || tipo === 'ataque_especial'
+        || tipo === 'trucos')
         return { ...base, Cantidad: valor };
-    // Las dotes de monstruo (catalogos.md, «Los prerrequisitos de las dotes de monstruo»).
-    if (tipo === 'volar' || tipo === 'armadura_natural' || tipo === 'ataque_especial' || tipo === 'trucos')
-        return { ...base, Minimo: valor };
     if (tipo === 'sortilega')
         return { ...base, Nivel_lanzador: valor };
 
