@@ -8,6 +8,7 @@ import {
     FormaArmaNaturalPersonaje,
     ModoArmaNatural,
 } from 'src/app/interfaces/arma-natural';
+import { Id_nombre } from 'src/app/interfaces/genericas';
 import { uidDeFila } from 'src/app/components/shared/insercion-marco/filas-repetibles';
 import type { FilaDeLista } from 'src/app/components/shared/lista-de-catalogo/lista-de-catalogo.component';
 import { toArray, toBoolean, toInt, toNullableText, toText } from './normalizacion';
@@ -100,6 +101,11 @@ function total(estado: Estado): number {
     return suma;
 }
 
+/** Lo que trae sus armas naturales: una raza (ya a su edad), un monstruo o un compañero. */
+type ConArmasNaturales = { Armas_naturales?: readonly ArmaNatural[] | null; } | null | undefined;
+/** Una plantilla, con el modo y la forma de las suyas. */
+type PlantillaConArmasNaturales = { Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined;
+
 /**
  * Cuántas armas naturales tiene un personaje (la suma de `Cantidad`) en la forma en que más tiene: las de su raza (una
  * raza por edades ya llega resuelta a su edad), las de sus aptitudes de clase (`aptitudes`: el golpetazo, el mordisco y
@@ -110,8 +116,8 @@ function total(estado: Estado): number {
  * garras y el mordisco).
  */
 export function contarArmasNaturales(
-    raza: { Armas_naturales?: readonly ArmaNatural[] | null; } | null | undefined,
-    plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[] = [],
+    raza: ConArmasNaturales,
+    plantillas: readonly PlantillaConArmasNaturales[] = [],
     aptitudes: readonly ArmaNatural[] = [],
 ): number {
     return Math.max(...Array.from(formasDeArmasNaturales(raza, plantillas, aptitudes).values()).map(total));
@@ -123,10 +129,10 @@ export function contarArmasNaturales(
  * monstruo»). Sin tipo de la API (`Id_arma_natural` 0), no se ofrece.
  */
 export function tiposDeArmasNaturales(
-    raza: { Armas_naturales?: readonly ArmaNatural[] | null; } | null | undefined,
-    plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[] = [],
+    raza: ConArmasNaturales,
+    plantillas: readonly PlantillaConArmasNaturales[] = [],
     aptitudes: readonly ArmaNatural[] = [],
-): { Id: number; Nombre: string; }[] {
+): Id_nombre[] {
     const nombres = new Map<string, string>();
     [...(raza?.Armas_naturales ?? []), ...aptitudes, ...plantillas.flatMap((p) => p?.Armas_naturales ?? [])]
         .forEach((arma) => nombres.set(claveDe(arma), arma.Arma_natural));
@@ -140,8 +146,8 @@ export function tiposDeArmasNaturales(
 
 /** Las armas naturales de cada forma (la normal, `todas`, y las de forma `animal` o `hibrida` de sus plantillas). */
 function formasDeArmasNaturales(
-    raza: { Armas_naturales?: readonly ArmaNatural[] | null; } | null | undefined,
-    plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[],
+    raza: ConArmasNaturales,
+    plantillas: readonly PlantillaConArmasNaturales[],
     aptitudes: readonly ArmaNatural[],
 ): Map<FormaArmaNatural, Estado> {
     let normal: Estado = new Map();
