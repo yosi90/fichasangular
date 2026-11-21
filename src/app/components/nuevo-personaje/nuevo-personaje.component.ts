@@ -58,7 +58,6 @@ import {
     AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
     AumentoCaracteristicaPendiente,
-    CompaneroPlantillaSelector,
     EstadoCuposFamiliar,
     EstadoCuposCompanero,
     ClaseAumentoLanzadorPendiente,
@@ -91,6 +90,7 @@ import {
     plantillasFamiliarDisponibles,
 } from 'src/app/services/utils/familiar-reglas';
 import {
+    claveCompanero,
     construirCatalogoCompanerosDesdeMonstruos,
     CompaneroElegibilidadEvaluadaItem,
     evaluarCompanerosElegibilidad,
@@ -378,6 +378,12 @@ const CODIGOS_FALLO_DE_REGLAS: readonly string[] = [
     'clase_requiere_mutacion', 'mutacion_requiere_clase', 'progresion_obligatoria_incompleta', 'clase_de_monstruo_no_permitida',
 ];
 
+/**
+ * Los errores del compañero animal de `POST /personajes/add` (`docs/publica/endpoints/personajes.md`, «El compañero,
+ * comprobado por la API»): se enseñan en el selector del compañero, para elegir otro.
+ */
+const CODIGOS_FALLO_COMPANERO: readonly string[] = ['companero_no_disponible', 'companero_no_cuadra'];
+
 const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     tiradaMinimaCaracteristica: null,
     nepMaximoPersonajeNuevo: null,
@@ -628,7 +634,6 @@ export class NuevoPersonajeComponent {
     private resolverSelectorFamiliar: ((seleccion: SelectorFamiliarConfirmacion | 'omitir' | null) => void) | null = null;
     private nombresEspecialesFamiliar: Record<number, string> | null = null;
     selectorCompaneroTitulo = 'Seleccionar compañero animal';
-    selectorCompaneroPlantillaSeleccionada: CompaneroPlantillaSelector | null = null;
     selectorCompaneroIncluirHomebrew = false;
     selectorCompaneroCuposDisponibles = 0;
     selectorCompaneroNombre = '';
@@ -637,10 +642,12 @@ export class NuevoPersonajeComponent {
     selectorCompaneroElegibles: CompaneroMonstruoDetalle[] = [];
     selectorCompaneroBloqueados: SelectorCompaneroBloqueadoItem[] = [];
     selectorCompaneroNivelesRequeridos: Record<string, number> = {};
+    selectorCompaneroAjustes: Record<string, number> = {};
     selectorCompaneroNivelesDisponibles: number[] = [];
     selectorCompaneroNivelSeleccionado: number | null = null;
+    /** El motivo por el que la API no aceptó el compañero al guardar; se enseña al volver a elegirlo. */
+    selectorCompaneroErrorApi = '';
     private resolverSelectorCompanero: ((seleccion: SelectorCompaneroConfirmacion | 'omitir' | null) => void) | null = null;
-    private nombresEspecialesCompanero: Record<number, string> | null = null;
     private idiomasTemporalesSeleccionados: IdiomaDetalle[] = [];
     private basicosDerivedState: BasicosDerivedState = {
         preferenciasRazaItems: [],
@@ -4933,7 +4940,7 @@ export class NuevoPersonajeComponent {
     }
 
     private async resolverCompaneroPendienteFinNivel(): Promise<boolean> {
-        const estado = this.nuevoPSvc.getEstadoCuposCompaneroEspecial29();
+        const estado = this.nuevoPSvc.getEstadoCuposCompanero();
         if (estado.cuposDisponibles < 1)
             return true;
 
@@ -4943,13 +4950,7 @@ export class NuevoPersonajeComponent {
         if (seleccion === 'omitir')
             return true;
 
-        const nombresEspeciales = await this.cargarNombresEspecialesCompanero();
-        const resultado = this.nuevoPSvc.registrarCompaneroSeleccionado(
-            seleccion.companero,
-            seleccion.plantilla,
-            nombresEspeciales,
-            seleccion.nombre
-        );
+        const resultado = this.nuevoPSvc.registrarCompaneroSeleccionado(seleccion.companero, seleccion.nombre);
         if (!resultado.registrado) {
             await Swal.fire({
                 icon: 'warning',
@@ -4967,8 +4968,40 @@ export class NuevoPersonajeComponent {
         return true;
     }
 
+    /**
+     * La API no acepta el compañero que se mandó (`companero_no_disponible`, `companero_no_cuadra`): se quita y se vuelve a
+     * abrir su selector con el motivo. `true` si se puede volver a guardar (otro compañero, o ninguno si lo omite).
+     */
+    private async volverAElegirCompanero(motivo: string): Promise<boolean> {
+        this.nuevoPSvc.quitarCompanero();
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        const errorApi = motivo.length > 0 ? motivo : 'El compañero animal no cuadra con las reglas.';
+        const estado = this.nuevoPSvc.getEstadoCuposCompanero();
+        if (estado.cuposDisponibles < 1) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo crear el personaje',
+                text: errorApi,
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return true;
+        }
+        const seleccion = await this.abrirSelectorCompanero(estado, errorApi);
+        if (seleccion === null)
+            return false;
+        if (seleccion === 'omitir')
+            return true;
+        const resultado = this.nuevoPSvc.registrarCompaneroSeleccionado(seleccion.companero, seleccion.nombre);
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        return resultado.registrado;
+    }
+
     private async abrirSelectorCompanero(
-        estado: EstadoCuposCompanero
+        estado: EstadoCuposCompanero,
+        errorApi: string = ''
     ): Promise<SelectorCompaneroConfirmacion | 'omitir' | null> {
         const catalogoCargado = await this.cargarCatalogoCompanerosSelector();
         if (!catalogoCargado)
@@ -4976,11 +5009,11 @@ export class NuevoPersonajeComponent {
 
         this.selectorCompaneroEstadoCupos = estado;
         this.selectorCompaneroTitulo = 'Seleccionar compañero animal';
-        this.selectorCompaneroPlantillaSeleccionada = null;
         this.selectorCompaneroIncluirHomebrew = !this.Personaje.Oficial;
         this.selectorCompaneroNombre = this.getNombreDefectoCompanero();
         this.selectorCompaneroCuposDisponibles = Math.max(0, Number(estado?.cuposDisponibles ?? 0));
         this.selectorCompaneroNivelSeleccionado = null;
+        this.selectorCompaneroErrorApi = errorApi;
         this.recalcularCompanerosElegiblesSelector();
         this.modalSelectorCompaneroAbierto = true;
 
@@ -4990,18 +5023,13 @@ export class NuevoPersonajeComponent {
     }
 
     onConfirmarSelectorCompanero(seleccion: SelectorCompaneroConfirmacion): Promise<boolean> {
-        const idCompanero = Number(seleccion?.companero?.Id_companero ?? 0);
-        const idPlantilla = this.getIdPlantillaCompaneroSeleccionada(seleccion?.plantilla);
-        const companero = this.selectorCompaneroElegibles.find((item) =>
-            Number(item?.Id_companero) === idCompanero
-            && Number(item?.Plantilla?.Id) === idPlantilla
-        );
+        const clave = claveCompanero(seleccion?.companero);
+        const companero = this.selectorCompaneroElegibles.find((item) => claveCompanero(item) === clave);
         if (!companero)
             return Promise.resolve(false);
         // Antes de cerrar el selector: un compañero homebrew en una ficha oficial se confirma.
         return this.confirmarSiVuelveHomebrew(`Elegir ${companero.Nombre}`, [motivoHomebrew('companero', companero)], () => this.cerrarSelectorCompaneroContexto({
             companero,
-            plantilla: seleccion?.plantilla ?? 'base',
             nombre: `${seleccion?.nombre ?? ''}`,
             nivel: seleccion?.nivel ?? null,
         }));
@@ -5189,11 +5217,6 @@ export class NuevoPersonajeComponent {
         this.verDetallesMonstruoDesdeFicha(familiar);
     }
 
-    onCambioPlantillaSelectorCompanero(plantilla: CompaneroPlantillaSelector | null): void {
-        this.selectorCompaneroPlantillaSeleccionada = plantilla ? this.normalizarPlantillaCompanero(plantilla) : null;
-        this.recalcularCompanerosElegiblesSelector();
-    }
-
     onCambioHomebrewSelectorCompanero(value: boolean): void {
         this.selectorCompaneroIncluirHomebrew = !!value;
         this.recalcularCompanerosElegiblesSelector();
@@ -5379,6 +5402,7 @@ export class NuevoPersonajeComponent {
             return;
 
         let etapa: 'sql' | 'navegacion' = 'sql';
+        let reintentarConOtroCompanero = false;
         this.finalizacionEnCurso = true;
         try {
             let idPersonaje = Math.trunc(Number(this.finalizacionState.idPersonaje ?? 0));
@@ -5447,6 +5471,11 @@ export class NuevoPersonajeComponent {
                 await this.abrirFormacionIncarnum();
                 return;
             }
+            // La API no acepta el compañero: se vuelve a elegir con su motivo y, elegido (u omitido), se guarda otra vez.
+            if (etapa === 'sql' && CODIGOS_FALLO_COMPANERO.includes(codigoDeError(error))) {
+                reintentarConOtroCompanero = await this.volverAElegirCompanero(mensajeDeError(error, ''));
+                return;
+            }
             const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
             const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
             // Los errores de las reglas del personaje (tipo, edad, raza mutada, clases de monstruo) traen su frase: el título no habla de SQL.
@@ -5466,6 +5495,8 @@ export class NuevoPersonajeComponent {
             });
         } finally {
             this.finalizacionEnCurso = false;
+            if (reintentarConOtroCompanero)
+                void this.finalizarPersonajeCompleto();
         }
     }
 
@@ -5822,15 +5853,6 @@ export class NuevoPersonajeComponent {
         this.selectorFamiliarNombre = `${value ?? ''}`;
     }
 
-    private normalizarPlantillaCompanero(value: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
-        const normalizada = normalizarTexto(`${value ?? ''}`);
-        if (normalizada.includes('elevado'))
-            return 'elevado';
-        if (normalizada.includes('sabandija'))
-            return 'sabandija';
-        return 'base';
-    }
-
     private sincronizarOwnerUidEnCreacion(): void {
         const uid = this.obtenerUidSesionActiva();
         const nombreSesion = this.obtenerNombreSesionActiva();
@@ -5949,16 +5971,6 @@ export class NuevoPersonajeComponent {
         } catch {
             return false;
         }
-    }
-
-    private getIdPlantillaCompaneroSeleccionada(plantilla: CompaneroPlantillaSelector | null): number {
-        if (!plantilla)
-            return 1;
-        if (plantilla === 'elevado')
-            return 2;
-        if (plantilla === 'sabandija')
-            return 3;
-        return 1;
     }
 
     private async cargarCatalogoFamiliaresSelector(): Promise<boolean> {
@@ -6081,11 +6093,17 @@ export class NuevoPersonajeComponent {
         return { ...nombres };
     }
 
+    /** Los compañeros de la lista de las clases (de los monstruos marcados como compañero) y la tabla del compañero. */
     private async cargarCatalogoCompanerosSelector(): Promise<boolean> {
         try {
-            const monstruos = await firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1)));
+            const [monstruos, progresion] = await Promise.all([
+                firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1))),
+                firstValueFrom(this.monstruoSvc.getCompanerosProgresion().pipe(take(1))),
+            ]);
+            this.nuevoPSvc.setProgresionCompanero(progresion);
             this.selectorCompaneroCatalogoCompleto = construirCatalogoCompanerosDesdeMonstruos(
-                Array.isArray(monstruos) ? monstruos : []
+                Array.isArray(monstruos) ? monstruos : [],
+                this.nuevoPSvc.getListasDeCompanero()
             );
             return true;
         } catch {
@@ -6112,21 +6130,14 @@ export class NuevoPersonajeComponent {
         }
 
         const incluirHomebrewEfectivo = this.selectorCompaneroIncluirHomebrew || !this.Personaje.Oficial;
-        const tieneDoteElevado = this.nuevoPSvc.PersonajeCreacion.DotesContextuales
-            .some((item) => Number(item?.Dote?.Id) === 53)
-            || this.nuevoPSvc.PersonajeCreacion.Dotes.some((item) => Number((item as any)?.Id) === 53);
-        const tieneDoteSabandija = this.nuevoPSvc.PersonajeCreacion.DotesContextuales
-            .some((item) => Number(item?.Dote?.Id) === 56)
-            || this.nuevoPSvc.PersonajeCreacion.Dotes.some((item) => Number((item as any)?.Id) === 56);
+        const dotesPersonaje = this.nuevoPSvc.idsDotesDelPersonaje();
 
         this.selectorCompaneroNivelesDisponibles = resolverNivelesCompaneroDisponibles({
             companeros: this.selectorCompaneroCatalogoCompleto,
             estado: this.selectorCompaneroEstadoCupos,
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
-            plantillaSeleccionada: this.selectorCompaneroPlantillaSeleccionada,
             incluirHomebrew: incluirHomebrewEfectivo,
-            tieneDoteElevado,
-            tieneDoteSabandija,
+            dotesPersonaje,
         });
         if (this.selectorCompaneroNivelSeleccionado !== null
             && !this.selectorCompaneroNivelesDisponibles.includes(this.selectorCompaneroNivelSeleccionado)) {
@@ -6137,21 +6148,21 @@ export class NuevoPersonajeComponent {
             companeros: this.selectorCompaneroCatalogoCompleto,
             estado: this.selectorCompaneroEstadoCupos,
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
-            plantillaSeleccionada: this.selectorCompaneroPlantillaSeleccionada,
             incluirHomebrew: incluirHomebrewEfectivo,
-            tieneDoteElevado,
-            tieneDoteSabandija,
+            dotesPersonaje,
             nivelSeleccionado: this.selectorCompaneroNivelSeleccionado,
         });
         const nivelesRequeridos: Record<string, number> = {};
+        const ajustes: Record<string, number> = {};
         evaluaciones.forEach((item) => {
+            const clave = claveCompanero(item.companero);
+            ajustes[clave] = Math.trunc(Number(item?.ajuste ?? 0));
             const nivel = Number(item?.nivelMinimoRequerido ?? 0);
-            if (!Number.isFinite(nivel) || nivel <= 0)
-                return;
-            const clave = this.getClaveCompaneroSelector(item.companero);
-            nivelesRequeridos[clave] = Math.trunc(nivel);
+            if (Number.isFinite(nivel) && nivel > 0)
+                nivelesRequeridos[clave] = Math.trunc(nivel);
         });
         this.selectorCompaneroNivelesRequeridos = nivelesRequeridos;
+        this.selectorCompaneroAjustes = ajustes;
         this.selectorCompaneroElegibles = evaluaciones
             .filter((item) => item.elegible)
             .map((item: CompaneroElegibilidadEvaluadaItem) => item.companero);
@@ -6164,40 +6175,8 @@ export class NuevoPersonajeComponent {
             }));
     }
 
-    private async cargarNombresEspecialesCompanero(): Promise<Record<number, string>> {
-        if (this.nombresEspecialesCompanero)
-            return { ...this.nombresEspecialesCompanero };
-
-        const objetivos = [157, 158, 159, 57];
-        const nombres: Record<number, string> = {};
-        objetivos.forEach((id) => {
-            nombres[id] = `Especial ${id} (Compañero)`;
-        });
-
-        try {
-            const especiales = await firstValueFrom(this.especialSvc.getEspeciales().pipe(take(1)));
-            (especiales ?? []).forEach((especial) => {
-                const id = Number(especial?.Id ?? 0);
-                if (!objetivos.includes(id))
-                    return;
-                const nombre = `${especial?.Nombre ?? ''}`.trim();
-                if (nombre.length > 0)
-                    nombres[id] = nombre;
-            });
-        } catch {
-            // fallback ya aplicado
-        }
-
-        this.nombresEspecialesCompanero = { ...nombres };
-        return { ...nombres };
-    }
-
     private getClaveFamiliarSelector(familiar: FamiliarMonstruoDetalle | null | undefined): string {
         return `${Number(familiar?.Id_familiar ?? 0)}:${Number(familiar?.Plantilla?.Id ?? 0)}`;
-    }
-
-    private getClaveCompaneroSelector(companero: CompaneroMonstruoDetalle | null | undefined): string {
-        return `${Number(companero?.Id_companero ?? 0)}:${Number(companero?.Plantilla?.Id ?? 0)}`;
     }
 
     private cerrarSelectorFamiliarContexto(
@@ -6226,7 +6205,6 @@ export class NuevoPersonajeComponent {
     ): void {
         this.modalSelectorCompaneroAbierto = false;
         this.selectorCompaneroTitulo = 'Seleccionar compañero animal';
-        this.selectorCompaneroPlantillaSeleccionada = null;
         this.selectorCompaneroIncluirHomebrew = false;
         this.selectorCompaneroNombre = '';
         this.selectorCompaneroCuposDisponibles = 0;
@@ -6235,8 +6213,10 @@ export class NuevoPersonajeComponent {
         this.selectorCompaneroElegibles = [];
         this.selectorCompaneroBloqueados = [];
         this.selectorCompaneroNivelesRequeridos = {};
+        this.selectorCompaneroAjustes = {};
         this.selectorCompaneroNivelesDisponibles = [];
         this.selectorCompaneroNivelSeleccionado = null;
+        this.selectorCompaneroErrorApi = '';
 
         const resolver = this.resolverSelectorCompanero;
         this.resolverSelectorCompanero = null;
@@ -7631,6 +7611,10 @@ export class NuevoPersonajeComponent {
         escuchar(this.tamanoSvc?.getTamanos(), (tamanos) => this.nuevoPSvc.setCatalogoTamanos(tamanos));
         escuchar(this.subtipoSvc?.getSubtipos(), (subtipos) => this.nuevoPSvc.setCatalogoSubtipos(subtipos));
         escuchar(this.razaCatalogosSvc?.getTiposDado(), (tipos) => this.nuevoPSvc.setCatalogoTiposDado(tipos));
+        // La tabla del compañero animal y sus aptitudes por nivel: las que pone al día al subir de nivel.
+        const progresion = this.monstruoSvc?.getCompanerosProgresion?.();
+        if (progresion)
+            this.catalogosCifrasSubs.push(progresion.subscribe({ next: (valor) => this.nuevoPSvc.setProgresionCompanero(valor), error: () => undefined }));
     }
 
     private cargarTiposCriatura(): void {

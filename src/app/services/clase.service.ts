@@ -9,6 +9,7 @@ import { Alineamiento } from "../interfaces/alineamiento";
 import {
     Clase,
     ClaseConjuroRef,
+    ClaseEspecialMascota,
     ClaseConjurosConfig,
     ClaseEscuelaEspecialista,
     ClaseIntercambioConjuros,
@@ -254,6 +255,20 @@ function normalizeOtorgadoNivel(item: any) {
     };
 }
 
+/**
+ * Cómo cuenta la clase para la mascota que da la aptitud (`Mascota`, desde el 2026-11-21); `null` si no da mascota o si
+ * no lo trae (la caché no escribe los `null`).
+ */
+function normalizeMascotaEspecial(raw: any): ClaseEspecialMascota | null {
+    if (!raw || typeof raw !== 'object')
+        return null;
+    return {
+        Divisor: Math.max(1, toInt(raw?.Divisor, 1)),
+        Ajuste: toInt(raw?.Ajuste),
+        Lista: { Id: toInt(raw?.Lista?.Id), Nombre: toText(raw?.Lista?.Nombre) },
+    };
+}
+
 function normalizeNivel(raw: any): ClaseNivelDetalle {
     const diariosRaw = raw?.Conjuros_diarios ?? {};
     const conocidosNivelRaw = raw?.Conjuros_conocidos_nivel_a_nivel ?? {};
@@ -290,6 +305,7 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
         Especiales: toArray(raw?.Especiales).map((item: any) => ({
             Especial: item?.Especial ?? {},
             ...normalizeOtorgadoNivel(item),
+            Mascota: normalizeMascotaEspecial(item?.Mascota),
         })),
         // La tabla por nivel de una clase de monstruo. Sin tabla (y en la caché, que no escribe los `null`): un DG en cada
         // nivel, las dotes por nivel de personaje y ninguna armadura natural.

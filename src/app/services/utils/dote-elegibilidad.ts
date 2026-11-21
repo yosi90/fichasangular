@@ -796,6 +796,22 @@ function evaluateFamily(
     }));
 }
 
+/**
+ * Si unas armas naturales cumplen el prerrequisito `armas_naturales` de una dote, con sus grupos «uno de estos»; sin él,
+ * sí. Lo usa el compañero animal (Ataque múltiple a 9: la dote, con tres o más armas naturales; si no, su alternativa),
+ * con las de su monstruo, como la API (`utils/companero_animal.py`).
+ */
+export function cumpleArmasNaturalesDeLaDote(dote: Dote | null | undefined, armasNaturales: number): boolean {
+    const pedidos = toArray<Record<string, any>>((dote?.Prerrequisitos as Record<string, any> | undefined)?.['armas_naturales']);
+    if (pedidos.length < 1)
+        return true;
+    const motivos = new MotivosPrerrequisitos();
+    evaluateFamily('armas_naturales', pedidos, { armasNaturales } as DoteEvaluacionContexto, 0, '', 0)
+        .forEach((evaluacion, index) => motivos.registrar({ ...evaluacion, frase: frasePrerrequisito('armas_naturales', pedidos[index]) }));
+    motivos.cerrarGrupos();
+    return motivos.fail.length < 1 && motivos.unknown.length < 1;
+}
+
 export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluacionResultado {
     const dote = input?.dote;
     const ctx = input?.contexto;

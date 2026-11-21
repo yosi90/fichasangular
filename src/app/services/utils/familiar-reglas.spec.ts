@@ -40,6 +40,7 @@ function crearNivelClase(
     return {
         Clase: { Id: idClase, Nombre: `Clase ${idClase}` },
         Nivel: nivel,
+        Ajuste: 0,
         Plantilla: { Id: plantilla, Nombre: `Plantilla ${plantilla}` },
         Preferencia_legal: { Id: prefLegal, Nombre: `${prefLegal}` },
         Preferencia_moral: { Id: prefMoral, Nombre: `${prefMoral}` },

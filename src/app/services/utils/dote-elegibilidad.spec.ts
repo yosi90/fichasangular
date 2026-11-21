@@ -1,6 +1,7 @@
 import { Dote } from 'src/app/interfaces/dote';
 import { buildIdentidadPrerrequisitos } from './identidad-prerrequisitos';
-import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './dote-elegibilidad';
+import { cumpleArmasNaturalesDeLaDote, DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './dote-elegibilidad';
+import { DOTE_ATAQUE_MULTIPLE } from 'src/testing/companero-animal-api';
 
 function crearDoteBase(partial?: Partial<Dote>): Dote {
     return {
@@ -869,5 +870,20 @@ describe('dote-elegibilidad', () => {
         const otra = evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ deidad: { id: 18, nombre: 'Pelor' } }) });
         expect(otra.estado).toBe('blocked_failed');
         expect(evaluarElegibilidadDote({ dote, contexto: crearContextoBase() }).estado).toBe('blocked_failed');
+    });
+});
+
+describe('cumpleArmasNaturalesDeLaDote (el compañero animal y Ataque múltiple)', () => {
+    it('tres armas naturales o más; sin el prerrequisito, sí', () => {
+        expect(cumpleArmasNaturalesDeLaDote(DOTE_ATAQUE_MULTIPLE, 3)).toBeTrue();
+        expect(cumpleArmasNaturalesDeLaDote(DOTE_ATAQUE_MULTIPLE, 1)).toBeFalse();
+        expect(cumpleArmasNaturalesDeLaDote({ ...DOTE_ATAQUE_MULTIPLE, Prerrequisitos: {} } as any, 0)).toBeTrue();
+        expect(cumpleArmasNaturalesDeLaDote(null, 0)).toBeTrue();
+    });
+
+    it('un grupo «uno de estos»: basta con uno', () => {
+        const dote = { ...DOTE_ATAQUE_MULTIPLE, Prerrequisitos: { armas_naturales: [{ Cantidad: 3, Opcional: 1 }, { Cantidad: 2, Opcional: 1 }] } } as any;
+        expect(cumpleArmasNaturalesDeLaDote(dote, 2)).toBeTrue();
+        expect(cumpleArmasNaturalesDeLaDote(dote, 1)).toBeFalse();
     });
 });

@@ -13,7 +13,7 @@ import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
-import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
+import { CompaneroBonosNivel, CompaneroMonstruoDetalle, CompaneroProgresion, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
 import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
@@ -24,7 +24,7 @@ import { NivelPerdido } from '../interfaces/sesiones';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
-import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
+import { PersonajeCreateColeccionesDto, PersonajeCreateCompaneroDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional, parteCondicionalVarios } from './utils/habilidad-raza-condicional';
 import {
     bonificadoresCondicionalesDeRaciales,
@@ -49,7 +49,7 @@ import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
 import { esRazaMutada, especialesDevueltos, especialQueLaSustituye } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, ContextoCompatibles, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
-import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import { cumpleArmasNaturalesDeLaDote, DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
 import { ClaseConNivel, HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
 import { ClaveHabilidad, claveDeHabilidad, claveHabilidad, clavesDeReferenciaGuardada } from './utils/habilidad-clave';
@@ -62,11 +62,16 @@ import {
     resolverEstadoCuposFamiliarEspecial47
 } from './utils/familiar-reglas';
 import {
-    CompaneroPlantillaSelector as CompaneroPlantillaSelectorUtil,
+    aptitudesCompaneroDelNivel,
+    armasNaturalesDelCompanero,
+    bonosCompaneroDelNivel,
+    bonosCompaneroPorDgAdicionales,
     dadosGolpeCompanero,
+    esDotePropiaDelCompanero,
     EstadoCuposCompanero as EstadoCuposCompaneroUtil,
-    getPlantillaIdCompanero,
-    resolverEstadoCuposCompaneroEspecial29
+    listasDeCompaneroDelCatalogo,
+    resolverEstadoCuposCompanero,
+    resolverFilaCompanero,
 } from './utils/companero-reglas';
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
@@ -128,7 +133,6 @@ export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel' 
 export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'mixto';
 export type FamiliarPlantillaId = FamiliarPlantillaIdUtil;
 export type EstadoCuposFamiliar = EstadoCuposFamiliarUtil;
-export type CompaneroPlantillaSelector = CompaneroPlantillaSelectorUtil;
 export type EstadoCuposCompanero = EstadoCuposCompaneroUtil;
 export type GeneradorAutoRespuestaQ1 =
     | 'acero_musculo'
@@ -293,12 +297,6 @@ const ESPECIAL_BONUS_FAMILIAR_HECHIZO = 87;
  */
 const PSEUDOPLANTILLA_FAMILIAR_DRACONICA = 2;
 const PSEUDOPLANTILLA_FAMILIAR_MEJORADA = 5;
-const DOTE_COMPANERO_ELEVADO_ID = 53;
-const DOTE_COMPANERO_SABANDIJA_ID = 56;
-const DOTE_COMPANERO_BONUS_ID = 49;
-const ESPECIALES_BONUS_COMPANERO_PERSONAJE = [157, 158];
-const ESPECIAL_BONUS_COMPANERO_AVANZADO = 159;
-const ESPECIAL_BONUS_COMPANERO_MAESTRO = 57;
 /** Lo que dan los DG de una plantilla (`Licantronia_dg`): el ataque base y las tres salvaciones base. */
 interface BasesDeDgs {
     ataqueBase: number;
@@ -347,24 +345,6 @@ export function origenDeDominio(nombreDominio: string): string {
 function origenDeClase(nombreClase: string | null | undefined): string {
     return `clase:${normalizarTexto(nombreClase ?? '')}`;
 }
-
-export interface EscalaCompanero {
-    dgAdi: number;
-    trucosAdi: number;
-    bonoFueDes: number;
-    bonoArmaduraNatural: number;
-}
-
-/** Los bonos del compañero animal por el nivel del druida (MJ, cap. 3), de mayor a menor nivel. */
-const ESCALA_COMPANERO: Array<EscalaCompanero & { desdeNivel: number; }> = [
-    { desdeNivel: 18, dgAdi: 12, trucosAdi: 7, bonoFueDes: 6, bonoArmaduraNatural: 12 },
-    { desdeNivel: 15, dgAdi: 10, trucosAdi: 6, bonoFueDes: 5, bonoArmaduraNatural: 10 },
-    { desdeNivel: 12, dgAdi: 8, trucosAdi: 5, bonoFueDes: 4, bonoArmaduraNatural: 8 },
-    { desdeNivel: 9, dgAdi: 6, trucosAdi: 4, bonoFueDes: 3, bonoArmaduraNatural: 6 },
-    { desdeNivel: 6, dgAdi: 4, trucosAdi: 3, bonoFueDes: 2, bonoArmaduraNatural: 4 },
-    { desdeNivel: 3, dgAdi: 2, trucosAdi: 2, bonoFueDes: 1, bonoArmaduraNatural: 2 },
-    { desdeNivel: 0, dgAdi: 0, trucosAdi: 1, bonoFueDes: 0, bonoArmaduraNatural: 0 },
-];
 
 /** El extra con el que el personaje lleva las aptitudes de su vínculo con el familiar o el compañero. */
 const EXTRA_ESPECIAL_FAMILIAR = 'Familiar';
@@ -885,9 +865,14 @@ export interface RegistroCompaneroResultado {
     registrado: boolean;
     razon?: string;
     companeroAgregado?: CompaneroMonstruoDetalle;
-    dote49Agregada: boolean;
+    /** Las dotes adicionales que gana el compañero por su nivel (Ataque múltiple, si la cumple). */
+    dotesAgregadasIds: number[];
+    /** Las aptitudes que ganan el amo y el compañero por su nivel. */
     especialesAgregadosIds: number[];
-    bonosAplicados: EscalaCompanero;
+    /** La fila de la tabla del compañero que le toca (`GET /companeros/progresion`). */
+    bonosAplicados: CompaneroBonosNivel;
+    /** Su nivel efectivo de druida más el ajuste de su fila de la lista: la fila de la tabla. */
+    nivelTabla: number;
 }
 
 export interface DoteSeleccionConfirmada {
@@ -1252,6 +1237,8 @@ export class NuevoPersonajeService {
     /** Las progresiones de ataque base y salvaciones (`GET /clases/catalogos/progresion`): las de los DG de una plantilla. */
     /** Los subtipos con su ajuste de nivel (el NEP lo suma). */
     private catalogoSubtipos: SubtipoResumen[] = [];
+    /** La tabla del compañero animal y lo que da cada nivel (`GET /companeros/progresion`); `null` sin cargar. */
+    private progresionCompanero: CompaneroProgresion | null = null;
     /** Las caras de los tipos de dado del catálogo: la escalera de los cambios de dado de las plantillas. */
     private escaleraDados: number[] = [];
     /** La tabla 9-1 de la carga por Fuerza y los tamaños con sus multiplicadores (`GET /capacidades-carga`, `/tamanos`). */
@@ -2041,6 +2028,11 @@ export class NuevoPersonajeService {
         if (bases.some((valor) => typeof valor !== 'number' || !Number.isFinite(valor)))
             return null;
         return { ataqueBase: dg.Ataque_base!, fortaleza: dg.Fortaleza!, reflejos: dg.Reflejos!, voluntad: dg.Voluntad! };
+    }
+
+    /** La tabla del compañero animal y sus aptitudes por nivel (`GET /companeros/progresion` o su caché). */
+    setProgresionCompanero(progresion: CompaneroProgresion | null): void {
+        this.progresionCompanero = progresion;
     }
 
     setCatalogoSubtipos(subtipos: SubtipoResumen[]): void {
@@ -3590,12 +3582,27 @@ export class NuevoPersonajeService {
         return resolverEstadoCuposFamiliarEspecial47(this.personajeCreacion, this.catalogoClases);
     }
 
-    getEstadoCuposCompaneroEspecial29(): EstadoCuposCompanero {
-        return resolverEstadoCuposCompaneroEspecial29(this.personajeCreacion, this.catalogoClases);
+    /** Las clases que le dan el compañero animal, su cupo y su nivel efectivo de druida (de los datos de sus clases). */
+    getEstadoCuposCompanero(): EstadoCuposCompanero {
+        return resolverEstadoCuposCompanero(this.personajeCreacion, this.catalogoClases);
     }
 
     tieneCompaneroPendienteSinSelector(): boolean {
-        return this.getEstadoCuposCompaneroEspecial29().cuposDisponibles > 0;
+        return this.getEstadoCuposCompanero().cuposDisponibles > 0;
+    }
+
+    /** Las listas de compañeros de las clases del catálogo (para quedarse con las filas de compañero de los monstruos). */
+    getListasDeCompanero(): Set<number> {
+        return listasDeCompaneroDelCatalogo(this.catalogoClases);
+    }
+
+    /** Las dotes del personaje, por id (las que abren una fila de la lista del compañero: Compañero elevado). */
+    idsDotesDelPersonaje(): Set<number> {
+        const ids = new Set<number>();
+        (this.personajeCreacion.DotesContextuales ?? []).forEach((item) => ids.add(toNumber(item?.Dote?.Id)));
+        (this.personajeCreacion.Dotes ?? []).forEach((item) => ids.add(toNumber((item as any)?.Id)));
+        ids.delete(0);
+        return ids;
     }
 
     registrarFamiliarSeleccionado(
@@ -3665,111 +3672,41 @@ export class NuevoPersonajeService {
         };
     }
 
+    /**
+     * Le da al personaje el compañero elegido (un monstruo con su plantilla, de `construirCatalogoCompanerosDesdeMonstruos`):
+     * con la fila de su lista que le vale, la de la tabla de su nivel efectivo de druida más el ajuste de esa fila (DG
+     * adicionales, armadura natural, Fuerza, Destreza y trucos) y las aptitudes de ese nivel, las del amo al personaje.
+     */
     registrarCompaneroSeleccionado(
         companero: CompaneroMonstruoDetalle | null | undefined,
-        plantillaSeleccionada: CompaneroPlantillaSelector,
-        nombresEspecialesPorId: Record<number, string> = {},
         nombrePersonalizado: string = ''
     ): RegistroCompaneroResultado {
-        const estado = this.getEstadoCuposCompaneroEspecial29();
-        if (estado.cuposDisponibles < 1) {
-            return {
-                registrado: false,
-                razon: 'No hay cupos disponibles de compañero animal',
-                dote49Agregada: false,
-                especialesAgregadosIds: [],
-                bonosAplicados: {
-                    dgAdi: 0,
-                    trucosAdi: 0,
-                    bonoFueDes: 0,
-                    bonoArmaduraNatural: 0,
-                },
-            };
-        }
+        const fallo = (razon: string): RegistroCompaneroResultado => ({
+            registrado: false,
+            razon,
+            dotesAgregadasIds: [],
+            especialesAgregadosIds: [],
+            bonosAplicados: bonosCompaneroDelNivel(null, 0),
+            nivelTabla: 0,
+        });
+        const estado = this.getEstadoCuposCompanero();
+        if (estado.cuposDisponibles < 1)
+            return fallo('No hay cupos disponibles de compañero animal');
+        if (!companero || toNumber(companero?.Id_companero) <= 0)
+            return fallo('Compañero inválido');
+        if ((this.progresionCompanero?.Bonos ?? []).length < 1)
+            return fallo('No se ha podido cargar la tabla del compañero animal. Vuelve a intentarlo en unos segundos.');
+        const resuelta = resolverFilaCompanero(companero, estado, this.idsDotesDelPersonaje());
+        if (!resuelta.fila)
+            return fallo(resuelta.razones[0] ?? 'No puede tener este compañero animal.');
 
-        const idCompanero = toNumber(companero?.Id_companero);
-        if (idCompanero <= 0 || !companero) {
-            return {
-                registrado: false,
-                razon: 'Compañero inválido',
-                dote49Agregada: false,
-                especialesAgregadosIds: [],
-                bonosAplicados: {
-                    dgAdi: 0,
-                    trucosAdi: 0,
-                    bonoFueDes: 0,
-                    bonoArmaduraNatural: 0,
-                },
-            };
-        }
-
-        const plantilla = this.normalizarPlantillaCompanero(plantillaSeleccionada);
-        if (plantilla === 'elevado' && !this.personajeTieneDotePorId(DOTE_COMPANERO_ELEVADO_ID)) {
-            return {
-                registrado: false,
-                razon: 'Falta la dote requerida para plantilla elevado',
-                dote49Agregada: false,
-                especialesAgregadosIds: [],
-                bonosAplicados: {
-                    dgAdi: 0,
-                    trucosAdi: 0,
-                    bonoFueDes: 0,
-                    bonoArmaduraNatural: 0,
-                },
-            };
-        }
-        if (plantilla === 'sabandija' && !this.personajeTieneDotePorId(DOTE_COMPANERO_SABANDIJA_ID)) {
-            return {
-                registrado: false,
-                razon: 'Falta la dote requerida para plantilla sabandija',
-                dote49Agregada: false,
-                especialesAgregadosIds: [],
-                bonosAplicados: {
-                    dgAdi: 0,
-                    trucosAdi: 0,
-                    bonoFueDes: 0,
-                    bonoArmaduraNatural: 0,
-                },
-            };
-        }
-
-        const idPlantilla = getPlantillaIdCompanero(plantilla);
-        const yaExiste = (this.personajeCreacion.Companeros ?? []).some((item) =>
-            toNumber(item?.Id_companero) === idCompanero
-            && toNumber(item?.Plantilla?.Id) === idPlantilla
-        );
-        if (yaExiste) {
-            return {
-                registrado: false,
-                razon: 'Ese compañero con la misma plantilla ya está seleccionado',
-                dote49Agregada: false,
-                especialesAgregadosIds: [],
-                bonosAplicados: {
-                    dgAdi: 0,
-                    trucosAdi: 0,
-                    bonoFueDes: 0,
-                    bonoArmaduraNatural: 0,
-                },
-            };
-        }
-
-        const escala = this.calcularEscalaCompanero(Math.max(0, toNumber(estado?.nivelEfectivoCompanero)));
-        const companeroGuardar = this.clonarCompaneroParaPersonaje(companero, plantilla, nombrePersonalizado, escala);
+        const bonos = bonosCompaneroDelNivel(this.progresionCompanero, resuelta.nivelTabla);
+        const companeroGuardar = this.clonarCompaneroParaPersonaje(companero, nombrePersonalizado, bonos);
         this.personajeCreacion.Companeros = [
             ...(this.personajeCreacion.Companeros ?? []),
             companeroGuardar,
         ];
-
-        const especialesAgregadosIds: number[] = [];
-        ESPECIALES_BONUS_COMPANERO_PERSONAJE.forEach((idEspecial) => {
-            if (this.asegurarEspecialPersonajeCompanero(idEspecial, nombresEspecialesPorId))
-                especialesAgregadosIds.push(idEspecial);
-        });
-
-        const bonosNivel = this.asegurarBonosCompaneroPorNivel(
-            companeroGuardar, Math.max(0, toNumber(estado?.nivelEfectivoCompanero)), nombresEspecialesPorId);
-        especialesAgregadosIds.push(...bonosNivel.especialesAgregadosIds);
-        const dote49Agregada = bonosNivel.doteAgregada;
+        const { especialesAgregadosIds, dotesAgregadasIds } = this.ponerAptitudesCompanero(companeroGuardar, resuelta.nivelTabla);
 
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
@@ -3777,15 +3714,24 @@ export class NuevoPersonajeService {
         return {
             registrado: true,
             companeroAgregado: companeroGuardar,
-            dote49Agregada,
+            dotesAgregadasIds,
             especialesAgregadosIds,
-            bonosAplicados: {
-                dgAdi: escala.dgAdi,
-                trucosAdi: escala.trucosAdi,
-                bonoFueDes: escala.bonoFueDes,
-                bonoArmaduraNatural: escala.bonoArmaduraNatural,
-            },
+            bonosAplicados: bonos,
+            nivelTabla: resuelta.nivelTabla,
         };
+    }
+
+    /**
+     * Quita el compañero animal y lo que el personaje lleva por él (las aptitudes de su vínculo, con el extra «Compañero
+     * animal»): para elegir otro cuando la API no acepta el que se mandó.
+     */
+    quitarCompanero(): void {
+        this.personajeCreacion.Companeros = [];
+        this.personajeCreacion.Claseas = (this.personajeCreacion.Claseas ?? [])
+            .filter((especial) => normalizarTexto(especial?.Extra ?? '') !== normalizarTexto(EXTRA_ESPECIAL_COMPANERO));
+        this.dgsCompaneroRepartidos = 0;
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasPorCombate();
     }
 
     getEnemigosPredilectos(): EnemigoPredilectoSeleccion[] {
@@ -4315,7 +4261,7 @@ export class NuevoPersonajeService {
         const nivelLanzadorArcano = this.resolverNivelLanzadorMaximoPorTipo('arcano');
         const nivelLanzadorDivino = this.resolverNivelLanzadorMaximoPorTipo('divino');
         const nivelLanzadorPsionico = this.resolverNivelLanzadorMaximoPorTipo('psionico');
-        const estadoCuposCompanero = this.getEstadoCuposCompaneroEspecial29();
+        const estadoCuposCompanero = this.getEstadoCuposCompanero();
         const estadoCuposFamiliar = this.getEstadoCuposFamiliarEspecial47();
 
         const contexto: DoteEvaluacionContexto = {
@@ -4892,17 +4838,6 @@ export class NuevoPersonajeService {
         );
     }
 
-    private personajeTieneDotePorId(idDote: number): boolean {
-        const id = toNumber(idDote);
-        if (id <= 0)
-            return false;
-        if ((this.personajeCreacion.DotesContextuales ?? []).some((item) => toNumber(item?.Dote?.Id) === id))
-            return true;
-        return (this.personajeCreacion.Dotes ?? []).some((item) =>
-            toNumber((item as any)?.Id) === id
-        );
-    }
-
     private clonarFamiliarParaPersonaje(
         familiar: FamiliarMonstruoDetalle,
         plantillaSeleccionada: FamiliarPlantillaId,
@@ -4919,80 +4854,81 @@ export class NuevoPersonajeService {
         };
     }
 
-    private normalizarPlantillaCompanero(plantilla: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
-        const normalizada = normalizarTexto(`${plantilla ?? ''}`);
-        if (normalizada.includes('elevado'))
-            return 'elevado';
-        if (normalizada.includes('sabandija'))
-            return 'sabandija';
-        return 'base';
-    }
-
-    private getNombrePlantillaCompanero(plantilla: CompaneroPlantillaSelector): string {
-        if (plantilla === 'elevado')
-            return 'Elevado';
-        if (plantilla === 'sabandija')
-            return 'Sabandija';
-        return 'Base';
-    }
-
-    private calcularEscalaCompanero(nivelEfectivoCompanero: number): EscalaCompanero {
-        const nivel = Math.max(0, toInt(nivelEfectivoCompanero));
-        return this.escalaCompaneroDeFila(ESCALA_COMPANERO.find((item) => nivel >= item.desdeNivel));
-    }
-
-    /** La fila de la tabla que ya lleva un compañero, por sus DG adicionales (distintos en cada fila). */
-    private escalaAplicadaCompanero(companero: CompaneroMonstruoDetalle): EscalaCompanero {
-        return this.escalaCompaneroDeFila(ESCALA_COMPANERO.find((item) => item.dgAdi === toInt(companero?.Dg_adi)));
-    }
-
-    /** Los bonos de una fila de `ESCALA_COMPANERO` (sin fila, los de nivel 0). */
-    private escalaCompaneroDeFila(fila: (typeof ESCALA_COMPANERO)[number] | undefined): EscalaCompanero {
-        const { dgAdi, trucosAdi, bonoFueDes, bonoArmaduraNatural } = fila ?? ESCALA_COMPANERO[ESCALA_COMPANERO.length - 1];
-        return { dgAdi, trucosAdi, bonoFueDes, bonoArmaduraNatural };
-    }
-
     /**
      * Los bonos por nivel del compañero y del familiar siguen al nivel del amo: al aplicar un nivel de clase, el compañero
-     * pasa a la fila de su nivel (cambia la diferencia de Fuerza, Destreza y armadura natural, sus DG adicionales y sus
-     * trucos) y los dos ganan las aptitudes y la dote que tocan a ese nivel.
+     * pasa a la fila de la tabla de su nivel efectivo con el ajuste de su lista (`ponerCompaneroAlDia`) y el familiar gana
+     * las aptitudes que tocan a su nivel.
      */
     private actualizarMascotasPorNivel(): void {
         const nombresEspeciales = this.nombresEspecialesConocidos();
-        const nivelCompanero = Math.max(0, toNumber(this.getEstadoCuposCompaneroEspecial29()?.nivelEfectivoCompanero));
-        const nueva = this.calcularEscalaCompanero(nivelCompanero);
-        (this.personajeCreacion.Companeros ?? []).forEach((companero) => {
-            const anterior = this.escalaAplicadaCompanero(companero);
-            const caracteristicas = companero.Caracteristicas as Record<string, any>;
-            if (caracteristicas) {
-                caracteristicas['Fuerza'] = toNumber(caracteristicas['Fuerza']) + nueva.bonoFueDes - anterior.bonoFueDes;
-                caracteristicas['Destreza'] = toNumber(caracteristicas['Destreza']) + nueva.bonoFueDes - anterior.bonoFueDes;
-            }
-            if (companero.Defensa)
-                companero.Defensa.Armadura_natural = toNumber(companero.Defensa.Armadura_natural) + nueva.bonoArmaduraNatural - anterior.bonoArmaduraNatural;
-            companero.Dg_adi = nueva.dgAdi;
-            companero.Trucos_adi = nueva.trucosAdi;
-            this.asegurarBonosCompaneroPorNivel(companero, nivelCompanero, nombresEspeciales);
-        });
+        const estadoCompanero = this.getEstadoCuposCompanero();
+        const dotes = this.idsDotesDelPersonaje();
+        (this.personajeCreacion.Companeros ?? []).forEach((companero) => this.ponerCompaneroAlDia(companero, estadoCompanero, dotes));
 
         const nivelFamiliar = Math.max(0, toNumber(this.getEstadoCuposFamiliarEspecial47()?.nivelLanzadorFamiliar));
         (this.personajeCreacion.Familiares ?? []).forEach((familiar) =>
             this.asegurarBonosFamiliarPorNivel(this.plantillaFamiliar(familiar?.Plantilla?.Id), nivelFamiliar, nombresEspeciales));
     }
 
-    /** Las aptitudes (6 y 15) y la dote (9) que el compañero gana por el nivel de su amo; las que faltaban, las añade. */
-    private asegurarBonosCompaneroPorNivel(
-        companero: CompaneroMonstruoDetalle,
-        nivelEfectivo: number,
-        nombresEspecialesPorId: Record<number, string>
-    ): { especialesAgregadosIds: number[]; doteAgregada: boolean; } {
+    /**
+     * El compañero en la fila de la tabla de su nivel efectivo con el ajuste de su lista: la diferencia de Fuerza, Destreza
+     * y armadura natural con la fila que llevaba (por sus DG adicionales), sus DG adicionales, sus trucos y las aptitudes
+     * de ese nivel. Sin su fila en la lista (o sin la tabla), se queda como está: al guardar, la API dice por qué.
+     */
+    private ponerCompaneroAlDia(companero: CompaneroMonstruoDetalle, estado: EstadoCuposCompanero, dotes: ReadonlySet<number>): void {
+        const resuelta = resolverFilaCompanero(companero, estado, dotes);
+        if (!resuelta.fila || (this.progresionCompanero?.Bonos ?? []).length < 1)
+            return;
+        const anterior = bonosCompaneroPorDgAdicionales(this.progresionCompanero, toInt(companero?.Dg_adi));
+        const nueva = bonosCompaneroDelNivel(this.progresionCompanero, resuelta.nivelTabla);
+        const caracteristicas = companero.Caracteristicas as Record<string, any>;
+        if (caracteristicas) {
+            caracteristicas['Fuerza'] = toNumber(caracteristicas['Fuerza']) + nueva.Fuerza_destreza - anterior.Fuerza_destreza;
+            caracteristicas['Destreza'] = toNumber(caracteristicas['Destreza']) + nueva.Fuerza_destreza - anterior.Fuerza_destreza;
+        }
+        if (companero.Defensa)
+            companero.Defensa.Armadura_natural = toNumber(companero.Defensa.Armadura_natural) + nueva.Armadura_natural - anterior.Armadura_natural;
+        companero.Dg_adi = nueva.Dg_adicionales;
+        companero.Trucos_adi = nueva.Trucos_adicionales;
+        this.ponerAptitudesCompanero(companero, resuelta.nivelTabla);
+    }
+
+    /**
+     * Las aptitudes y la dote de la tabla del compañero a su nivel de la tabla (`GET /companeros/progresion`): las del amo,
+     * al personaje (con el extra «Compañero animal»); las suyas, al compañero; y fuera del compañero las que aún no le
+     * tocan. Una dote, si la cumple con las armas naturales de su monstruo y no la tiene ya; si no, su alternativa.
+     * Devuelve lo que añade.
+     */
+    private ponerAptitudesCompanero(companero: CompaneroMonstruoDetalle, nivelTabla: number): { especialesAgregadosIds: number[]; dotesAgregadasIds: number[]; } {
+        const armas = armasNaturalesDelCompanero(companero);
+        const aptitudes = aptitudesCompaneroDelNivel(this.progresionCompanero, nivelTabla, {
+            cumpleDote: (idDote) => {
+                const dote = this.doteDelCatalogo(idDote);
+                return !dote || cumpleArmasNaturalesDeLaDote(dote, armas);
+            },
+            monstruoTieneDote: (idDote) => (companero?.Dotes ?? [])
+                .some((item) => toNumber(item?.Dote?.Id) === idDote && !esDotePropiaDelCompanero(item)),
+        });
         const especialesAgregadosIds: number[] = [];
-        if (nivelEfectivo >= 6 && this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_AVANZADO, nombresEspecialesPorId))
-            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_AVANZADO);
-        if (nivelEfectivo >= 15 && this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_MAESTRO, nombresEspecialesPorId))
-            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_MAESTRO);
-        const doteAgregada = nivelEfectivo >= 9 && this.asegurarDoteCompanero(companero, DOTE_COMPANERO_BONUS_ID);
-        return { especialesAgregadosIds, doteAgregada };
+        aptitudes.delAmo.forEach((especial) => {
+            if (this.asegurarEspecialPersonajeCompanero(especial.Id, especial.Nombre))
+                especialesAgregadosIds.push(especial.Id);
+        });
+        aptitudes.especiales.forEach((especial) => {
+            if (this.asegurarEspecialCompanero(companero, especial.Id, especial.Nombre))
+                especialesAgregadosIds.push(especial.Id);
+        });
+        const dotesAgregadasIds = aptitudes.dotes
+            .filter((dote) => this.asegurarDoteCompanero(companero, dote.Id, dote.Nombre))
+            .map((dote) => dote.Id);
+        const tiene = new Set(aptitudes.especiales.map((especial) => especial.Id));
+        const quitarEspeciales = new Set(aptitudes.especialesQueNo.filter((id) => !tiene.has(id)));
+        const quitarDotes = new Set(aptitudes.dotesQueNo);
+        companero.Especiales = (companero.Especiales ?? [])
+            .filter((item) => !quitarEspeciales.has(toNumber((item?.Especial as any)?.Id)));
+        companero.Dotes = (companero.Dotes ?? [])
+            .filter((item) => !(esDotePropiaDelCompanero(item) && quitarDotes.has(toNumber(item?.Dote?.Id))));
+        return { especialesAgregadosIds, dotesAgregadasIds };
     }
 
     /** Las aptitudes que el personaje gana con su familiar por el nivel de lanzador; devuelve las que añade. */
@@ -5038,11 +4974,6 @@ export class NuevoPersonajeService {
      */
     construirMascotasParaGuardar(): PersonajeCreateMascotasDto {
         const mascotas: PersonajeCreateMascotasDto = {};
-        const idsDelVinculo = (extra: string) => (this.personajeCreacion.Claseas ?? [])
-            .filter((especial) => normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra))
-            .map((especial) => toNumber(especial?.Id))
-            .filter((id) => id > 0);
-
         const familiar = (this.personajeCreacion.Familiares ?? [])[0];
         if (familiar) {
             mascotas.familiar = construirFamiliarParaGuardar(familiar, {
@@ -5057,25 +4988,39 @@ export class NuevoPersonajeService {
                         idExtra: idExtraHabilidadParaGuardar(habilidad),
                         rangos: toNumber(habilidad.Rangos),
                     })),
-            }, idsDelVinculo(EXTRA_ESPECIAL_FAMILIAR));
+            }, this.idsDelVinculo(EXTRA_ESPECIAL_FAMILIAR));
         }
 
-        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        const companero = this.companeroParaGuardar();
         if (companero)
-            mascotas.companero = construirCompaneroParaGuardar(companero, idsDelVinculo(EXTRA_ESPECIAL_COMPANERO));
+            mascotas.companero = companero;
         return mascotas;
     }
 
+    /**
+     * El compañero animal en la forma del alta (`companero`), o `undefined` sin él. Lo usan el alta y las pantallas de la
+     * sesión (`MotorDesdeFichaService.cuerpoDelMotor`), que ponen en la ficha lo que cambia al subir de nivel.
+     */
+    companeroParaGuardar(): PersonajeCreateCompaneroDto | undefined {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        return companero ? construirCompaneroParaGuardar(companero, this.idsDelVinculo(EXTRA_ESPECIAL_COMPANERO)) : undefined;
+    }
+
+    /** Las aptitudes que el personaje lleva por su mascota (con el extra «Familiar» o «Compañero animal»). */
+    private idsDelVinculo(extra: string): number[] {
+        return (this.personajeCreacion.Claseas ?? [])
+            .filter((especial) => normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra))
+            .map((especial) => toNumber(especial?.Id))
+            .filter((id) => id > 0);
+    }
+
+    /** El compañero del personaje: el del catálogo, con su nombre y los bonos de la fila de la tabla que le toca. */
     private clonarCompaneroParaPersonaje(
         companero: CompaneroMonstruoDetalle,
-        plantillaSeleccionada: CompaneroPlantillaSelector,
-        nombrePersonalizado: string = '',
-        escala: EscalaCompanero
+        nombrePersonalizado: string,
+        bonos: CompaneroBonosNivel
     ): CompaneroMonstruoDetalle {
         const nombreVisible = `${nombrePersonalizado ?? ''}`.trim();
-        const idPlantilla = getPlantillaIdCompanero(plantillaSeleccionada);
-        const nombrePlantilla = `${companero?.Plantilla?.Nombre ?? ''}`.trim()
-            || this.getNombrePlantillaCompanero(plantillaSeleccionada);
         const caracteristicas = {
             ...(companero?.Caracteristicas ?? {
                 Fuerza: 0,
@@ -5098,23 +5043,23 @@ export class NuevoPersonajeService {
             }),
         };
 
-        caracteristicas.Fuerza = toNumber(caracteristicas.Fuerza) + toNumber(escala?.bonoFueDes);
-        caracteristicas.Destreza = toNumber(caracteristicas.Destreza) + toNumber(escala?.bonoFueDes);
-        if (plantillaSeleccionada === 'sabandija' && toNumber(caracteristicas.Inteligencia) < 1)
-            caracteristicas.Inteligencia = 1;
-        defensa.Armadura_natural = toNumber(defensa.Armadura_natural) + toNumber(escala?.bonoArmaduraNatural);
+        caracteristicas.Fuerza = toNumber(caracteristicas.Fuerza) + toNumber(bonos?.Fuerza_destreza);
+        caracteristicas.Destreza = toNumber(caracteristicas.Destreza) + toNumber(bonos?.Fuerza_destreza);
+        defensa.Armadura_natural = toNumber(defensa.Armadura_natural) + toNumber(bonos?.Armadura_natural);
 
         return {
             ...companero,
             Nombre: nombreVisible.length > 0 ? nombreVisible : `${companero?.Nombre ?? ''}`.trim(),
             Plantilla: {
-                Id: idPlantilla,
-                Nombre: nombrePlantilla,
+                Id: Math.max(0, toInt(companero?.Plantilla?.Id)),
+                Nombre: `${companero?.Plantilla?.Nombre ?? ''}`.trim(),
             },
             Caracteristicas: caracteristicas,
             Defensa: defensa,
-            Dg_adi: toNumber(escala?.dgAdi),
-            Trucos_adi: toNumber(escala?.trucosAdi),
+            Dg_adi: toNumber(bonos?.Dg_adicionales),
+            Trucos_adi: toNumber(bonos?.Trucos_adicionales),
+            Especiales: [...(companero?.Especiales ?? [])],
+            Dotes: [...(companero?.Dotes ?? [])],
         };
     }
 
@@ -5202,12 +5147,12 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    private asegurarEspecialPersonajeCompanero(idEspecial: number, nombresEspecialesPorId: Record<number, string>): boolean {
-        const nombreFallback = `Especial ${idEspecial} (Compañero animal)`;
-        const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
+    /** Una aptitud del amo por su compañero (vínculo, compartir conjuros), con el extra «Compañero animal»; `false` si ya la tiene. */
+    private asegurarEspecialPersonajeCompanero(idEspecial: number, nombre: string): boolean {
+        const nombreEspecial = `${nombre ?? ''}`.trim();
         const extra = EXTRA_ESPECIAL_COMPANERO;
         const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
-            normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
+            (toNumber(especial?.Id) === toNumber(idEspecial) || normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial))
             && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
         );
         if (duplicado)
@@ -5221,13 +5166,9 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    private asegurarEspecialCompanero(
-        companero: CompaneroMonstruoDetalle,
-        idEspecial: number,
-        nombresEspecialesPorId: Record<number, string>
-    ): boolean {
-        const nombreFallback = `Especial ${idEspecial} (Compañero)`;
-        const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
+    /** Una aptitud del compañero por su nivel (Evasión, Devoción…); `false` si ya la tiene. */
+    private asegurarEspecialCompanero(companero: CompaneroMonstruoDetalle, idEspecial: number, nombre: string): boolean {
+        const nombreEspecial = `${nombre ?? ''}`.trim();
         const especiales = Array.isArray(companero?.Especiales) ? [...companero.Especiales] : [];
         const duplicado = especiales.some((item) =>
             toNumber((item as any)?.Especial?.Id) === idEspecial
@@ -5255,9 +5196,10 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    private asegurarDoteCompanero(companero: CompaneroMonstruoDetalle, idDote: number): boolean {
+    /** Una dote adicional del compañero por su nivel (Ataque múltiple); `false` si ya la tiene. */
+    private asegurarDoteCompanero(companero: CompaneroMonstruoDetalle, idDote: number, nombre: string): boolean {
         const dote = this.doteDelCatalogo(idDote)
-            ?? this.crearDotePlaceholder(idDote, `Dote ${idDote} (Compañero)`);
+            ?? this.crearDotePlaceholder(idDote, `${nombre ?? ''}`.trim());
         const dotes = Array.isArray(companero?.Dotes) ? [...companero.Dotes] : [];
         const duplicado = dotes.some((item) => toNumber(item?.Dote?.Id) === idDote);
         if (duplicado)

@@ -154,6 +154,16 @@ export interface ClaseDoteNivel {
     Id_dote_requerida: number;
 }
 
+/**
+ * Cómo cuenta una clase para el nivel efectivo de la mascota que da su aptitud (`Mascota` de la tabla de la clase): máx(0,
+ * ⌊nivel de la clase / `Divisor`⌋ + `Ajuste`), y de qué lista elige (`Lista`, la clase de las filas de `Niveles_clase`).
+ */
+export interface ClaseEspecialMascota {
+    Divisor: number;
+    Ajuste: number;
+    Lista: { Id: number; Nombre: string; };
+}
+
 export interface ClaseEspecialNivel {
     Especial: Record<string, any>;
     Nivel: number;
@@ -165,6 +175,8 @@ export interface ClaseEspecialNivel {
     Id_interno: number;
     Id_especial_requerido: number;
     Id_dote_requerida: number;
+    /** Si la aptitud da una mascota (el compañero o el familiar), cómo cuenta la clase para ella; `null` si no. */
+    Mascota?: ClaseEspecialMascota | null;
 }
 
 export interface ClaseNivelDetalle {

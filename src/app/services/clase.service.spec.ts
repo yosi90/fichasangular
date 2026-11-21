@@ -108,6 +108,22 @@ describe('ClaseService normalizeClase', () => {
     });
 });
 
+describe('ClaseService normalizeClase: el Mascota de la tabla (el compañero animal, de los datos)', () => {
+    it('cómo cuenta la clase para su mascota y de qué lista elige; sin él, null', () => {
+        const clase = normalizeClase({
+            Id: 6, Nombre: 'Explorador', Desglose_niveles: [{
+                Nivel: 4, Especiales: [
+                    { Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true }, Mascota: { Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } } },
+                    { Especial: { Id: 30, Nombre: 'Rastrear' } },
+                ],
+            }],
+        });
+        const [companero, rastrear] = clase.Desglose_niveles[0].Especiales;
+        expect(companero.Mascota).toEqual({ Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } });
+        expect(rastrear.Mascota).toBeNull();
+    });
+});
+
 describe('ClaseService, cabecera de la API', () => {
     it('sin la sesión de Firebase avisa de que hay que iniciar sesión y no llama a la API', async () => {
         const http = jasmine.createSpyObj('HttpClient', ['post']);

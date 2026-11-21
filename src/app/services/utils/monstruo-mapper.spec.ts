@@ -1,4 +1,6 @@
+import { PROGRESION_API } from "src/testing/companero-animal-api";
 import {
+    leerCompaneroProgresion,
     normalizeCompaneroMonstruoDetalle,
     normalizeCompaneroMonstruoDetalleArray,
     normalizeFamiliarMonstruoDetalle,
@@ -124,6 +126,33 @@ function createRawCompanero(overrides: Record<string, any> = {}) {
         ...overrides,
     };
 }
+
+describe("monstruo-mapper: el compañero animal, de los datos", () => {
+    it("GET /companeros/progresion y su caché (con las listas como objetos), en orden y sin lo que no es del contrato", () => {
+        const api = leerCompaneroProgresion(PROGRESION_API);
+        expect(api.Bonos.map((b) => b.Nivel)).toEqual([1, 3, 6, 9, 12, 15, 18]);
+        expect(api.Aptitudes.map((a) => a.Nivel)).toEqual([1, 1, 3, 6, 9, 15]);
+        expect(api.Aptitudes[4]).toEqual({
+            Id: 6, Nivel: 9, Especial: null, Dote: { Id: 49, Nombre: "Ataque múltiple" }, Destinatario: "mascota",
+            Alternativa: { Id: 900, Nombre: "Segundo ataque natural" },
+        });
+        const cache = leerCompaneroProgresion({
+            Bonos: { 1: PROGRESION_API.Bonos[1], 0: PROGRESION_API.Bonos[0] },
+            Aptitudes: { 0: PROGRESION_API.Aptitudes[0], 1: { ...PROGRESION_API.Aptitudes[1], Destinatario: "otro" }, 2: { Id: 9, Nivel: 2 } },
+        });
+        expect(cache.Bonos.map((b) => b.Nivel)).toEqual([1, 3]);
+        expect(cache.Aptitudes.map((a) => a.Id)).toEqual([1]);
+        expect(leerCompaneroProgresion(null)).toEqual({ Bonos: [], Aptitudes: [] });
+    });
+
+    it("el ajuste de cada fila de la lista: 0 o menos, y 0 sin él (una caché de antes)", () => {
+        const monstruo = normalizeMonstruoDetalle({
+            Id: 56, Nombre: "Bisonte",
+            Niveles_clase: [{ Clase: { Id: 5, Nombre: "Druida" }, Nivel: 4, Ajuste: -3 }, { Clase: { Id: 5, Nombre: "Druida" }, Nivel: 1 }],
+        });
+        expect(monstruo.Niveles_clase.map((f) => [f.Nivel, f.Ajuste])).toEqual([[4, -3], [1, 0]]);
+    });
+});
 
 describe("monstruo-mapper", () => {
     it("lee la dieta de la API y deja null lo que no es una dieta", () => {

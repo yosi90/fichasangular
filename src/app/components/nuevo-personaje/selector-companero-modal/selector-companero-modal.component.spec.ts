@@ -4,7 +4,7 @@ import { SelectorCompaneroModalComponent } from './selector-companero-modal.comp
 function crearCompanero(
     idCompanero: number,
     nombre: string,
-    idPlantilla = 1
+    idPlantilla = 0
 ): CompaneroMonstruoDetalle {
     return {
         Id: idCompanero + 100,
@@ -12,7 +12,7 @@ function crearCompanero(
         Id_companero: idCompanero,
         Plantilla: {
             Id: idPlantilla,
-            Nombre: `Plantilla ${idPlantilla}`
+            Nombre: idPlantilla > 0 ? `Plantilla ${idPlantilla}` : ''
         },
         Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
     } as any;
@@ -24,10 +24,10 @@ describe('SelectorCompaneroModalComponent', () => {
     beforeEach(() => {
         component = new SelectorCompaneroModalComponent();
         component.companerosElegibles = [
-            crearCompanero(1, 'Ardilla base', 1),
-            crearCompanero(2, 'Cuervo elevado', 2),
-            crearCompanero(3, 'Lobo sabandija', 3),
-            crearCompanero(4, 'Jabali base', 1),
+            crearCompanero(1, 'Ardilla base'),
+            crearCompanero(2, 'Cuervo celestial', 3),
+            crearCompanero(3, 'Lobo base'),
+            crearCompanero(4, 'Jabali base'),
         ];
         component.nivelesDisponibles = [1, 3, 6];
     });
@@ -35,15 +35,14 @@ describe('SelectorCompaneroModalComponent', () => {
     it('filtra por texto y distribuye en 3 columnas', () => {
         component.filtroTexto = 'ba';
 
-        expect(component.companerosFiltrados.map((item) => item.Nombre)).toEqual(['Ardilla base', 'Lobo sabandija', 'Jabali base']);
+        expect(component.companerosFiltrados.map((item) => item.Nombre)).toEqual(['Ardilla base', 'Lobo base', 'Jabali base']);
         expect(component.companerosColumnaA.map((item) => item.Nombre)).toEqual(['Ardilla base']);
-        expect(component.companerosColumnaB.map((item) => item.Nombre)).toEqual(['Lobo sabandija']);
+        expect(component.companerosColumnaB.map((item) => item.Nombre)).toEqual(['Lobo base']);
         expect(component.companerosColumnaC.map((item) => item.Nombre)).toEqual(['Jabali base']);
     });
 
-    it('emite confirmar con companero, plantilla, nombre y nivel', () => {
+    it('emite confirmar con el compañero (con la plantilla de su fila), el nombre y el nivel', () => {
         const spy = spyOn(component.confirmar, 'emit');
-        component.plantillaSeleccionada = 'elevado';
         component.nombreCompanero = 'Compañero de Aramil';
         component.nivelSeleccionado = 3;
         component.onSeleccionarCompanero(component.companerosElegibles[1]);
@@ -53,7 +52,7 @@ describe('SelectorCompaneroModalComponent', () => {
         expect(spy).toHaveBeenCalled();
         const payload = spy.calls.mostRecent()?.args?.[0];
         expect(payload?.companero?.Id_companero).toBe(2);
-        expect(payload?.plantilla).toBe('elevado');
+        expect(payload?.companero?.Plantilla?.Id).toBe(3);
         expect(payload?.nombre).toBe('Compañero de Aramil');
         expect(payload?.nivel).toBe(3);
     });
@@ -69,15 +68,25 @@ describe('SelectorCompaneroModalComponent', () => {
         expect(spyOmitir).toHaveBeenCalled();
     });
 
-    it('al cambiar plantilla emite evento y resetea selección actual', () => {
-        const spy = spyOn(component.plantillaChange, 'emit');
+    it('la plantilla y el ajuste salen de la fila del compañero, sin el selector base, elevado y sabandija', () => {
+        component.ajustes = { '2:3': -1, '1:0': 0 };
+        component.nivelesRequeridos = { '2:3': 2 };
+        expect(component.getEtiquetaPlantilla(component.companerosElegibles[1])).toBe('Plantilla 3');
+        expect(component.getEtiquetaPlantilla(component.companerosElegibles[0])).toBe('');
+        expect(component.getEtiquetaAjuste(component.companerosElegibles[1])).toBe('−1');
+        expect(component.getEtiquetaAjuste(component.companerosElegibles[0])).toBe('');
+        expect(component.getExplicacionNivel(component.companerosElegibles[1])).toContain('nivel efectivo de druida 2');
+        expect(component.getExplicacionNivel(component.companerosElegibles[1])).toContain('resta 1');
+    });
+
+    it('al cambiar el homebrew emite el evento y quita la selección', () => {
+        const spy = spyOn(component.incluirHomebrewChange, 'emit');
         component.onSeleccionarCompanero(component.companerosElegibles[0]);
 
-        component.onCambiarPlantilla('sabandija');
+        component.onCambiarHomebrew(true);
 
-        expect(spy).toHaveBeenCalledWith('sabandija');
-        expect(component.idCompaneroSeleccionado).toBe(0);
-        expect(component.idPlantillaSeleccionada).toBe(0);
+        expect(spy).toHaveBeenCalledWith(true);
+        expect(component.claveSeleccionada).toBe('');
     });
 
     it('emite cambio de nivel', () => {
@@ -94,7 +103,7 @@ describe('SelectorCompaneroModalComponent', () => {
     });
 
     it('muestra bloqueadas con motivos al desactivar solo elegibles', () => {
-        const bloqueado = crearCompanero(9, 'Pantera base', 1);
+        const bloqueado = crearCompanero(9, 'Pantera base');
         component.companerosBloqueados = [{
             companero: bloqueado,
             razones: ['No cumple las preferencias de alineamiento para este compañero.'],
@@ -109,7 +118,7 @@ describe('SelectorCompaneroModalComponent', () => {
     });
 
     it('no confirma un compañero bloqueado aunque esté seleccionado', () => {
-        const bloqueado = crearCompanero(10, 'Tejón base', 1);
+        const bloqueado = crearCompanero(10, 'Tejón base');
         component.companerosElegibles = [];
         component.companerosBloqueados = [{
             companero: bloqueado,

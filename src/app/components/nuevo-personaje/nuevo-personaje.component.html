@@ -1049,13 +1049,12 @@
     <ng-container *ngIf="modalSelectorCompaneroAbierto">
         <app-selector-companero-modal [titulo]="selectorCompaneroTitulo"
             [companerosElegibles]="selectorCompaneroElegibles" [companerosBloqueados]="selectorCompaneroBloqueados"
-            [nivelesRequeridos]="selectorCompaneroNivelesRequeridos" [companerosSeleccionados]="Personaje.Companeros"
-            [plantillaSeleccionada]="selectorCompaneroPlantillaSeleccionada"
+            [nivelesRequeridos]="selectorCompaneroNivelesRequeridos" [ajustes]="selectorCompaneroAjustes"
+            [companerosSeleccionados]="Personaje.Companeros" [errorApi]="selectorCompaneroErrorApi"
             [incluirHomebrew]="selectorCompaneroIncluirHomebrew" [cuposDisponibles]="selectorCompaneroCuposDisponibles"
             [nombreCompanero]="selectorCompaneroNombre" [nivelesDisponibles]="selectorCompaneroNivelesDisponibles"
             [nivelSeleccionado]="selectorCompaneroNivelSeleccionado" (confirmar)="onConfirmarSelectorCompanero($event)"
             (omitir)="onOmitirSelectorCompanero()" (detalle)="onDetalleSelectorCompanero($event)"
-            (plantillaChange)="onCambioPlantillaSelectorCompanero($event)"
             (incluirHomebrewChange)="onCambioHomebrewSelectorCompanero($event)"
             (nombreCompaneroChange)="onCambioNombreSelectorCompanero($event)"
             (nivelChange)="onCambioNivelSelectorCompanero($event)">

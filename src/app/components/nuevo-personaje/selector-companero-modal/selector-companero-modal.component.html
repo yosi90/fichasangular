@@ -2,20 +2,12 @@
     [cerrable]="false" ancho="ancha" [relleno]="false">
     <div class="creacion-ventana__columnas">
         <div class="creacion-ventana__lista">
+            <p class="bloque-error" role="alert" *ngIf="errorApi">La API no ha aceptado el compañero: {{errorApi}} Elige otro o corrígelo.</p>
             <label class="creacion-buscador">
                 <mat-icon aria-hidden="true">search</mat-icon>
                 <input type="search" [(ngModel)]="filtroTexto" placeholder="Filtrar compañeros" aria-label="Filtrar compañeros">
             </label>
             <div class="creacion-ventana__filtros">
-                <mat-form-field appearance="fill" subscriptSizing="dynamic">
-                    <mat-label>Plantilla</mat-label>
-                    <mat-select [value]="plantillaSeleccionada" (valueChange)="onCambiarPlantilla($event)">
-                        <mat-option [value]="null">Cualquiera</mat-option>
-                        <mat-option [value]="'base'">Base</mat-option>
-                        <mat-option [value]="'elevado'">Elevado</mat-option>
-                        <mat-option [value]="'sabandija'">Sabandija</mat-option>
-                    </mat-select>
-                </mat-form-field>
                 <mat-form-field appearance="fill" subscriptSizing="dynamic">
                     <mat-label>Nivel</mat-label>
                     <mat-select [value]="nivelSeleccionado" (valueChange)="onCambiarNivel($event)">
@@ -36,8 +28,9 @@
                         (click)="onSeleccionarCompanero(companero)">
                         <span class="creacion-opcion__texto">
                             {{companero.Nombre}}
-                            <span class="creacion-opcion__nota">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}<ng-container
-                                    *ngIf="getNivelRequerido(companero) as nivel"> · nivel {{nivel}}</ng-container> · {{companero.Manual.Nombre || '-'}}</span>
+                            <span class="creacion-opcion__nota"><ng-container *ngIf="getEtiquetaPlantilla(companero) as plantilla">{{plantilla}} · </ng-container><ng-container
+                                    *ngIf="getNivelRequerido(companero) as nivel">nivel {{nivel}} · </ng-container><ng-container
+                                    *ngIf="getEtiquetaAjuste(companero) as ajuste">ajuste {{ajuste}} · </ng-container>{{companero.Manual.Nombre || '-'}}</span>
                         </span>
                         <span class="creacion-opcion__estado" *ngIf="!esCompaneroElegible(companero)">{{getEtiquetaEstado(companero)}}</span>
                     </button>
@@ -53,11 +46,11 @@
             <ng-container *ngFor="let companero of companerosFiltrados; trackBy: trackByCompanero">
                 <ng-container *ngIf="esSeleccionado(companero)">
                     <div>
-                        <p class="creacion-ventana__detalle-tipo">Compañero animal · {{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</p>
+                        <p class="creacion-ventana__detalle-tipo">Compañero animal<ng-container *ngIf="getEtiquetaPlantilla(companero) as plantilla"> · {{plantilla}}</ng-container></p>
                         <h3 class="creacion-ventana__detalle-nombre">{{companero.Nombre}}</h3>
                         <button type="button" class="creacion-enlace" (click)="onAbrirDetalle(companero, $event)">Ver su ficha completa</button>
                     </div>
-                    <p class="creacion-texto-suave" *ngIf="getNivelRequerido(companero) as nivel">{{getTooltipNivelDruida(nivel)}}</p>
+                    <p class="creacion-texto-suave" *ngIf="getExplicacionNivel(companero) as explicacion">{{explicacion}}</p>
                     <ul class="creacion-motivos" *ngIf="!esCompaneroElegible(companero)">
                         <li *ngFor="let motivo of getMotivosBloqueo(companero)">{{motivo}}</li>
                     </ul>
@@ -73,7 +66,7 @@
                 <h4 class="creacion-titulo">Compañeros tras confirmar</h4>
                 <ul class="creacion-resultado" *ngIf="previewCompaneros.length > 0; else sinPreviewTpl">
                     <li *ngFor="let item of previewCompaneros; trackBy: trackByCompanero">
-                        <span>{{item.Nombre}}</span><span class="creacion-texto-suave">{{getEtiquetaPlantilla(item?.Plantilla?.Id ?? 1)}}</span>
+                        <span>{{item.Nombre}}</span><span class="creacion-texto-suave">{{getEtiquetaPlantilla(item)}}</span>
                     </li>
                 </ul>
                 <ng-template #sinPreviewTpl>

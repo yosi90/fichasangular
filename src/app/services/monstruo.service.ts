@@ -6,6 +6,7 @@ import { Observable, firstValueFrom, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import {
     CompaneroMonstruoDetalle,
+    CompaneroProgresion,
     FamiliarMonstruoDetalle,
     LicantroposDelMonstruo,
     MonstruoCreateRequest,
@@ -19,6 +20,7 @@ import { idNombres, toInt } from "./utils/normalizacion";
 import { leerRespuestaDeEscritura } from "./utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import {
+    leerCompaneroProgresion,
     normalizeCompaneroMonstruoDetalle,
     normalizeFamiliarMonstruoDetalle,
     normalizeMonstruoDetalle,
@@ -153,6 +155,21 @@ export class MonstruoService {
             (valor) => normalizeCompaneroMonstruoDetalle(valor, 1),
             (companero) => companero.Id_companero > 0,
         );
+    }
+
+    /**
+     * La tabla del compañero animal y lo que da cada nivel (Manual del jugador, pág. 36): la caché `CompanerosProgresion`
+     * o, si no está o le falta la tabla, `GET /companeros/progresion`.
+     */
+    getCompanerosProgresion(): Observable<CompaneroProgresion> {
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, "CompanerosProgresion"),
+            desdeCache: (snapshot) => leerCompaneroProgresion(snapshot.val()),
+            cacheIncompleta: (progresion) => progresion.Bonos.length < 1,
+            pedir: () => this.http.get(`${environment.apiUrl}companeros/progresion`),
+            desdeApi: (raw) => leerCompaneroProgresion(raw),
+            unaPeticionALaVez: true,
+        });
     }
 
 }

@@ -5752,7 +5752,7 @@ describe('NuevoPersonajeComponent', () => {
             cuposDisponibles: 1,
             nivelEfectivoCompanero: 6,
         } as any;
-        spyOn(nuevoPSvc, 'getEstadoCuposCompaneroEspecial29').and.returnValue(estadoMock);
+        spyOn(nuevoPSvc, 'getEstadoCuposCompanero').and.returnValue(estadoMock);
         const companero = {
             Id: 110,
             Id_companero: 10,
@@ -5761,27 +5761,36 @@ describe('NuevoPersonajeComponent', () => {
         } as any;
         spyOn<any>(component, 'abrirSelectorCompanero').and.resolveTo({
             companero,
-            plantilla: 'base',
             nombre: 'Compañero de prueba',
             nivel: 1,
-        });
-        spyOn<any>(component, 'cargarNombresEspecialesCompanero').and.resolveTo({
-            157: 'Compañero animal',
-            158: 'Vínculo',
-            159: 'Devoción',
-            57: 'Vínculo maestro',
         });
         const registrarSpy = spyOn(nuevoPSvc, 'registrarCompaneroSeleccionado').and.returnValue({
             registrado: true,
             companeroAgregado: companero,
-            dote49Agregada: false,
+            dotesAgregadasIds: [],
             especialesAgregadosIds: [157, 158],
-            bonosAplicados: { dgAdi: 4, trucosAdi: 3, bonoFueDes: 2, bonoArmaduraNatural: 4 },
+            bonosAplicados: { Nivel: 6, Dg_adicionales: 4, Armadura_natural: 4, Fuerza_destreza: 2, Trucos_adicionales: 3 },
+            nivelTabla: 6,
         } as any);
 
         const resultado = await (component as any).resolverCompaneroPendienteFinNivel();
         expect(resultado).toBeTrue();
-        expect(registrarSpy).toHaveBeenCalled();
+        // La plantilla va con el compañero (la de su fila): ya no hay selector base, elevado y sabandija.
+        expect(registrarSpy).toHaveBeenCalledWith(companero, 'Compañero de prueba');
+    });
+
+    it('si la API no acepta el compañero, lo quita y vuelve a abrir su selector con el motivo', async () => {
+        const estadoMock = { fuentes: [], fuentesClaseIds: [5], fuentesTotales: 1, cuposConsumidos: 0, cuposDisponibles: 1, nivelEfectivoCompanero: 6, fuentesCompanero: [], listasIds: [5] } as any;
+        const quitarSpy = spyOn(nuevoPSvc, 'quitarCompanero');
+        spyOn(nuevoPSvc, 'getEstadoCuposCompanero').and.returnValue(estadoMock);
+        const companero = { Id: 110, Id_companero: 10, Nombre: 'Bisonte', Plantilla: { Id: 0, Nombre: '' } } as any;
+        const abrirSpy = spyOn<any>(component, 'abrirSelectorCompanero').and.resolveTo({ companero, nombre: '', nivel: null });
+        spyOn(nuevoPSvc, 'registrarCompaneroSeleccionado').and.returnValue({ registrado: true } as any);
+        const motivo = 'El compañero cuenta como el de un druida de nivel 3 (nivel efectivo 6, −3 de su lista): le tocan 2 DG adicionales, no 4.';
+
+        expect(await (component as any).volverAElegirCompanero(motivo)).toBeTrue();
+        expect(quitarSpy).toHaveBeenCalled();
+        expect(abrirSpy).toHaveBeenCalledWith(estadoMock, motivo);
     });
 
     it('resolverCompaneroPendienteFinNivel permite omitir y continuar', async () => {
@@ -5793,7 +5802,7 @@ describe('NuevoPersonajeComponent', () => {
             cuposDisponibles: 1,
             nivelEfectivoCompanero: 6,
         } as any;
-        spyOn(nuevoPSvc, 'getEstadoCuposCompaneroEspecial29').and.returnValue(estadoMock);
+        spyOn(nuevoPSvc, 'getEstadoCuposCompanero').and.returnValue(estadoMock);
         spyOn<any>(component, 'abrirSelectorCompanero').and.resolveTo('omitir');
         const registrarSpy = spyOn(nuevoPSvc, 'registrarCompaneroSeleccionado');
 
