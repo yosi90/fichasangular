@@ -4,6 +4,7 @@ import { Dote, DoteExtrasDeTodoElCatalogo, DoteSalvacionCondicional } from 'src/
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { doteSoportaArmaduras, doteSoportaEscudos } from 'src/app/services/utils/dote-extras-soportados';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import {
     CondicionPrerrequisito,
@@ -180,14 +181,8 @@ export class DetallesDoteComponent {
             return [];
         return [
             { nombre: 'Armas', activo: !!this.doteData.Extras_soportados.Extra_arma },
-            {
-                nombre: 'Armaduras',
-                activo: !!(this.doteData.Extras_soportados.Extra_armadura_armaduras ?? this.doteData.Extras_soportados.Extra_armadura)
-            },
-            {
-                nombre: 'Escudos',
-                activo: !!(this.doteData.Extras_soportados.Extra_armadura_escudos ?? this.doteData.Extras_soportados.Extra_armadura)
-            },
+            { nombre: 'Armaduras', activo: doteSoportaArmaduras(this.doteData) },
+            { nombre: 'Escudos', activo: doteSoportaEscudos(this.doteData) },
             { nombre: 'Escuelas', activo: !!this.doteData.Extras_soportados.Extra_escuela },
             { nombre: 'Habilidades', activo: !!this.doteData.Extras_soportados.Extra_habilidad },
             { nombre: 'Chakras', activo: !!this.doteData.Extras_soportados.Extra_chakra },
