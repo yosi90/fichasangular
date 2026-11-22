@@ -217,6 +217,105 @@ export interface ClaseNivelDetalle {
     Armadura_natural?: number;
 }
 
+/** `{ Id, Nombre }` de un catálogo (la clase, el dado, el elemento de un prerrequisito o de una quita). */
+export interface SustitucionRef {
+    Id: number;
+    Nombre: string;
+}
+
+/**
+ * Un prerrequisito de un juego de niveles de sustitución (`SustitucionPrerrequisito`, catalogos.md, «Los niveles de
+ * sustitución»). `Nivel` `null`, de todo el juego; un número, solo de ese nivel de clase. `Comprueba_la_api`: lo comprueba
+ * también la API (la web no ofrece el nivel si no lo cumple); `no_verificable` no lo comprueba nadie (D6).
+ */
+export interface SustitucionPrerrequisito {
+    Tipo: string;
+    Nivel: number | null;
+    Opcional: number;
+    Elemento: SustitucionRef | null;
+    Extra: SustitucionRef | null;
+    Cantidad: number | null;
+    Texto: string | null;
+    Frase: string;
+    Comprueba_la_api: boolean;
+}
+
+/** Una habilidad de clase que el juego añade (`Quita` false) o quita (`Quita` true) en sus niveles. */
+export interface SustitucionHabilidad {
+    Habilidad: SustitucionRef;
+    /** `null`, sin especialidad; el extra 0 («Elegir»), la que elige el jugador. */
+    Extra: SustitucionRef | null;
+    Quita: boolean;
+}
+
+export type AlcanceSustitucionQuita = 'nivel' | 'desde' | 'retrasa' | 'aplaza';
+
+/** Lo de la tabla de la clase que un nivel de sustitución **no** gana (`SustitucionQuita`). */
+export interface SustitucionQuita {
+    Tipo: string;
+    Elemento: SustitucionRef | null;
+    /** El extra que se quita; `null`, con cualquier extra. */
+    Id_extra: number | null;
+    Extra: string | null;
+    Nivel_conjuro: number | null;
+    Cantidad: number | null;
+    Alcance: AlcanceSustitucionQuita;
+    Aplaza_a_nivel: number | null;
+}
+
+/** Una aptitud que da un nivel de sustitución: la de la tabla de la clase, con las dos marcas del juego. */
+export interface SustitucionEspecialNivel extends ClaseEspecialNivel {
+    /** Su valor se multiplica por los niveles de este juego que tenga el personaje. */
+    Por_nivel_del_juego: boolean;
+    /** Su extra se elige en el primer nivel del juego y es el mismo en todos. */
+    Extra_del_juego: boolean;
+}
+
+/** Un conjuro que entra (`Quita` false) o sale (`Quita` true) de la lista de la clase desde ese nivel. */
+export interface SustitucionConjuro {
+    Conjuro: SustitucionRef;
+    Nivel: number;
+    Quita: boolean;
+    /** Lo conoce sin elegirlo. */
+    Conocido: boolean;
+}
+
+/** Un nivel de un juego (`SustitucionNivel`): su `Id` es el que va en `niveles[].idNivelSustitucion`. */
+export interface SustitucionNivel {
+    Id: number;
+    /** El nivel de la clase en que se toma. */
+    Nivel: number;
+    Ajustes: { Ataque_base: number; Fortaleza: number; Reflejos: number; Voluntad: number; };
+    Descripcion: string;
+    Especiales: SustitucionEspecialNivel[];
+    Dotes: ClaseDoteNivel[];
+    Quita: SustitucionQuita[];
+    Conjuros: SustitucionConjuro[];
+}
+
+/** Un juego de niveles de sustitución de una clase (`SustitucionDetalle`, `ClaseDetalle.Sustituciones`). */
+export interface SustitucionDetalle {
+    Id: number;
+    Nombre: string;
+    Nombre_original: string | null;
+    Traducido: boolean;
+    Familia: string;
+    /** El título para la pantalla («Niveles de sustitución racial del guerrero enano»). */
+    Titulo: string;
+    Clase: SustitucionRef;
+    /** El DG de sus niveles; `null`, el de la clase. */
+    Tipo_dado: SustitucionRef | null;
+    /** Sus puntos de habilidad por nivel; `null`, los de la clase. */
+    Puntos_habilidad: { Id: number; Valor: number; } | null;
+    Retroactivo: boolean;
+    Descripcion: string;
+    Manual: { Id: number; Nombre: string; Pagina: number; };
+    Oficial: boolean;
+    Prerrequisitos: SustitucionPrerrequisito[];
+    Habilidades: SustitucionHabilidad[];
+    Niveles: SustitucionNivel[];
+}
+
 export interface ClasePrerrequisitosFlags {
     actitud_requerido?: boolean;
     actitud_prohibido?: boolean;
@@ -397,6 +496,11 @@ export interface Clase {
     Desglose_niveles: ClaseNivelDetalle[];
     /** Magic of Incarnum: lo que dice que la clase moldea fusiones; `null` si no (la API siempre lo da). */
     Moldeado?: ClaseMoldeado | null;
+    /**
+     * Los juegos de niveles de sustitución de la clase, por nombre (desde la caché `clases` 26; catalogos.md, «Los niveles
+     * de sustitución»). Vacía si no tiene. Solo de lectura: no va en el alta ni en la edición de la clase.
+     */
+    Sustituciones?: SustitucionDetalle[];
     Prerrequisitos_flags: ClasePrerrequisitosFlags;
     Prerrequisitos: ClasePrerrequisitos;
 }
@@ -412,7 +516,7 @@ export interface ClaseNivelMutation extends Omit<ClaseNivelDetalle, 'Nivel_max_p
     nivel_max_poder_accesible_nivel_lanzadorPsionico: number;
 }
 
-export interface ClaseMutationRequest extends Omit<Clase, 'Id' | 'Desglose_niveles' | 'Conjuros'> {
+export interface ClaseMutationRequest extends Omit<Clase, 'Id' | 'Desglose_niveles' | 'Conjuros' | 'Sustituciones'> {
     Id?: number;
     /** Si no viene, la edición conserva la guardada (la API solo lee los `Id` de `Especiales`, de las que da la clase). */
     Ex?: ClaseEx;
