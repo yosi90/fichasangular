@@ -1,6 +1,6 @@
 import { normalizeClase } from '../clase.service';
 import {
-    AVISO_NO_VERIFICABLE, ContextoRequisitosSustitucion, ajustarCifras, competenciasQueQuita, conjurosConocidosDelNivel,
+    AVISO_NO_VERIFICABLE, ContextoRequisitosSustitucion, ajustarAtaqueBase, ajustarCifras, competenciasQueQuita, conjurosConocidosDelNivel,
     dadoDelNivel, detalleConSustituciones, evaluarRequisitosDeSustitucion, habilidadesDelJuego, listadoConSustituciones,
     nivelDeSustitucion, opcionesDeSustitucion, puntosHabilidadDelNivel, sustitucionDelNivel, sustitucionesDeLaClase,
     textoNivelesSustitucion, opcionesDelSelectorDeNivel, idDeLaClaveDelSelector, vistaDeLosJuegos, CLAVE_NIVEL_ESTANDAR,
@@ -21,7 +21,7 @@ const ids = (filas: Array<{ Especial: Record<string, any>; }> | undefined) => (f
 function contexto(idRaza: number, nombre: string): ContextoRequisitosSustitucion {
     return {
         identidad: { razas: [{ id: idRaza, nombre }], tiposCriatura: [{ id: 1, nombre: 'Humanoide' }], subtipos: [] },
-        alineamientoBasicoId: 1, alineamiento: 'Legal bueno', genero: 'Macho', deidad: null, habilidades: [], tiposDeDote: [],
+        alineamientoBasicoId: 1, genero: 'Macho', deidad: null, habilidades: [], tiposDeDote: [],
         escuelaEspecialista: null,
     };
 }
@@ -99,7 +99,10 @@ describe('niveles-sustitucion (R8, primera tanda)', () => {
         const tomados = [{ nivelClase: 3, idNivelSustitucion: 23 }];
         expect(detalleConSustituciones(barbaro, 2, tomados)!.Ataque_base).toBe('+2');
         expect(detalleConSustituciones(barbaro, 3, tomados)!.Ataque_base).toBe('+2');
-        expect(detalleConSustituciones(barbaro, 6, tomados)!.Ataque_base).toBe('+5/+0');
+        // Con sus ataques adicionales de nuevo (`textoAtaqueBase`): +5 no da un segundo ataque.
+        expect(detalleConSustituciones(barbaro, 6, tomados)!.Ataque_base).toBe('+5');
+        expect(ajustarAtaqueBase('+10/+5', 1)).toBe('+11/+6/+1');
+        expect(ajustarAtaqueBase('+0', -1)).toBe('-1');
         expect(ajustarCifras('+0', -1)).toBe('-1');
         expect(ajustarCifras('+2', 0)).toBe('+2');
     });

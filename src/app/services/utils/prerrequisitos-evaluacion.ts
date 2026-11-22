@@ -230,6 +230,30 @@ export function compararActitud(pedido: Record<string, any>, idAlineamientoBasic
 }
 
 /**
+ * `alineamiento_requerido` y `alineamiento_prohibido` (dotes, clases y niveles de sustitución): el alineamiento básico del
+ * personaje (1-9) contra el pedido, el básico y no la combinación de `alineamientos` (el legal bueno «siempre» es la 3).
+ * Sin alguno de los dos no se puede comprobar.
+ */
+export function compararAlineamientoBasico(requeridoId: number, actualId: number, prohibido: boolean): ComparacionPrerrequisito {
+    const requerido = toInt(requeridoId, 0);
+    const actual = toInt(actualId, 0);
+    const evaluable = requerido > 0 && actual > 0;
+    const coincide = evaluable && actual === requerido;
+    return { evaluable, cumple: prohibido ? !coincide : coincide, razonUnknown: 'Prerrequisito de alineamiento con formato no reconocido' };
+}
+
+/**
+ * `genero` (clases y niveles de sustitución): el nombre del género del personaje contra el pedido (`Genero_nombre`, de la
+ * tabla `genero`), sin mirar mayúsculas ni tildes. Sin alguno de los dos no se puede comprobar.
+ */
+export function compararGenero(requerido: string | null | undefined, actual: string | null | undefined): ComparacionPrerrequisito {
+    const pedido = normalizarTexto(`${requerido ?? ''}`);
+    const suyo = normalizarTexto(`${actual ?? ''}`);
+    const evaluable = pedido.length > 0 && suyo.length > 0;
+    return { evaluable, cumple: evaluable && suyo === pedido, razonUnknown: 'Prerrequisito de genero con formato no reconocido' };
+}
+
+/**
  * `tamano_minimo` y `tamano_maximo` (dotes, clases y plantillas): el tamaño del personaje contra el pedido. Los ids de
  * `GET /tamanos` van de menor a mayor (Minúsculo 1 … Colosal 9), así que se comparan los ids. Quien llama da el tamaño
  * que cuenta: el de la raza con los pasos de tamaño de las plantillas.
