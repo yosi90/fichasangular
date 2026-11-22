@@ -70,7 +70,7 @@ type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
  * Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección, la plantilla, la raza
  * mutada, la pérdida, la vuelta a la vida y completar el compañero.
  */
-export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida' | 'vuelta' | 'companero';
+export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida' | 'vuelta' | 'companero' | 'mascota';
 
 /** Lo que enseña la pestaña de cada modo y cómo se carga su componente (carga diferida: el bundle inicial va al tope). */
 export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; corta: string; icono: string; cargar: () => Promise<Type<unknown>>; }> = {
@@ -101,6 +101,10 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
     companero: {
         titulo: 'Completar el compañero', corta: 'Compañero', icono: 'pets',
         cargar: async () => (await import('src/app/components/sesiones/completar-companero/completar-companero.component')).CompletarCompaneroComponent,
+    },
+    mascota: {
+        titulo: 'Su mascota', corta: 'Mascota', icono: 'emoji_nature',
+        cargar: async () => (await import('src/app/components/sesiones/mascota-sesion/mascota-sesion.component')).MascotaSesionComponent,
     },
 };
 
@@ -284,6 +288,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.puertaSubida?.companeros$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'companero'));
+        // La mascota fuera del reciclaje: una pestaña por personaje; otra acción la vuelve a abrir con la suya.
+        this.puertaSubida?.mascotas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((s) => {
+                const abierta = this.subidasNivelAbiertas.find((x) => x.idPersonaje === s.idPersonaje && x.modo === 'mascota');
+                if (abierta && (abierta.entradas['accion'] !== s.accion || abierta.entradas['mascota'] !== s.mascota))
+                    this.quitarSubidaNivel(s.idPersonaje, 'mascota');
+                void this.abrirSubidaNivel(s.idPersonaje, 'mascota', { accion: s.accion, mascota: s.mascota });
+            });
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
@@ -1153,7 +1166,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
      * corrección de su ficha («Corregir la ficha», fase 6) o la plantilla que adquiere («Adquirir una plantilla», fase 7)
      * en su pestaña, junto a las fichas; si ya está abierta, la enseña. Cada componente se carga la primera vez.
      */
-    async abrirSubidaNivel(idPersonaje: number, modo: ModoPestanaSesion = 'subida'): Promise<void> {
+    async abrirSubidaNivel(idPersonaje: number, modo: ModoPestanaSesion = 'subida', entradasExtra: Record<string, unknown> = {}): Promise<void> {
         const id = Math.trunc(Number(idPersonaje));
         if (!(id > 0))
             return;
@@ -1170,6 +1183,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         abierta.entradas = {
             idPersonaje: id, alTerminar: abierta.cerrar,
             ...(modo === 'mutacion' ? { alNombrar: (pestana: PestanaDeSesion | null) => abierta.pestana = pestana } : {}),
+            ...entradasExtra,
         };
         this.subidasNivelAbiertas.push(abierta);
         this.registerOpenContext(clave, this.getSafeOpenerKey());

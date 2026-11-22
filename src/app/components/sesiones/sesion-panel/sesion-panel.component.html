@@ -282,6 +282,41 @@
                                     <input type="text" name="trucoConcepto" [(ngModel)]="trucoConcepto" [maxlength]="maximoConcepto">
                                 </label>
                             }
+                            @case ('mascota') {
+                                <p class="sesion__nota">Perder su mascota (el compañero animal se libera o muere; el familiar muere o se
+                                    abandona), obtener otra con el hueco libre o devolverle la vida a la que murió (Manual del jugador,
+                                    págs. 35 y 45). Rol no cuenta el tiempo ni tira la salvación: lo confirma quien apunta.</p>
+                                <div class="sesion__tipos" role="group" aria-label="Qué hacer con su mascota">
+                                    @for (m of mascotasQueTiene; track m.mascota) {
+                                        <button type="button" class="sesion__tipo-boton" (click)="pedirPerderMascota(m.mascota)">
+                                            {{m.mascota === 'companero' ? 'Liberar o perder a ' + m.nombre : 'Abandonar o perder a ' + m.nombre}}
+                                        </button>
+                                    }
+                                    @for (m of mascotasQuePuedeObtener; track m) {
+                                        <button type="button" class="sesion__tipo-boton" (click)="pedirObtenerMascota(m)">
+                                            {{m === 'companero' ? 'Llamar a un compañero animal' : 'Obtener un familiar'}}
+                                        </button>
+                                    }
+                                </div>
+                                @if (cargandoMascotas) {
+                                    <p class="sesion__nota" role="status">Cargando sus mascotas…</p>
+                                } @else if (mascotasRevivibles.length > 0) {
+                                    <ul class="sesion__conjuros" aria-label="Las mascotas que murieron">
+                                        @for (m of mascotasRevivibles; track m.idEvento) {
+                                            <li>
+                                                <button type="button" class="sesion__conjuro" [attr.aria-pressed]="mascotaRevivir === m.mascota" (click)="elegirRevivir(m.mascota)">
+                                                    <span>Devolverle la vida a {{m.nombre || textosMascota[m.mascota].queConArticulo}}</span>
+                                                    <span class="sesion__conjuro-dato">{{m.mascota === 'companero' ? 'Compañero animal' : 'Familiar'}}, sin perder nivel ni Constitución</span>
+                                                </button>
+                                            </li>
+                                        }
+                                    </ul>
+                                    <label class="sesion__campo sesion__campo--ancho">
+                                        <span>Concepto (opcional: el conjuro; lo que cuesta se apunta aparte como dinero)</span>
+                                        <input type="text" name="mascotaConcepto" [(ngModel)]="mascotaConcepto" [maxlength]="maximoConcepto" placeholder="Revivir a los muertos">
+                                    </label>
+                                }
+                            }
                             @case ('nota') {
                                 <label class="sesion__campo sesion__campo--ancho">
                                     <span>Nota (solo la veis tú y el máster)</span>

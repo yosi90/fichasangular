@@ -278,7 +278,7 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             const texto = fixture.nativeElement.textContent;
             expect(texto).toContain('Compañero animal: Lobo («Colmillo»)');
             expect(texto).toContain('Druida, de su lista hasta el nivel 1');
-            expect(texto).toContain('Para un animal de otra lista, libera a tu compañero y llama a otro (Manual del jugador, pág. 36).');
+            expect(texto).toContain('Para un animal de otra lista, libera a tu compañero y llama a otro desde «Su mascota» en la sesión (Manual del jugador, pág. 35).');
 
             c.plan = {
                 tipo: 'mascota', hueco, pone: { idMonstruo: 55, idPlantilla: 0, nombre: 'Tejón', plantilla: '' }, nombrePropio: 'Garra',

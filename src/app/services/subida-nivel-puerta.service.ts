@@ -9,6 +9,13 @@ import { toInt } from './utils/normalizacion';
  * `subidaHecha(idPersonaje)` y la ficha y el historial de ese personaje se vuelven a cargar (`subidasHechas$`). Solo
  * lleva ids: ni la ficha ni la sesión pasan por aquí.
  */
+/** «Perder» u «obtener» una mascota fuera del reciclaje (contrato: personajes.md, «La mascota fuera del reciclaje»). */
+export interface SolicitudMascota {
+    idPersonaje: number;
+    accion: 'perder' | 'obtener';
+    mascota: 'companero' | 'familiar';
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -20,6 +27,7 @@ export class SubidaNivelPuertaService {
     private readonly mutacionesSubject = new Subject<number>();
     private readonly vueltasSubject = new Subject<number>();
     private readonly companerosSubject = new Subject<number>();
+    private readonly mascotasSubject = new Subject<SolicitudMascota>();
     private readonly subidasHechasSubject = new Subject<number>();
 
     /** Cada vez que alguien pulsa «Subir a nivel N»: el id del personaje. */
@@ -36,6 +44,11 @@ export class SubidaNivelPuertaService {
     readonly vueltas$: Observable<number> = this.vueltasSubject.asObservable();
     /** «Completar el compañero» (tanda (f) de las mascotas): el id del personaje; su pestaña, como la de la subida. */
     readonly companeros$: Observable<number> = this.companerosSubject.asObservable();
+    /**
+     * La mascota fuera del reciclaje (tanda (i)): perderla u obtener otra, con el personaje, la acción y la mascota; su
+     * pestaña, como la de la subida.
+     */
+    readonly mascotas$: Observable<SolicitudMascota> = this.mascotasSubject.asObservable();
     /**
      * Cada vez que la subida guarda un nivel, la corrección guarda la ficha, se cambian sus datos libres (fase 6) o se
      * adquiere una plantilla o una raza mutada, se pierde un nivel o se le devuelve la vida (fase 7): el id del personaje, para volver a cargar su
@@ -83,6 +96,12 @@ export class SubidaNivelPuertaService {
         const id = toInt(idPersonaje);
         if (id > 0)
             this.companerosSubject.next(id);
+    }
+
+    solicitarMascota(idPersonaje: number, accion: SolicitudMascota['accion'], mascota: SolicitudMascota['mascota']): void {
+        const id = toInt(idPersonaje);
+        if (id > 0)
+            this.mascotasSubject.next({ idPersonaje: id, accion, mascota });
     }
 
     subidaHecha(idPersonaje: number): void {

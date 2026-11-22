@@ -176,7 +176,7 @@
                                 <button *ngIf="!m.motivo" mat-stroked-button type="button" (click)="cambiarMascota(m)">{{planMascota?.hueco === m ? 'Elegir otra' : 'Cambiar'}}</button>
                             </li>
                         </ul>
-                        <p *ngIf="tieneCompaneroReciclable" class="subida__nota">Se elige entre los de la lista con la que tiene al suyo, o una anterior. Para un animal de otra lista, libera a tu compañero y llama a otro (<em>Manual del jugador</em>, pág. 36).</p>
+                        <p *ngIf="tieneCompaneroReciclable" class="subida__nota">Se elige entre los de la lista con la que tiene al suyo, o una anterior. Para un animal de otra lista, libera a tu compañero y llama a otro desde «Su mascota» en la sesión (<em>Manual del jugador</em>, pág. 35).</p>
                         <ng-container *ngIf="rasgoElegido as h">
                             <h3 class="subida__seccion">En lugar de {{nombreDeLoQueTiene(h)}} ({{h.clase.toLowerCase()}}, nivel {{h.nivelClase}})</h3>
                             <div class="subida__opciones" role="radiogroup" [attr.aria-label]="'Otra opción en lugar de ' + nombreDeLoQueTiene(h)">

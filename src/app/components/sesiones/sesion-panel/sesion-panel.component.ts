@@ -8,7 +8,7 @@ import { TiendaSesionComponent } from 'src/app/components/sesiones/tienda-sesion
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
-import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraRequestDto, PersonajeEquipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import {
@@ -18,11 +18,14 @@ import {
     MAXIMO_NOTAS_SESION,
     MAXIMO_TEXTO_NOTA,
     MAXIMO_TITULO_SESION,
+    MascotaPerdida,
     OrigenObjetoObtenido,
     RespuestaSesion,
     SesionEvento,
     SesionPersonaje,
+    TipoDeMascota,
 } from 'src/app/interfaces/sesiones';
+import { fuentesDeLaMascota, mascotaDeLaFicha, puedeObtenerLaMascota, TEXTOS_MASCOTA } from 'src/app/services/utils/mascota-sesion';
 import { Truco } from 'src/app/interfaces/truco';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
@@ -57,7 +60,7 @@ import {
 } from 'src/app/services/utils/tienda-equipo';
 
 /** Los tipos de lo que se apunta (lienzo de sesiones, pantalla 2), cada uno con su formulario corto; «Comprar» abre la tienda. */
-export type TipoApunte = 'experiencia' | 'dinero' | 'objeto' | 'comprar' | 'vender' | 'libro' | 'alineamiento' | 'truco' | 'nota';
+export type TipoApunte = 'experiencia' | 'dinero' | 'objeto' | 'comprar' | 'vender' | 'libro' | 'alineamiento' | 'truco' | 'mascota' | 'nota';
 
 /** Lo que apunta el máster en «Alineamiento y expiación»: el cambio en juego, la caída por conducta o la expiación. */
 export type ModoAlineamiento = 'cambio' | 'caida' | 'expiacion';
@@ -95,7 +98,8 @@ const MAXIMO_CONJUROS_LISTA = 30;
 /** El tipo de dote de las dotes elevadas (`tipos_dotes`), por su nombre normalizado: un dato, como en la API. */
 const TIPO_DOTE_ELEVADA = 'elevada';
 /** Los eventos del panel que cambian la ficha (su alineamiento, su deidad o sus ex clases): al apuntarlos o deshacerlos se vuelve a leer. */
-const CAMBIAN_LA_FICHA: ReadonlySet<string> = new Set(['cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado']);
+const CAMBIAN_LA_FICHA: ReadonlySet<string> = new Set(['cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado', 'mascota_perdida',
+    'mascota_obtenida', 'mascota_revivida']);
 const AVISO_DESACTUALIZADA = 'Otra persona ha apuntado algo en esta sesión mientras la tenías abierta. Ya está al día: '
     + 'revisa lo que ha cambiado y, si hace falta, vuelve a apuntarlo.';
 
@@ -186,6 +190,12 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     trucoElegido: Truco | null = null;
     trucoConcepto = '';
     cargandoTrucos = false;
+    /** Las mascotas que siguen perdidas (`mascotasPerdidas` de la sesión), al abrir «Su mascota»; la que se revive. */
+    mascotasPerdidas: MascotaPerdida[] | null = null;
+    cargandoMascotas = false;
+    mascotaRevivir: TipoDeMascota | null = null;
+    mascotaConcepto = '';
+    readonly textosMascota = TEXTOS_MASCOTA;
     private trucosCatalogo: Truco[] | null = null;
     private dotesCatalogo: Dote[] | null = null;
 
@@ -258,6 +268,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             ...(this.libros.length > 0 && this.politica.copiarConjuros ? [{ id: 'libro' as const, nombre: 'Conjuro al libro' }] : []),
             ...(this.controlaAlineamiento ? [{ id: 'alineamiento' as const, nombre: 'Alineamiento y expiación' }] : []),
             ...(this.companero ? [{ id: 'truco' as const, nombre: 'Enseñar un truco' }] : []),
+            ...(this.hayAlgoDeLaMascota ? [{ id: 'mascota' as const, nombre: 'Su mascota' }] : []),
             { id: 'nota', nombre: 'Nota' },
         ];
     }
@@ -382,6 +393,70 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         return (this.pj?.Companeros ?? [])[0] ?? null;
     }
 
+    get familiar(): FamiliarMonstruoDetalle | null {
+        return (this.pj?.Familiares ?? [])[0] ?? null;
+    }
+
+    // La mascota fuera del reciclaje (contrato: personajes.md, «La mascota fuera del reciclaje»)
+
+    /** Las mascotas que tiene (activas o inactivas: las dos se pueden perder). */
+    get mascotasQueTiene(): Array<{ mascota: TipoDeMascota; nombre: string; }> {
+        return (['companero', 'familiar'] as const)
+            .map((mascota) => ({ mascota, criatura: mascotaDeLaFicha(this.pj, mascota) }))
+            .filter((m) => !!m.criatura)
+            .map((m) => ({ mascota: m.mascota, nombre: `${m.criatura?.Nombre ?? ''}`.trim() || TEXTOS_MASCOTA[m.mascota].queConArticulo }));
+    }
+
+    /** Las que puede obtener ahora: el hueco vacío y una clase que se la dé. */
+    get mascotasQuePuedeObtener(): TipoDeMascota[] {
+        return (['companero', 'familiar'] as const).filter((m) => puedeObtenerLaMascota(this.pj, this.clases, m));
+    }
+
+    /** Las que murieron y se les puede devolver la vida (`revivible`). */
+    get mascotasRevivibles(): MascotaPerdida[] {
+        return (this.mascotasPerdidas ?? []).filter((m) => m.revivible);
+    }
+
+    get hayAlgoDeLaMascota(): boolean {
+        return this.mascotasQueTiene.length > 0 || this.mascotasQuePuedeObtener.length > 0 || this.mascotasRevivibles.length > 0
+            || this.tieneFuenteDeMascota;
+    }
+
+    /** Si alguna clase le da una mascota (para ofrecer «Su mascota» aunque aún no sepa si alguna murió). */
+    private get tieneFuenteDeMascota(): boolean {
+        return (['companero', 'familiar'] as const).some((m) => fuentesDeLaMascota(this.pj, this.clases, m).length > 0);
+    }
+
+    pedirPerderMascota(mascota: TipoDeMascota): void {
+        if (this.idPersonaje > 0)
+            this.puertaSubida.solicitarMascota(this.idPersonaje, 'perder', mascota);
+    }
+
+    pedirObtenerMascota(mascota: TipoDeMascota): void {
+        if (this.idPersonaje > 0)
+            this.puertaSubida.solicitarMascota(this.idPersonaje, 'obtener', mascota);
+    }
+
+    elegirRevivir(mascota: TipoDeMascota): void {
+        this.mascotaRevivir = this.mascotaRevivir === mascota ? null : mascota;
+    }
+
+    /** Las mascotas perdidas de la sesión abierta (`GET …/sesiones/{numero}`), al abrir «Su mascota». */
+    private async cargarMascotasPerdidas(): Promise<void> {
+        if (this.cargandoMascotas || !this.actual)
+            return;
+        this.cargandoMascotas = true;
+        try {
+            const leida = await this.sesionesSvc.sesion(this.idPersonaje, this.actual.numero);
+            this.mascotasPerdidas = leida.mascotasPerdidas ?? [];
+        } catch (error: any) {
+            this.mascotasPerdidas = [];
+            this.error = this.mensaje(error);
+        } finally {
+            this.cargandoMascotas = false;
+        }
+    }
+
     get nombreCompanero(): string {
         return nombreDelCompanero(this.companero);
     }
@@ -458,6 +533,13 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
                     return elegido.motivo;
                 return this.trucoConcepto.length > MAXIMO_CONCEPTO_EVENTO ? `El concepto puede tener como mucho ${MAXIMO_CONCEPTO_EVENTO} caracteres.` : null;
             }
+            case 'mascota': {
+                if (this.cargandoMascotas)
+                    return 'Cargando sus mascotas…';
+                if (!this.mascotaRevivir)
+                    return 'Elige a quién devolverle la vida, o lo que quieres hacer con su mascota.';
+                return this.mascotaConcepto.length > MAXIMO_CONCEPTO_EVENTO ? `El concepto puede tener como mucho ${MAXIMO_CONCEPTO_EVENTO} caracteres.` : null;
+            }
             case 'nota': {
                 const texto = this.notaTexto.trim();
                 if (texto.length < 1)
@@ -494,6 +576,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             void this.cargarAlineamientos();
         if (this.tipo === 'truco')
             void this.cargarTrucos();
+        if (this.tipo === 'mascota')
+            void this.cargarMascotasPerdidas();
     }
 
     elegirTruco(opcion: TrucoEnsenablePanel): void {
@@ -754,6 +838,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
                 return this.eventoDeAlineamiento();
             case 'truco':
                 return this.trucoElegido ? { tipo: 'truco_ensenado', idTruco: this.trucoElegido.Id, ...concepto(this.trucoConcepto) } : null;
+            case 'mascota':
+                return this.mascotaRevivir ? { tipo: 'mascota_revivida', mascota: this.mascotaRevivir, ...concepto(this.mascotaConcepto) } : null;
             case 'nota':
                 return { tipo: 'nota', texto: this.notaTexto.trim() };
             default:
@@ -851,6 +937,9 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         this.lanzador = '';
         this.trucoElegido = null;
         this.trucoConcepto = '';
+        this.mascotaRevivir = null;
+        this.mascotaConcepto = '';
+        this.mascotasPerdidas = null;
     }
 
     /** El catálogo de trucos y el de dotes (lo que dan sus dotes al límite: `Trucos_extra`), al abrir el formulario (una vez). */

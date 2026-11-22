@@ -73,7 +73,7 @@ describe('SesionPanelComponent', () => {
     }
 
     beforeEach(async () => {
-        sesiones = jasmine.createSpyObj<SesionesService>('SesionesService', ['apuntar', 'comprar', 'cambiar', 'deshacer', 'cerrar', 'historial']);
+        sesiones = jasmine.createSpyObj<SesionesService>('SesionesService', ['apuntar', 'comprar', 'cambiar', 'deshacer', 'cerrar', 'historial', 'sesion']);
         alCambiar = jasmine.createSpy('alCambiar');
         await TestBed.configureTestingModule({
             imports: [SesionPanelComponent],
@@ -474,6 +474,31 @@ describe('SesionPanelComponent', () => {
         await component.cerrarSesion();
         expect(sesiones.cerrar).toHaveBeenCalled();
         expect(salir).toHaveBeenCalled();
+    });
+
+    it('«Su mascota»: perder la que tiene u obtener otra abren su pestaña; a la que murió se le devuelve la vida con su evento', async () => {
+        const pj = ficha();
+        pj.Familiares = [{ Nombre: 'Mur' } as any];
+        pj.Companeros = [];
+        crear({ pj } as any);
+        sesiones.sesion.and.resolveTo({
+            sesion: component.actual, ficha: null, entrada: null, nivelesPerdidos: [],
+            mascotasPerdidas: [{ idEvento: 8, mascota: 'companero', nombre: 'Gruk', idMonstruo: 3, idPlantilla: 0, causa: 'muerte', revivible: true, esperaReemplazo: null }],
+        });
+        sesiones.apuntar.and.resolveTo(leerRespuestaSesion(respuestaSesiones('dinero')));
+        const puerta = TestBed.inject(SubidaNivelPuertaService);
+        spyOn(puerta, 'solicitarMascota');
+        boton('Su mascota')!.click();
+        await estable();
+
+        boton('Abandonar o perder a Mur')!.click();
+        expect(puerta.solicitarMascota).toHaveBeenCalledWith(129, 'perder', 'familiar');
+
+        expect(component.mascotasRevivibles.map((m) => m.nombre)).toEqual(['Gruk']);
+        component.elegirRevivir('companero');
+        component.mascotaConcepto = 'Revivir a los muertos';
+        await component.apuntar();
+        expect(sesiones.apuntar).toHaveBeenCalledWith(129, jasmine.anything(), { tipo: 'mascota_revivida', mascota: 'companero', concepto: 'Revivir a los muertos' });
     });
 
     it('con PX para subir, el aviso y su botón piden la subida por la puerta', () => {

@@ -122,5 +122,8 @@ export const ETIQUETA_EVENTO: Record<TipoEventoSesion, string> = {
     caida: 'Caída',
     expiacion: 'Expiación',
     truco_ensenado: 'Truco',
+    mascota_perdida: 'Mascota perdida',
+    mascota_obtenida: 'Mascota nueva',
+    mascota_revivida: 'Mascota revivida',
     nota: 'Nota',
 };

@@ -93,6 +93,7 @@ import {
 } from 'src/app/services/utils/reciclaje-mascota';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { cambiosDeLasMascotas, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
+import { sinMascotaNueva } from 'src/app/services/utils/mascota-sesion';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
@@ -650,7 +651,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.planMascota = plan;
     }
 
-    /** Si tiene un compañero animal que reciclar: la nota de liberarlo y llamar a otro (MJ, pág. 36), que no es el reciclaje. */
+    /** Si tiene un compañero animal que reciclar: la nota de liberarlo y llamar a otro (MJ, pág. 35), que no es el reciclaje. */
     get tieneCompaneroReciclable(): boolean {
         return this.mascotasReciclables.some((m) => m.mascota === 'companero');
     }
@@ -1095,7 +1096,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const despues = this.cuerpoDelMotor();
         // El compañero que se recicla, con los rangos que se han repartido otra vez.
         const ficha = conLosRangosDelCompaneroNuevo(this.fichaDeLaSubidaDelMotor(elecciones, despues), this.plan?.tipo === 'mascota' ? this.plan : null, despues);
-        return sinLoQueYaNoDaLaMascota(ficha, this.antes!, despues, this.svc.loQueDanLasMascotasAlAmo());
+        return sinMascotaNueva(sinLoQueYaNoDaLaMascota(ficha, this.antes!, despues, this.svc.loQueDanLasMascotasAlAmo()), this.antes!);
     }
 
     private fichaDeLaSubidaDelMotor(elecciones: PersonajeCreateNivelEleccionDto[], despues: PersonajeCreateRequestDto): PersonajeCreateRequestDto {
@@ -1134,7 +1135,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 await this.cargar();
                 return;
             }
+            const nueva = this.mascotaQuePuedeObtener();
             this.alTerminar?.();
+            if (nueva)
+                await this.ofrecerObtenerLaMascota(nueva);
         } catch (error: any) {
             if (!this.cuenta.sigue())
                 return;
@@ -1145,6 +1149,31 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         } finally {
             this.guardando = false;
         }
+    }
+
+    /**
+     * La mascota que le da ahora una clase con el hueco vacío (el explorador que llega a 4.º, el mago nuevo): la subida no la
+     * trae (contrato, «La mascota fuera del reciclaje»: `400 subida_cambio_no_permitido`), se obtiene después con «Obtener».
+     */
+    private mascotaQuePuedeObtener(): 'companero' | 'familiar' | null {
+        if (!this.antes?.companero && toInt(this.svc.getEstadoCuposCompanero().cuposDisponibles) > 0)
+            return 'companero';
+        if (!this.antes?.familiar && toInt(this.svc.getEstadoCuposFamiliar().cuposDisponibles) > 0)
+            return 'familiar';
+        return null;
+    }
+
+    private async ofrecerObtenerLaMascota(mascota: 'companero' | 'familiar'): Promise<void> {
+        const r = await Swal.fire({
+            icon: 'info', title: mascota === 'companero' ? 'Puede tener un compañero animal' : 'Puede tener un familiar',
+            text: mascota === 'companero'
+                ? 'Con este nivel le toca un compañero animal: se llama con una ceremonia de 24 horas de oración (Manual del jugador, pág. 35).'
+                : 'Con este nivel puede tener un familiar: cuesta 24 horas y sus po (Manual del jugador, pág. 45).',
+            showCancelButton: true, confirmButtonText: mascota === 'companero' ? 'Llamar a un compañero animal' : 'Obtener un familiar',
+            cancelButtonText: 'Ahora no', target: document.body, heightAuto: false, scrollbarPadding: false,
+        });
+        if (r.isConfirmed)
+            this.puerta.solicitarMascota(this.idPersonaje, 'obtener', mascota);
     }
 
     async descartar(confirmar = true): Promise<void> {
