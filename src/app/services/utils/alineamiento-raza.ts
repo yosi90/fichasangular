@@ -3,6 +3,7 @@ import {
     AlineamientoVector,
     getVectorDesdeIdBasico,
     getVectorDesdeNombreBasico,
+    incumplePreferenciaAlineamiento,
     nombreBasicoDesdeVector,
     PRIORIDAD_ALINEAMIENTO_ESTRICTA,
     reglaDePreferenciaAlineamiento,
@@ -75,7 +76,7 @@ export function evaluarAlineamientoRaza(alineamientoRaza: Partial<Alineamiento> 
     (['ley', 'moral'] as const).forEach((eje) => {
         const regla = reglaDePreferenciaAlineamiento(alineamientoRaza[eje === 'ley' ? 'Ley' : 'Moral']);
         const incumple = regla
-            ? (regla.prohibe ? personaje[eje] === regla.valor : personaje[eje] !== regla.valor)
+            ? incumplePreferenciaAlineamiento(regla, personaje[eje])
             : !!basico && basico[eje] !== personaje[eje];
         if (!incumple)
             return;

@@ -1,5 +1,5 @@
 import { MonstruoNivelClase } from 'src/app/interfaces/monstruo';
-import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, reglaDePreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, incumplePreferenciaAlineamiento, reglaDePreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 // Lo común de las reglas de compañeros animales (companero-reglas.ts) y familiares (familiar-reglas.ts): leer lo que
@@ -159,13 +159,8 @@ function cumpleAlineamientoPorPreferencias(
         const vector = getVectorDesdeIdBasico(idAlineamientoBasico);
         if (!vector)
             return true;
-        return [[legal, vector.ley], [moral, vector.moral]].every(([regla, valor]) => {
-            const r = regla as ReturnType<typeof reglaDePreferenciaAlineamiento>;
-            if (!r || !r.estricta)
-                return true;
-            const coincide = valor === r.valor;
-            return r.prohibe ? !coincide : coincide;
-        });
+        return ([[legal, vector.ley], [moral, vector.moral]] as const)
+            .every(([regla, valor]) => !regla?.estricta || !incumplePreferenciaAlineamiento(regla, valor));
     }
     const idLegal = toNumber(nivelClase?.Preferencia_legal?.Id);
     const idMoral = toNumber(nivelClase?.Preferencia_moral?.Id);

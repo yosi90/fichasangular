@@ -112,6 +112,18 @@ export function reglaDePreferenciaAlineamiento(preferencia: DatoPreferenciaAline
     };
 }
 
+/**
+ * Si el valor de un eje del personaje (1, 0 o −1) no cumple la regla de una preferencia: el que pide, si no lo prohíbe;
+ * otro, si lo prohíbe. Sin regla, la cumple. Un solo sitio para las clases, las razas y las mascotas (como la API,
+ * `Preferencia.incumple` de `utils/alineamiento_clase.py`).
+ */
+export function incumplePreferenciaAlineamiento(regla: ReglaPreferenciaAlineamiento | null | undefined, valorDelEje: number): boolean {
+    if (!regla)
+        return false;
+    const coincide = valorDelEje === regla.valor;
+    return regla.prohibe ? coincide : !coincide;
+}
+
 /** El valor que exige una preferencia (`null` si no exige ninguno: sin preferencia o una que prohíbe). */
 function valorExigido(preferencia: DatoPreferenciaAlineamiento | null | undefined): number | null {
     const regla = reglaDePreferenciaAlineamiento(preferencia);

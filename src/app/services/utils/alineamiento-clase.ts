@@ -1,6 +1,6 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
-import { PRIORIDAD_ALINEAMIENTO_ESTRICTA, getVectorDesdeIdBasico, getVectorDesdeNombreBasico, reglaDePreferenciaAlineamiento } from './alineamiento-contrato';
+import { PRIORIDAD_ALINEAMIENTO_ESTRICTA, getVectorDesdeIdBasico, getVectorDesdeNombreBasico, incumplePreferenciaAlineamiento, reglaDePreferenciaAlineamiento } from './alineamiento-contrato';
 import { incumpleAlineamientoDeidad } from './alineamiento-deidad';
 import { evaluarPrerrequisitosDeAlineamientoClase } from './clase-elegibilidad';
 import { toInt } from './normalizacion';
@@ -88,8 +88,7 @@ export function evaluarAlineamientoClase(clase: Clase | null | undefined, entrad
         if (!regla)
             return;
         restringe = true;
-        const coincide = personaje[eje] === regla.valor;
-        const falla = regla.prohibe ? coincide : !coincide;
+        const falla = incumplePreferenciaAlineamiento(regla, personaje[eje]);
         if (falla)
             incumple.push(`${regla.prohibe ? 'Prohíbe' : 'Requiere'} ${textoEje(eje, regla.valor)}`);
         estrictoPorRegla = estrictoPorRegla || (falla && regla.estricta);
