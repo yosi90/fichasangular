@@ -4,6 +4,7 @@ import {
     dadoDelNivel, detalleConSustituciones, evaluarRequisitosDeSustitucion, habilidadesDelJuego, listadoConSustituciones,
     nivelDeSustitucion, opcionesDeSustitucion, puntosHabilidadDelNivel, sustitucionDelNivel, sustitucionesDeLaClase,
     textoNivelesSustitucion, opcionesDelSelectorDeNivel, idDeLaClaveDelSelector, vistaDeLosJuegos, CLAVE_NIVEL_ESTANDAR,
+    conValorPorNivelesDelJuego, especialesDeSusSustituciones, multiplicarCifra,
 } from './niveles-sustitucion';
 import {
     ID_DOTE_ADICIONAL, ID_ENEMIGO_PREDILECTO, ID_FIRMEZA_ENANA, ID_FURIA, ID_FURIA_DE_LA_MONTANA, ID_GRUPO_HACHAS,
@@ -183,5 +184,45 @@ describe('niveles-sustitucion (R8, primera tanda)', () => {
             ['3.º', '', 'Sentido de las trampas, un paso más tarde'],
         ]);
         expect(vistaDeLosJuegos(explorador)[0].niveles[0].enLugarDe).toBe('Enemigo predilecto, que pasa al 15.º y Enmarañar (fuera de su lista)');
+    });
+
+    describe('Por_nivel_del_juego (la fila una vez, con su valor por los niveles del juego)', () => {
+        const especial = (extra: string, datos: Record<string, any> = {}) => ({
+            Especial: { Id: 909, Nombre: 'Perspicacia arcana', ...datos }, Nivel: 1, Id_extra: null, Extra: extra, Opcional: 0, Id_interno: 0,
+            Id_especial_requerido: 0, Id_dote_requerida: 0, Por_nivel_del_juego: true, Extra_del_juego: false,
+        });
+        function conPerspicacia(extra: string, datos: Record<string, any> = {}) {
+            const raw = guerreroConSustitucionApi();
+            raw.Sustituciones[0].Niveles[0].Especiales.push(especial(extra, datos));
+            // Un juego que la repitiera en su 2.º nivel: va una vez, la del primero.
+            raw.Sustituciones[0].Niveles[1].Especiales.push({ ...especial(extra, datos), Nivel: 2 });
+            return normalizeClase(raw);
+        }
+
+        it('multiplica la primera cifra de su extra', () => {
+            expect(multiplicarCifra('+2', 3)).toBe('+6');
+            expect(multiplicarCifra('2/día', 2)).toBe('4/día');
+            expect(multiplicarCifra('-1', 2)).toBe('-2');
+            expect(multiplicarCifra('fuego', 2)).toBeNull();
+        });
+
+        it('con el extra «+2»: +2 con un nivel del juego y +4 con dos, en la fila de su primer nivel', () => {
+            const clase = conPerspicacia('+2');
+            const uno = [{ nivelClase: 1, idNivelSustitucion: 11 }];
+            const dos = [...uno, { nivelClase: 2, idNivelSustitucion: 12 }];
+            const fila = (tomados: any[], n: number) => detalleConSustituciones(clase, n, tomados)!.Especiales.filter((e) => e.Especial['Id'] === 909);
+            expect(fila(uno, 1).map((e) => e.Extra)).toEqual(['+2']);
+            expect(fila(dos, 1).map((e) => e.Extra)).toEqual(['+4']);
+            expect(fila(dos, 2)).toEqual([]);
+            expect(especialesDeSusSustituciones(clase, dos).filter((e) => e.Especial['Id'] === 909).map((e) => e.Extra)).toEqual(['+4']);
+        });
+
+        it('sin extra con cifra: sus modificadores y los rangos de sus habilidades', () => {
+            const base = especial('', { Modificadores: { Fuerza: 2, Ca: 1 }, Habilidades: [{ Id_habilidad: 21, Rangos: 2 }] }) as any;
+            const tres = conValorPorNivelesDelJuego(base, 3);
+            expect(tres.Especial['Modificadores']).toEqual({ Fuerza: 6, Ca: 3 });
+            expect(tres.Especial['Habilidades'][0].Rangos).toBe(6);
+            expect(conValorPorNivelesDelJuego(base, 1)).toBe(base);
+        });
     });
 });

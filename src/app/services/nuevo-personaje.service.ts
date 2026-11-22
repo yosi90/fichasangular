@@ -3,7 +3,7 @@ import type { LoQueLeFaltaAlCompanero } from './utils/completar-companero';
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
-import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEscuelaEspecialista, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
+import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEscuelaEspecialista, ClaseEspecialNivel, ClaseNivelDetalle, SustitucionEspecialNivel } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
 import { Dote, DoteExtraItem } from '../interfaces/dote';
@@ -174,6 +174,7 @@ import { ajustesEnvejecimiento, edadPorDefecto, etapaEdad } from './utils/edad-p
 import { armadurasQueAdmiteLaDote, doteAdmiteExtra, doteSoportaArmaduras, doteSoportaEscudos } from './utils/dote-extras-soportados';
 import {
     ContextoRequisitosSustitucion, NivelDeSustitucion, NivelSustitucionTomado, OpcionDeSustitucion, cambiosDeLaListaDeConjuros, competenciasQueQuita,
+    especialesDeSusSustituciones, multiplicarCifra,
     conjurosConocidosDelNivel, dadoDelNivel, detalleConSustituciones, evaluarRequisitosDeSustitucion, habilidadesDelJuego,
     listadoConSustituciones, opcionesDeSustitucion, origenDeSustitucion, puntosHabilidadDelNivel, quitasSinAplicar,
     sustitucionDelNivel, sustitucionesDeLaClase,
@@ -6352,7 +6353,12 @@ export class NuevoPersonajeService {
         ];
         this.aplicarDotesNivelClase(clase, siguienteNivel, dotesAplicar);
         this.aplicarEspecialesNivelClase(clase, especialesAplicar, detalleSiguiente, seleccionesExtrasEspeciales);
-        const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
+        // Un nivel más de un juego sube lo que valen sus aptitudes de `Por_nivel_del_juego` (su fila es la del primero).
+        const subeUnaPorNivel = !!sustitucionDelNivel && especialesDeSusSustituciones(clase, this.sustitucionesTomadasDe(clase))
+            .some((e) => e.Por_nivel_del_juego);
+        if (subeUnaPorNivel)
+            this.ponerAlDiaLasAptitudesPorNivelDelJuego();
+        const cambiaCaracteristicas = subeUnaPorNivel || especialesAplicar.some((especialNivel) =>
             Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
         // Su armadura natural se suma a la de la raza y las plantillas al recalcular (`armaduraNaturalDeAptitudes`).
         // La de la tabla de la clase (las de monstruo), también: el total de este nivel frente al del anterior.
@@ -9119,6 +9125,27 @@ export class NuevoPersonajeService {
     }
 
     /** Los especiales de las tablas de nivel del catálogo de clases (con sus datos: `Modificadores`…), en su orden. */
+    /** Las aptitudes de los niveles de sustitución que tiene, de cada clase (`especialesDeSusSustituciones`). */
+    private especialesDeSusNivelesDeSustitucion(): ClaseEspecialNivel[] {
+        return (this.personajeCreacion?.desgloseClases ?? [])
+            .map((entrada) => this.obtenerClaseDeDesglose(entrada))
+            .filter((clase): clase is Clase => !!clase && (clase.Sustituciones ?? []).length > 0)
+            .flatMap((clase) => especialesDeSusSustituciones(clase, this.sustitucionesTomadasDe(clase)));
+    }
+
+    /**
+     * El extra de las aptitudes de `Por_nivel_del_juego` que tiene, con su número por los niveles del juego que tiene de
+     * ahora (Perspicacia arcana, +2 con uno y +4 con dos). Tras tomar o perder un nivel del juego.
+     */
+    private ponerAlDiaLasAptitudesPorNivelDelJuego(): void {
+        this.especialesDeSusNivelesDeSustitucion()
+            .filter((e) => (e as SustitucionEspecialNivel).Por_nivel_del_juego && multiplicarCifra(e.Extra, 1) !== null)
+            .forEach((e) => {
+                const id = toInt((e.Especial as Record<string, any>)?.['Id']);
+                (this.personajeCreacion?.Claseas ?? []).filter((c: any) => toInt(c?.Id) === id).forEach((c: any) => c.Extra = `${e.Extra ?? ''}`);
+            });
+    }
+
     private especialesNivelDeLasTablasDeClases(): ClaseEspecialNivel[] {
         return (this.catalogoClases ?? []).flatMap((clase) => (clase?.Desglose_niveles ?? []).flatMap((nivel) => nivel?.Especiales ?? []));
     }
@@ -10571,7 +10598,8 @@ export class NuevoPersonajeService {
     /** El primer especial de las tablas de clase de cada id de aptitud (el mismo especial trae los mismos datos). */
     private especialesNivelPorId(): Map<number, ClaseEspecialNivel> {
         const porId = new Map<number, ClaseEspecialNivel>();
-        this.especialesNivelDeLasTablasDeClases().forEach((especialNivel) => {
+        // Primero las de sus niveles de sustitución, con su valor por los niveles del juego (`Por_nivel_del_juego`).
+        [...this.especialesDeSusNivelesDeSustitucion(), ...this.especialesNivelDeLasTablasDeClases()].forEach((especialNivel) => {
             const id = toNumber((especialNivel?.Especial as Record<string, any>)?.['Id']);
             if (id > 0 && !porId.has(id))
                 porId.set(id, especialNivel);
@@ -12696,6 +12724,8 @@ export class NuevoPersonajeService {
             pj.Orden_niveles = (pj.Orden_niveles ?? []).filter((_, i) => i !== indice);
             this.ordenConocidoNiveles = this.ordenConocidoNiveles.filter((_, i) => i !== indice);
         }
+        // Con un nivel menos de un juego, sus aptitudes de `Por_nivel_del_juego` valen menos.
+        this.ponerAlDiaLasAptitudesPorNivelDelJuego();
         // Lo ya concedido por la progresión (las dotes de nivel y los incrementos cada 4), con su nivel de ahora, como al
         // hidratarlo: el nivel siguiente vuelve a dar lo de ese nivel (el guerrero 4 que pasa a guerrero 3 / engendro 1).
         const dotesPendientes = this.dotesPendientes;

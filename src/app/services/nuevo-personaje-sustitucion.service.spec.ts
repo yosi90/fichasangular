@@ -264,4 +264,22 @@ describe('Los niveles de sustitución en el motor (R8)', () => {
         expect(bloqueada.cumple).toBeFalse();
         expect(bloqueada.motivos).toEqual(['No cumple: Especialista en ilusión']);
     });
+
+    it('una aptitud de Por_nivel_del_juego con extra «+2» vale +4 al tomar el 2.º nivel del juego, y vuelve a +2 si lo pierde', () => {
+        const raw = guerreroConSustitucionApi();
+        raw.Sustituciones[0].Niveles[0].Especiales.push({
+            Especial: { Id: 909, Nombre: 'Perspicacia arcana' }, Nivel: 1, Id_extra: null, Extra: '+2', Opcional: 0, Id_interno: 0,
+            Id_especial_requerido: 0, Id_dote_requerida: 0, Por_nivel_del_juego: true, Extra_del_juego: false,
+        });
+        const guerrero = normalizeClase({ Nivel_max_claseo: 20, ...raw });
+        const svc = crear(ENANO);
+        svc.setCatalogoClases([guerrero, MAGO]);
+        const perspicacia = () => (svc.PersonajeCreacion.Claseas ?? []).filter((e: any) => toInt(e?.Id) === 909).map((e) => e.Extra);
+        aplicarNivel(svc, guerrero, 11);
+        expect(perspicacia()).toEqual(['+2']);
+        aplicarNivel(svc, guerrero, 12);
+        expect(perspicacia()).toEqual(['+4']);
+        svc.perderNivelEnElMotor({ idClase: guerrero.Id, indiceNivel: 1 });
+        expect(perspicacia()).toEqual(['+2']);
+    });
 });

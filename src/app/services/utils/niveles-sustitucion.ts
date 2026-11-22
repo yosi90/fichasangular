@@ -1,6 +1,6 @@
 import {
-    Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle, SustitucionDetalle, SustitucionNivel,
-    SustitucionQuita,
+    Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle, SustitucionDetalle, SustitucionEspecialNivel,
+    SustitucionNivel, SustitucionQuita,
 } from 'src/app/interfaces/clase';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
@@ -170,7 +170,7 @@ function quitaEnElNivel(quita: SustitucionQuita, nivelTomado: number, nivelClase
 }
 
 function aplicarQuitaDeFilas(clase: Clase, detalle: ClaseNivelDetalle, nivelClase: number, nivelTomado: number, quita: SustitucionQuita,
-    tipo: 'especial' | 'dote', idsQueDaElNivel: ReadonlySet<number> = new Set()): void {
+    tipo: 'especial' | 'dote'): void {
     const filas = filasDe(detalle, tipo);
     if (quita.Alcance === 'retrasa') {
         // Las filas de la aptitud desde el nivel en que se toma, en orden: la primera se pierde y cada una da el extra de la
@@ -202,12 +202,12 @@ function aplicarQuitaDeFilas(clase: Clase, detalle: ClaseNivelDetalle, nivelClas
     if (!quitaEnElNivel(quita, nivelTomado, nivelClase))
         return;
     // Con `Sustituto` (solo `desde` en una aptitud), cada fila quitada pasa a ser esa aptitud con el mismo extra: los usos
-    // de más de la furia llegan como Furia de la montaña. En su nivel, si el nivel ya la da, no se repite.
+    // de más de la furia llegan como Furia de la montaña. La de su propio nivel se quita sin más: ese nivel da la suya.
     const sustituto = quita.Alcance === 'desde' && tipo === 'especial' && toInt(quita.Sustituto?.Id) > 0 ? quita.Sustituto! : null;
     ponerFilas(detalle, tipo, filas.flatMap((f) => {
         if (!esDeLaQuita(f, quita, tipo))
             return [f];
-        if (!sustituto || (nivelClase === nivelTomado && idsQueDaElNivel.has(toInt(sustituto.Id))))
+        if (!sustituto || nivelClase === nivelTomado)
             return [];
         return [{ ...f, Especial: { ...((f as ClaseEspecialNivel).Especial ?? {}), Id: toInt(sustituto.Id), Nombre: `${sustituto.Nombre ?? ''}` } } as ClaseEspecialNivel];
     }));
@@ -236,14 +236,13 @@ export function detalleConSustituciones(clase: Clase, nivelClase: number, tomado
         Dotes: [...(base.Dotes ?? [])],
     };
     const ajustes = { Ataque_base: 0, Fortaleza: 0, Reflejos: 0, Voluntad: 0 };
-    conDatos.sort((a, b) => a.nivel.Nivel - b.nivel.Nivel).forEach(({ nivel: tomado }) => {
+    conDatos.sort((a, b) => a.nivel.Nivel - b.nivel.Nivel).forEach(({ juego, nivel: tomado }) => {
         tomado.Quita.forEach((quita) => {
             const cantidad = Math.max(1, toInt(quita.Cantidad ?? 1));
             switch (quita.Tipo) {
                 case 'especial':
                 case 'dote':
-                    aplicarQuitaDeFilas(clase, detalle, nivel, tomado.Nivel, quita, quita.Tipo,
-                        new Set(tomado.Especiales.map((e) => toInt((e.Especial as Record<string, any>)?.['Id']))));
+                    aplicarQuitaDeFilas(clase, detalle, nivel, tomado.Nivel, quita, quita.Tipo);
                     break;
                 case 'conjuros_diarios':
                     if (quitaEnElNivel(quita, tomado.Nivel, nivel))
@@ -262,7 +261,11 @@ export function detalleConSustituciones(clase: Clase, nivelClase: number, tomado
             }
         });
         if (tomado.Nivel === nivel) {
-            detalle.Especiales = [...detalle.Especiales, ...tomado.Especiales.map((e) => ({ ...e, Nivel: nivel }))];
+            const delJuego = conDatos.filter((t) => t.juego.Id === juego.Id);
+            const especiales = tomado.Especiales
+                .filter((e) => !e.Por_nivel_del_juego || primerNivelQueLaDa(delJuego, e) === tomado.Nivel)
+                .map((e) => e.Por_nivel_del_juego ? conValorPorNivelesDelJuego(e, delJuego.length) : e);
+            detalle.Especiales = [...detalle.Especiales, ...especiales.map((e) => ({ ...e, Nivel: nivel }))];
             detalle.Dotes = [...detalle.Dotes, ...tomado.Dotes.map((d) => ({ ...d, Nivel: nivel }))];
         }
         if (tomado.Nivel <= nivel) {
@@ -279,6 +282,60 @@ export function detalleConSustituciones(clase: Clase, nivelClase: number, tomado
         Voluntad: ajustarCifras(detalle.Salvaciones.Voluntad, ajustes.Voluntad),
     };
     return detalle;
+}
+
+/** El nivel de clase del primer nivel del juego tomado que da esa aptitud (por su id). */
+function primerNivelQueLaDa(delJuego: readonly NivelDeSustitucion[], especial: ClaseEspecialNivel): number {
+    const id = toInt((especial.Especial as Record<string, any>)?.['Id']);
+    return Math.min(...delJuego
+        .filter((t) => t.nivel.Especiales.some((e) => toInt((e.Especial as Record<string, any>)?.['Id']) === id))
+        .map((t) => t.nivel.Nivel));
+}
+
+/** Multiplica la primera cifra de un texto («+2» por 3, «+6»; «2/día», «6/día»); `null` si no tiene ninguna. */
+export function multiplicarCifra(texto: string | null | undefined, veces: number): string | null {
+    const limpio = `${texto ?? ''}`;
+    const cifra = limpio.match(/[+\-−]?\d+/);
+    if (!cifra)
+        return null;
+    const valor = Number(cifra[0].replace('−', '-')) * Math.max(1, toInt(veces));
+    const conSigno = /^[+\-−]/.test(cifra[0]) ? (valor >= 0 ? `+${valor}` : `${valor}`) : `${valor}`;
+    return limpio.replace(cifra[0], conSigno);
+}
+
+/**
+ * Una aptitud con `Por_nivel_del_juego` con su valor por los `niveles` del juego que tiene (catalogos.md, «Los niveles de
+ * sustitución»): el número de su extra («+2», Perspicacia arcana) o, sin él, lo que suma por sí misma (sus `Modificadores`
+ * y los rangos de sus `Habilidades`). Con un nivel, tal cual.
+ */
+export function conValorPorNivelesDelJuego<T extends ClaseEspecialNivel>(especial: T, niveles: number): T {
+    const veces = Math.max(1, toInt(niveles));
+    if (veces === 1)
+        return especial;
+    const extra = multiplicarCifra(especial.Extra, veces);
+    if (extra !== null)
+        return { ...especial, Extra: extra };
+    const datos = (especial.Especial as Record<string, any>) ?? {};
+    const modificadores = Object.fromEntries(Object.entries(datos['Modificadores'] ?? {})
+        .map(([clave, valor]) => [clave, typeof valor === 'number' ? valor * veces : valor]));
+    const habilidades = (Array.isArray(datos['Habilidades']) ? datos['Habilidades'] : [])
+        .map((h: Record<string, any>) => ({ ...h, Rangos: toInt(h?.['Rangos']) * veces }));
+    return { ...especial, Especial: { ...datos, Modificadores: modificadores, Habilidades: habilidades } };
+}
+
+/**
+ * Las aptitudes de los niveles de sustitución que tiene de la clase, con el valor de las de `Por_nivel_del_juego` por los
+ * niveles del juego que tiene: lo que el motor suma de ellas al recalcular (sus `Modificadores`, sus habilidades y su
+ * armadura natural), como las de la tabla de la clase.
+ */
+export function especialesDeSusSustituciones(clase: Clase | null | undefined, tomados: readonly NivelSustitucionTomado[]): SustitucionEspecialNivel[] {
+    const conDatos = tomadosConDatos(clase, tomados);
+    return conDatos.flatMap(({ juego, nivel }) => {
+        const delJuego = conDatos.filter((t) => t.juego.Id === juego.Id);
+        return nivel.Especiales
+            .filter((e) => !e.Por_nivel_del_juego || primerNivelQueLaDa(delJuego, e) === nivel.Nivel)
+            .map((e) => e.Por_nivel_del_juego ? conValorPorNivelesDelJuego(e, delJuego.length) : e);
+    });
 }
 
 /** Los tipos de quita que no son de una fila de la tabla: las competencias de la clase. */
