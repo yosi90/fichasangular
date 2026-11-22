@@ -5338,7 +5338,8 @@ export class NuevoPersonajeService {
     private conSuAlineamiento(resuelta: FilaMascotaResuelta, mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle,
         tipo: 'companero' | 'familiar'): FilaMascotaResuelta {
         const alineamiento = `${this.personajeCreacion?.Alineamiento ?? ''}`.trim();
-        if (!resuelta.fila || alineamiento.length < 1)
+        // Sin un alineamiento que se entienda, como estaba (al guardar, la API lo juzga).
+        if (!resuelta.fila || getAlineamientoBasicoIdPorNombre(alineamiento) <= 0)
             return resuelta;
         const requeridos = tipo === 'companero'
             ? (mascota as any)?.Alineamientos_requeridos?.Companero ?? []
