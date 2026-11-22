@@ -6,7 +6,6 @@ import { CausaMascotaPerdida, CosteDeLaMascota, MascotaPerdida, SalvacionMascota
 import { TEXTOS_COMPANERO } from './companero-reglas';
 import { tirarDado } from './dados';
 import { TEXTOS_FAMILIAR } from './familiar-reglas';
-import { bajaDeNivel } from './experiencia-nivel';
 import { FuenteMascota, fuentesMascota } from './mascota-cupos';
 import { toInt } from './normalizacion';
 import { totalesPersonaje } from './personaje-totales';
@@ -15,7 +14,7 @@ import { totalesPersonaje } from './personaje-totales';
  * La mascota fuera del reciclaje (contrato: `personajes.md`, «La mascota fuera del reciclaje»; dictamen del máster de Rol del
  * 2026-11-22, en el roadmap): perderla (el compañero se libera o muere; el familiar muere o se abandona), obtener otra y
  * devolverle la vida, como eventos de la sesión abierta. Rol no cuenta el tiempo ni tira la salvación: lo confirma quien
- * apunta. Lo que cuesta sale de la aptitud que la da (`Mascota` del nivel de la clase).
+ * apunta. Lo que cuesta lo calcula la API (`mascotas` de la sesión, `utils/mascota_perdida.coste`): la web no repite la regla.
  */
 
 /** Los textos de cada mascota en la web: su nombre (el de la creación, `TEXTOS_COMPANERO` y `TEXTOS_FAMILIAR`), con artículo y
@@ -57,63 +56,9 @@ export function fuentesDeLaMascota(pj: Personaje | null | undefined, clases: Cla
     return pj ? fuentesMascota(pj, clases, mascota === 'companero' ? 'Otorga_companero' : 'Otorga_familiar') : [];
 }
 
-/**
- * Su coste de la sesión: el de la API (`mascotas` de `GET …/sesiones/{numero}`, ya calculado) o, si no llega (una API de
- * antes de la tanda (j)), el de sus fuentes (`costeDeLasFuentes`, la misma regla que `utils/mascota_perdida.coste`).
- */
-export function costeDeLaMascotaEnLaSesion(mascotas: readonly CosteDeLaMascota[] | null | undefined, mascota: TipoDeMascota,
-    respaldo: () => CosteDeLaMascota): CosteDeLaMascota {
-    return (mascotas ?? []).find((m) => m.mascota === mascota) ?? respaldo();
-}
-
-/** La CD de la salvación del familiar sin su dato en la aptitud (MJ pág. 45). */
-const CD_SIN_DATO = 15;
-
-/**
- * El coste con las fuentes de esa mascota, con la forma de la API, para cuando la sesión no lo trae: los PX de cada clase que
- * se la da por sus niveles, sumados (MJ pág. 44; una vez por clase; el filo aojador, por todos sus niveles, sin el −3), la
- * mitad si supera la salvación, sin bajar de 0, y si con ellos baja de nivel.
- */
-export function costeDeLasFuentes(fuentes: readonly FuenteMascota[], mascota: TipoDeMascota, pxAhora: number, tiene: boolean): CosteDeLaMascota {
-    const vistas = new Set<number>();
-    const tarifaPorClase: CosteDeLaMascota['tarifaPorClase'] = [];
-    const cds: number[] = [];
-    const pos: number[] = [];
-    const horas: number[] = [];
-    let espera: string | null = null;
-    fuentes.forEach((fuente) => {
-        if (vistas.has(fuente.idClase))
-            return;
-        vistas.add(fuente.idClase);
-        const coste = fuente.coste;
-        if (!coste)
-            return;
-        if (coste.pxPerdidaPorNivel !== null && coste.pxPerdidaPorNivel !== undefined) {
-            const nivel = Math.max(0, toInt(fuente.nivelActual));
-            tarifaPorClase.push({ idClase: fuente.idClase, clase: fuente.nombreClase, nivel, px: toInt(coste.pxPerdidaPorNivel) * nivel });
-        }
-        if (coste.cdPerdida !== null && coste.cdPerdida !== undefined)
-            cds.push(toInt(coste.cdPerdida));
-        if (coste.poObtener !== null && coste.poObtener !== undefined)
-            pos.push(Number(coste.poObtener));
-        if (coste.horasObtener !== null && coste.horasObtener !== undefined)
-            horas.push(toInt(coste.horasObtener));
-        espera = espera ?? (coste.esperaReemplazo || null);
-    });
-    const px = Math.max(0, toInt(pxAhora));
-    const tarifa = mascota === 'familiar' ? tarifaPorClase.reduce((total, t) => total + t.px, 0) : 0;
-    const pxSiFalla = Math.max(0, px - tarifa);
-    const pxSiSupera = Math.max(0, px - Math.floor(tarifa / 2));
-    return {
-        mascota, tiene,
-        cd: mascota === 'familiar' ? (cds.length > 0 ? Math.max(...cds) : CD_SIN_DATO) : null,
-        pxAntes: px, pxSiFalla, pxSiSupera,
-        bajaSiFalla: bajaDeNivel(px, pxSiFalla), bajaSiSupera: bajaDeNivel(px, pxSiSupera),
-        poObtener: pos.length > 0 ? Math.max(...pos) : 0,
-        horasObtener: horas.length > 0 ? Math.max(...horas) : null,
-        esperaReemplazo: espera,
-        tarifaPorClase,
-    };
+/** Su coste de la sesión: el de la API (`mascotas` de `GET …/sesiones/{numero}`, ya calculado), o `null` si no le da ninguna. */
+export function costeDeLaMascota(mascotas: readonly CosteDeLaMascota[] | null | undefined, mascota: TipoDeMascota): CosteDeLaMascota | null {
+    return (mascotas ?? []).find((m) => m.mascota === mascota) ?? null;
 }
 
 /** Los PX que le quedan con esa salvación (sin salvación, los de ahora) y si con ellos baja de nivel, de la API. */

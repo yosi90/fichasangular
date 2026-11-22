@@ -70,20 +70,19 @@ const CAUSAS_MASCOTA: ReadonlySet<string> = new Set<CausaMascotaPerdida>(['muert
 
 /** `mascotas` de `GET …/sesiones/{numero}` (contrato, «La mascota fuera del reciclaje»): el coste de cada una; sin ella, vacía. */
 export function leerCostesDeLasMascotas(valor: unknown): CosteDeLaMascota[] {
-    const numeroONulo = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : toInt(v));
     return (Array.isArray(valor) ? valor : [])
         .filter((m: any) => MASCOTAS.has(`${m?.mascota ?? ''}`))
         .map((m: any) => ({
             mascota: m.mascota as TipoDeMascota,
             tiene: m?.tiene === true,
-            cd: numeroONulo(m?.cd),
+            cd: toIntOrNull(m?.cd),
             pxAntes: toInt(m?.pxAntes),
             pxSiFalla: toInt(m?.pxSiFalla),
             pxSiSupera: toInt(m?.pxSiSupera),
             bajaSiFalla: m?.bajaSiFalla === true,
             bajaSiSupera: m?.bajaSiSupera === true,
             poObtener: Number(m?.poObtener) || 0,
-            horasObtener: numeroONulo(m?.horasObtener),
+            horasObtener: toIntOrNull(m?.horasObtener),
             esperaReemplazo: `${m?.esperaReemplazo ?? ''}`.trim() || null,
             tarifaPorClase: (Array.isArray(m?.tarifaPorClase) ? m.tarifaPorClase : []).map((t: any) => ({
                 idClase: toInt(t?.idClase), clase: `${t?.clase ?? ''}`.trim(), nivel: toInt(t?.nivel), px: toInt(t?.px),

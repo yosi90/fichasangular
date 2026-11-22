@@ -186,6 +186,7 @@ import {
 } from 'src/app/services/utils/tienda-equipo';
 import { ModoHomebrewCampana, campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, maximoFuentesHomebrew, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from 'src/app/services/utils/extras-dotes';
+import { doteSoportaArmaduras, doteSoportaEscudos } from 'src/app/services/utils/dote-extras-soportados';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { comoSaleLaEdadDelManual, edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
@@ -8097,9 +8098,7 @@ export class NuevoPersonajeComponent {
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoArmas, idExtra));
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoGruposArmas, idExtra));
         }
-        const soportaArmaduras = Number(rawDote.Extras_soportados?.Extra_armadura_armaduras ?? rawDote.Extras_soportados?.Extra_armadura ?? 0) > 0;
-        const soportaEscudos = Number(rawDote.Extras_soportados?.Extra_armadura_escudos ?? rawDote.Extras_soportados?.Extra_armadura ?? 0) > 0;
-        if (extraEnArmaduras || soportaArmaduras || soportaEscudos) {
+        if (extraEnArmaduras || doteSoportaArmaduras(rawDote) || doteSoportaEscudos(rawDote)) {
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoArmaduras, idExtra));
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoGruposArmaduras, idExtra));
         }

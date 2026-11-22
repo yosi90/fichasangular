@@ -8392,7 +8392,7 @@ export class NuevoPersonajeService {
     }
 
     private aplicarIdiomasPrimerNivelClase(clase: Clase): void {
-        const origen = `${clase.Nombre} nivel 1`;
+        const origen = origenDeNivelDeClase(clase.Nombre, 1);
         this.aplicarIdiomasAutomaticos(origen, clase?.Idiomas ?? [])
             .forEach((idioma) => this.apuntarIdiomaEnNivel(idioma, origen));
     }
