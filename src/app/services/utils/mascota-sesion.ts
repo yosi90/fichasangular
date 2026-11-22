@@ -4,6 +4,7 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { CausaMascotaPerdida, MascotaPerdida, SalvacionMascota, TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { TEXTOS_COMPANERO } from './companero-reglas';
+import { tirarDado } from './dados';
 import { TEXTOS_FAMILIAR } from './familiar-reglas';
 import { FuenteMascota, fuentesMascota } from './mascota-cupos';
 import { toInt } from './normalizacion';
@@ -113,8 +114,8 @@ export function fortalezaDelPersonaje(pj: Personaje | null | undefined): number 
     return toInt(totalesPersonaje(pj)?.salvaciones?.fortaleza?.total);
 }
 
-/** La tirada de ayuda: d20 + su Fortaleza contra la CD (la apunta quien juega: Rol no la tira por él). */
-export function tirarFortaleza(fortaleza: number, cd: number, d20: number = 1 + Math.floor(Math.random() * 20)): { d20: number; total: number; salvacion: SalvacionMascota; } {
+/** La tirada de ayuda: d20 (`tirarDado`, el de la pestaña «Dados») + su Fortaleza contra la CD (la apunta quien juega: Rol no la tira por él). */
+export function tirarFortaleza(fortaleza: number, cd: number, d20: number = tirarDado(20)): { d20: number; total: number; salvacion: SalvacionMascota; } {
     const total = toInt(d20) + toInt(fortaleza);
     return { d20: toInt(d20), total, salvacion: total >= toInt(cd) ? 'superada' : 'fallada' };
 }
