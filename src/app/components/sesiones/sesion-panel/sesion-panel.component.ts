@@ -393,7 +393,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
 
     /** Su compañero animal (uno solo por personaje), si lo tiene. */
     get companero(): CompaneroMonstruoDetalle | null {
-        return (this.pj?.Companeros ?? [])[0] ?? null;
+        return mascotaDeLaFicha(this.pj, 'companero') as CompaneroMonstruoDetalle | null;
     }
 
     // La mascota fuera del reciclaje (contrato: personajes.md, «La mascota fuera del reciclaje»)

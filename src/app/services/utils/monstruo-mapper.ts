@@ -1,4 +1,5 @@
 import { datoDePreferencia } from 'src/app/services/utils/alineamiento-contrato';
+import { TIPOS_DE_MASCOTA } from 'src/app/interfaces/sesiones';
 import { Alineamiento } from "src/app/interfaces/alineamiento";
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { DoteContextual } from "src/app/interfaces/dote-contextual";
@@ -18,7 +19,6 @@ import {
     FamiliarProgresion,
     FamiliarTabla,
     MascotaAptitudNivel,
-    MascotaDeFila,
     MonstruoAlineamientoBasicoRef,
     MonstruoAlineamientosRequeridos,
     MonstruoAtaque,
@@ -192,7 +192,6 @@ function normalizeHabilidad(raw: any): MonstruoHabilidad {
     };
 }
 
-const MASCOTAS_DE_FILA: readonly MascotaDeFila[] = ['companero', 'familiar'];
 
 /** `Valor`, `Prohibe` e `Id_prioridad` de una preferencia de la fila, si llegan (sin `Valor`, nada). */
 function datoDePreferenciaDeFila(raw: any): { Valor?: number; Prohibe?: boolean; Id_prioridad?: number; } {
@@ -231,7 +230,7 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
             Id: toNumber(raw?.Dote?.Id),
             Nombre: toText(raw?.Dote?.Nombre),
         },
-        Mascota: MASCOTAS_DE_FILA.includes(raw?.Mascota) ? raw.Mascota : null,
+        Mascota: TIPOS_DE_MASCOTA.includes(raw?.Mascota) ? raw.Mascota : null,
         // Lo que la fila le da a la criatura (tanda (g), F21; contrato: personajes.md, «F21: la Inteligencia de su fila»):
         // su Inteligencia (`null`, la de su monstruo) y si sus DG adicionales no le dan habilidades ni dotes.
         Inteligencia: raw?.Inteligencia === null || raw?.Inteligencia === undefined ? null : toInt(raw.Inteligencia),

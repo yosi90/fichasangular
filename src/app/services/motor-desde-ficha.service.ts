@@ -3,7 +3,7 @@ import { firstValueFrom, Observable, take } from 'rxjs';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeContextoIdsDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { HistorialSesiones, MascotaPerdida, NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
+import { CosteDeLaMascota, HistorialSesiones, MascotaPerdida, NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { ArmaService } from './arma.service';
 import { ArmaduraService } from './armadura.service';
 import { ClaseService } from './clase.service';
@@ -40,6 +40,8 @@ export interface SesionCargada {
     nivelesPerdidos?: NivelPerdido[];
     /** Las mascotas que siguen perdidas (contrato, «La mascota fuera del reciclaje»). */
     mascotasPerdidas?: MascotaPerdida[];
+    /** Lo que le costaría perder u obtener cada mascota, de la API (`mascotas`). */
+    mascotas?: CosteDeLaMascota[];
 }
 
 /**
@@ -91,14 +93,14 @@ export class MotorDesdeFichaService {
      */
     async cargarSesion(motor: NuevoPersonajeService, idPersonaje: number, numero: number, sigue: () => boolean)
         : Promise<SesionCargada | null> {
-        const { sesion, ficha, entrada, nivelesPerdidos, mascotasPerdidas } = await this.sesionesSvc.sesion(idPersonaje, numero);
+        const { sesion, ficha, entrada, nivelesPerdidos, mascotasPerdidas, mascotas } = await this.sesionesSvc.sesion(idPersonaje, numero);
         if (!sigue())
             return null;
         if (!entrada)
             throw new Error('La API no ha dado la ficha de la sesión abierta.');
         const pj = this.personajeSvc.fichaDeApi(ficha);
         await this.cargarCatalogos(motor);
-        return { sesion, entrada, pj, nivelesPerdidos: nivelesPerdidos ?? [], mascotasPerdidas: mascotasPerdidas ?? [] };
+        return { sesion, entrada, pj, nivelesPerdidos: nivelesPerdidos ?? [], mascotasPerdidas: mascotasPerdidas ?? [], mascotas: mascotas ?? [] };
     }
 
     /**

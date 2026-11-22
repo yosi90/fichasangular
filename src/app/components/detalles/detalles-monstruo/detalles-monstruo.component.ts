@@ -15,7 +15,8 @@ import {
 } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
-import { MascotaDeFila, MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { UserService } from 'src/app/services/user.service';
 import { esMonstruoDerivado } from 'src/app/services/utils/monstruo-mapper';
 import { trucosParaLaFicha } from 'src/app/services/utils/companero-trucos';
@@ -457,7 +458,7 @@ export class DetallesMonstruoComponent {
             }));
     }
 
-    private getNivelesClaseNormalizados(): Array<NivelClaseRequerido & { mascota: MascotaDeFila | null; }> {
+    private getNivelesClaseNormalizados(): Array<NivelClaseRequerido & { mascota: TipoDeMascota | null; }> {
         return (this.monstruo?.Niveles_clase ?? [])
             .filter(item => toNumber(item?.Clase?.Id) > 0 && tieneTextoVisible(item?.Clase?.Nombre))
             .map((item) => ({
@@ -476,7 +477,7 @@ export class DetallesMonstruoComponent {
      * clase; el animal celestial de Compañero elevado, de compañero). Sin ella (su clase no da ninguna), por lo que puede
      * ser el monstruo: de compañero si puede serlo (`Companero`) y, si no, de familiar; así no se pierde la fila.
      */
-    private getContextosNivelClase(nivel: NivelClaseRequerido & { mascota: MascotaDeFila | null; }): Array<'Familiar' | 'Companero'> {
+    private getContextosNivelClase(nivel: NivelClaseRequerido & { mascota: TipoDeMascota | null; }): Array<'Familiar' | 'Companero'> {
         if (nivel.mascota === 'familiar')
             return ['Familiar'];
         if (nivel.mascota === 'companero')

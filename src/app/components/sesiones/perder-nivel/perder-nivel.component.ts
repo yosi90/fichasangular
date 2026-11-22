@@ -14,14 +14,15 @@ import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service'
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
-import { caracteristicaDelAlta } from 'src/app/services/utils/correccion-ficha';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
     CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave,
-    dotesQuePuedePerder, fichaConConstitucionPerdida, FilaPerdida, filasDelNivelPerdido, indiceDelNivelQueSePierde,
-    marcarDotesSinPrerrequisitos, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel, pxTrasPerder, pxTrasPerderExperiencia, quitadoVacio,
-    ResultadoPerdida,
+    dotesQuePuedePerder, fichaConConstitucionPerdida, FilaPerdida, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos,
+    ordenPorConocer, pxTrasPerder, pxTrasPerderExperiencia, quitadoVacio, ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
+import {
+    DoteSinPrerrequisitos, filaSinPrerrequisitos, filasDeLaPerdidaConTodo, perdidaDeUnNivelConTodo,
+} from 'src/app/services/utils/perdida-con-todo';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { filasDeLasMascotas, perdidaConSusMascotas } from 'src/app/services/utils/mascota-al-dia';
 import { esConversion } from 'src/app/services/utils/conversion-muerto-viviente';
@@ -63,7 +64,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
     /** Con la causa `experiencia`: los PX que pierde (0, el siguiente nivel de una pérdida que baja varios). */
     pxPerdidos = 0;
     /** Las dotes que se quedan sin un prerrequisito: se conservan sin poder usarse (MJ pág. 87). */
-    sinPrerrequisitos: Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> = [];
+    sinPrerrequisitos: DoteSinPrerrequisitos[] = [];
     /** Con el orden de sus niveles por conocer: la clase que pierde el nivel, la característica del incremento y la dote. */
     idClaseElegida: number | null = null;
     incrementoElegido: number | null = null;
@@ -245,7 +246,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
                 { que: 'Constitución', antes: `${con.antes}`, ahora: `${con.despues}` },
                 { que: 'Puntos de golpe', antes: `${con.pg.antes}`, ahora: `${con.pg.despues}` },
                 { que: 'PX', antes: this.px(px), ahora: `${this.px(px)} (los conserva)` },
-                ...this.filaSinPrerrequisitos(),
+                ...filaSinPrerrequisitos(this.sinPrerrequisitos),
                 ...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado, this.svc.nombresDeLoQueEligeLaMascota()),
             ];
             return;
@@ -255,39 +256,19 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             this.impedimento = 'Elige la clase que pierde el nivel.';
             return;
         }
-        const { resultado, nivel, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
+        // Con todo lo que se le cae: las dotes sin sus prerrequisitos y sus mascotas, juzgadas otra vez sin el nivel
+        // (`perdidaDeUnNivelConTodo`, la misma que la mascota perdida que baja un nivel).
+        const perdida = perdidaDeUnNivelConTodo(this.svc, this.motor, {
             entrada, indice, dgs: this.dgs, incremento: this.incrementoElegido, dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
         });
-        const caracteristicaQueBaja = resultado.quitado.incremento !== null ? caracteristicaDelAlta(resultado.quitado.incremento)?.[1] : null;
-        this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({
-            idClase: nivel.idClase,
-            ataqueBase: resultado.ataqueBase.despues,
-            caracteristica: caracteristicaQueBaja ? { clave: caracteristicaQueBaja, menos: 1 } : null,
-            rangos: resultado.quitado.rangos,
-            dotesQuitadas: resultado.quitado.dotes,
-        });
-        // Sus mascotas, juzgadas otra vez sin el nivel (contrato, «La mascota inactiva…»): con los valores de su nivel nuevo o
-        // inactivas hasta que vuelvan a cumplir.
-        const conMascotas = perdidaConSusMascotas(this.svc, this.motor, entrada,
-            { ...resultado, ficha: marcarDotesSinPrerrequisitos(resultado.ficha, this.sinPrerrequisitos) }, { idClase: nivel.idClase, indice });
-        this.resultado = conMascotas.resultado;
-        const filas: FilaPerdida[] = [
-            filaDelNivel,
+        this.sinPrerrequisitos = perdida.sinPrerrequisitos;
+        this.resultado = perdida.resultado;
+        this.filas = [
+            perdida.filaDelNivel,
             { que: 'NEP', antes: `${nep}`, ahora: `${nep - 1}` },
             { que: 'PX', antes: this.px(px), ahora: this.px(porExperiencia ? porExperiencia.px : pxTrasPerder(px, nep - 1)) },
-            { que: 'Puntos de golpe', antes: `${resultado.pg.antes}`, ahora: `${resultado.pg.despues}${resultado.pg.exacto ? '' : ' (aproximado)'}` },
+            ...filasDeLaPerdidaConTodo(this.svc, this.pj, entrada, perdida),
         ];
-        filas.push(...filasDelNivelPerdido(resultado, nombresDeLaFicha(this.svc, this.pj, entrada)));
-        filas.push(...this.filaSinPrerrequisitos());
-        filas.push(...filasDeLasMascotas(entrada, this.resultado.ficha, conMascotas.estado, this.svc.nombresDeLoQueEligeLaMascota()));
-        this.filas = filas;
-    }
-
-    /** «Sin poder usar»: las dotes que se conservan sin sus prerrequisitos (vuelven a valer al cumplirlos). */
-    private filaSinPrerrequisitos(): FilaPerdida[] {
-        return this.sinPrerrequisitos.length > 0
-            ? [{ que: 'Sin poder usar (hasta cumplir de nuevo sus prerrequisitos)', antes: this.sinPrerrequisitos.map((d) => d.nombre).join(', '), ahora: 'Las conserva' }]
-            : [];
     }
 
     // --- Guardar -------------------------------------------------------------------------------------------------------

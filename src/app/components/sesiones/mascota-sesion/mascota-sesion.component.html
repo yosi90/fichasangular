@@ -37,14 +37,14 @@
             </p>
             <ng-container *ngIf="mascota === 'familiar'">
                 <p class="subida__nota">
-                    Si muere o lo abandona, su amo hace una salvación de Fortaleza (CD {{cd}}): pierde {{px(coste?.tarifa ?? 0)}} PX
+                    Si muere o lo abandona, su amo hace una salvación de Fortaleza (CD {{cd ?? '—'}}): pierde {{px((coste?.pxAntes ?? 0) - (coste?.pxSiFalla ?? 0))}} PX
                     si la falla y la mitad si la supera, sin bajar de 0 (Manual del jugador, pág. 45). No puede tener otro hasta
                     pasado un año y un día. La tirada la apunta quien juega: «Tirar» solo es una ayuda (d20 + su Fortaleza).
                 </p>
                 <div class="subida__botones" role="radiogroup" aria-label="La salvación de Fortaleza">
                     <button mat-stroked-button type="button" [color]="salvacion === 'superada' ? 'primary' : undefined" [attr.aria-pressed]="salvacion === 'superada'" (click)="elegirSalvacion('superada')">La superó</button>
                     <button mat-stroked-button type="button" [color]="salvacion === 'fallada' ? 'primary' : undefined" [attr.aria-pressed]="salvacion === 'fallada'" (click)="elegirSalvacion('fallada')">La falló</button>
-                    <button mat-button type="button" (click)="tirar()"><mat-icon aria-hidden="true">casino</mat-icon> Tirar</button>
+                    <button mat-button type="button" [disabled]="cd === null" (click)="tirar()"><mat-icon aria-hidden="true">casino</mat-icon> Tirar</button>
                     <span *ngIf="tirada" class="subida__nota">d20 {{tirada.d20}} + Fortaleza = {{tirada.total}} contra CD {{cd}}</span>
                 </div>
             </ng-container>
@@ -54,10 +54,10 @@
                     nivel que ganó, sin punto medio, como al perder PX (Manual del jugador, pág. 45).</p>
                 <ng-container *ngIf="sinOrden">
                     <h2 class="subida__seccion">Su ficha no sabe en qué orden ganó sus niveles</h2>
-                    <app-nivel-que-pierde [clases]="clases" [caracteristicas]="[]" [dotes]="dotes"
-                        [idClase]="idClaseElegida" [incremento]="null" [dote]="doteElegida"
-                        [pideIncremento]="false" [pideDote]="pideDote"
-                        (claseElegida)="elegirClase($event)" (doteElegida)="elegirDote($event)">
+                    <app-nivel-que-pierde [clases]="clases" [caracteristicas]="caracteristicas" [dotes]="dotes"
+                        [idClase]="idClaseElegida" [incremento]="incrementoElegido" [dote]="doteElegida"
+                        [pideIncremento]="pideIncremento" [pideDote]="pideDote"
+                        (claseElegida)="elegirClase($event)" (incrementoElegido)="elegirIncremento($event)" (doteElegida)="elegirDote($event)">
                     </app-nivel-que-pierde>
                 </ng-container>
             </ng-container>
@@ -99,7 +99,7 @@
                 <p *ngIf="mascota === 'companero'" class="subida__nota">Con una ceremonia de 24 horas de oración, sin coste (Manual del
                     jugador, pág. 35): el selector de la creación, con las listas a su nivel efectivo de ahora, y después lo que elige
                     con sus DG adicionales (sus rangos, sus dotes, sus mejoras y sus trucos adicionales).</p>
-                <p *ngIf="mascota === 'familiar'" class="subida__nota">Lleva 24 horas y cuesta {{precio(coste?.po ?? 0)}} (Manual del
+                <p *ngIf="mascota === 'familiar'" class="subida__nota">Lleva 24 horas y cuesta {{precio(coste?.poObtener ?? 0)}} (Manual del
                     jugador, pág. 45): el selector de la creación, con las listas al nivel de su amo de ahora.</p>
                 <p *ngIf="perdida && perdida.causa" class="subida__nota">Perdió a {{perdida.nombre || 'su mascota'}}.</p>
             </section>
@@ -132,10 +132,10 @@
                     <input type="checkbox" [checked]="plazoCumplido" (change)="plazoCumplido = $any($event.target).checked">
                     Ha pasado {{plazo}} desde que perdió a {{perdida?.nombre || 'su familiar'}} (Manual del jugador, pág. 45).
                 </label>
-                <ng-container *ngIf="mascota === 'familiar' && (coste?.po ?? 0) > 0">
+                <ng-container *ngIf="mascota === 'familiar' && (coste?.poObtener ?? 0) > 0">
                     <label class="subida__campo subida__campo--casilla">
                         <input type="checkbox" [checked]="poPagadasPorOtro" (change)="poPagadasPorOtro = $any($event.target).checked">
-                        Las {{precio(coste?.po ?? 0)}} las paga otro
+                        Las {{precio(coste?.poObtener ?? 0)}} las paga otro
                     </label>
                     <p *ngIf="!poPagadasPorOtro" class="subida__nota">Se pagan de su saldo ({{precio(saldo)}}).</p>
                 </ng-container>

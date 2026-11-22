@@ -144,6 +144,28 @@ export interface SesionConFicha {
     nivelesPerdidos?: NivelPerdido[];
     /** Para quien apunta: las mascotas que siguen perdidas (una por mascota; contrato, «La mascota fuera del reciclaje»). */
     mascotasPerdidas?: MascotaPerdida[];
+    /** Para quien apunta: lo que le costaría perder u obtener cada mascota, ya calculado por la API (`mascotas`, tanda (j)). */
+    mascotas?: CosteDeLaMascota[];
+}
+
+/**
+ * Lo que le costaría perder u obtener una mascota (`mascotas` de `GET …/sesiones/{numero}`, contrato «La mascota fuera del
+ * reciclaje»), ya calculado por la API: los PX de ahora y los que le quedarían si falla o supera la salvación de Fortaleza,
+ * si con ellos baja de nivel, la CD (`null` en el compañero, que no cuesta PX) y lo que cuesta obtenerla.
+ */
+export interface CosteDeLaMascota {
+    mascota: TipoDeMascota;
+    tiene: boolean;
+    cd: number | null;
+    pxAntes: number;
+    pxSiFalla: number;
+    pxSiSupera: number;
+    bajaSiFalla: boolean;
+    bajaSiSupera: boolean;
+    poObtener: number;
+    horasObtener: number | null;
+    esperaReemplazo: string | null;
+    tarifaPorClase: Array<{ idClase: number; clase: string; nivel: number; px: number; }>;
 }
 
 /** Las dos mascotas, como en el contrato: la de los eventos de la mascota y la del hueco del reciclaje (`hueco.mascota`). */

@@ -33,7 +33,7 @@ import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
 import { EspecialSustituido, ListaLanzamientoRaza, Raza, RazaPlantillaReferencia } from '../interfaces/raza';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
-import { NivelPerdido } from '../interfaces/sesiones';
+import { NivelPerdido, TipoDeMascota } from '../interfaces/sesiones';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
@@ -3975,7 +3975,7 @@ export class NuevoPersonajeService {
      * por su id, o con el extra de la mascota) y, del familiar, las dotes con su origen (Alerta). Lo quitan quitar la mascota
      * y dejarla inactiva (`ponerMascotasAlDia`). Una aptitud que también da la otra mascota, si la tiene activa, se queda.
      */
-    private quitarLoQueLeDaSuMascota(tipo: 'companero' | 'familiar'): void {
+    private quitarLoQueLeDaSuMascota(tipo: TipoDeMascota): void {
         const pj = this.personajeCreacion;
         const otra = tipo === 'companero' ? (pj.Familiares ?? [])[0] : (pj.Companeros ?? [])[0];
         const deLaOtra = otra && !otra.Inactiva ? this.loQueDaLaMascotaAlAmo(tipo === 'companero' ? 'familiar' : 'companero').especiales : new Set<number>();
@@ -3995,7 +3995,7 @@ export class NuevoPersonajeService {
      * Lo que da al amo la tabla de su mascota (`tipo`), a cualquier nivel (`Destinatario` `amo` o `ambos` de
      * `GET /companeros/progresion` o de las tablas de `GET /familiares/progresion`): los ids de las aptitudes y de las dotes.
      */
-    private loQueDaLaMascotaAlAmo(tipo: 'companero' | 'familiar'): LoQueDanLasMascotasAlAmo {
+    private loQueDaLaMascotaAlAmo(tipo: TipoDeMascota): LoQueDanLasMascotasAlAmo {
         const aptitudes: MascotaAptitudNivel[] = tipo === 'companero'
             ? [...(this.progresionCompanero?.Aptitudes ?? [])]
             : (this.progresionFamiliar?.Tablas ?? []).flatMap((tabla) => tabla?.Aptitudes ?? []);
@@ -5348,7 +5348,7 @@ export class NuevoPersonajeService {
      * inactiva (contrato: personajes.md, «La mascota y el alineamiento»). Sin alineamiento, como estaba.
      */
     private conSuAlineamiento(resuelta: FilaMascotaResuelta, mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle,
-        tipo: 'companero' | 'familiar'): FilaMascotaResuelta {
+        tipo: TipoDeMascota): FilaMascotaResuelta {
         const alineamiento = `${this.personajeCreacion?.Alineamiento ?? ''}`.trim();
         // Sin un alineamiento que se entienda, como estaba (al guardar, la API lo juzga).
         if (!resuelta.fila || getAlineamientoBasicoIdPorNombre(alineamiento) <= 0)
@@ -5491,7 +5491,7 @@ export class NuevoPersonajeService {
             aptitudes: (monstruoTieneDote: (idDote: number) => boolean) => AptitudesMascotaDelNivel<A>;
             esDotePropia: (item: { Contexto?: Record<string, any> | null; } | null | undefined) => boolean;
             extra: string;
-            entidad: 'companero' | 'familiar';
+            entidad: TipoDeMascota;
             dotesDelAmo?: (aptitud: A) => boolean;
         },
     ): AptitudesMascotaAgregadas {
@@ -5734,7 +5734,7 @@ export class NuevoPersonajeService {
      * toque o la resistencia a conjuros del familiar), con su `entidad` en el contexto; `false` si ya la tiene.
      */
     private asegurarEspecialMascota(mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle, idEspecial: number, nombre: string,
-        entidad: 'companero' | 'familiar'): boolean {
+        entidad: TipoDeMascota): boolean {
         const nombreEspecial = `${nombre ?? ''}`.trim();
         const especiales = Array.isArray(mascota?.Especiales) ? [...mascota.Especiales] : [];
         const duplicado = especiales.some((item) =>
