@@ -130,7 +130,7 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
     }
 
     corregir(): void {
-        this.puertaSubida.solicitarCorreccion(this.idPersonaje);
+        this.puertaSubida.solicitar(this.idPersonaje, 'correccion');
     }
 
     /** «Adquirir una plantilla» (fase 7): quien apunta, con una sesión de juego abierta (en la 0 se eligen al crear). */
@@ -139,7 +139,7 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
     }
 
     adquirirPlantilla(): void {
-        this.puertaSubida.solicitarPlantilla(this.idPersonaje);
+        this.puertaSubida.solicitar(this.idPersonaje, 'plantilla');
     }
 
     /**
@@ -151,7 +151,7 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
     }
 
     adquirirRazaMutada(): void {
-        this.puertaSubida.solicitarMutacion(this.idPersonaje);
+        this.puertaSubida.solicitar(this.idPersonaje, 'mutacion');
     }
 
     /**
@@ -165,12 +165,12 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
     }
 
     devolverLaVida(): void {
-        this.puertaSubida.solicitarVuelta(this.idPersonaje);
+        this.puertaSubida.solicitar(this.idPersonaje, 'vuelta');
     }
 
     /** «Perder un nivel» (fase 7, segunda tanda): quien apunta, con una sesión de juego abierta, como la plantilla. */
     perderNivel(): void {
-        this.puertaSubida.solicitarPerdida(this.idPersonaje);
+        this.puertaSubida.solicitar(this.idPersonaje, 'perdida');
     }
 
     /** Cuántos niveles consumidos por un nivel negativo le devolvería un restablecimiento (lo dice la API). */

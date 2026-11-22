@@ -20,6 +20,7 @@ import {
     agruparPrerrequisitos,
     destinoPrerrequisito,
 } from 'src/app/services/utils/prerrequisito-frase';
+import { doteAdmiteExtra } from 'src/app/services/utils/dote-extras-soportados';
 
 type ElementoVisual = {
     nombre: string;
@@ -1120,15 +1121,7 @@ export class DetallesClaseComponent {
     }
 
     private doteTieneExtras(doteNivel: ClaseDoteNivel): boolean {
-        const soportados = doteNivel?.Dote?.Extras_soportados;
-        const soportaTipo = !!soportados && (
-            Number(soportados.Extra_arma) > 0
-            || Number(soportados.Extra_armadura_armaduras ?? soportados.Extra_armadura) > 0
-            || Number(soportados.Extra_armadura_escudos ?? soportados.Extra_armadura) > 0
-            || Number(soportados.Extra_escuela) > 0
-            || Number(soportados.Extra_habilidad) > 0
-        );
-        return soportaTipo || this.getExtrasDisponiblesDote(doteNivel).length > 0;
+        return doteAdmiteExtra(doteNivel?.Dote) || this.getExtrasDisponiblesDote(doteNivel).length > 0;
     }
 
     private esExtraDesconocido(extra: string): boolean {

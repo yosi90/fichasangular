@@ -91,6 +91,7 @@ import { cambiosDeLasMascotas, sinLoQueYaNoDaLaMascota } from 'src/app/services/
 import { sinMascotaNueva, TEXTOS_MASCOTA } from 'src/app/services/utils/mascota-sesion';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
+import { tirarDado } from 'src/app/services/utils/dados';
 
 /** El borrador de la subida (`fichas35.subidaNivel.draft.v1.<uid>.<id>`), solo de esta cuenta y este personaje. */
 interface BorradorSubida {
@@ -611,6 +612,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const elegida = await this.abrirModal<SelectorEspecialidadMagicaConfirmacion>(SelectorEspecialidadMagicaModalComponent, {
             titulo: 'Reciclar la especialización', nombreClase: hueco.clase, mostrarArcano: true, mostrarPsionico: false, escuelas,
             escuelaFija: hueco.escuelaFija, disciplinas: [], cancelable: true,
+            seleccionInicial: { especialista: hueco.tiene.especialista?.id ?? null, prohibidas: hueco.tiene.prohibidas.map((e) => e.id) },
         }, ['confirmar'], ['cancelar']);
         if (!elegida?.arcana)
             return;
@@ -956,7 +958,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     tirar(): void {
         if (this.tiradas.length >= this.tiradasPermitidas || this.carasDg < 1)
             return;
-        const tirada = 1 + Math.floor(Math.random() * this.carasDg);
+        const tirada = tirarDado(this.carasDg);
         this.tiradas = [...this.tiradas, tirada];
         this.tiradaElegida = Math.max(this.tiradaElegida ?? 0, tirada);
         this.calcularPg();

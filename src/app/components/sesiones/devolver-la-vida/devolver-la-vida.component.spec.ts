@@ -347,8 +347,8 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
             // Trepar 9 con un máximo de 5 (nivel 2 + 3): −3 de guerrero 2 y −1 de guerrero 1, que vuelven a esos niveles; y
             // los ×4 de su primer DG, 3 × (2 + 4 de Int), en guerrero 1.
             expect(componente.pasos).toEqual(['habilidades', 'resumen']);
-            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['guerrero 1', 19], ['guerrero 2', 3]]);
-            expect(componente.tituloDelReparto).toBe('Habilidades de guerrero 1: 19 puntos (su primer DG: ×4)');
+            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['nivel 1 (guerrero 1)', 19], ['nivel 2 (guerrero 2)', 3]]);
+            expect(componente.tituloDelReparto).toBe('Habilidades de nivel 1 (guerrero 1): 19 puntos (su primer DG: ×4)');
             expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(19);
             expect(componente.puedeGuardar).toBeFalse();
             fixture.detectChanges();
@@ -359,7 +359,7 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
             expect(componente.eleccionEmpezada).toBeTrue();
             componente.elegirMedio(componente.medios[0]);
             expect(componente.pierdeNivel).toBeFalse();
-            expect(componente.tituloDelReparto).toBe('Habilidades de guerrero 2: 3 puntos que vuelven');
+            expect(componente.tituloDelReparto).toBe('Habilidades de nivel 2 (guerrero 2): 3 puntos que vuelven');
             repartirYSeguir(componente);
             await fixture.whenStable();
             expect(componente.paso).toBe('resumen');
@@ -385,8 +385,8 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
             const fila = (que: string) => componente.cambios.find((c) => c.que === que);
             expect([fila('Niveles de después')?.antes, fila('Niveles de después')?.ahora]).toEqual(['Nivel de personaje 5.º a 6.º', 'Nivel de personaje 1.º a 2.º']);
             expect(fila('Primer DG')?.antes).toBe('Guerrero 1');
-            expect(fila('Rangos que pasan del máximo')?.antes).toBe('Trepar −3 (guerrero 2), Trepar −1 (guerrero 1)');
-            expect(fila('Rangos repartidos')?.ahora).toContain('(guerrero 1)');
+            expect(fila('Rangos que pasan del máximo')?.antes).toBe('Trepar −3 en el nivel 2 (guerrero 2), Trepar −1 en el nivel 1 (guerrero 1)');
+            expect(fila('Rangos repartidos')?.ahora).toContain('en el nivel 1 (guerrero 1)');
             expect(componente.puedeGuardar).toBeTrue();
 
             spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
@@ -409,7 +409,7 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
             componente.calcular();
             // Trepar 6 con un máximo de 4: −2 de guerrero 1, y sus ×4 (18).
             expect(componente.pasos).toEqual(['habilidades', 'dotes', 'resumen']);
-            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['guerrero 1', 20]]);
+            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['nivel 1 (guerrero 1)', 20]]);
             expect(componente.renumerado?.dote).toEqual({ indice: 0, nivelPersonaje: 1 });
             repartirYSeguir(componente);
             await fixture.whenStable();
@@ -455,7 +455,7 @@ describe('DevolverLaVidaComponent (devolver la vida a un muerto viviente, fase 7
             expect(entrada.caracteristicas.inteligencia.valor).toBe(11);
             componente.calcular();
             // Su primer DG, guerrero 1: 3 × (2 + 0) + 3 del humano.
-            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['guerrero 1', 9]]);
+            expect(componente.renumerado?.repartos.map((r) => [r.etiqueta, r.puntos])).toEqual([['nivel 1 (guerrero 1)', 9]]);
             repartirYSeguir(componente);
             await fixture.whenStable();
             const ficha: any = componente.ficha;

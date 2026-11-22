@@ -145,7 +145,7 @@ describe('HistorialSesionesComponent', () => {
         await crear('historial_con_abierta');
         expect(boton('Adquirir una plantilla')).toBeTruthy();
         const pedidas: number[] = [];
-        puerta.mutaciones$.subscribe((id) => pedidas.push(id));
+        puerta.solicitudes$.subscribe((s) => s.modo === 'mutacion' && pedidas.push(s.idPersonaje));
         boton('Adquirir una raza mutada')!.click();
         expect(pedidas).toEqual([129]);
 
@@ -168,7 +168,7 @@ describe('HistorialSesionesComponent', () => {
         component.clases = [{ Id: 482, Nombre: 'Engendro vampírico', Mutacion: { Id: 1009, Nombre: 'Engendro vampírico' } } as any];
         fixture.detectChanges();
         const pedidas: number[] = [];
-        puerta.vueltas$.subscribe((id) => pedidas.push(id));
+        puerta.solicitudes$.subscribe((s) => s.modo === 'vuelta' && pedidas.push(s.idPersonaje));
         boton('Devolver la vida')!.click();
         expect(pedidas).toEqual([129]);
     });

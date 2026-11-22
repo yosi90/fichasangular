@@ -1,5 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, QueryList, SimpleChanges, Type, ViewChild, ViewChildren } from '@angular/core';
-import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { ModoPestanaSesion, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
@@ -70,7 +70,7 @@ type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
  * Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección, la plantilla, la raza
  * mutada, la pérdida, la vuelta a la vida y completar el compañero.
  */
-export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla' | 'mutacion' | 'perdida' | 'vuelta' | 'companero' | 'mascota';
+export type { ModoPestanaSesion } from 'src/app/services/subida-nivel-puerta.service';
 
 /** Lo que enseña la pestaña de cada modo y cómo se carga su componente (carga diferida: el bundle inicial va al tope). */
 export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; corta: string; icono: string; cargar: () => Promise<Type<unknown>>; }> = {
@@ -269,25 +269,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .subscribe((apertura) => this.abrirDesdeNavegacion(apertura));
         this.puertaSubida?.solicitudes$
             .pipe(takeUntil(this.destroy$))
-            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje));
-        this.puertaSubida?.correcciones$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'correccion'));
-        this.puertaSubida?.plantillas$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'plantilla'));
-        this.puertaSubida?.mutaciones$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'mutacion'));
-        this.puertaSubida?.perdidas$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'perdida'));
-        this.puertaSubida?.vueltas$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'vuelta'));
-        this.puertaSubida?.companeros$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'companero'));
+            .subscribe((s) => void this.abrirSubidaNivel(s.idPersonaje, s.modo));
         // La mascota fuera del reciclaje: una pestaña por personaje; otra acción la vuelve a abrir con la suya.
         this.puertaSubida?.mascotas$
             .pipe(takeUntil(this.destroy$))

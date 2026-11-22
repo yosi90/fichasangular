@@ -35,7 +35,17 @@ export function toIntOrNull(value: unknown): number | null {
  * otros 0 o nada (la ficha, sus elecciones), y son el mismo. Para comparar el extra de una dote, una aptitud o una habilidad.
  */
 export function mismoExtra(a: unknown, b: unknown): boolean {
-    return Math.max(0, toInt(a)) === Math.max(0, toInt(b));
+    return extraComparable(a) === extraComparable(b);
+}
+
+/** El `idExtra` para comparar o guardar: sin extra (-1, 0 o nada), 0 (como `extra_comparable` del backend). */
+export function extraComparable(idExtra: unknown): number {
+    return Math.max(0, toInt(idExtra));
+}
+
+/** La clave de una dote con su extra (`idDote|idExtra`, con el extra de `extraComparable`): para quitar repetidos o buscar. */
+export function claveDeDote(idDote: unknown, idExtra: unknown): string {
+    return `${toInt(idDote)}|${extraComparable(idExtra)}`;
 }
 
 /** El entero (truncado) que representa `value` si es mayor que 0 (los ids), o `null` si no lo es o no es un número. */

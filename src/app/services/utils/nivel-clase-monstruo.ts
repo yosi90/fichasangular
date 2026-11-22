@@ -1,6 +1,7 @@
 import { MonstruoNivelClase } from 'src/app/interfaces/monstruo';
-import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, incumplePreferenciaAlineamiento, reglaDePreferenciaAlineamiento, ReglaPreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, incumplePreferenciaAlineamiento, nombreDeAlineamientoBasico, reglaDePreferenciaAlineamiento, ReglaPreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { origenDeNivelDeClase } from './niveles-creacion';
 
 // Lo común de las reglas de compañeros animales (companero-reglas.ts) y familiares (familiar-reglas.ts): leer lo que
 // pide cada fila de `Niveles_clase` del monstruo (su plantilla, su dote y su alineamiento) y explicarlo.
@@ -10,18 +11,6 @@ export interface AlineamientoRequeridoNormalizado {
     nombre: string;
     nombreNormalizado: string;
 }
-
-const ALINEAMIENTO_BASICO_POR_ID: Record<number, string> = {
-    1: 'Legal bueno',
-    2: 'Legal neutral',
-    3: 'Legal maligno',
-    4: 'Neutral bueno',
-    5: 'Neutral auténtico',
-    6: 'Neutral maligno',
-    7: 'Caótico bueno',
-    8: 'Caótico neutral',
-    9: 'Caótico maligno',
-};
 
 export function resolveDoteIdFromNivelClase(nivelClase: MonstruoNivelClase | null | undefined): number {
     return toNumber(
@@ -97,7 +86,7 @@ function getAlineamientosRequeridosLabel(items: AlineamientoRequeridoNormalizado
     const labels = items.map((item) => {
         if (`${item?.nombre ?? ''}`.trim().length > 0)
             return `${item.nombre}`.trim();
-        const nombreCatalogo = ALINEAMIENTO_BASICO_POR_ID[toNumber(item?.id)];
+        const nombreCatalogo = nombreDeAlineamientoBasico(toNumber(item?.id));
         if (`${nombreCatalogo ?? ''}`.trim().length > 0)
             return `${nombreCatalogo}`.trim();
         return '';
@@ -153,7 +142,7 @@ function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelClase[]):
         const nombreClase = `${nivelClase?.Clase?.Nombre ?? ''}`.trim();
         const nivel = Math.max(0, toInt(nivelClase?.Nivel));
         const prefijo = nombreClase.length > 0
-            ? `${nombreClase} nivel ${nivel}`
+            ? origenDeNivelDeClase(nombreClase, nivel)
             : `Nivel ${nivel}`;
         detalles.add(`${prefijo} (${partes.join(', ')})`);
     });

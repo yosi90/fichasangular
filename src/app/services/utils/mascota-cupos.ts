@@ -13,7 +13,7 @@ import { TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { doteDeNivelClase, idPlantillaDeNivel } from 'src/app/services/utils/nivel-clase-monstruo';
-import { porNombre } from 'src/app/services/utils/orden-texto';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 /*
  * Lo común de las mascotas, el compañero animal (`companero-reglas.ts`) y el familiar (`familiar-reglas.ts`), de los datos
@@ -593,4 +593,33 @@ export function aptitudesMascotaDelNivel<A extends MascotaAptitudNivel & { Alter
             resultado.dotes.push(aptitud.Dote);
     });
     return resultado;
+}
+
+/** Por qué no sale una mascota homebrew con el filtro Homebrew apagado (el selector del familiar y el del compañero). */
+export const RAZON_MASCOTA_HOMEBREW = 'Es una opción homebrew y el filtro Homebrew está desactivado.';
+
+/**
+ * Lo común de juzgar las criaturas del catálogo de una mascota (`evaluarFamiliaresElegibilidad` y
+ * `evaluarCompanerosElegibilidad`): sin las que no tienen id, cada una con su `evaluar` (`null`, la deja fuera), una por
+ * `clave` (si se repite, la que vale) y por nombre.
+ */
+export function evaluarMascotasDelCatalogo<M, E extends { elegible: boolean; }>(
+    mascotas: readonly M[] | null | undefined,
+    { id, clave, nombre, evaluar }: { id: (m: M) => number; clave: (m: M) => string; nombre: (m: M) => unknown; evaluar: (m: M) => E | null; },
+): E[] {
+    const porClave = new Map<string, { mascota: M; evaluacion: E; }>();
+    (Array.isArray(mascotas) ? mascotas : []).forEach((mascota) => {
+        if (id(mascota) <= 0)
+            return;
+        const evaluacion = evaluar(mascota);
+        if (!evaluacion)
+            return;
+        const k = clave(mascota);
+        const previa = porClave.get(k);
+        if (!previa || (!previa.evaluacion.elegible && evaluacion.elegible))
+            porClave.set(k, { mascota, evaluacion });
+    });
+    return Array.from(porClave.values())
+        .sort((a, b) => compararTexto(nombre(a.mascota), nombre(b.mascota)))
+        .map((x) => x.evaluacion);
 }

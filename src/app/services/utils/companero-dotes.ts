@@ -7,7 +7,7 @@ import { caracteristicaPorId, modificadorCaracteristica, sinPuntuacion } from 's
 import { daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { DoteEvaluacionContexto, dotesConCuentaComo, nivelLanzadorMaximoDeSortilegas } from 'src/app/services/utils/dote-elegibilidad';
 import { HabilidadParaPrerrequisitos } from 'src/app/services/utils/prerrequisitos-evaluacion';
-import { normalizarTexto, primerEntero, sinRepetidos, toInt } from 'src/app/services/utils/normalizacion';
+import { claveDeDote, extraComparable, normalizarTexto, primerEntero, sinRepetidos, toInt } from 'src/app/services/utils/normalizacion';
 import { costeDelTruco } from 'src/app/services/utils/truco-coste';
 
 /*
@@ -110,7 +110,7 @@ export function dotesElegidasDelCompanero(companero: CompaneroMonstruoDetalle | 
 }
 
 function claveDote(item: DoteContextual | null | undefined): string {
-    return `${toInt(item?.Dote?.Id)}|${Math.max(0, toInt(item?.Contexto?.Id_extra))}`;
+    return claveDeDote(item?.Dote?.Id, item?.Contexto?.Id_extra);
 }
 
 /**
@@ -290,7 +290,7 @@ function dotesDelCompaneroHasta(companero: CompaneroMonstruoDetalle, dg: number)
         .map((item) => ({
             id: toInt(item.Dote.Id) > 0 ? toInt(item.Dote.Id) : null,
             nombre: `${item.Dote.Nombre}`.trim(),
-            idExtra: Math.max(0, toInt(item?.Contexto?.Id_extra)),
+            idExtra: extraComparable(item?.Contexto?.Id_extra),
             extra: `${item?.Contexto?.Extra ?? ''}`.trim(),
         }));
 }

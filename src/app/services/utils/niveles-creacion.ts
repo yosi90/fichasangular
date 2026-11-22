@@ -32,6 +32,22 @@ export const ORIGEN_DOTE_POR_NIVEL_DE_PERSONAJE = 'Dote adicional por nivel';
 /** El de una dote de nivel sin su número (un hueco de nivel sin él): «Dote por nivel» o «Dote por nivel: <origen>». */
 export const ORIGEN_DOTE_POR_NIVEL = 'Dote por nivel';
 
+/**
+ * El origen de lo que da un nivel de clase, «Guerrero nivel 2» (la clase con su nombre y su nivel de clase): el de las
+ * dotes, las aptitudes, los conjuros y los incrementos de ese nivel. La API lo compara tal cual: no cambiar su forma.
+ */
+export function origenDeNivelDeClase(nombreClase: string, nivelClase: number | string): string {
+    return `${nombreClase} nivel ${nivelClase}`;
+}
+
+/**
+ * Un nivel de clase del orden para enseñarlo, con la misma forma en toda la web: «nivel 3 (guerrero 2)», el número del
+ * nivel en el orden (`indice` desde 0) y la clase en minúscula con su nivel. Sin nombre, «clase».
+ */
+export function etiquetaDelNivel(indice: number, nombreClase: string | null | undefined, nivelClase: unknown): string {
+    return `nivel ${indice + 1} (${`${nombreClase || 'clase'}`.toLowerCase()} ${toInt(nivelClase)})`;
+}
+
 /** El origen de la dote del nivel de personaje `nivel`: «Dote adicional por nivel 6». */
 export function origenDotePorNivelDePersonaje(nivel: number): string {
     return `${ORIGEN_DOTE_POR_NIVEL_DE_PERSONAJE} ${toInt(nivel)}`;

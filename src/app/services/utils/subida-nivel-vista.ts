@@ -6,6 +6,7 @@ import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { textoConSigno } from './equipo-texto';
 import { normalizarTexto, toInt } from './normalizacion';
 import { PgSubida } from './subida-nivel';
+import { tieneTextoVisible } from './texto-visible';
 
 /**
  * Los pasos de la subida, en el orden del MJ (p. 58-59); solo salen los que dispara el nivel. «Reciclar» va antes de todos
@@ -132,7 +133,7 @@ export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
     const delReciclaje = (e.reciclado?.aptitudesNuevas ?? []).map((a) => ({ Nombre: a.nombre, Extra: a.extra }));
     const especialesNuevos = (e.despues?.Claseas ?? []).filter((x) => ![...(e.antes?.Claseas ?? []), ...delReciclaje].some((y) => mismaAptitud(x, y)));
     if (especialesNuevos.length || nuevos('especial'))
-        filas.push({ que: 'Aptitudes', antes: '—', ahora: especialesNuevos.map((x) => x.Extra && x.Extra !== 'No aplica' ? `${x.Nombre} (${x.Extra})` : x.Nombre).join(', '), porque: `${nombreClase} ${e.nivelClase}` });
+        filas.push({ que: 'Aptitudes', antes: '—', ahora: especialesNuevos.map((x) => tieneTextoVisible(x.Extra) ? `${x.Nombre} (${x.Extra})` : x.Nombre).join(', '), porque: `${nombreClase} ${e.nivelClase}` });
     const idiomasNuevos = (e.despues?.Idiomas ?? []).filter((x) => !(e.antes?.Idiomas ?? []).some((y) => normalizarTexto(y?.Nombre ?? '') === normalizarTexto(x?.Nombre ?? ''))
         && normalizarTexto(x?.Nombre ?? '') !== normalizarTexto(e.reciclado?.idiomaNuevo ?? ''));
     if (idiomasNuevos.length)

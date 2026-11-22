@@ -7,7 +7,7 @@ import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
 import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
-import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
+import { extraComparable, mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import {
     aplicarRasgoAlMotor, candidatasEnLugarDe, derivadasDelCambio, fichaConElRasgo, HuecoDeRasgo, huecoDelCuerpo, huecosDeRasgo, nombreDeLoQueTiene,
@@ -279,7 +279,7 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
         const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
         const quitada = sacarDoteDeLaFicha(dotes, quita.idDote, quita.idExtra, opciones.origenDote);
         const origen = `${quitada?.origen ?? opciones.origenDote ?? ''}`.trim();
-        dotes.push({ idDote: toInt(pone.idDote), idExtra: Math.max(0, toInt(pone.idExtra)), ...(origen ? { origen } : {}) });
+        dotes.push({ idDote: toInt(pone.idDote), idExtra: extraComparable(pone.idExtra), ...(origen ? { origen } : {}) });
         // La que mantenía sin sus prerrequisitos (`requisitos_dote`) y ya no tiene: fuera, o la API la rechaza.
         if (ficha.decisionesHomebrew && !dotes.some((x) => toInt(x?.idDote) === toInt(quita.idDote)))
             ficha.decisionesHomebrew = ficha.decisionesHomebrew
@@ -291,7 +291,7 @@ export function fichaConElReciclaje(entrada: PersonajeCreateRequestDto, reciclaj
         idiomas.push({ idIdioma: toInt(reciclaje.pone.idIdioma), ...(origen ? { origen } : {}) });
     } else if (reciclaje.tipo === 'rangos') {
         const rangos = Math.max(0, toInt(reciclaje.rangos));
-        const clave = (h: any) => `${toInt(h?.idHabilidad)}:${Math.max(0, toInt(h?.idExtra))}`;
+        const clave = (h: any) => `${toInt(h?.idHabilidad)}:${extraComparable(h?.idExtra)}`;
         const base: any[] = (col.habilidades?.base ?? []).map((h: any) => ({ ...h }));
         const origen = base.find((h) => clave(h) === clave(reciclaje.quita));
         if (origen)

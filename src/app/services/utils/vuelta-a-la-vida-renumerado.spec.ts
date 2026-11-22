@@ -186,7 +186,7 @@ describe('vuelta-a-la-vida, con niveles de otra clase después', () => {
             primerDg: { clase: 'Guerrero', nivelClase: 1, indice: 0, caras: 10, modConstitucion: 2, puntos: 6 },
             dotePerdida: 'Soltura con un arma (espada larga)', doteElegida: { nombre: 'Alerta', nivelPersonaje: 1 },
             incrementoPerdido: { nombre: 'Inteligencia', antes: 13, ahora: 12, inteligencia: true }, incrementoElegido: null,
-            maximoDeRangos: 5, rangosQuitados: [{ nombre: 'Trepar', rangos: 3, nivel: 'guerrero 2' }], rangosRepartidos: [{ nombre: 'Saltar', rangos: 3, nivel: 'guerrero 2' }],
+            maximoDeRangos: 5, rangosQuitados: [{ nombre: 'Trepar', rangos: 3, nivel: 'nivel 2 (guerrero 2)' }], rangosRepartidos: [{ nombre: 'Saltar', rangos: 3, nivel: 'nivel 2 (guerrero 2)' }],
             prestigio: [{ nombre: 'Caballero de la rosa', razones: ['Requiere ataque base +5'] }],
         };
         const filas = filasDeLaRenumeracion(r);
@@ -197,8 +197,8 @@ describe('vuelta-a-la-vida, con niveles de otra clase después', () => {
         expect(fila('Dote por nivel de personaje').map((f) => [f.antes, f.ahora])).toEqual([['Soltura con un arma (espada larga)', '—'], ['—', 'Alerta']]);
         expect(fila('Dote por nivel de personaje')[1].porque).toContain('la de su 1.º nivel');
         expect(fila('Inteligencia (incremento)')[0].porque).toContain('no quita puntos de habilidad');
-        expect(fila('Rangos que pasan del máximo')[0].antes).toBe('Trepar −3 (guerrero 2)');
-        expect(fila('Rangos repartidos')[0].ahora).toBe('Saltar +3 (guerrero 2)');
+        expect(fila('Rangos que pasan del máximo')[0].antes).toBe('Trepar −3 en el nivel 2 (guerrero 2)');
+        expect(fila('Rangos repartidos')[0].ahora).toBe('Saltar +3 en el nivel 2 (guerrero 2)');
         expect(fila('Caballero de la rosa')[0]).toEqual(jasmine.objectContaining({ aviso: true, ahora: 'Requiere ataque base +5' }));
         expect(fila('Caballero de la rosa')[0].porque).toContain('El arcano completo, pág. 17');
         // Con un solo puesto, en singular; sin los de después (los perdió todos), sin la fila.

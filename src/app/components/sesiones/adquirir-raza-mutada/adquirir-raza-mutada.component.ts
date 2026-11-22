@@ -113,7 +113,7 @@ export interface FilaRangos {
  * y el concepto, antes de guardar (`POST /personajes/{id}/raza-mutada`). Usa el motor de la creación en su propia
  * instancia (`MotorDesdeFichaService`, `NuevoPersonajeService.adquirirRazaMutada`) y las piezas de la subida
  * (`subir-nivel.component.sass`, `HuecoDeSelectores`). Se abre desde «Adquirir una raza mutada» del historial
- * (`SubidaNivelPuertaService.solicitarMutacion`) en su pestaña.
+ * (`SubidaNivelPuertaService.solicitar(id, 'mutacion')`) en su pestaña.
  *
  * Con una raza que lleva una clase de monstruo (`Clase_de_monstruo`), es la conversión en muerto viviente (*Libris Mortis*,
  * pág. 34; contrato en `personajes.md`, «Convertirse en muerto viviente»): pierde el último nivel de clase, como en

@@ -97,6 +97,23 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
         expect((await crear({ puedeApuntar: false })).error).toContain('Solo su dueño o el máster');
     });
 
+    it('tira los PG con el dado sin sesgo de la web (`tirarDado`, `crypto.getRandomValues`), no con `Math.random`', async () => {
+        const componente: any = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+        spyOn(componente, 'calcularPg');
+        spyOn(componente, 'guardarBorrador');
+        const azar = spyOn(Math, 'random').and.returnValue(0);
+        spyOn(crypto, 'getRandomValues').and.callFake(<T extends ArrayBufferView | null>(destino: T): T => {
+            (destino as unknown as Uint32Array)[0] = 5;
+            return destino;
+        });
+        componente.carasDg = 8;
+        componente.tiradasPermitidas = 1;
+        componente.tiradas = [];
+        componente.tirar();
+        expect(componente.tiradas).toEqual([6]);
+        expect(azar).not.toHaveBeenCalled();
+    });
+
     it('la cabecera dice a qué nivel sube y desde cuántos PX (lienzo, pantalla 4)', async () => {
         await crear({ experiencia: experiencia({ sesionAbierta: null }) });
         const texto = fixture.nativeElement.querySelector('.subida__cabecera')?.textContent ?? '';

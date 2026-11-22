@@ -5,7 +5,7 @@ import {
     PersonajeCreateHabilidadMascotaDto,
 } from 'src/app/interfaces/personajes-api';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
-import { primerEntero, sinRepetidos, toInt, toNumber } from './normalizacion';
+import { claveDeDote, extraComparable, primerEntero, sinRepetidos, toInt, toNumber } from './normalizacion';
 import { carasDado } from './puntos-golpe';
 import { dadosGolpeCompanero, rangosDelCompaneroQueCaben } from './companero-reglas';
 import { dgDeLaDoteDelCompanero, esDoteDelMonstruoDelCompanero, quitarLoDeLosDgQueNoTieneElCompanero } from './companero-dotes';
@@ -104,7 +104,7 @@ function especialesDe(mascota: FamiliarMonstruoDetalle | CompaneroMonstruoDetall
     return (mascota?.Especiales ?? [])
         .map((item) => ({
             idEspecial: toInt((item?.Especial as any)?.Id),
-            idExtra: Math.max(0, toInt(item?.Contexto?.['Id_extra'])),
+            idExtra: extraComparable(item?.Contexto?.['Id_extra']),
         }))
         .filter((item) => item.idEspecial > 0);
 }
@@ -113,7 +113,7 @@ function especialesDe(mascota: FamiliarMonstruoDetalle | CompaneroMonstruoDetall
 function dotesPropias(mascota: FamiliarMonstruoDetalle | CompaneroMonstruoDetalle): Array<{ idDote: number; idExtra: number; }> {
     return (mascota?.Dotes ?? [])
         .filter((item) => item?.Contexto?.Entidad === 'personaje' && toInt(item?.Dote?.Id) > 0)
-        .map((item) => ({ idDote: toInt(item.Dote.Id), idExtra: Math.max(0, toInt(item?.Contexto?.Id_extra)) }));
+        .map((item) => ({ idDote: toInt(item.Dote.Id), idExtra: extraComparable(item?.Contexto?.Id_extra) }));
 }
 
 /**
@@ -127,7 +127,7 @@ function dotesDelCompanero(companero: CompaneroMonstruoDetalle): Array<{ idDote:
         .filter((item) => dgDeLaDoteDelCompanero(item) > 0 || !companero.Dotes_monstruo || !esDoteDelMonstruoDelCompanero(companero, item));
     return sinRepetidos(propias.map((item) => {
         const dg = dgDeLaDoteDelCompanero(item);
-        return { idDote: toInt(item.Dote.Id), idExtra: Math.max(0, toInt(item?.Contexto?.Id_extra)), ...(dg > 0 ? { dg } : {}) };
+        return { idDote: toInt(item.Dote.Id), idExtra: extraComparable(item?.Contexto?.Id_extra), ...(dg > 0 ? { dg } : {}) };
     }), claveDeDoteDelCompaneroGuardada);
 }
 
@@ -136,7 +136,7 @@ function dotesDelCompanero(companero: CompaneroMonstruoDetalle): Array<{ idDote:
  * (sin él, 0). Una repetida con otro extra o en otro DG es otra. La usan el alta y la subida de nivel (`subida-nivel`).
  */
 export function claveDeDoteDelCompaneroGuardada(d: { idDote?: number; idExtra?: number; dg?: number; } | null | undefined): string {
-    return `${toInt(d?.idDote)}|${Math.max(0, toInt(d?.idExtra))}|${toInt(d?.dg)}`;
+    return `${claveDeDote(d?.idDote, d?.idExtra)}|${toInt(d?.dg)}`;
 }
 
 /**
