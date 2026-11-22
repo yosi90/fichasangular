@@ -3,6 +3,7 @@ import {
     SustitucionNivel, SustitucionQuita,
 } from 'src/app/interfaces/clase';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
+import { filaDeNivel } from './clase-niveles';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import {
     DeidadDelPersonaje, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararAlineamientoBasico,
@@ -140,10 +141,6 @@ function ponerFilas(detalle: ClaseNivelDetalle, tipo: 'especial' | 'dote', filas
         detalle.Dotes = filas as ClaseDoteNivel[];
 }
 
-function filaDeLaTabla(clase: Clase, nivel: number): ClaseNivelDetalle | null {
-    return (clase?.Desglose_niveles ?? []).find((n) => toInt(n?.Nivel) === nivel) ?? null;
-}
-
 /** Suma `delta` a cada cifra de una casilla de la tabla («+6/+1» con −1, «+5/+0»). */
 export function ajustarCifras(texto: string, delta: number): string {
     if (!delta)
@@ -194,7 +191,7 @@ function aplicarQuitaDeFilas(clase: Clase, detalle: ClaseNivelDetalle, nivelClas
     }
     if (quita.Alcance === 'aplaza' && toInt(quita.Aplaza_a_nivel) === nivelClase && nivelClase !== nivelTomado) {
         // La aptitud del nivel en que se toma pasa a este (el tercer enemigo predilecto del explorador elfo, a 15.º).
-        const original = filaDeLaTabla(clase, nivelTomado);
+        const original = filaDeNivel(clase, nivelTomado);
         const movidas = original ? filasDe(original, tipo).filter((f) => esDeLaQuita(f, quita, tipo)).map((f) => ({ ...f, Nivel: nivelClase })) : [];
         ponerFilas(detalle, tipo, [...filas, ...movidas]);
         return;
@@ -221,7 +218,7 @@ function aplicarQuitaDeFilas(clase: Clase, detalle: ClaseNivelDetalle, nivelClas
  */
 export function detalleConSustituciones(clase: Clase, nivelClase: number, tomados: readonly NivelSustitucionTomado[]): ClaseNivelDetalle | null {
     const nivel = Math.max(1, toInt(nivelClase));
-    const base = filaDeLaTabla(clase, nivel);
+    const base = filaDeNivel(clase, nivel);
     if (!base)
         return null;
     const conDatos = tomadosConDatos(clase, tomados);
