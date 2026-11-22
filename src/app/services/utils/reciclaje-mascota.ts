@@ -2,6 +2,7 @@ import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { TipoDeMascota } from 'src/app/interfaces/sesiones';
 import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import {
     claveCompanero, EntradasSelectorCompanero, entradasDelSelectorCompanero, resolverEstadoCuposCompanero, resolverFilaCompanero, TEXTOS_COMPANERO,
@@ -29,9 +30,6 @@ import { familiarConLoDelMotor } from './subida-nivel';
  * los rangos del compañero se reparten otra vez en la subida. Lo que dependa de la que se va bloquea
  * (`motivoDeLaMascota`, en `reciclaje.ts`). Todo sale de los datos (`Mascota` de las tablas de clase y `Niveles_clase`).
  */
-
-/** Las dos mascotas que se reciclan, como en el contrato (`hueco.mascota`). */
-export type TipoDeMascota = 'companero' | 'familiar';
 
 /** Una criatura del catálogo de la creación de una mascota (una entrada por monstruo y plantilla). */
 export type CriaturaDeMascota = CompaneroMonstruoDetalle | FamiliarMonstruoDetalle;

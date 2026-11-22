@@ -9,7 +9,7 @@ import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, caracteristicaDelAlta, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
-import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
+import { bajaDeNivel, experienciaParaNivel } from './experiencia-nivel';
 import { mismoExtra, primerEntero, toInt } from './normalizacion';
 import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgDeUnDgGuardado, pgTrasCambioDeCon } from './subida-nivel';
 import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
@@ -46,7 +46,7 @@ export const CAUSAS_PERDIDA: ReadonlyArray<{ valor: CausaPerdida; texto: string;
 export function pxTrasPerderExperiencia(px: number, perdidos: number): { px: number; bajaNivel: boolean; } {
     const actuales = Math.max(0, toInt(px));
     const quedan = Math.max(0, actuales - Math.max(0, toInt(perdidos)));
-    return { px: quedan, bajaNivel: toInt(perdidos) === 0 || nivelPorExperiencia(quedan) < nivelPorExperiencia(actuales) };
+    return { px: quedan, bajaNivel: toInt(perdidos) === 0 || bajaDeNivel(actuales, quedan) };
 }
 
 /**

@@ -5,17 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom, take } from 'rxjs';
 import Swal from 'sweetalert2';
-import {
-    SelectorCompaneroConfirmacion, SelectorCompaneroModalComponent,
-} from 'src/app/components/nuevo-personaje/selector-companero-modal/selector-companero-modal.component';
-import {
-    SelectorFamiliarConfirmacion, SelectorFamiliarModalComponent,
-} from 'src/app/components/nuevo-personaje/selector-familiar-modal/selector-familiar-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { NivelQuePierdeComponent } from 'src/app/components/sesiones/nivel-que-pierde/nivel-que-pierde.component';
 import { resolverLoQueEligeElCompanero } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
+import { elegirCompaneroEnElSelector, elegirFamiliarEnElSelector } from 'src/app/components/sesiones/selector-de-mascota';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
@@ -26,14 +21,16 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
-import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { AccionMascota, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDotePorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
-import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos, entradasDelSelectorCompanero } from 'src/app/services/utils/companero-reglas';
-import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos, entradasDelSelectorFamiliar } from 'src/app/services/utils/familiar-reglas';
-import { FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
+import { bajaDeNivel } from 'src/app/services/utils/experiencia-nivel';
+import { construirCatalogoCompanerosDesdeMonstruos, entradasDelSelectorCompanero } from 'src/app/services/utils/companero-reglas';
+import { construirCatalogoFamiliaresDesdeMonstruos, entradasDelSelectorFamiliar } from 'src/app/services/utils/familiar-reglas';
+import { fichaSinLaMascota, FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
 import {
-    CAUSAS_DE_PERDER, costeDeLaMascota, CosteDeLaMascotaEnLaSesion, fichaSinLaMascota, fortalezaDelPersonaje, fuentesDeLaMascota,
-    leBajaUnNivel, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA, tirarFortaleza,
+    CAUSAS_DE_PERDER, costeDeLaMascota, CosteDeLaMascotaEnLaSesion, fortalezaDelPersonaje, fuentesDeLaMascota,
+    mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA,
+    TextosMascotaEnLaSesion, tirarFortaleza,
 } from 'src/app/services/utils/mascota-sesion';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
@@ -43,7 +40,6 @@ import {
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 
-export type AccionMascota = 'perder' | 'obtener';
 type PasoObtener = 'inicio' | 'rangos' | 'resumen';
 
 /**
@@ -129,7 +125,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
         this.selectores.cerrar();
     }
 
-    get textos(): { que: string; queConArticulo: string; } {
+    get textos(): TextosMascotaEnLaSesion {
         return TEXTOS_MASCOTA[this.mascota];
     }
 
@@ -142,13 +138,12 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     }
 
     get nombreDeLaMascota(): string {
-        const m = this.laMascota;
-        return `${m?.Nombre ?? ''}`.trim() || this.textos.queConArticulo;
+        return nombrePropioDeLaMascota(this.pj, this.mascota);
     }
 
     get titulo(): string {
         if (this.accion === 'obtener')
-            return this.mascota === 'companero' ? 'Llamar a un compañero animal' : 'Obtener un familiar';
+            return this.textos.obtener;
         return this.mascota === 'companero' ? 'Perder el compañero animal' : 'Perder el familiar';
     }
 
@@ -170,7 +165,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     }
 
     get bajaNivel(): boolean {
-        return this.mascota === 'familiar' && !!this.salvacion && leBajaUnNivel(this.pxActuales, this.pxDespues);
+        return this.mascota === 'familiar' && !!this.salvacion && bajaDeNivel(this.pxActuales, this.pxDespues);
     }
 
     get cd(): number {
@@ -230,7 +225,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
                     ? `Ya tiene un compañero animal, «${this.nombreDeLaMascota}»: para llamar a otro, libéralo antes (Manual del jugador, pág. 35).`
                     : `Ya tiene un familiar, «${this.nombreDeLaMascota}»: para tener otro, abandónalo antes (Manual del jugador, pág. 45).`);
             } else if (this.cupos() < 1) {
-                throw new Error(`Ninguna de sus clases le da ahora ${this.mascota === 'companero' ? 'un compañero animal' : 'un familiar'}.`);
+                throw new Error(`Ninguna de sus clases le da ahora un ${this.textos.que}.`);
             }
         } catch (error: any) {
             this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido preparar la ficha.';
@@ -281,7 +276,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
         if (!entrada || !this.laMascota)
             return;
         const filas: FilaPerdida[] = [{
-            que: this.mascota === 'companero' ? 'Compañero animal' : 'Familiar',
+            que: this.textos.etiqueta,
             antes: this.nombreDeLaMascota,
             ahora: this.causa === 'liberacion' ? 'Liberado' : this.causa === 'abandono' ? 'Abandonado' : 'Muerto',
         }];
@@ -395,64 +390,40 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
 
     private async elegirCompanero(catalogo: CompaneroMonstruoDetalle[]): Promise<boolean> {
         const estado = this.svc.getEstadoCuposCompanero();
-        let homebrew = this.conHomebrew;
-        let nivel: number | null = null;
-        const entradas = () => {
-            const e = entradasDelSelectorCompanero({
-                companeros: catalogo, estado, alineamientoPersonaje: `${this.pj?.Alineamiento ?? ''}`.trim(), incluirHomebrew: homebrew,
-                dotesPersonaje: this.svc.idsDotesDelPersonaje(), nivelSeleccionado: nivel,
-            });
-            nivel = e.nivelSeleccionado;
-            return {
-                companerosElegibles: e.elegibles, companerosBloqueados: e.bloqueados, nivelesRequeridos: e.nivelesRequeridos, ajustes: e.ajustes,
-                nivelesDisponibles: e.nivelesDisponibles, nivelSeleccionado: e.nivelSeleccionado, incluirHomebrew: homebrew,
-            };
-        };
-        const seleccion = await this.selectores.abrir<SelectorCompaneroConfirmacion>(SelectorCompaneroModalComponent, {
-            titulo: 'Llamar a un compañero animal', cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), nombreCompanero: '', ...entradas(),
-        }, ['confirmar'], ['omitir'], {}, {
-            incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
-            nivelChange: (valor: number | null) => { nivel = valor; return entradas(); },
-            nombreCompaneroChange: (valor: string) => ({ nombreCompanero: `${valor ?? ''}` }),
+        const elegido = await elegirCompaneroEnElSelector(this.selectores, {
+            titulo: TEXTOS_MASCOTA.companero.obtener, cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), homebrew: this.conHomebrew,
+            catalogo,
+            entradas: (filtros) => entradasDelSelectorCompanero({
+                companeros: catalogo, estado, alineamientoPersonaje: `${this.pj?.Alineamiento ?? ''}`.trim(), incluirHomebrew: filtros.incluirHomebrew,
+                dotesPersonaje: this.svc.idsDotesDelPersonaje(), nivelSeleccionado: filtros.nivelSeleccionado,
+            }),
         });
-        const companero = seleccion ? catalogo.find((c) => claveCompanero(c) === claveCompanero(seleccion.companero)) : null;
-        if (!companero || !seleccion)
+        if (!elegido)
             return false;
-        const r = this.svc.registrarCompaneroSeleccionado(companero, seleccion.nombre);
+        const r = this.svc.registrarCompaneroSeleccionado(elegido.criatura, elegido.nombre);
         if (!r.registrado)
             throw new Error(r.razon || 'No se ha podido poner el compañero animal.');
-        this.nombreElegido = `${seleccion.nombre || companero.Nombre || ''}`.trim();
+        this.nombreElegido = `${elegido.nombre || elegido.criatura.Nombre || ''}`.trim();
         return true;
     }
 
     private async elegirFamiliar(catalogo: FamiliarMonstruoDetalle[]): Promise<boolean> {
         const estado = this.svc.getEstadoCuposFamiliar();
-        let homebrew = this.conHomebrew;
-        let plantilla: number | null = null;
-        const entradas = () => {
-            const e = entradasDelSelectorFamiliar({
-                familiares: catalogo, estado, alineamientoPersonaje: `${this.pj?.Alineamiento ?? ''}`.trim(), plantillaSeleccionada: plantilla,
-                incluirHomebrew: homebrew, dotesPersonaje: this.svc.idsDotesDelPersonaje(),
-            });
-            return {
-                familiaresElegibles: e.elegibles, familiaresBloqueados: e.bloqueados, nivelesRequeridos: e.nivelesRequeridos,
-                plantillasDisponibles: e.plantillas, plantillaSeleccionada: plantilla, incluirHomebrew: homebrew,
-            };
-        };
-        const seleccion = await this.selectores.abrir<SelectorFamiliarConfirmacion>(SelectorFamiliarModalComponent, {
-            titulo: 'Obtener un familiar', cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), nombreFamiliar: '', ...entradas(),
-        }, ['confirmar'], ['omitir'], {}, {
-            incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
-            plantillaChange: (valor: number | null) => { plantilla = valor === null || valor === undefined ? null : toInt(valor) || null; return entradas(); },
-            nombreFamiliarChange: (valor: string) => ({ nombreFamiliar: `${valor ?? ''}` }),
+        const elegido = await elegirFamiliarEnElSelector(this.selectores, {
+            titulo: TEXTOS_MASCOTA.familiar.obtener, cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), homebrew: this.conHomebrew,
+            catalogo,
+            entradas: (filtros) => entradasDelSelectorFamiliar({
+                familiares: catalogo, estado, alineamientoPersonaje: `${this.pj?.Alineamiento ?? ''}`.trim(),
+                plantillaSeleccionada: filtros.plantillaSeleccionada, incluirHomebrew: filtros.incluirHomebrew,
+                dotesPersonaje: this.svc.idsDotesDelPersonaje(),
+            }),
         });
-        const familiar = seleccion ? catalogo.find((c) => claveFamiliar(c) === claveFamiliar(seleccion.familiar)) : null;
-        if (!familiar || !seleccion)
+        if (!elegido)
             return false;
-        const r = this.svc.registrarFamiliarSeleccionado(familiar, seleccion.nombre);
+        const r = this.svc.registrarFamiliarSeleccionado(elegido.criatura, elegido.nombre);
         if (!r.registrado)
             throw new Error(r.razon || 'No se ha podido poner el familiar.');
-        this.nombreElegido = `${seleccion.nombre || familiar.Nombre || ''}`.trim();
+        this.nombreElegido = `${elegido.nombre || elegido.criatura.Nombre || ''}`.trim();
         return true;
     }
 

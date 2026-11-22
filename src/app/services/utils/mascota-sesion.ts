@@ -3,7 +3,9 @@ import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from 'src/app/inter
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { CausaMascotaPerdida, MascotaPerdida, SalvacionMascota, TipoDeMascota } from 'src/app/interfaces/sesiones';
-import { nivelPorExperiencia } from './experiencia-nivel';
+import { TEXTOS_COMPANERO } from './companero-reglas';
+import { tirarDado } from './dados';
+import { TEXTOS_FAMILIAR } from './familiar-reglas';
 import { FuenteMascota, fuentesMascota } from './mascota-cupos';
 import { toInt } from './normalizacion';
 import { totalesPersonaje } from './personaje-totales';
@@ -15,10 +17,22 @@ import { totalesPersonaje } from './personaje-totales';
  * apunta. Lo que cuesta sale de la aptitud que la da (`Mascota` del nivel de la clase).
  */
 
-/** Los nombres de cada mascota en las frases de la web. */
-export const TEXTOS_MASCOTA: Record<TipoDeMascota, { que: string; queConArticulo: string; }> = {
-    companero: { que: 'compañero animal', queConArticulo: 'el compañero animal' },
-    familiar: { que: 'familiar', queConArticulo: 'el familiar' },
+/** Los textos de cada mascota en la web: su nombre (el de la creación, `TEXTOS_COMPANERO` y `TEXTOS_FAMILIAR`), con artículo y
+ * en mayúscula, y la acción de obtener otra (el compañero se llama; el familiar se obtiene). */
+export interface TextosMascotaEnLaSesion {
+    que: string;
+    queConArticulo: string;
+    etiqueta: string;
+    obtener: string;
+}
+
+function textosDe(que: string, obtener: string): TextosMascotaEnLaSesion {
+    return { que, queConArticulo: `el ${que}`, etiqueta: que.charAt(0).toUpperCase() + que.slice(1), obtener };
+}
+
+export const TEXTOS_MASCOTA: Record<TipoDeMascota, TextosMascotaEnLaSesion> = {
+    companero: textosDe(TEXTOS_COMPANERO.mascota, `Llamar a un ${TEXTOS_COMPANERO.mascota}`),
+    familiar: textosDe(TEXTOS_FAMILIAR.mascota, `Obtener un ${TEXTOS_FAMILIAR.mascota}`),
 };
 
 /** Las causas de perder cada mascota, con su texto (MJ pág. 35: se libera al compañero; pág. 45: se abandona al familiar). */
@@ -30,6 +44,11 @@ export const CAUSAS_DE_PERDER: Record<TipoDeMascota, ReadonlyArray<{ valor: Caus
 /** La mascota de la ficha de ese tipo (activa o inactiva: las dos ocupan el hueco), o `null`. */
 export function mascotaDeLaFicha(pj: Personaje | null | undefined, mascota: TipoDeMascota): CompaneroMonstruoDetalle | FamiliarMonstruoDetalle | null {
     return (mascota === 'companero' ? pj?.Companeros?.[0] : pj?.Familiares?.[0]) ?? null;
+}
+
+/** El nombre de la mascota de la ficha de ese tipo («Ceniza»; sin él, «el familiar»). */
+export function nombrePropioDeLaMascota(pj: Personaje | null | undefined, mascota: TipoDeMascota): string {
+    return `${mascotaDeLaFicha(pj, mascota)?.Nombre ?? ''}`.trim() || TEXTOS_MASCOTA[mascota].queConArticulo;
 }
 
 /** Las clases del personaje que le dan esa mascota ahora (sin las de una ex clase que perdió la aptitud). */
@@ -90,18 +109,13 @@ export function pxTrasPerderLaMascota(px: number, tarifa: number, salvacion: Sal
     return Math.max(0, toInt(px) - perdidos);
 }
 
-/** Si perder esos PX le baja del nivel que le dan sus PX (no el NEP): entonces pierde el último nivel que ganó. */
-export function leBajaUnNivel(pxAntes: number, pxDespues: number): boolean {
-    return nivelPorExperiencia(toInt(pxDespues)) < nivelPorExperiencia(toInt(pxAntes));
-}
-
 /** Su Fortaleza total, para la ayuda de «Tirar» (d20 + Fortaleza). */
 export function fortalezaDelPersonaje(pj: Personaje | null | undefined): number {
     return toInt(totalesPersonaje(pj)?.salvaciones?.fortaleza?.total);
 }
 
-/** La tirada de ayuda: d20 + su Fortaleza contra la CD (la apunta quien juega: Rol no la tira por él). */
-export function tirarFortaleza(fortaleza: number, cd: number, d20: number = 1 + Math.floor(Math.random() * 20)): { d20: number; total: number; salvacion: SalvacionMascota; } {
+/** La tirada de ayuda: d20 (`tirarDado`, el de la pestaña «Dados») + su Fortaleza contra la CD (la apunta quien juega: Rol no la tira por él). */
+export function tirarFortaleza(fortaleza: number, cd: number, d20: number = tirarDado(20)): { d20: number; total: number; salvacion: SalvacionMascota; } {
     const total = toInt(d20) + toInt(fortaleza);
     return { d20: toInt(d20), total, salvacion: total >= toInt(cd) ? 'superada' : 'fallada' };
 }
@@ -116,57 +130,6 @@ export function puedeObtenerLaMascota(pj: Personaje | null | undefined, clases: 
 /** La pérdida vigente de esa mascota (`mascotasPerdidas`), o `null`. */
 export function perdidaDeLaMascota(perdidas: readonly MascotaPerdida[] | null | undefined, mascota: TipoDeMascota): MascotaPerdida | null {
     return (perdidas ?? []).find((p) => p.mascota === mascota) ?? null;
-}
-
-/**
- * La ficha sin la mascota y sin lo que daba al amo: la `ficha` (sin el último nivel que ganó, de «Perder un nivel») menos el
- * bloque de la mascota y las dotes y las aptitudes que tenía el motor con ella (`conMascota`) y no sin ella (`sinMascota`):
- * las del amo (vínculo, compartir conjuros…) y, del familiar, sus dotes con origen «Familiar…» (Alerta).
- */
-export function fichaSinLaMascota(
-    ficha: PersonajeCreateRequestDto,
-    conMascota: PersonajeCreateRequestDto,
-    sinMascota: PersonajeCreateRequestDto,
-    mascota: TipoDeMascota,
-): PersonajeCreateRequestDto {
-    const claveDote = (d: any) => `${toInt(d?.idDote)}|${toInt(d?.idExtra)}|${`${d?.origen ?? ''}`.trim()}`;
-    const claveEspecial = (e: any) => `${toInt(e?.idEspecial)}|${toInt(e?.idExtra)}`;
-    const quitadas = (de: readonly any[] | undefined, quedan: readonly any[] | undefined, clave: (x: any) => string) => {
-        const siguen = new Map<string, number>();
-        (quedan ?? []).forEach((x) => siguen.set(clave(x), (siguen.get(clave(x)) ?? 0) + 1));
-        const fuera = new Map<string, number>();
-        (de ?? []).forEach((x) => {
-            const k = clave(x);
-            if ((siguen.get(k) ?? 0) > 0)
-                siguen.set(k, (siguen.get(k) ?? 0) - 1);
-            else
-                fuera.set(k, (fuera.get(k) ?? 0) + 1);
-        });
-        return fuera;
-    };
-    const sinLasQuitadas = (lista: readonly any[] | undefined, fuera: Map<string, number>, clave: (x: any) => string) => {
-        const quedan = new Map(fuera);
-        return (lista ?? []).filter((x) => {
-            const k = clave(x);
-            if ((quedan.get(k) ?? 0) > 0) {
-                quedan.set(k, (quedan.get(k) ?? 0) - 1);
-                return false;
-            }
-            return true;
-        });
-    };
-    const dotesFuera = quitadas(conMascota.colecciones?.dotes, sinMascota.colecciones?.dotes, claveDote);
-    const especialesFuera = quitadas(conMascota.colecciones?.especiales, sinMascota.colecciones?.especiales, claveEspecial);
-    const { companero, familiar, ...resto } = ficha;
-    return {
-        ...resto,
-        ...(mascota === 'companero' ? (familiar ? { familiar } : {}) : (companero ? { companero } : {})),
-        colecciones: {
-            ...(ficha.colecciones ?? {}),
-            dotes: sinLasQuitadas(ficha.colecciones?.dotes, dotesFuera, claveDote),
-            especiales: sinLasQuitadas(ficha.colecciones?.especiales, especialesFuera, claveEspecial),
-        },
-    } as PersonajeCreateRequestDto;
 }
 
 /**

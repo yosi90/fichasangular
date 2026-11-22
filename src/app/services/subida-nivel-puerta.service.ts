@@ -1,6 +1,17 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { toInt } from './utils/normalizacion';
+
+/** Lo que se hace con la mascota fuera del reciclaje: perderla u obtener otra (contrato: personajes.md, «La mascota fuera del reciclaje»). */
+export type AccionMascota = 'perder' | 'obtener';
+
+/** «Perder» u «obtener» una mascota fuera del reciclaje, para su pestaña. */
+export interface SolicitudMascota {
+    idPersonaje: number;
+    accion: AccionMascota;
+    mascota: TipoDeMascota;
+}
 
 /**
  * La puerta entre la ficha y la subida de nivel (roadmap de sesiones: fase 3, la ficha y la sesión; fase 4, la subida).
@@ -9,13 +20,6 @@ import { toInt } from './utils/normalizacion';
  * `subidaHecha(idPersonaje)` y la ficha y el historial de ese personaje se vuelven a cargar (`subidasHechas$`). Solo
  * lleva ids: ni la ficha ni la sesión pasan por aquí.
  */
-/** «Perder» u «obtener» una mascota fuera del reciclaje (contrato: personajes.md, «La mascota fuera del reciclaje»). */
-export interface SolicitudMascota {
-    idPersonaje: number;
-    accion: 'perder' | 'obtener';
-    mascota: 'companero' | 'familiar';
-}
-
 @Injectable({
     providedIn: 'root'
 })
@@ -98,7 +102,7 @@ export class SubidaNivelPuertaService {
             this.companerosSubject.next(id);
     }
 
-    solicitarMascota(idPersonaje: number, accion: SolicitudMascota['accion'], mascota: SolicitudMascota['mascota']): void {
+    solicitarMascota(idPersonaje: number, accion: AccionMascota, mascota: TipoDeMascota): void {
         const id = toInt(idPersonaje);
         if (id > 0)
             this.mascotasSubject.next({ idPersonaje: id, accion, mascota });

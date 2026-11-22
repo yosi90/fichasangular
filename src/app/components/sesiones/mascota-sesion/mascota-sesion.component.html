@@ -17,7 +17,7 @@
     <!-- Perder la mascota -->
     <ng-container *ngIf="!cargando && pj && entrada && accion === 'perder' && laMascota">
         <section class="subida__tarjeta">
-            <h2 class="subida__seccion">{{mascota === 'companero' ? 'Su compañero animal' : 'Su familiar'}}: {{nombreDeLaMascota}}</h2>
+            <h2 class="subida__seccion">Su {{textos.que}}: {{nombreDeLaMascota}}</h2>
             <div class="subida__botones">
                 <label class="subida__campo">
                     Qué pasa

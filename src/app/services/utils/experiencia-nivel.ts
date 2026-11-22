@@ -9,6 +9,14 @@ export function experienciaParaNivel(nivel: number): number {
     return n > 0 ? 1000 * n * (n - 1) / 2 : 0;
 }
 
+/**
+ * Si perder PX (de `pxAntes` a `pxDespues`) le baja del nivel que le dan sus PX (no el NEP): entonces pierde el último nivel
+ * que ganó (la causa `experiencia` de «Perder un nivel», la muerte de su familiar).
+ */
+export function bajaDeNivel(pxAntes: number, pxDespues: number): boolean {
+    return nivelPorExperiencia(pxDespues) < nivelPorExperiencia(pxAntes);
+}
+
 /** El nivel que dan unos PX (el más alto cuyos PX mínimos no pasan de ellos; al menos el 1): la inversa, como la API. */
 export function nivelPorExperiencia(px: number): number {
     const total = Math.max(0, toInt(px));
