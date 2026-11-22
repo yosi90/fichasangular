@@ -1,5 +1,5 @@
 import { MonstruoNivelClase } from 'src/app/interfaces/monstruo';
-import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, incumplePreferenciaAlineamiento, reglaDePreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, incumplePreferenciaAlineamiento, reglaDePreferenciaAlineamiento, ReglaPreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 // Lo común de las reglas de compañeros animales (companero-reglas.ts) y familiares (familiar-reglas.ts): leer lo que
@@ -120,21 +120,17 @@ function cumpleAlineamientoPorPreferencias(
     const vector = getVectorDesdeIdBasico(idAlineamientoBasico);
     if (!vector)
         return true;
-    return [
-        [reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_legal), vector.ley],
-        [reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_moral), vector.moral],
-    ].every(([regla, valor]) => {
-        const r = regla as ReturnType<typeof reglaDePreferenciaAlineamiento>;
-        if (!r || !r.estricta)
-            return true;
-        return !incumplePreferenciaAlineamiento(r, valor as number);
-    });
+    return !incumplePreferenciaAlineamiento(reglaQueExige(nivelClase?.Preferencia_legal), vector.ley)
+        && !incumplePreferenciaAlineamiento(reglaQueExige(nivelClase?.Preferencia_moral), vector.moral);
 }
 
-/** Si la preferencia de un eje exige algo (con su dato, solo las estrictas): las que se nombran en el motivo. */
-function preferenciaQueExige(preferencia: MonstruoNivelClase['Preferencia_legal'] | null | undefined): boolean {
+/**
+ * La regla de la preferencia de un eje si exige algo (con su dato, solo las estrictas), o `null`: la que juzga el
+ * alineamiento y la que se nombra en el motivo.
+ */
+function reglaQueExige(preferencia: MonstruoNivelClase['Preferencia_legal'] | null | undefined): ReglaPreferenciaAlineamiento | null {
     const regla = reglaDePreferenciaAlineamiento(preferencia);
-    return !!regla && regla.estricta;
+    return regla?.estricta ? regla : null;
 }
 
 function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelClase[]): string {
@@ -143,7 +139,7 @@ function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelClase[]):
 
     lista.forEach((nivelClase) => {
         const nombreDe = (p: MonstruoNivelClase['Preferencia_legal'] | null | undefined) =>
-            preferenciaQueExige(p) ? `${p?.Nombre ?? ''}`.trim() || null : null;
+            reglaQueExige(p) ? `${p?.Nombre ?? ''}`.trim() || null : null;
         const legal = nombreDe(nivelClase?.Preferencia_legal);
         const moral = nombreDe(nivelClase?.Preferencia_moral);
         const partes: string[] = [];

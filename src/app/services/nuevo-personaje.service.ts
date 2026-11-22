@@ -64,6 +64,7 @@ import { esRazaMutada, especialesDevueltos, especialQueLaSustituye } from './uti
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, ContextoCompatibles, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { cumpleArmasNaturalesDeLaDote, DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote, nivelLanzadorMaximoDeSortilegas } from './utils/dote-elegibilidad';
+import { esDoteSuspendida } from './utils/dote-mapper';
 import { ClaseConNivel, HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
 import { ClaveHabilidad, claveDeHabilidad, claveHabilidad, clavesDeReferenciaGuardada } from './utils/habilidad-clave';
@@ -4513,7 +4514,7 @@ export class NuevoPersonajeService {
 
         // Una dote suspendida (la elevada tras una caída, `Contexto.Suspendida`) no se puede usar: no cuenta como prerrequisito.
         const dotes = (this.personajeCreacion.DotesContextuales ?? [])
-            .filter((item) => !(item?.Contexto as any)?.Suspendida)
+            .filter((item) => !esDoteSuspendida(item))
             .map((item) => ({
                 id: toNumber(item?.Dote?.Id) > 0 ? toNumber(item?.Dote?.Id) : null,
                 nombre: `${item?.Dote?.Nombre ?? ''}`.trim(),
@@ -5328,7 +5329,7 @@ export class NuevoPersonajeService {
         const ids = new Set<number>();
         (this.personajeCreacion.DotesContextuales ?? []).forEach((d) => {
             const clave = claveDoteDeLaFicha({ idDote: toInt(d?.Dote?.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${(d?.Contexto as any)?.Origen ?? ''}` });
-            if (!(d?.Contexto as any)?.Sin_prerrequisitos && !(d?.Contexto as any)?.Suspendida && !sin.has(clave))
+            if (!(d?.Contexto as any)?.Sin_prerrequisitos && !esDoteSuspendida(d) && !sin.has(clave))
                 ids.add(toInt(d?.Dote?.Id));
         });
         (this.personajeCreacion.Dotes ?? []).forEach((item) => ids.add(toNumber((item as any)?.Id)));

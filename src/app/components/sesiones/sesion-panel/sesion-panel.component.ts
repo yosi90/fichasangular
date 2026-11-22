@@ -40,6 +40,7 @@ import {
 } from 'src/app/services/utils/companero-trucos';
 import { nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
 import { leFaltaAlgoAlCompanero } from 'src/app/services/utils/completar-companero';
+import { esDoteSuspendida } from 'src/app/services/utils/dote-mapper';
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { nivelLanzadorMinimo, precioCopiaLibro } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
@@ -368,8 +369,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     get tieneDotesElevadas(): boolean {
         const elevadas = (this.pj?.DotesContextuales ?? []).filter((d) => (d?.Dote?.Tipos ?? [])
             .some((t: any) => normalizarTexto(`${t?.Nombre ?? ''}`, true) === TIPO_DOTE_ELEVADA));
-        const suspendida = (d: (typeof elevadas)[number]) => (d?.Contexto as any)?.Suspendida === true;
-        return this.alineamientoModo === 'expiacion' ? elevadas.some(suspendida) : elevadas.some((d) => !suspendida(d));
+        return this.alineamientoModo === 'expiacion' ? elevadas.some(esDoteSuspendida) : elevadas.some((d) => !esDoteSuspendida(d));
     }
 
     /** Las clases de la caída o de la expiación, según el modo. */
