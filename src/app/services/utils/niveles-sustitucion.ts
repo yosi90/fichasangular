@@ -170,7 +170,7 @@ function quitaEnElNivel(quita: SustitucionQuita, nivelTomado: number, nivelClase
 }
 
 function aplicarQuitaDeFilas(clase: Clase, detalle: ClaseNivelDetalle, nivelClase: number, nivelTomado: number, quita: SustitucionQuita,
-    tipo: 'especial' | 'dote'): void {
+    tipo: 'especial' | 'dote', idsQueDaElNivel: ReadonlySet<number> = new Set()): void {
     const filas = filasDe(detalle, tipo);
     if (quita.Alcance === 'retrasa') {
         // Las filas de la aptitud desde el nivel en que se toma, en orden: la primera se pierde y cada una da el extra de la
@@ -199,8 +199,18 @@ function aplicarQuitaDeFilas(clase: Clase, detalle: ClaseNivelDetalle, nivelClas
         ponerFilas(detalle, tipo, [...filas, ...movidas]);
         return;
     }
-    if (quitaEnElNivel(quita, nivelTomado, nivelClase))
-        ponerFilas(detalle, tipo, filas.filter((f) => !esDeLaQuita(f, quita, tipo)));
+    if (!quitaEnElNivel(quita, nivelTomado, nivelClase))
+        return;
+    // Con `Sustituto` (solo `desde` en una aptitud), cada fila quitada pasa a ser esa aptitud con el mismo extra: los usos
+    // de más de la furia llegan como Furia de la montaña. En su nivel, si el nivel ya la da, no se repite.
+    const sustituto = quita.Alcance === 'desde' && tipo === 'especial' && toInt(quita.Sustituto?.Id) > 0 ? quita.Sustituto! : null;
+    ponerFilas(detalle, tipo, filas.flatMap((f) => {
+        if (!esDeLaQuita(f, quita, tipo))
+            return [f];
+        if (!sustituto || (nivelClase === nivelTomado && idsQueDaElNivel.has(toInt(sustituto.Id))))
+            return [];
+        return [{ ...f, Especial: { ...((f as ClaseEspecialNivel).Especial ?? {}), Id: toInt(sustituto.Id), Nombre: `${sustituto.Nombre ?? ''}` } } as ClaseEspecialNivel];
+    }));
 }
 
 /**
@@ -232,7 +242,8 @@ export function detalleConSustituciones(clase: Clase, nivelClase: number, tomado
             switch (quita.Tipo) {
                 case 'especial':
                 case 'dote':
-                    aplicarQuitaDeFilas(clase, detalle, nivel, tomado.Nivel, quita, quita.Tipo);
+                    aplicarQuitaDeFilas(clase, detalle, nivel, tomado.Nivel, quita, quita.Tipo,
+                        new Set(tomado.Especiales.map((e) => toInt((e.Especial as Record<string, any>)?.['Id']))));
                     break;
                 case 'conjuros_diarios':
                     if (quitaEnElNivel(quita, tomado.Nivel, nivel))
@@ -573,7 +584,7 @@ function textoDeQuita(q: SustitucionQuita): string {
                 : NOMBRE_QUITA_SIN_APLICAR[q.Tipo] ?? q.Tipo);
     const conExtra = `${nombre}${`${q.Extra ?? ''}`.trim() ? ` (${q.Extra})` : ''}`;
     switch (q.Alcance) {
-        case 'desde': return `${conExtra}, desde este nivel`;
+        case 'desde': return `${conExtra}, desde este nivel${`${q.Sustituto?.Nombre ?? ''}`.trim() ? ` (pasa a ${q.Sustituto!.Nombre})` : ''}`;
         case 'retrasa': return `${conExtra}, un paso más tarde`;
         case 'aplaza': return `${conExtra}, que pasa al ${ordinalDeNivel(toInt(q.Aplaza_a_nivel))}`;
         default: return conExtra;

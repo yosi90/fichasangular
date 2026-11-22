@@ -114,7 +114,8 @@ export function barbaroConSustitucionApi(): any {
                     Id: 21, Nivel: 1, Ajustes: sinAjustes, Descripcion: 'La furia de la montaña.',
                     Especiales: [{ ...especial(ID_FURIA_DE_LA_MONTANA, 'Furia de la montaña', 1), Por_nivel_del_juego: false, Extra_del_juego: false }],
                     Dotes: [],
-                    Quita: [{ Tipo: 'especial', Elemento: { Id: ID_FURIA, Nombre: 'Furia' }, Id_extra: null, Extra: null, Nivel_conjuro: null, Cantidad: null, Alcance: 'desde', Aplaza_a_nivel: null }],
+                    Quita: [{ Tipo: 'especial', Elemento: { Id: ID_FURIA, Nombre: 'Furia' }, Id_extra: null, Extra: null, Nivel_conjuro: null, Cantidad: null, Alcance: 'desde', Aplaza_a_nivel: null,
+                        Sustituto: { Id: ID_FURIA_DE_LA_MONTANA, Nombre: 'Furia de la montaña' } }],
                     Conjuros: [],
                 },
                 {

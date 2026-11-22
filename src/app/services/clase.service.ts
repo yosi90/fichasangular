@@ -382,6 +382,7 @@ function normalizeNivelSustitucion(raw: any): SustitucionNivel {
             Cantidad: toIntOrNull(item?.Cantidad),
             Alcance: (['nivel', 'desde', 'retrasa', 'aplaza'].includes(toText(item?.Alcance)) ? toText(item?.Alcance) : 'nivel') as SustitucionNivel['Quita'][number]['Alcance'],
             Aplaza_a_nivel: toIntOrNull(item?.Aplaza_a_nivel),
+            Sustituto: refSustitucion(item?.Sustituto),
         })),
         Conjuros: toArray(raw?.Conjuros).map((item: any) => ({
             Conjuro: refSustitucion(item?.Conjuro) ?? { Id: 0, Nombre: '' },

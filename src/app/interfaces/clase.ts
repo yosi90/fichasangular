@@ -261,6 +261,11 @@ export interface SustitucionQuita {
     Cantidad: number | null;
     Alcance: AlcanceSustitucionQuita;
     Aplaza_a_nivel: number | null;
+    /**
+     * Con `desde` en una aptitud: cada fila quitada de la tabla de la clase pasa a ser esta aptitud con el mismo extra (los
+     * usos de más de la furia, como Furia de la montaña). `null`: se quitan sin más.
+     */
+    Sustituto: SustitucionRef | null;
 }
 
 /** Una aptitud que da un nivel de sustitución: la de la tabla de la clase, con las dos marcas del juego. */

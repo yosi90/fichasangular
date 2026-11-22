@@ -70,10 +70,17 @@ describe('niveles-sustitucion (R8, primera tanda)', () => {
         expect(ids(detalleConSustituciones(guerrero, 1, [])!.Especiales)).toEqual([ID_DOTE_ADICIONAL]);
     });
 
-    it('una quita «desde» quita la aptitud en su nivel y en todos los siguientes', () => {
+    it('una quita «desde» quita la aptitud en su nivel y en todos los siguientes; con su sustituto, con el mismo extra', () => {
         const tomados = [{ nivelClase: 1, idNivelSustitucion: 21 }];
+        // En su nivel, la que da el nivel (sin repetirla).
         expect(ids(detalleConSustituciones(barbaro, 1, tomados)!.Especiales)).toEqual([ID_FURIA_DE_LA_MONTANA]);
-        expect(ids(detalleConSustituciones(barbaro, 4, tomados)!.Especiales)).toEqual([]);
+        const n4 = detalleConSustituciones(barbaro, 4, tomados)!.Especiales;
+        expect(ids(n4)).toEqual([ID_FURIA_DE_LA_MONTANA]);
+        expect(n4[0].Extra).toBe('2/día');
+        // Sin sustituto, se quita sin más.
+        const sinSustituto = JSON.parse(JSON.stringify(barbaro));
+        sinSustituto.Sustituciones[0].Niveles[0].Quita[0].Sustituto = null;
+        expect(ids(detalleConSustituciones(sinSustituto, 4, tomados)!.Especiales)).toEqual([]);
         expect(puntosHabilidadDelNivel(barbaro, sustitucionDelNivel(barbaro, tomados, 1))).toBe(6);
     });
 
@@ -172,7 +179,7 @@ describe('niveles-sustitucion (R8, primera tanda)', () => {
         expect(vista.requisitos).toEqual(['Enano', 'Haber vivido en las montañas']);
         expect(vista.datos).toEqual(['Puntos de habilidad: 6 + mod. de Int por nivel']);
         expect(vista.niveles.map((n) => [n.nivel, n.gana, n.enLugarDe])).toEqual([
-            ['1.º', 'Furia de la montaña', 'Furia, desde este nivel'],
+            ['1.º', 'Furia de la montaña', 'Furia, desde este nivel (pasa a Furia de la montaña)'],
             ['3.º', '', 'Sentido de las trampas, un paso más tarde'],
         ]);
         expect(vistaDeLosJuegos(explorador)[0].niveles[0].enLugarDe).toBe('Enemigo predilecto, que pasa al 15.º y Enmarañar (fuera de su lista)');
