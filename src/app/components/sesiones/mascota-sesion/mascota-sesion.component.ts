@@ -28,8 +28,7 @@ import { construirCatalogoCompanerosDesdeMonstruos, entradasDelSelectorCompanero
 import { construirCatalogoFamiliaresDesdeMonstruos, entradasDelSelectorFamiliar } from 'src/app/services/utils/familiar-reglas';
 import { fichaSinLaMascota, FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
 import {
-    CAUSAS_DE_PERDER, costeDeLaMascotaEnLaSesion, costeDeLasFuentes, fortalezaDelPersonaje, fuentesDeLaMascota,
-    mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasLaSalvacion, TEXTOS_MASCOTA,
+    CAUSAS_DE_PERDER, costeDeLaMascota, fortalezaDelPersonaje, mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasLaSalvacion, TEXTOS_MASCOTA,
     TextosMascotaEnLaSesion, tirarFortaleza,
 } from 'src/app/services/utils/mascota-sesion';
 import { toInt } from 'src/app/services/utils/normalizacion';
@@ -228,8 +227,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
             await this.motor.hidratar(this.svc, this.pj, this.entrada, cargada.nivelesPerdidos);
             if (!this.cuenta.sigue())
                 return;
-            this.coste = costeDeLaMascotaEnLaSesion(cargada.mascotas, this.mascota, () => costeDeLasFuentes(
-                fuentesDeLaMascota(this.pj, this.svc.CatalogoClases, this.mascota), this.mascota, this.pxActuales, !!this.laMascota));
+            this.coste = costeDeLaMascota(cargada.mascotas, this.mascota);
             if (this.accion === 'perder') {
                 if (!this.laMascota)
                     throw new Error(`El personaje no tiene ${this.textos.que}.`);

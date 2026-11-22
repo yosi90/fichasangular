@@ -2,48 +2,27 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { leerCostesDeLasMascotas, leerMascotasPerdidas } from 'src/app/services/sesiones.service';
 import { bajaDeNivel } from './experiencia-nivel';
 import { fichaSinLaMascota } from './mascota-al-dia';
-import { FuenteMascota } from './mascota-cupos';
 import { CosteDeLaMascota } from 'src/app/interfaces/sesiones';
 import {
-    costeDeLaMascotaEnLaSesion, costeDeLasFuentes, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasLaSalvacion, sinMascotaNueva,
-    tirarFortaleza,
+    costeDeLaMascota, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasLaSalvacion, sinMascotaNueva, tirarFortaleza,
 } from './mascota-sesion';
 
 // La mascota fuera del reciclaje (contrato: personajes.md, «La mascota fuera del reciclaje»; dictamen del máster de Rol del
 // 2026-11-22: Manual del jugador, págs. 35 y 44-45).
 describe('mascota-sesion', () => {
-    const fuente = (idClase: number, nivel: number, px: number | null, po: number | null = 100): FuenteMascota => ({
-        idClase, nombreClase: `Clase ${idClase}`, nivelActual: nivel, idEspecial: 10 + idClase, divisor: 1, ajuste: 0, aporta: nivel,
-        lista: { id: idClase, nombre: '' },
-        coste: { pxPerdidaPorNivel: px, cdPerdida: px === null ? null : 15, poObtener: po, horasObtener: 24, esperaReemplazo: px === null ? null : 'un año y un día' },
-    });
-
-    it('sin el dato de la API, lo que cuesta de sus fuentes: 200 PX por nivel de las clases que dan el familiar, sumados, una vez por clase', () => {
-        // Hechicero 3 / mago 2 (y el mago repetido): 1.000; con 3.230 PX, los que le quedan y si baja de nivel.
-        const coste = costeDeLasFuentes([fuente(1, 3, 200), fuente(2, 2, 200), fuente(2, 2, 200)], 'familiar', 3230, true);
-        expect(coste.tarifaPorClase.map((t) => t.px)).toEqual([600, 400]);
-        expect([coste.cd, coste.poObtener, coste.esperaReemplazo]).toEqual([15, 100, 'un año y un día']);
-        expect([coste.pxSiFalla, coste.bajaSiFalla, coste.pxSiSupera, coste.bajaSiSupera]).toEqual([2230, true, 2730, true]);
-        // Sin bajar de 0; el compañero no cuesta PX ni tiene CD; sin dato (una caché de antes), nada.
-        expect(costeDeLasFuentes([fuente(1, 3, 200)], 'familiar', 100, true).pxSiFalla).toBe(0);
-        const companero = costeDeLasFuentes([fuente(3, 4, null, 0)], 'companero', 5000, true);
-        expect([companero.cd, companero.pxSiFalla, companero.bajaSiFalla, companero.poObtener]).toEqual([null, 5000, false, 0]);
-        expect(costeDeLasFuentes([{ ...fuente(4, 2, 200), coste: undefined }], 'familiar', 5000, true).pxSiFalla).toBe(5000);
-    });
-
-    it('el coste de la API (`mascotas` de la sesión) manda; sin él, el de sus fuentes; los PX con la salvación', () => {
+    it('el coste es el de la API (`mascotas` de la sesión; la regla, `utils/mascota_perdida.coste`); los PX con la salvación', () => {
         const deLaApi: CosteDeLaMascota = {
             mascota: 'familiar', tiene: true, cd: 15, pxAntes: 3230, pxSiFalla: 2630, pxSiSupera: 2930, bajaSiFalla: true, bajaSiSupera: true,
             poObtener: 100, horasObtener: 24, esperaReemplazo: 'un año y un día', tarifaPorClase: [],
         };
-        const respaldo = jasmine.createSpy('respaldo').and.returnValue({ ...deLaApi, pxSiFalla: 0 });
-        expect(costeDeLaMascotaEnLaSesion([deLaApi], 'familiar', respaldo)).toBe(deLaApi);
-        expect(respaldo).not.toHaveBeenCalled();
-        expect(costeDeLaMascotaEnLaSesion([], 'familiar', respaldo).pxSiFalla).toBe(0);
-        // El ejemplo del libro: Hennet supera la salvación y queda con 2.930, en 2.º nivel; sin salvación, los de ahora.
+        expect(costeDeLaMascota([deLaApi], 'familiar')).toBe(deLaApi);
+        expect(costeDeLaMascota([deLaApi], 'companero')).toBeNull();
+        expect(costeDeLaMascota(undefined, 'familiar')).toBeNull();
+        // El ejemplo del libro: Hennet supera la salvación y queda con 2.930, en 2.º nivel; sin salvación (o sin coste), los de ahora.
         expect(pxTrasLaSalvacion(deLaApi, 3230, 'superada')).toEqual({ px: 2930, baja: true });
         expect(pxTrasLaSalvacion(deLaApi, 3230, 'fallada')).toEqual({ px: 2630, baja: true });
         expect(pxTrasLaSalvacion(deLaApi, 3230, null)).toEqual({ px: 3230, baja: false });
+        expect(pxTrasLaSalvacion(null, 3230, 'fallada')).toEqual({ px: 3230, baja: false });
         expect(bajaDeNivel(4500, 4300)).toBeFalse();
     });
 
