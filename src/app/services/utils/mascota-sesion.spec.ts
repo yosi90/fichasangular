@@ -1,8 +1,9 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { leerMascotasPerdidas } from 'src/app/services/sesiones.service';
+import { bajaDeNivel } from './experiencia-nivel';
 import { FuenteMascota } from './mascota-cupos';
 import {
-    costeDeLaMascota, fichaSinLaMascota, leBajaUnNivel, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasPerderLaMascota, sinMascotaNueva,
+    costeDeLaMascota, fichaSinLaMascota, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasPerderLaMascota, sinMascotaNueva,
     tirarFortaleza,
 } from './mascota-sesion';
 
@@ -29,11 +30,11 @@ describe('mascota-sesion', () => {
     it('los PX: la tarifa, la mitad si supera la salvación, sin bajar de 0; y si le bajan del nivel que le dan sus PX', () => {
         // El ejemplo del libro: Hennet, hechicero 3 con 3.230 PX, supera la salvación y queda con 2.930, en 2.º nivel.
         expect(pxTrasPerderLaMascota(3230, 600, 'superada')).toBe(2930);
-        expect(leBajaUnNivel(3230, 2930)).toBeTrue();
+        expect(bajaDeNivel(3230, 2930)).toBeTrue();
         expect(pxTrasPerderLaMascota(3230, 600, 'fallada')).toBe(2630);
         expect(pxTrasPerderLaMascota(100, 600, 'fallada')).toBe(0);
         expect(pxTrasPerderLaMascota(0, 200, 'fallada')).toBe(0);
-        expect(leBajaUnNivel(4500, 4300)).toBeFalse();
+        expect(bajaDeNivel(4500, 4300)).toBeFalse();
     });
 
     it('«Tirar» es una ayuda: d20 + su Fortaleza contra la CD', () => {

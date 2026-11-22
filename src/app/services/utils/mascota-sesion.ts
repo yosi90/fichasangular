@@ -4,7 +4,6 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { CausaMascotaPerdida, MascotaPerdida, SalvacionMascota, TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { TEXTOS_COMPANERO } from './companero-reglas';
-import { nivelPorExperiencia } from './experiencia-nivel';
 import { TEXTOS_FAMILIAR } from './familiar-reglas';
 import { FuenteMascota, fuentesMascota } from './mascota-cupos';
 import { toInt } from './normalizacion';
@@ -107,11 +106,6 @@ export function costeDeLaMascota(fuentes: readonly FuenteMascota[]): CosteDeLaMa
 export function pxTrasPerderLaMascota(px: number, tarifa: number, salvacion: SalvacionMascota | null): number {
     const perdidos = salvacion === 'superada' ? Math.floor(Math.max(0, tarifa) / 2) : Math.max(0, tarifa);
     return Math.max(0, toInt(px) - perdidos);
-}
-
-/** Si perder esos PX le baja del nivel que le dan sus PX (no el NEP): entonces pierde el último nivel que ganó. */
-export function leBajaUnNivel(pxAntes: number, pxDespues: number): boolean {
-    return nivelPorExperiencia(toInt(pxDespues)) < nivelPorExperiencia(toInt(pxAntes));
 }
 
 /** Su Fortaleza total, para la ayuda de «Tirar» (d20 + Fortaleza). */

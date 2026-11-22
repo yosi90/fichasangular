@@ -28,12 +28,13 @@ import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service'
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { AccionMascota, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDotePorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
+import { bajaDeNivel } from 'src/app/services/utils/experiencia-nivel';
 import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos, entradasDelSelectorCompanero } from 'src/app/services/utils/companero-reglas';
 import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos, entradasDelSelectorFamiliar } from 'src/app/services/utils/familiar-reglas';
 import { FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
 import {
     CAUSAS_DE_PERDER, costeDeLaMascota, CosteDeLaMascotaEnLaSesion, fichaSinLaMascota, fortalezaDelPersonaje, fuentesDeLaMascota,
-    leBajaUnNivel, mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA,
+    mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA,
     TextosMascotaEnLaSesion, tirarFortaleza,
 } from 'src/app/services/utils/mascota-sesion';
 import { toInt } from 'src/app/services/utils/normalizacion';
@@ -169,7 +170,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     }
 
     get bajaNivel(): boolean {
-        return this.mascota === 'familiar' && !!this.salvacion && leBajaUnNivel(this.pxActuales, this.pxDespues);
+        return this.mascota === 'familiar' && !!this.salvacion && bajaDeNivel(this.pxActuales, this.pxDespues);
     }
 
     get cd(): number {
