@@ -24,7 +24,8 @@ import {
     FamiliarProgresion,
     MascotaAptitudNivel,
 } from '../interfaces/monstruo';
-import { AptitudesMascotaDelNivel } from './utils/mascota-cupos';
+import { AptitudesMascotaDelNivel, criaturaDeLaMascota, FilaMascotaResuelta } from './utils/mascota-cupos';
+import { razonesAlineamientoMascota } from './utils/nivel-clase-monstruo';
 import type { EstadoDeLasMascotas, LoQueDanLasMascotasAlAmo } from './utils/mascota-al-dia';
 import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
@@ -103,6 +104,7 @@ import {
     dgDeLaDoteDelCompanero,
     puntuacionesDelCompanero,
     quitarLoDeLosDgQueNoTieneElCompanero,
+    conLaInteligenciaDeSuFila,
 } from './utils/companero-dotes';
 import {
     aplicarTrucosAdicionales,
@@ -2834,6 +2836,8 @@ export class NuevoPersonajeService {
      */
     private puntosDelCompaneroPorRepartir(companero: CompaneroMonstruoDetalle): number {
         const inteligencia = (companero.Caracteristicas as Record<string, number | null> | undefined)?.['Inteligencia'];
+        if (companero.Sin_habilidades_dotes === true)
+            return 0;
         if (companero.Habilidades_monstruo && companero.Puntos_habilidad_tipo !== undefined) {
             if (this.rangosDelCompaneroRepartidos)
                 return 0;
@@ -5297,13 +5301,13 @@ export class NuevoPersonajeService {
         if (companero)
             estado.companero = {
                 nombre: `${companero.Nombre ?? ''}`.trim(), inactiva: !!companero.Inactiva,
-                motivo: companero.Inactiva ? resolverFilaCompanero(companero, this.getEstadoCuposCompanero(), dotes, sinPrerrequisitos).motivo : '',
+                motivo: companero.Inactiva ? this.conSuAlineamiento(resolverFilaCompanero(companero, this.getEstadoCuposCompanero(), dotes, sinPrerrequisitos), companero, 'companero').motivo : '',
             };
         const familiar = (this.personajeCreacion.Familiares ?? [])[0];
         if (familiar)
             estado.familiar = {
                 nombre: `${familiar.Nombre ?? ''}`.trim(), inactiva: !!familiar.Inactiva,
-                motivo: familiar.Inactiva ? resolverFilaFamiliar(familiar, this.getEstadoCuposFamiliar(), dotes, sinPrerrequisitos).motivo : '',
+                motivo: familiar.Inactiva ? this.conSuAlineamiento(resolverFilaFamiliar(familiar, this.getEstadoCuposFamiliar(), dotes, sinPrerrequisitos), familiar, 'familiar').motivo : '',
             };
         return estado;
     }
@@ -5326,6 +5330,31 @@ export class NuevoPersonajeService {
         return ids;
     }
 
+    /**
+     * La fila de la mascota que ya tiene, con el alineamiento de su amo: si no cumple el que pide (los de su criatura o las
+     * preferencias estrictas de su fila, `razonesAlineamientoMascota`, como la API), sin fila, con el motivo de que queda
+     * inactiva (contrato: personajes.md, «La mascota y el alineamiento»). Sin alineamiento, como estaba.
+     */
+    private conSuAlineamiento(resuelta: FilaMascotaResuelta, mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle,
+        tipo: 'companero' | 'familiar'): FilaMascotaResuelta {
+        const alineamiento = `${this.personajeCreacion?.Alineamiento ?? ''}`.trim();
+        if (!resuelta.fila || alineamiento.length < 1)
+            return resuelta;
+        const requeridos = tipo === 'companero'
+            ? (mascota as any)?.Alineamientos_requeridos?.Companero ?? []
+            : (mascota as any)?.Alineamientos_requeridos?.Familiar ?? [];
+        const sustantivo = tipo === 'companero' ? 'compañero' : 'familiar';
+        const razones = razonesAlineamientoMascota(requeridos, [resuelta.fila], alineamiento, sustantivo);
+        if (razones.length < 1)
+            return resuelta;
+        const la = tipo === 'companero' ? 'El compañero animal' : 'El familiar';
+        const porque = razones[0].replace(/\.$/, '');
+        return {
+            ...resuelta, fila: null, nivelTabla: 0, razones,
+            motivo: `${la} «${criaturaDeLaMascota(mascota)}»: ${porque.charAt(0).toLowerCase()}${porque.slice(1)} (el personaje es ${alineamiento.toLowerCase()}): queda inactivo hasta que vuelva a cumplir.`,
+        };
+    }
+
     /** Si se puede juzgar la mascota: trae las filas de las listas de su monstruo (`Niveles_clase`). */
     private seJuzgaLaMascota(mascota: CompaneroMonstruoDetalle | FamiliarMonstruoDetalle): boolean {
         return (mascota?.Niveles_clase ?? []).length > 0;
@@ -5339,7 +5368,7 @@ export class NuevoPersonajeService {
     private ponerFamiliarAlDia(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>, desactivar = false): void {
         if ((this.progresionFamiliar?.Tablas ?? []).length < 1)
             return;
-        const resuelta = resolverFilaFamiliar(familiar, estado, dotes);
+        const resuelta = this.conSuAlineamiento(resolverFilaFamiliar(familiar, estado, dotes), familiar, 'familiar');
         if (resuelta.fila) {
             delete familiar.Inactiva;
             this.ponerAptitudesFamiliar(familiar, resuelta.nivelTabla);
@@ -5382,7 +5411,7 @@ export class NuevoPersonajeService {
     private ponerCompaneroAlDia(companero: CompaneroMonstruoDetalle, estado: EstadoCuposCompanero, dotes: ReadonlySet<number>, desactivar = false): void {
         if ((this.progresionCompanero?.Bonos ?? []).length < 1)
             return;
-        const resuelta = resolverFilaCompanero(companero, estado, dotes);
+        const resuelta = this.conSuAlineamiento(resolverFilaCompanero(companero, estado, dotes), companero, 'companero');
         if (!resuelta.fila && (!desactivar || !this.seJuzgaLaMascota(companero)))
             return;
         const anterior = companero.Inactiva
@@ -5402,6 +5431,7 @@ export class NuevoPersonajeService {
         // menos trucos adicionales, los últimos que eligió (contrato, «Los trucos del compañero»).
         quitarLoDeLosDgQueNoTieneElCompanero(companero);
         quitarLosTrucosQueNoCaben(companero);
+        conLaInteligenciaDeSuFila(companero, resuelta.fila);
         if (resuelta.fila) {
             delete companero.Inactiva;
             this.ponerAptitudesCompanero(companero, resuelta.nivelTabla);

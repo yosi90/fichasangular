@@ -193,6 +193,11 @@ describe('los trucos del compañero animal', () => {
             expect(textoDeLoQueSustituye(RASTREA, contexto)).toBeNull();
         });
 
+        it('F21: la sabandija con Inteligencia solo por su fila no aprende trucos enseñados (sin la dote del amo)', () => {
+            const arana = lobo({ int: 1, Inteligencia_de_su_fila: true } as any);
+            expect(motivoTrucoEnsenado(ATRAS, contextoDelTrucoEnsenado(arana, CATALOGO, []))).toBe('Sin Inteligencia no se le pueden enseñar trucos.');
+        });
+
         it('lo que sustituye a uno de sus trucos adicionales no se le enseña: esos no se cambian', () => {
             const conAtaca = lobo({ int: 2, Trucos: [deMascota(ATACA, 'adicional', 1)] });
             expect(motivoTrucoEnsenado(ATACA_TODAS, contextoDelTrucoEnsenado(conAtaca, CATALOGO, [])))

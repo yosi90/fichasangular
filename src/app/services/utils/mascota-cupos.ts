@@ -254,6 +254,15 @@ export function aportaAlDarLaMascota(clase: Clase | null | undefined, otorga: Ot
 export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], otorga: OtorgaMascota): FuenteMascota[] {
     const clases = Array.isArray(catalogoClases) ? catalogoClases : [];
     const elegidas = new Set((personaje?.Claseas ?? []).map((especial) => toInt(especial?.Id)).filter((id) => id > 0));
+    // Las aptitudes que ha perdido por una ex clase (`Perdida_por` de la ficha, con el nombre de la ex clase: el ex druida
+    // pierde «Compañero animal», MJ pág. 37): los niveles de esa clase no suman al nivel efectivo de la mascota, y los de otra
+    // que da la misma aptitud (el explorador), sí (contrato: personajes.md, «La mascota y el alineamiento»).
+    const perdidaPor = new Map<number, Set<string>>();
+    (personaje?.Claseas ?? []).forEach((especial) => {
+        const nombres = (especial?.Perdida_por ?? []).map((n) => normalizarTexto(n ?? '')).filter((n) => n.length > 0);
+        if (nombres.length > 0 && toInt(especial?.Id) > 0)
+            perdidaPor.set(toInt(especial.Id), new Set([...(perdidaPor.get(toInt(especial.Id)) ?? []), ...nombres]));
+    });
     const porClave = new Map<string, FuenteMascota>();
     (personaje?.desgloseClases ?? []).forEach((entrada) => {
         const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
@@ -263,6 +272,9 @@ export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], ot
             return;
         aptitudesMascotaDeLaClase(clase, otorga).forEach((aptitud) => {
             if (nivelActual < aptitud.nivel || (aptitud.opcional && !elegidas.has(aptitud.idEspecial)))
+                return;
+            const ex = normalizarTexto(`${entrada?.Ex?.Nombre ?? ''}`);
+            if (ex.length > 0 && perdidaPor.get(aptitud.idEspecial)?.has(ex))
                 return;
             const fuente: FuenteMascota = {
                 idClase: toInt(clase.Id),

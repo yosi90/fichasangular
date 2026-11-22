@@ -194,6 +194,13 @@ function normalizeHabilidad(raw: any): MonstruoHabilidad {
 
 const MASCOTAS_DE_FILA: readonly MascotaDeFila[] = ['companero', 'familiar'];
 
+/** `Valor`, `Prohibe` e `Id_prioridad` de una preferencia de la fila, si llegan (sin `Valor`, nada). */
+function datoDePreferenciaDeFila(raw: any): { Valor?: number; Prohibe?: boolean; Id_prioridad?: number; } {
+    if (raw?.Valor === null || raw?.Valor === undefined)
+        return {};
+    return { Valor: toInt(raw.Valor), Prohibe: raw?.Prohibe === true, Id_prioridad: toInt(raw?.Id_prioridad) };
+}
+
 function normalizeNivelClase(raw: any): MonstruoNivelClase {
     return {
         Clase: {
@@ -209,19 +216,26 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
             Id: toNumber(raw?.Plantilla?.Id),
             Nombre: toText(raw?.Plantilla?.Nombre),
         },
+        // Con lo que pide, si la API lo da (`Valor`, `Prohibe`, `Id_prioridad`: las preferencias como dato).
         Preferencia_legal: {
             Id: toNumber(raw?.Preferencia_legal?.Id),
             Nombre: toText(raw?.Preferencia_legal?.Nombre),
+            ...datoDePreferenciaDeFila(raw?.Preferencia_legal),
         },
         Preferencia_moral: {
             Id: toNumber(raw?.Preferencia_moral?.Id),
             Nombre: toText(raw?.Preferencia_moral?.Nombre),
+            ...datoDePreferenciaDeFila(raw?.Preferencia_moral),
         },
         Dote: {
             Id: toNumber(raw?.Dote?.Id),
             Nombre: toText(raw?.Dote?.Nombre),
         },
         Mascota: MASCOTAS_DE_FILA.includes(raw?.Mascota) ? raw.Mascota : null,
+        // Lo que la fila le da a la criatura (tanda (g), F21; contrato: personajes.md, «F21: la Inteligencia de su fila»):
+        // su Inteligencia (`null`, la de su monstruo) y si sus DG adicionales no le dan habilidades ni dotes.
+        Inteligencia: raw?.Inteligencia === null || raw?.Inteligencia === undefined ? null : toInt(raw.Inteligencia),
+        Sin_habilidades_dotes: raw?.Sin_habilidades_dotes === true,
     };
 }
 

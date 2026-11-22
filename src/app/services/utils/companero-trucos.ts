@@ -189,7 +189,9 @@ export interface ContextoTrucoEnsenado extends Pick<ContextoTrucosDelCompanero, 
 export function contextoDelTrucoEnsenado(companero: CompaneroMonstruoDetalle | null | undefined, catalogo: readonly Truco[],
     catalogoDotes: readonly Dote[]): ContextoTrucoEnsenado {
     const inteligencia = inteligenciaDelCompanero(companero);
-    const int = sinPuntuacion(inteligencia) ? null : toInt(inteligencia);
+    // Descerebrada en su monstruo, con Inteligencia solo por su fila (F21: Compañero sabandija), no aprende trucos enseñados
+    // sin la dote del amo que la deja (`dote_trucos_inteligencia`, que la web aún no tiene): solo los adicionales.
+    const int = sinPuntuacion(inteligencia) || companero?.Inteligencia_de_su_fila === true ? null : toInt(inteligencia);
     const aprendidos = trucosAprendidosDelCompanero(companero);
     // Lo que sabe, sus aptitudes y su tipo, como para los adicionales.
     const { sabe, aptitudes, idsTipo } = contextoDeTrucosDelCompanero(companero, catalogo);
