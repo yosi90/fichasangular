@@ -1,5 +1,5 @@
 import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteSalvacionCondicional, DoteTipo } from "src/app/interfaces/dote";
-import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
+import { DoteContexto, DoteContextoPersonaje, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
 import { idNombre, idNombres, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { porNombre } from './orden-texto';
@@ -308,6 +308,14 @@ export function normalizeContexto(raw: any): DoteContexto {
         // La de un monstruo (`Entidad` «Monstruo»), la «(B)» de su bloque.
         ...(typeof raw?.Adicional === "boolean" ? { Adicional: raw.Adicional } : {}),
     };
+}
+
+/**
+ * Si la dote de la ficha está suspendida (`Contexto.Suspendida`: la elevada tras una caída con `dotesElevadas` sin su
+ * expiación, *Libro de obras elevadas*, pág. 39): no se puede usar ni cuenta como prerrequisito.
+ */
+export function esDoteSuspendida(item: Pick<DoteContextual, 'Contexto'> | null | undefined): boolean {
+    return (item?.Contexto as DoteContextoPersonaje | undefined)?.Suspendida === true;
 }
 
 /** `Inteligencia_para_trucos` de la dote: `{ Inteligencia, Tipo }` con su tipo y una Inteligencia de 1 o más, o `null`. */
