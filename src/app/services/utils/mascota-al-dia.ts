@@ -1,4 +1,5 @@
 import { PersonajeCreateCompaneroDto, PersonajeCreateFamiliarDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { TipoDeMascota } from 'src/app/interfaces/sesiones';
 import type { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import type { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { abreviaturaCaracteristica, caracteristicaPorId } from './caracteristicas';
@@ -43,15 +44,16 @@ export interface LoQueDanLasMascotasAlAmo {
 /**
  * La `ficha` sin lo que el amo llevaba por su mascota y el motor le quita entre su cuerpo `antes` y `despues` (las
  * aptitudes del vínculo y las dotes, Alerta, de `delAmo`): la ficha del motor solo añade a las colecciones
- * (`fichaConLoDelMotor`), y la mascota que queda inactiva (o que baja de nivel) se lo lleva. Lo demás, como estaba.
+ * (`fichaConLoDelMotor`), y la mascota que queda inactiva (o que baja de nivel) se lo lleva. Lo demás, como estaba. Con
+ * `delAmo` a `null`, todo lo que quita el motor (el motor sin la mascota que se pierde, `fichaSinLaMascota`).
  */
 export function sinLoQueYaNoDaLaMascota(ficha: PersonajeCreateRequestDto, antes: PersonajeCreateRequestDto,
-    despues: PersonajeCreateRequestDto, delAmo: LoQueDanLasMascotasAlAmo): PersonajeCreateRequestDto {
+    despues: PersonajeCreateRequestDto, delAmo: LoQueDanLasMascotasAlAmo | null): PersonajeCreateRequestDto {
     const colA: any = antes.colecciones ?? {};
     const colD: any = despues.colecciones ?? {};
     const especialesQuitados = diferencia(colA.especiales ?? [], colD.especiales ?? []).quitados
-        .filter((e) => delAmo.especiales.has(toInt(e['idEspecial'])));
-    const dotesQuitadas = diferencia(colA.dotes ?? [], colD.dotes ?? []).quitados.filter((d) => delAmo.dotes.has(toInt(d['idDote'])));
+        .filter((e) => !delAmo || delAmo.especiales.has(toInt(e['idEspecial'])));
+    const dotesQuitadas = diferencia(colA.dotes ?? [], colD.dotes ?? []).quitados.filter((d) => !delAmo || delAmo.dotes.has(toInt(d['idDote'])));
     if (especialesQuitados.length < 1 && dotesQuitadas.length < 1)
         return ficha;
     const resultado: PersonajeCreateRequestDto = JSON.parse(JSON.stringify(ficha));
@@ -62,6 +64,26 @@ export function sinLoQueYaNoDaLaMascota(ficha: PersonajeCreateRequestDto, antes:
         (x: any) => toInt(x?.idEspecial) === toInt(e['idEspecial']) && mismoExtra(x?.idExtra, e['idExtra'])));
     dotesQuitadas.forEach((d) => sacarDoteDeLaFicha(col.dotes, toInt(d['idDote']), toInt(d['idExtra']), `${d['origen'] ?? ''}`.trim() || null));
     return resultado;
+}
+
+/**
+ * La ficha sin la mascota que se pierde (`mascota_perdida`) y sin lo que daba al amo: la `ficha` (sin el último nivel que
+ * ganó, de «Perder un nivel») menos el bloque de la mascota y lo que el motor tenía con ella (`conMascota`) y no sin ella
+ * (`sinMascota`): las aptitudes del amo (vínculo, compartir conjuros…) y, del familiar, sus dotes con origen «Familiar…»
+ * (Alerta), con `sinLoQueYaNoDaLaMascota`.
+ */
+export function fichaSinLaMascota(
+    ficha: PersonajeCreateRequestDto,
+    conMascota: PersonajeCreateRequestDto,
+    sinMascota: PersonajeCreateRequestDto,
+    mascota: TipoDeMascota,
+): PersonajeCreateRequestDto {
+    const { companero, familiar, ...resto } = ficha;
+    const sinElBloque = {
+        ...resto,
+        ...(mascota === 'companero' ? (familiar ? { familiar } : {}) : (companero ? { companero } : {})),
+    } as PersonajeCreateRequestDto;
+    return sinLoQueYaNoDaLaMascota(sinElBloque, conMascota, sinMascota, null);
 }
 
 /**

@@ -132,57 +132,6 @@ export function perdidaDeLaMascota(perdidas: readonly MascotaPerdida[] | null | 
 }
 
 /**
- * La ficha sin la mascota y sin lo que daba al amo: la `ficha` (sin el último nivel que ganó, de «Perder un nivel») menos el
- * bloque de la mascota y las dotes y las aptitudes que tenía el motor con ella (`conMascota`) y no sin ella (`sinMascota`):
- * las del amo (vínculo, compartir conjuros…) y, del familiar, sus dotes con origen «Familiar…» (Alerta).
- */
-export function fichaSinLaMascota(
-    ficha: PersonajeCreateRequestDto,
-    conMascota: PersonajeCreateRequestDto,
-    sinMascota: PersonajeCreateRequestDto,
-    mascota: TipoDeMascota,
-): PersonajeCreateRequestDto {
-    const claveDote = (d: any) => `${toInt(d?.idDote)}|${toInt(d?.idExtra)}|${`${d?.origen ?? ''}`.trim()}`;
-    const claveEspecial = (e: any) => `${toInt(e?.idEspecial)}|${toInt(e?.idExtra)}`;
-    const quitadas = (de: readonly any[] | undefined, quedan: readonly any[] | undefined, clave: (x: any) => string) => {
-        const siguen = new Map<string, number>();
-        (quedan ?? []).forEach((x) => siguen.set(clave(x), (siguen.get(clave(x)) ?? 0) + 1));
-        const fuera = new Map<string, number>();
-        (de ?? []).forEach((x) => {
-            const k = clave(x);
-            if ((siguen.get(k) ?? 0) > 0)
-                siguen.set(k, (siguen.get(k) ?? 0) - 1);
-            else
-                fuera.set(k, (fuera.get(k) ?? 0) + 1);
-        });
-        return fuera;
-    };
-    const sinLasQuitadas = (lista: readonly any[] | undefined, fuera: Map<string, number>, clave: (x: any) => string) => {
-        const quedan = new Map(fuera);
-        return (lista ?? []).filter((x) => {
-            const k = clave(x);
-            if ((quedan.get(k) ?? 0) > 0) {
-                quedan.set(k, (quedan.get(k) ?? 0) - 1);
-                return false;
-            }
-            return true;
-        });
-    };
-    const dotesFuera = quitadas(conMascota.colecciones?.dotes, sinMascota.colecciones?.dotes, claveDote);
-    const especialesFuera = quitadas(conMascota.colecciones?.especiales, sinMascota.colecciones?.especiales, claveEspecial);
-    const { companero, familiar, ...resto } = ficha;
-    return {
-        ...resto,
-        ...(mascota === 'companero' ? (familiar ? { familiar } : {}) : (companero ? { companero } : {})),
-        colecciones: {
-            ...(ficha.colecciones ?? {}),
-            dotes: sinLasQuitadas(ficha.colecciones?.dotes, dotesFuera, claveDote),
-            especiales: sinLasQuitadas(ficha.colecciones?.especiales, especialesFuera, claveEspecial),
-        },
-    } as PersonajeCreateRequestDto;
-}
-
-/**
  * La ficha de la subida sin una mascota que no tenía (`antes`): la mascota nueva se obtiene después con `mascota_obtenida`
  * (la API rechaza la subida que la trae: `400 subida_cambio_no_permitido`; hallazgo 1 del máster).
  */

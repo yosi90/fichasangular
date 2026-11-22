@@ -1,9 +1,10 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { leerMascotasPerdidas } from 'src/app/services/sesiones.service';
 import { bajaDeNivel } from './experiencia-nivel';
+import { fichaSinLaMascota } from './mascota-al-dia';
 import { FuenteMascota } from './mascota-cupos';
 import {
-    costeDeLaMascota, fichaSinLaMascota, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasPerderLaMascota, sinMascotaNueva,
+    costeDeLaMascota, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasPerderLaMascota, sinMascotaNueva,
     tirarFortaleza,
 } from './mascota-sesion';
 

@@ -26,9 +26,9 @@ import { daDotePorNivelDePersonaje } from 'src/app/services/utils/clase-niveles'
 import { bajaDeNivel } from 'src/app/services/utils/experiencia-nivel';
 import { construirCatalogoCompanerosDesdeMonstruos, entradasDelSelectorCompanero } from 'src/app/services/utils/companero-reglas';
 import { construirCatalogoFamiliaresDesdeMonstruos, entradasDelSelectorFamiliar } from 'src/app/services/utils/familiar-reglas';
-import { FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
+import { fichaSinLaMascota, FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
 import {
-    CAUSAS_DE_PERDER, costeDeLaMascota, CosteDeLaMascotaEnLaSesion, fichaSinLaMascota, fortalezaDelPersonaje, fuentesDeLaMascota,
+    CAUSAS_DE_PERDER, costeDeLaMascota, CosteDeLaMascotaEnLaSesion, fortalezaDelPersonaje, fuentesDeLaMascota,
     mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA,
     TextosMascotaEnLaSesion, tirarFortaleza,
 } from 'src/app/services/utils/mascota-sesion';
