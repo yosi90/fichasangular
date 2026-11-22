@@ -5,7 +5,7 @@ import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento }
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { lanzaConjurosDiarios } from './nivel-lanzador-personaje';
-import { EvaluacionPrerrequisito, DeidadDelPersonaje, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararRangosHabilidad, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, DeidadDelPersonaje, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararAlineamientoBasico, compararGenero, compararRangosHabilidad, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
@@ -292,18 +292,7 @@ function buildEvaluacionAlineamiento(
     alineamientoActualId: number,
     prohibido: boolean
 ): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    // El básico (1-9), no `Id_alineamiento` (la combinación): el legal bueno «siempre» es la combinación 3.
-    const requerido = idBasicoDePrerrequisitoAlineamiento(entry);
-    const evaluable = requerido > 0 && alineamientoActualId > 0;
-    const coincide = evaluable ? alineamientoActualId === requerido : false;
-    const cumple = prohibido ? !coincide : coincide;
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple,
-        razonUnknown: "Prerrequisito de alineamiento con formato no reconocido",
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararAlineamientoBasico(idBasicoDePrerrequisitoAlineamiento(entry), alineamientoActualId, prohibido) };
 }
 
 function buildEvaluacionActitud(
@@ -315,18 +304,8 @@ function buildEvaluacionActitud(
 }
 
 function buildEvaluacionGenero(entry: Record<string, any>, generoActual: string): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
     // El nombre del género lo da la API (`Genero_nombre`, de la tabla `genero`); `Genero` es su id.
-    const requerido = normalizarTexto(parseNombre(entry, ["Genero_nombre", "genero_nombre"]));
-    const actual = normalizarTexto(generoActual);
-    const evaluable = requerido.length > 0 && actual.length > 0;
-    const cumple = evaluable ? actual === requerido : false;
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple,
-        razonUnknown: "Prerrequisito de genero con formato no reconocido",
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararGenero(parseNombre(entry, ["Genero_nombre", "genero_nombre"]), generoActual) };
 }
 
 function buildEvaluacionDote(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {

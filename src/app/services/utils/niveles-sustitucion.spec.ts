@@ -21,7 +21,7 @@ const ids = (filas: Array<{ Especial: Record<string, any>; }> | undefined) => (f
 function contexto(idRaza: number, nombre: string): ContextoRequisitosSustitucion {
     return {
         identidad: { razas: [{ id: idRaza, nombre }], tiposCriatura: [{ id: 1, nombre: 'Humanoide' }], subtipos: [] },
-        alineamientoBasicoId: 1, alineamiento: 'Legal bueno', genero: 'Macho', deidad: null, habilidades: [], tiposDeDote: [],
+        alineamientoBasicoId: 1, genero: 'Macho', deidad: null, habilidades: [], tiposDeDote: [],
         escuelaEspecialista: null,
     };
 }

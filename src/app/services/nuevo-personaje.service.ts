@@ -8306,7 +8306,6 @@ export class NuevoPersonajeService {
         return {
             identidad: this.identidadPrerrequisitosActual(),
             alineamientoBasicoId: getAlineamientoBasicoIdPorNombre(alineamiento),
-            alineamiento,
             genero: `${this.personajeCreacion?.Genero ?? ''}`,
             deidad: this.deidadParaPrerrequisitos(),
             habilidades: this.habilidadesParaPrerrequisitos(),

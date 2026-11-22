@@ -9,7 +9,7 @@ import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento }
 import { extraComparable, normalizarTexto, primerEntero, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { ClaseConNivel, DeidadDelPersonaje, EvaluacionPrerrequisito, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararNivelDeClase, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { ClaseConNivel, DeidadDelPersonaje, EvaluacionPrerrequisito, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararAlineamientoBasico, compararNivelDeClase, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -264,17 +264,7 @@ function buildEvaluacionAlineamiento(
     idAlineamientoActual: number,
     prohibido: boolean
 ): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    // El básico (1-9), no `Id_alineamiento` (la combinación de la tabla `alineamientos`).
-    const requerido = idBasicoDePrerrequisitoAlineamiento(entry);
-    const evaluable = requerido > 0 && idAlineamientoActual > 0;
-    const coincide = evaluable ? idAlineamientoActual === requerido : false;
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple: prohibido ? !coincide : coincide,
-        razonUnknown: 'Prerrequisito de alineamiento con formato no reconocido',
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararAlineamientoBasico(idBasicoDePrerrequisitoAlineamiento(entry), idAlineamientoActual, prohibido) };
 }
 
 function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {

@@ -3,13 +3,13 @@ import {
     SustitucionNivel, SustitucionQuita,
 } from 'src/app/interfaces/clase';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
-import { IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
+import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import {
-    DeidadDelPersonaje, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararDeidad,
-    compararRangosHabilidad, compararSubtipo,
+    DeidadDelPersonaje, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararAlineamientoBasico,
+    compararDeidad, compararGenero, compararRangosHabilidad, compararSubtipo,
 } from './prerrequisitos-evaluacion';
 import { minusculaInicial } from './formato-registros';
-import { mismoExtra, normalizarTexto, toInt } from './normalizacion';
+import { mismoExtra, toInt } from './normalizacion';
 import { nivelDeClaveConjuro } from './reglas-magia';
 
 /**
@@ -410,16 +410,15 @@ export function quitasSinAplicar(sustitucion: NivelDeSustitucion | null): Sustit
 export interface ContextoRequisitosSustitucion {
     /** Su raza, su raza base y por la que se le considera, sus tipos y sus subtipos (`buildIdentidadPrerrequisitos`). */
     identidad: IdentidadPrerrequisitos;
-    /** El alineamiento básico (1-9) y su nombre. */
+    /** El alineamiento básico (1-9). */
     alineamientoBasicoId: number;
-    alineamiento: string;
     genero: string;
     deidad: DeidadDelPersonaje | null;
     habilidades: HabilidadParaPrerrequisitos[];
     /** Los tipos de sus dotes (para `tipo_dote`). */
-    tiposDeDote: Array<{ id: number | null; nombre: string; }>;
+    tiposDeDote: ClaveEntidadPrerrequisito[];
     /** La escuela de la que es especialista, o `null`. */
-    escuelaEspecialista: { id: number | null; nombre: string; } | null;
+    escuelaEspecialista: ClaveEntidadPrerrequisito | null;
 }
 
 export interface EvaluacionRequisitosSustitucion {
@@ -433,13 +432,6 @@ export interface EvaluacionRequisitosSustitucion {
 
 /** El aviso de un requisito que la web no puede comprobar (D6): se deja elegir y no vuelve homebrew la ficha. */
 export const AVISO_NO_VERIFICABLE = 'La web no puede comprobar este requisito';
-
-function mismoElemento(lista: ReadonlyArray<{ id: number | null; nombre: string; }>, elemento: { Id: number; Nombre: string; } | null): boolean {
-    if (!elemento)
-        return false;
-    return lista.some((e) => (toInt(elemento.Id) > 0 && toInt(e.id) === toInt(elemento.Id))
-        || (normalizarTexto(e.nombre).length > 0 && normalizarTexto(e.nombre) === normalizarTexto(elemento.Nombre)));
-}
 
 /**
  * Los requisitos del juego para tomar el nivel `nivelClase` (los de todo el juego y los de ese nivel), con lo que tiene el
@@ -468,11 +460,11 @@ export function evaluarRequisitosDeSustitucion(juego: SustitucionDetalle, nivelC
                 case 'tipo_criatura_prohibido':
                     registrar(!!e, !!e && !existeCoincidenciaClaveEntidad(ctx.identidad.tiposCriatura, e.Id, e.Nombre));
                     break;
-                case 'alineamiento_requerido':
-                    registrar(!!e && (ctx.alineamientoBasicoId > 0 || normalizarTexto(ctx.alineamiento).length > 0),
-                        !!e && ((toInt(e.Id) > 0 && toInt(e.Id) === ctx.alineamientoBasicoId)
-                            || normalizarTexto(e.Nombre) === normalizarTexto(ctx.alineamiento)));
+                case 'alineamiento_requerido': {
+                    const r = compararAlineamientoBasico(toInt(e?.Id), ctx.alineamientoBasicoId, false);
+                    registrar(r.evaluable, r.cumple);
                     break;
+                }
                 case 'actitud_requerido': {
                     const r = compararActitud({ Id_actitud: e?.Id }, ctx.alineamientoBasicoId, false);
                     registrar(r.evaluable, r.cumple);
@@ -486,9 +478,11 @@ export function evaluarRequisitosDeSustitucion(juego: SustitucionDetalle, nivelC
                 case 'deidad_arma_predilecta':
                     registrar(!!e, !!e && !!ctx.deidad && toInt(ctx.deidad.idArma) > 0 && toInt(ctx.deidad.idArma) === toInt(e.Id));
                     break;
-                case 'genero':
-                    registrar(!!e && normalizarTexto(ctx.genero).length > 0, !!e && normalizarTexto(e.Nombre) === normalizarTexto(ctx.genero));
+                case 'genero': {
+                    const r = compararGenero(e?.Nombre, ctx.genero);
+                    registrar(r.evaluable, r.cumple);
                     break;
+                }
                 case 'habilidad': {
                     const r = compararRangosHabilidad({
                         Id_habilidad: e?.Id, Habilidad: e?.Nombre, Rangos: p.Cantidad ?? 0,
@@ -498,10 +492,10 @@ export function evaluarRequisitosDeSustitucion(juego: SustitucionDetalle, nivelC
                     break;
                 }
                 case 'tipo_dote':
-                    registrar(!!e, mismoElemento(ctx.tiposDeDote, e));
+                    registrar(!!e, !!e && existeCoincidenciaClaveEntidad(ctx.tiposDeDote, e.Id, e.Nombre));
                     break;
                 case 'escuela_especialista':
-                    registrar(!!e, !!ctx.escuelaEspecialista && mismoElemento([ctx.escuelaEspecialista], e));
+                    registrar(!!e, !!e && !!ctx.escuelaEspecialista && existeCoincidenciaClaveEntidad([ctx.escuelaEspecialista], e.Id, e.Nombre));
                     break;
                 case 'no_verificable':
                     motivos.registrar({ ...base, evaluable: true, cumple: false, aviso: `${p.Texto || p.Frase}: ${minusculaInicial(AVISO_NO_VERIFICABLE)}.` });
