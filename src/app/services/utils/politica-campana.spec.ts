@@ -48,7 +48,7 @@ describe('politica-campana', () => {
             expect(politica).toEqual({
                 permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 0, permitirObjetosMagicos: false,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: 500, permitirCopiarConjuros: false,
-                permitirIgnorarRestriccionesAlineamiento: true, permitirReciclaje: false,
+                permitirIgnorarRestriccionesAlineamiento: true, permitirReciclaje: false, permitirNivelesSustitucion: true,
             });
             expect(politicaTienda(politica)).toEqual({ objetosMagicos: false, aMedida: true, precioMaximo: 500, copiarConjuros: false });
             expect(modoHomebrewDeCampana(politica)).toBe('forbidden');
@@ -58,7 +58,7 @@ describe('politica-campana', () => {
             expect(leerPoliticaCompra({})).toEqual({
                 permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: null, permitirObjetosMagicos: true,
                 permitirObjetosAMedida: true, precioMaximoPorObjeto: null, permitirCopiarConjuros: true,
-                permitirIgnorarRestriccionesAlineamiento: false, permitirReciclaje: true,
+                permitirIgnorarRestriccionesAlineamiento: false, permitirReciclaje: true, permitirNivelesSustitucion: true,
             });
         });
     });

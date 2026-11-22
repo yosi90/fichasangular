@@ -103,6 +103,8 @@ export function apartarLoDelPrimerNivel(entrada: PersonajeCreateRequestDto, seQu
 export interface NivelTomado {
     idClase: number;
     nivelClase: number;
+    /** El nivel de sustitución que tomó en lugar del estándar (`SustitucionNivel.Id`); sin él o `null`, el estándar. */
+    idNivelSustitucion?: number | null;
     elecciones?: PersonajeCreateNivelEleccionDto[];
 }
 
@@ -179,6 +181,7 @@ export function construirNivelesCreacion(entrada: EntradaNivelesCreacion): Perso
     const niveles: PersonajeCreateNivelDto[] = (entrada.orden ?? []).map((n) => ({
         idClase: toInt(n?.idClase),
         nivelClase: toInt(n?.nivelClase),
+        ...(toInt(n?.idNivelSustitucion) > 0 ? { idNivelSustitucion: toInt(n?.idNivelSustitucion) } : {}),
         elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
     }));
     const indice = new Map(orden.map((n, i) => [`${n.idClase}:${n.nivelClase}`, i]));

@@ -172,6 +172,33 @@
         </table>
     </app-ficha-bloque>
 
+    <!-- Los niveles de sustitución (R8): se toman en lugar del nivel estándar de la clase, al crear o al subir. -->
+    <app-ficha-bloque *ngFor="let juego of juegosSustitucion" [titulo]="juego.titulo">
+        <p class="ficha-nota" *ngIf="juego.nombreOriginal"><em>{{juego.nombreOriginal}}</em><ng-container *ngIf="juego.manual"> · {{juego.manual}}</ng-container><ng-container *ngIf="!juego.oficial"> · Homebrew</ng-container></p>
+        <p class="ficha-nota" *ngIf="!juego.nombreOriginal && juego.manual">{{juego.manual}}<ng-container *ngIf="!juego.oficial"> · Homebrew</ng-container></p>
+        <p *ngIf="tieneTextoVisible(juego.descripcion)">{{juego.descripcion}}</p>
+        <p *ngIf="juego.requisitos.length > 0"><strong>Requisitos:</strong> {{juego.requisitos.join('; ')}}.</p>
+        <p *ngIf="juego.datos.length > 0">{{juego.datos.join(' · ')}} (solo en sus niveles).</p>
+        <p *ngIf="juego.habilidadesAnade.length > 0"><strong>Habilidades de clase que añade:</strong> {{juego.habilidadesAnade.join(', ')}}.</p>
+        <p *ngIf="juego.habilidadesQuita.length > 0"><strong>Habilidades de clase que quita:</strong> {{juego.habilidadesQuita.join(', ')}}.</p>
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Nivel</th>
+                    <th scope="col">Gana</th>
+                    <th scope="col">En lugar de</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let nivel of juego.niveles">
+                    <td>{{nivel.nivel}}</td>
+                    <td>{{nivel.gana || '—'}}<div class="ficha-nota" *ngIf="nivel.descripcion">{{nivel.descripcion}}</div></td>
+                    <td>{{nivel.enLugarDe || '—'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+
     <app-ficha-bloque titulo="Moldeado por nivel" *ngIf="filasMoldeado.length > 0">
         <table class="ficha-tabla">
             <thead>

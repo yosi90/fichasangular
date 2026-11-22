@@ -365,7 +365,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         this.tiradas = (entrada.niveles ?? []).flatMap((n, indice) => {
             const clase = this.svc.claseDelCatalogo(toInt(n.idClase));
             // Las de su clase, o las de una plantilla suya que actualiza los DG (el vampiro, d12), como en la subida.
-            const caras = this.svc.carasDadoGolpeDeClase(clase);
+            const caras = this.svc.carasDadoGolpeDeClase(clase, toInt(n.nivelClase));
             if (!clase || caras < 1 || !daDgEnNivel(clase, toInt(n.nivelClase)))
                 return [];
             const fila = {

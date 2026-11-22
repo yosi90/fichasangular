@@ -6,6 +6,8 @@ export interface SelectorClaseOpcionalModalOpcion {
     tipo: 'dote' | 'especial';
     nombre: string;
     extra: string;
+    /** La etiqueta de la derecha, si no es la del tipo («Estándar» o «Sustitución» en el selector del nivel). */
+    etiqueta?: string;
     /** No se puede elegir (la aptitud pide otra actitud): se enseña atenuada con su motivo. */
     bloqueada?: boolean;
     motivo?: string;
@@ -55,8 +57,8 @@ export class SelectorClaseOpcionalModalComponent implements OnChanges {
         return `${clave ?? ''}`.trim() === `${this.claveSeleccionada ?? ''}`.trim();
     }
 
-    getEtiquetaTipo(tipo: 'dote' | 'especial'): string {
-        return tipo === 'dote' ? 'Dote' : 'Especial';
+    getEtiquetaTipo(opcion: SelectorClaseOpcionalModalOpcion): string {
+        return opcion?.etiqueta || (opcion?.tipo === 'dote' ? 'Dote' : 'Especial');
     }
 
     onConfirmar(): void {

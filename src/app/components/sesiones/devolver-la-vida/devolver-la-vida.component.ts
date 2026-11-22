@@ -745,7 +745,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         if (primer) {
             const nivel = ficha.niveles![primer.indice];
             const clase = claseDe(primer.idClase);
-            const caras = svc.carasDadoGolpeDeClase(clase);
+            const caras = svc.carasDadoGolpeDeClase(clase, toInt(nivel.nivelClase));
             const modConstitucion = modConstitucionDeEntrada(ficha);
             const pg = pgDelPrimerDg(nivel.pg, caras, modConstitucion);
             ficha.personaje.puntosGolpe = Math.max(1, toInt(ficha.personaje.puntosGolpe) + pg.suma);

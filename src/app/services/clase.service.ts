@@ -21,7 +21,10 @@ import {
     ClasePrerequisitosUpdateRequest,
     ClaseProgressionCatalogs,
     ClasePrerrequisitos,
-    ClasePrerrequisitosFlags
+    ClasePrerrequisitosFlags,
+    SustitucionDetalle,
+    SustitucionNivel,
+    SustitucionRef,
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
@@ -341,6 +344,94 @@ function normalizePrerrequisitosFlags(raw: any): ClasePrerrequisitosFlags {
     }, {});
 }
 
+/** `{ Id, Nombre }`, o `null` sin dato (la caché no escribe los `null`). */
+function refSustitucion(raw: any): SustitucionRef | null {
+    if (!raw || typeof raw !== 'object')
+        return null;
+    return { Id: toInt(raw?.Id), Nombre: toText(raw?.Nombre) };
+}
+
+function normalizeNivelSustitucion(raw: any): SustitucionNivel {
+    return {
+        Id: toInt(raw?.Id),
+        Nivel: toInt(raw?.Nivel),
+        Ajustes: {
+            Ataque_base: toInt(raw?.Ajustes?.Ataque_base),
+            Fortaleza: toInt(raw?.Ajustes?.Fortaleza),
+            Reflejos: toInt(raw?.Ajustes?.Reflejos),
+            Voluntad: toInt(raw?.Ajustes?.Voluntad),
+        },
+        Descripcion: toText(raw?.Descripcion),
+        Especiales: toArray(raw?.Especiales).map((item: any) => ({
+            Especial: item?.Especial ?? {},
+            ...normalizeOtorgadoNivel(item),
+            Mascota: normalizeMascotaEspecial(item?.Mascota),
+            Por_nivel_del_juego: toBoolean(item?.Por_nivel_del_juego),
+            Extra_del_juego: toBoolean(item?.Extra_del_juego),
+        })),
+        Dotes: toArray(raw?.Dotes).map((item: any) => ({
+            Dote: item?.Dote ?? {},
+            ...normalizeOtorgadoNivel(item),
+        })),
+        Quita: toArray(raw?.Quita).map((item: any) => ({
+            Tipo: toText(item?.Tipo),
+            Elemento: refSustitucion(item?.Elemento),
+            Id_extra: toIntOrNull(item?.Id_extra),
+            Extra: toText(item?.Extra) || null,
+            Nivel_conjuro: toIntOrNull(item?.Nivel_conjuro),
+            Cantidad: toIntOrNull(item?.Cantidad),
+            Alcance: (['nivel', 'desde', 'retrasa', 'aplaza'].includes(toText(item?.Alcance)) ? toText(item?.Alcance) : 'nivel') as SustitucionNivel['Quita'][number]['Alcance'],
+            Aplaza_a_nivel: toIntOrNull(item?.Aplaza_a_nivel),
+            Sustituto: refSustitucion(item?.Sustituto),
+        })),
+        Conjuros: toArray(raw?.Conjuros).map((item: any) => ({
+            Conjuro: refSustitucion(item?.Conjuro) ?? { Id: 0, Nombre: '' },
+            Nivel: toInt(item?.Nivel),
+            Quita: toBoolean(item?.Quita),
+            Conocido: toBoolean(item?.Conocido),
+        })),
+    };
+}
+
+/** Un juego de niveles de sustitución (`SustitucionDetalle`; catalogos.md, «Los niveles de sustitución»). */
+export function normalizeSustitucion(raw: any): SustitucionDetalle {
+    const puntos = raw?.Puntos_habilidad && typeof raw.Puntos_habilidad === 'object'
+        ? { Id: toInt(raw.Puntos_habilidad.Id), Valor: toInt(raw.Puntos_habilidad.Valor) }
+        : null;
+    return {
+        Id: toInt(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Nombre_original: toText(raw?.Nombre_original) || null,
+        Traducido: toBoolean(raw?.Traducido),
+        Familia: toText(raw?.Familia) || 'racial',
+        Titulo: toText(raw?.Titulo) || toText(raw?.Nombre),
+        Clase: refSustitucion(raw?.Clase) ?? { Id: 0, Nombre: '' },
+        Tipo_dado: refSustitucion(raw?.Tipo_dado),
+        Puntos_habilidad: puntos,
+        Retroactivo: toBoolean(raw?.Retroactivo),
+        Descripcion: toText(raw?.Descripcion),
+        Manual: { Id: toInt(raw?.Manual?.Id), Nombre: toText(raw?.Manual?.Nombre), Pagina: toInt(raw?.Manual?.Pagina) },
+        Oficial: toBoolean(raw?.Oficial, true),
+        Prerrequisitos: toArray(raw?.Prerrequisitos).map((item: any) => ({
+            Tipo: toText(item?.Tipo),
+            Nivel: toIntOrNull(item?.Nivel),
+            Opcional: toInt(item?.Opcional),
+            Elemento: refSustitucion(item?.Elemento),
+            Extra: refSustitucion(item?.Extra),
+            Cantidad: toIntOrNull(item?.Cantidad),
+            Texto: toText(item?.Texto) || null,
+            Frase: toText(item?.Frase),
+            Comprueba_la_api: toBoolean(item?.Comprueba_la_api),
+        })),
+        Habilidades: toArray(raw?.Habilidades).map((item: any) => ({
+            Habilidad: refSustitucion(item?.Habilidad) ?? { Id: 0, Nombre: '' },
+            Extra: refSustitucion(item?.Extra),
+            Quita: toBoolean(item?.Quita),
+        })),
+        Niveles: toArray(raw?.Niveles).map(normalizeNivelSustitucion).sort((a, b) => a.Nivel - b.Nivel),
+    };
+}
+
 export function normalizeClase(raw: any): Clase {
     const prerrequisitos = normalizePrerrequisitos(raw?.Prerrequisitos);
     const prerrequisitosFlags = normalizePrerrequisitosFlags(raw?.Prerrequisitos_flags);
@@ -432,6 +523,7 @@ export function normalizeClase(raw: any): Clase {
         })),
         Desglose_niveles: toArray(raw?.Desglose_niveles).map(normalizeNivel),
         Moldeado: normalizarClaseMoldeado(raw?.Moldeado),
+        Sustituciones: toArray(raw?.Sustituciones).map(normalizeSustitucion),
         Prerrequisitos_flags: prerrequisitosFlags,
         Prerrequisitos: prerrequisitos,
     };
@@ -476,6 +568,12 @@ export class ClaseService {
         return this.getClases().pipe(
             map(clases => clases.find(c => normalizarTexto(c.Nombre) === objetivo) ?? null)
         );
+    }
+
+    /** Todos los juegos de niveles de sustitución, por clase y nombre (`GET /clases/sustituciones`, para la biblioteca). */
+    getSustituciones(): Observable<SustitucionDetalle[]> {
+        return this.http.get(`${environment.apiUrl}clases/sustituciones`)
+            .pipe(map((raw: any) => toArray(raw).map(normalizeSustitucion)));
     }
 
     getCatalogosProgresion(): Observable<ClaseProgressionCatalogs> {

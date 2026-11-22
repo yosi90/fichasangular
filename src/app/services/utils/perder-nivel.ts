@@ -7,13 +7,14 @@ import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCrea
 import { CAUSAS_DE_PERDIDA, CausaPerdidaDto } from 'src/app/interfaces/sesiones';
 import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from './caracteristicas';
-import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
+import { daDgEnNivel, daIncrementoPorNivelDePersonaje } from './clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, caracteristicaDelAlta, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { bajaDeNivel, experienciaParaNivel } from './experiencia-nivel';
 import { claveDeDote, extraComparable, mismoExtra, primerEntero, toInt } from './normalizacion';
 import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgDeUnDgGuardado, pgTrasCambioDeCon } from './subida-nivel';
 import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 import { origenDeNivelDeClase } from './niveles-creacion';
+import { detalleConSustituciones, sustitucionesDeLaClase } from './niveles-sustitucion';
 
 /*
  * Perder un nivel con el personaje ya creado (roadmap de sesiones, fase 7, segunda tanda; guía
@@ -301,6 +302,9 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         }
     };
     const conLibro = !!clase?.Conjuros?.Libro;
+    // La tabla de su clase con sus niveles de sustitución (lo que dio el nivel, su ataque base y sus salvaciones).
+    const tomados = sustitucionesDeLaClase(entrada.niveles, idClase);
+    const filaConSustituciones = (n: number) => clase ? detalleConSustituciones(clase, n, tomados) : null;
 
     if (conRegistro) {
         (nivel?.elecciones ?? []).forEach((e: PersonajeCreateNivelEleccionDto) => {
@@ -350,7 +354,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         // las dotes y aptitudes de la tabla de su clase.
         if (daIncrementoPorNivelDePersonaje(datos.dgsAntes))
             bajarCaracteristica(toInt(datos.incrementoSinRegistro) || caracteristicaMasAlta(entrada), 1);
-        const detalle = filaDeNivel(clase, nivelClase);
+        const detalle = filaConSustituciones(nivelClase);
         (detalle?.Dotes ?? []).forEach((d) => {
             const idDote = toInt(d?.Dote?.Id);
             if (idDote > 0)
@@ -387,8 +391,8 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         };
 
     // El ataque base y las salvaciones de clase de ese nivel (las de la creación: un modificador por nivel con su origen).
-    const ahora = filaDeNivel(clase, nivelClase);
-    const previo = nivelClase > 1 ? filaDeNivel(clase, nivelClase - 1) : null;
+    const ahora = filaConSustituciones(nivelClase);
+    const previo = nivelClase > 1 ? filaConSustituciones(nivelClase - 1) : null;
     const ataqueAntes = `${entrada.personaje.ataqueBase ?? '+0'}`;
     const deltaAtaque = (primerEntero(ahora?.Ataque_base) ?? 0) - (primerEntero(previo?.Ataque_base) ?? 0);
     ficha.personaje.ataqueBase = textoAtaqueBase((primerEntero(ataqueAntes) ?? 0) - deltaAtaque);
@@ -568,7 +572,7 @@ export function perdidaDelNivel(svc: NuevoPersonajeService, motor: MotorDesdeFic
     const nivel = entrada.niveles![indice];
     const clase = svc.claseDelCatalogo(nivel.idClase);
     const sinElNivel = fichaSinElNivel({
-        entrada, indice, clase, caras: svc.carasDadoGolpeDeClase(clase), dgsAntes: dgs,
+        entrada, indice, clase, caras: svc.carasDadoGolpeDeClase(clase, toInt(nivel.nivelClase)), dgsAntes: dgs,
         incrementoSinRegistro: datos.incremento, doteSinRegistro: datos.dote,
     });
     const resultado = sinLoQueDabanLasDotes(sinElNivel, motor.loQueDabanLasDotes(svc, entrada, sinElNivel.quitado.dotes, dgs - 1));

@@ -1153,6 +1153,7 @@ export class CampanaService {
             maxTiradasPuntosGolpe: this.normalizeNullableTiradasPuntosGolpe(raw?.maxTiradasPuntosGolpe),
             permitirClasesDeMonstruo: toBoolean(raw?.permitirClasesDeMonstruo, true),
             permitirReciclaje: toBoolean(raw?.permitirReciclaje, true),
+            permitirNivelesSustitucion: toBoolean(raw?.permitirNivelesSustitucion, true),
         };
     }
 
@@ -1284,6 +1285,8 @@ export class CampanaService {
             payload.permitirClasesDeMonstruo = toBoolean(raw.permitirClasesDeMonstruo, true);
         if ('permitirReciclaje' in raw)
             payload.permitirReciclaje = toBoolean(raw.permitirReciclaje, true);
+        if ('permitirNivelesSustitucion' in raw)
+            payload.permitirNivelesSustitucion = toBoolean(raw.permitirNivelesSustitucion, true);
 
         return payload;
     }

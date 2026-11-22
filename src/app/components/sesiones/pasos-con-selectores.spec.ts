@@ -81,8 +81,11 @@ describe('pasos-con-selectores (la subida y la adquisición de una plantilla)', 
         function motor() {
             const svc = jasmine.createSpyObj<NuevoPersonajeService>('NuevoPersonajeService', [
                 'obtenerOpcionalesSiguienteNivelClase', 'obtenerEspecialesExtraPendientesSiguienteNivelClase', 'idsExtraDeAptitud',
-                'obtenerDominiosPendientesSiguienteNivelClase', 'aplicarSiguienteNivelClase',
+                'obtenerDominiosPendientesSiguienteNivelClase', 'aplicarSiguienteNivelClase', 'elegirSustitucionSiguienteNivel',
+                'opcionesDeSustitucionSiguienteNivel',
             ], { PersonajeCreacion: { desgloseClases: [{ Nombre: 'Archimago', Nivel: 1 }] } as any });
+            svc.elegirSustitucionSiguienteNivel.and.returnValue(true);
+            svc.opcionesDeSustitucionSiguienteNivel.and.returnValue([]);
             svc.obtenerOpcionalesSiguienteNivelClase.and.returnValue([]);
             svc.obtenerEspecialesExtraPendientesSiguienteNivelClase.and.returnValue([{ clave: 'especial:0', idEspecial: 5, nombre: 'Gran arcano' }]);
             svc.idsExtraDeAptitud.and.returnValue([11]);

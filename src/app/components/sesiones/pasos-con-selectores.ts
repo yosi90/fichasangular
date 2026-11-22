@@ -29,6 +29,7 @@ import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { HuecoDeSelectores } from './hueco-selectores';
 import { origenDeNivelDeClase } from 'src/app/services/utils/niveles-creacion';
+import { idDeLaClaveDelSelector, opcionesDelSelectorDeNivel } from 'src/app/services/utils/niveles-sustitucion';
 
 /*
  * Los pasos que la subida de nivel y la adquisición de una plantilla resuelven igual, con el motor de la creación en su
@@ -301,6 +302,18 @@ export async function tomarNivelDeClase(svc: NuevoPersonajeService, selectores: 
     catalogos: CatalogosDelNivel, opciones: { permitirBloqueoSoloAlineamiento?: boolean; } = {}): Promise<ResultadoNivelDeClase> {
     const siguienteNivel = toInt((svc.PersonajeCreacion.desgloseClases ?? [])
         .find((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre))?.Nivel) + 1;
+    // El nivel estándar o uno de sustitución (R8): lo que pide el nivel se lee ya con el elegido.
+    svc.elegirSustitucionSiguienteNivel(clase, null);
+    const sustituciones = svc.opcionesDeSustitucionSiguienteNivel(clase);
+    if (sustituciones.length > 0) {
+        const clave = await selectores.abrir<string>(SelectorClaseOpcionalModalComponent, {
+            titulo: `Nivel ${siguienteNivel} de ${clase.Nombre}`,
+            descripcion: 'El nivel estándar o uno de sustitución, que lo reemplaza para siempre.',
+            opciones: opcionesDelSelectorDeNivel(clase, siguienteNivel, sustituciones),
+        }, ['confirmar'], ['cerrar']);
+        if (!clave || !svc.elegirSustitucionSiguienteNivel(clase, idDeLaClaveDelSelector(clave)))
+            return { estado: 'cancelado' };
+    }
     let seleccionesOpcionales: SeleccionOpcionalesClase | null = null;
     for (const grupo of svc.obtenerOpcionalesSiguienteNivelClase(clase)) {
         const clave = await selectores.abrir<string>(SelectorClaseOpcionalModalComponent, {

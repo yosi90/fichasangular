@@ -3,7 +3,7 @@ import type { LoQueLeFaltaAlCompanero } from './utils/completar-companero';
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
-import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEscuelaEspecialista, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
+import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEscuelaEspecialista, ClaseEspecialNivel, ClaseNivelDetalle, SustitucionEspecialNivel } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
 import { Dote, DoteExtraItem } from '../interfaces/dote';
@@ -172,6 +172,13 @@ import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
 import { ajustesEnvejecimiento, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
 import { armadurasQueAdmiteLaDote, doteAdmiteExtra, doteSoportaArmaduras, doteSoportaEscudos } from './utils/dote-extras-soportados';
+import {
+    ContextoRequisitosSustitucion, NivelDeSustitucion, NivelSustitucionTomado, OpcionDeSustitucion, cambiosDeLaListaDeConjuros, competenciasQueQuita,
+    especialesDeSusSustituciones, multiplicarCifra,
+    conjurosConocidosDelNivel, dadoDelNivel, detalleConSustituciones, evaluarRequisitosDeSustitucion, habilidadesDelJuego,
+    listadoConSustituciones, opcionesDeSustitucion, origenDeSustitucion, puntosHabilidadDelNivel, quitasSinAplicar,
+    sustitucionDelNivel, sustitucionesDeLaClase,
+} from './utils/niveles-sustitucion';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -1424,6 +1431,14 @@ export class NuevoPersonajeService {
      * nivel de clase: las plantillas o los DG raciales). Lo que se elige mientras, se apunta en él (`apuntarEnNivel`).
      */
     private nivelEnCurso: RefNivelTomado | null = null;
+    /**
+     * El nivel de sustitución elegido para el siguiente nivel de una clase, antes de aplicarlo (`elegirSustitucionSiguienteNivel`):
+     * la tabla de ese nivel (`obtenerDetalleNivelClase`) ya cuenta con él, y `aplicarSiguienteNivelClase` lo apunta en su
+     * nivel (`Orden_niveles[].idNivelSustitucion`). R8; catalogos.md, «Los niveles de sustitución».
+     */
+    private sustitucionPendiente: { idClase: number; nivelClase: number; idNivelSustitucion: number; } | null = null;
+    /** Si la campaña deja tomar niveles de sustitución (`permitirNivelesSustitucion`; sin campaña o en un PNJ, sí). */
+    private permiteNivelesSustitucion = true;
     /** De cada nivel de `Orden_niveles` de un personaje guardado, si se sabe su orden (`ordenConocido`; la corrección). */
     private ordenConocidoNiveles: boolean[] = [];
     private draftUidActivo = '';
@@ -1806,6 +1821,7 @@ export class NuevoPersonajeService {
         this.aumentosProgresionConcedidos = 0;
         this.secuenciaAumentoPendiente = 1;
         this.nivelEnCurso = null;
+        this.sustitucionPendiente = null;
         this.estadoFlujo = this.crearEstadoFlujoBase();
 
         this.setCatalogoHabilidades(catalogoHabilidades);
@@ -2707,9 +2723,12 @@ export class NuevoPersonajeService {
         // Sin `nivel`, el nivel que se acaba de aplicar; la corrección de la ficha (`abrirPasoDelRepartoDeRangos`) da el
         // de un nivel de antes, con la Inteligencia que tenía entonces, y la vuelta a la vida (`abrirRepartoEnNivel`), los
         // puntos que se reparten en él (`puntos`).
-        const daDg = daDgEnNivel(clase, nivel.nivelClase ?? this.obtenerNivelActualClase(clase?.Nombre ?? ''));
+        const nivelClase = nivel.nivelClase ?? this.obtenerNivelActualClase(clase?.Nombre ?? '');
+        const daDg = daDgEnNivel(clase, nivelClase);
+        // En un nivel de sustitución, los puntos y la lista de habilidades de clase son los de su juego (solo en ese nivel).
+        const sustitucion = this.sustitucionDelNivelDeClase(clase, nivelClase);
         const total = nivel.puntos !== undefined ? Math.max(0, toInt(nivel.puntos)) : !daDg ? 0 : puntosHabilidadNivelClase({
-            puntosClase: toNumber(clase?.Puntos_habilidad?.Valor),
+            puntosClase: puntosHabilidadDelNivel(clase, sustitucion),
             modInteligencia: nivel.modInteligencia ?? toNumber(this.personajeCreacion?.ModInteligencia),
             primerNivelPersonaje: nivel.primerNivel ?? this.esPrimerNivelDelPersonaje(),
             extraPrimerNivel: toNumber(this.razaSeleccionada?.Puntos_habilidad_extra_primer_nivel),
@@ -2718,7 +2737,7 @@ export class NuevoPersonajeService {
 
         const returnStep: StepNuevoPersonaje = this.estadoFlujo.conjuros.activa ? 'conjuros' : 'dotes';
         // Sin lo anotado de esa clase (un borrador de antes), las marcadas `Clasea`, como antes.
-        this.iniciarDistribucionHabilidadesInterna('clase_nivel', returnStep, total, [], null, this.habilidadesDeClaseDe(clase));
+        this.iniciarDistribucionHabilidadesInterna('clase_nivel', returnStep, total, [], null, this.habilidadesDeClaseDelNivel(clase, sustitucion));
         return true;
     }
 
@@ -5063,9 +5082,12 @@ export class NuevoPersonajeService {
             );
             if (!clase)
                 return;
-            const referencias = Array.isArray(clase?.Competencias?.[fuente])
+            // Sin las que no gana por sus niveles de sustitución (`competencia_*`); otra fuente se las puede dar.
+            const quitadas = competenciasQueQuita(clase, this.sustitucionesTomadasDe(clase), fuente);
+            const referencias = (Array.isArray(clase?.Competencias?.[fuente])
                 ? (clase.Competencias[fuente] as Record<string, any>[])
-                : [];
+                : [])
+                .filter((ref) => !quitadas.has(idKeys.reduce((actual, key) => actual > 0 ? actual : toNumber(ref?.[key]), 0)));
             referencias.forEach((ref: Record<string, any>) => {
                 const id = idKeys.reduce((actual, key) => {
                     if (actual > 0)
@@ -6285,10 +6307,17 @@ export class NuevoPersonajeService {
         this.cerrarClasesPorMulticlase(clase);
         this.actualizarDesgloseClase(clase, siguienteNivel);
         // El orden real de los niveles, para el alta (`niveles`; roadmap de sesiones, fase 1).
+        // El nivel de sustitución elegido para este nivel (`elegirSustitucionSiguienteNivel`), si es de él.
+        const pendiente = this.sustitucionPendiente;
+        const idNivelSustitucion = pendiente && pendiente.idClase === toInt(clase?.Id) && pendiente.nivelClase === siguienteNivel
+            ? pendiente.idNivelSustitucion
+            : null;
+        this.sustitucionPendiente = null;
         this.personajeCreacion.Orden_niveles = [
             ...(this.personajeCreacion.Orden_niveles ?? []),
-            { idClase: toInt(clase?.Id), nivelClase: siguienteNivel },
+            { idClase: toInt(clase?.Id), nivelClase: siguienteNivel, ...(idNivelSustitucion ? { idNivelSustitucion } : {}) },
         ];
+        this.anotarSustitucionesEnElDesglose(clase);
         // Lo que se elija hasta terminar este nivel se apunta en él (`niveles[].elecciones`; sesiones, fase 4).
         this.nivelEnCurso = { idClase: toInt(clase?.Id), nivelClase: siguienteNivel };
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
@@ -6299,6 +6328,9 @@ export class NuevoPersonajeService {
             this.aplicarHabilidadesPrimerNivelClase(clase);
             this.aplicarIdiomasPrimerNivelClase(clase);
         }
+        const sustitucionDelNivel = this.sustitucionDelNivelDeClase(clase, siguienteNivel);
+        this.aplicarHabilidadesDeSustitucion(sustitucionDelNivel);
+        this.aplicarConjurosConocidosDeSustitucion(clase, sustitucionDelNivel, siguienteNivel);
 
         const resolucionOpcionales = this.resolverOpcionalesNivelClase(clase, detalleSiguiente, seleccionesOpcionales);
         const habiaSelecciones = !!seleccionesOpcionales && Object.keys(seleccionesOpcionales).length > 0;
@@ -6321,7 +6353,12 @@ export class NuevoPersonajeService {
         ];
         this.aplicarDotesNivelClase(clase, siguienteNivel, dotesAplicar);
         this.aplicarEspecialesNivelClase(clase, especialesAplicar, detalleSiguiente, seleccionesExtrasEspeciales);
-        const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
+        // Un nivel más de un juego sube lo que valen sus aptitudes de `Por_nivel_del_juego` (su fila es la del primero).
+        const subeUnaPorNivel = !!sustitucionDelNivel && especialesDeSusSustituciones(clase, this.sustitucionesTomadasDe(clase))
+            .some((e) => e.Por_nivel_del_juego);
+        if (subeUnaPorNivel)
+            this.ponerAlDiaLasAptitudesPorNivelDelJuego();
+        const cambiaCaracteristicas = subeUnaPorNivel || especialesAplicar.some((especialNivel) =>
             Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
         // Su armadura natural se suma a la de la raza y las plantillas al recalcular (`armaduraNaturalDeAptitudes`).
         // La de la tabla de la clase (las de monstruo), también: el total de este nivel frente al del anterior.
@@ -7696,6 +7733,25 @@ export class NuevoPersonajeService {
     }
 
     /**
+     * Las de clase en un nivel de `clase` que es de sustitución: las de la clase con las que añade su juego y sin las que
+     * quita (RoS pág. 146: el cambio de la lista vale solo en ese nivel). Las de siempre (los raciales) se quedan.
+     */
+    private habilidadesDeClaseDelNivel(clase: Clase | null | undefined, sustitucion: NivelDeSustitucion | null): ClaveHabilidad[] | null {
+        const deLaClase = this.habilidadesDeClaseDe(clase);
+        if (!sustitucion || !deLaClase)
+            return deLaClase;
+        const { quita } = habilidadesDelJuego(sustitucion.juego);
+        const siempre = new Set(this.habilidadesSiempreDeClase());
+        const quitadas = new Set((this.personajeCreacion?.Habilidades ?? [])
+            .filter((h) => !h?.Custom && quita.some((q) => toInt(q.Id_habilidad) === toInt(h?.Id)
+                && (q.Id_extra < 0 || mismoExtra(idExtraHabilidadParaGuardar(h), q.Id_extra))))
+            .map((h) => claveHabilidad(h))
+            .filter((clave) => !siempre.has(clave)));
+        const anadidas = this.habilidadesDeClasePorOrigen[origenDeSustitucion(sustitucion.juego)] ?? [];
+        return Array.from(new Set([...deLaClase.filter((clave) => !quitadas.has(clave)), ...anadidas]));
+    }
+
+    /**
      * Se elige el extra de la habilidad (qué Saber, qué Artesanía): si es clásea, si ya tiene rangos, comprados como
      * transclásea, o si tiene un bonificador que se aplica a una sola (el +2 del duérgar a una Artesanía de su elección).
      */
@@ -8148,10 +8204,146 @@ export class NuevoPersonajeService {
         return this.obtenerNivelActualClase(nombreClase) + 1;
     }
 
+    /**
+     * La fila de la tabla de la clase de ese nivel, con los niveles de sustitución que tiene de ella (y el que toma ahora):
+     * sin lo que quitan, con lo que da el suyo y con sus ajustes (`detalleConSustituciones`). Una aptitud de un juego cuyo
+     * extra es el mismo en todos sus niveles (`Extra_del_juego`) lleva el que eligió en el primero.
+     */
     private obtenerDetalleNivelClase(clase: Clase, nivel: number): ClaseNivelDetalle | null {
-        const nivelNormalizado = Math.max(1, toInt(nivel));
-        return (clase?.Desglose_niveles ?? [])
-            .find((item) => toNumber(item?.Nivel) === nivelNormalizado) ?? null;
+        const detalle = detalleConSustituciones(clase, nivel, this.sustitucionesTomadasDe(clase));
+        return detalle ? this.conExtrasDelJuego(detalle) : null;
+    }
+
+    /** Los niveles de sustitución que tiene de la clase (`Orden_niveles`) y el elegido para su siguiente nivel. */
+    private sustitucionesTomadasDe(clase: Clase | null | undefined): NivelSustitucionTomado[] {
+        const idClase = toInt(clase?.Id);
+        if (idClase <= 0)
+            return [];
+        const tomados = sustitucionesDeLaClase(this.personajeCreacion?.Orden_niveles, idClase);
+        const pendiente = this.sustitucionPendiente;
+        if (pendiente && pendiente.idClase === idClase && !tomados.some((t) => t.nivelClase === pendiente.nivelClase))
+            tomados.push({ nivelClase: pendiente.nivelClase, idNivelSustitucion: pendiente.idNivelSustitucion });
+        return tomados;
+    }
+
+    /** El nivel de sustitución de ese nivel de la clase (el tomado o el elegido para el siguiente), o `null` si es estándar. */
+    sustitucionDelNivelDeClase(clase: Clase | null | undefined, nivelClase: number): NivelDeSustitucion | null {
+        return sustitucionDelNivel(clase, this.sustitucionesTomadasDe(clase), nivelClase);
+    }
+
+    /** Con `Extra_del_juego`, el extra que ya eligió para esa aptitud en otro nivel del juego (sus `Claseas`). */
+    private conExtrasDelJuego(detalle: ClaseNivelDetalle): ClaseNivelDetalle {
+        const delJuego = (detalle.Especiales ?? []).filter((e) => (e as any)?.Extra_del_juego === true && e?.Extra_comodin === 'elegir');
+        if (delJuego.length < 1)
+            return detalle;
+        return {
+            ...detalle,
+            Especiales: detalle.Especiales.map((e) => {
+                if (!delJuego.includes(e))
+                    return e;
+                const id = toInt((e?.Especial as Record<string, any>)?.['Id']);
+                const ya = (this.personajeCreacion?.Claseas ?? []).find((c: any) => toInt(c?.Id) === id && toInt(c?.Id_extra) > 0) as any;
+                return ya ? { ...e, Id_extra: toInt(ya.Id_extra), Extra: `${ya.Extra ?? ''}`, Extra_comodin: null } : e;
+            }),
+        };
+    }
+
+    /** Si la campaña deja tomar niveles de sustitución (la creación, con su política; la subida, con `politicaCompra`). */
+    setPermiteNivelesSustitucion(permite: boolean): void {
+        this.permiteNivelesSustitucion = permite !== false;
+    }
+
+    /**
+     * Los niveles de sustitución que puede tomar en el siguiente nivel de la clase (uno por juego que lo tenga), con lo que
+     * dicen sus requisitos ahora (D3): si los cumple, por qué no y los avisos de lo que no se puede comprobar (D6). Vacío si
+     * la campaña no los deja o la clase no tiene ninguno en ese nivel.
+     */
+    opcionesDeSustitucionSiguienteNivel(clase: Clase): OpcionDeSustitucion[] {
+        if (!this.permiteNivelesSustitucion)
+            return [];
+        const siguiente = this.obtenerNivelActualClase(clase?.Nombre ?? '') + 1;
+        const opciones = opcionesDeSustitucion(clase, siguiente);
+        if (opciones.length < 1)
+            return [];
+        const contexto = this.contextoRequisitosSustitucion();
+        return opciones.map((opcion) => ({
+            ...opcion,
+            ...evaluarRequisitosDeSustitucion(opcion.juego, siguiente, contexto),
+            sinAplicar: quitasSinAplicar(opcion).map((q) => q.Tipo),
+        }));
+    }
+
+    /**
+     * Elige el nivel de sustitución del siguiente nivel de la clase (o el estándar, con `null`) antes de aplicarlo: los
+     * opcionales, los extras y el resto de lo que pide el nivel se leen ya con él. `false` si no es de ese nivel de la clase,
+     * la campaña no los deja o no cumple sus requisitos (y se queda el estándar).
+     */
+    elegirSustitucionSiguienteNivel(clase: Clase, idNivelSustitucion: number | null): boolean {
+        const idClase = toInt(clase?.Id);
+        const siguiente = this.obtenerNivelActualClase(clase?.Nombre ?? '') + 1;
+        this.sustitucionPendiente = null;
+        if (idNivelSustitucion === null || toInt(idNivelSustitucion) <= 0)
+            return true;
+        const opcion = this.opcionesDeSustitucionSiguienteNivel(clase).find((o) => o.nivel.Id === toInt(idNivelSustitucion));
+        if (!opcion || !opcion.cumple || idClase <= 0)
+            return false;
+        this.sustitucionPendiente = { idClase, nivelClase: siguiente, idNivelSustitucion: opcion.nivel.Id };
+        return true;
+    }
+
+    /** El nivel de sustitución elegido para el siguiente nivel (sin aplicar todavía), o `null`. */
+    getSustitucionPendiente(): { idClase: number; nivelClase: number; idNivelSustitucion: number; } | null {
+        return this.sustitucionPendiente ? { ...this.sustitucionPendiente } : null;
+    }
+
+    /** Lo que miran los requisitos de un juego (`evaluarRequisitosDeSustitucion`), con lo que tiene ahora. */
+    private contextoRequisitosSustitucion(): ContextoRequisitosSustitucion {
+        const alineamiento = `${this.personajeCreacion?.Alineamiento ?? ''}`;
+        const tiposDeDote = (this.personajeCreacion?.DotesContextuales ?? [])
+            .flatMap((d) => (this.doteDelCatalogo(toNumber(d?.Dote?.Id))?.Tipos ?? (d?.Dote as any)?.Tipos ?? []) as any[])
+            .map((t: any) => ({ id: toInt(t?.Id) > 0 ? toInt(t?.Id) : null, nombre: `${t?.Nombre ?? ''}` }));
+        const escuela = `${this.personajeCreacion?.Escuela_especialista?.Nombre ?? ''}`.trim();
+        return {
+            identidad: this.identidadPrerrequisitosActual(),
+            alineamientoBasicoId: getAlineamientoBasicoIdPorNombre(alineamiento),
+            alineamiento,
+            genero: `${this.personajeCreacion?.Genero ?? ''}`,
+            deidad: this.deidadParaPrerrequisitos(),
+            habilidades: this.habilidadesParaPrerrequisitos(),
+            tiposDeDote,
+            escuelaEspecialista: escuela.length > 0 ? { id: this.resolverIdEscuelaPorNombre(escuela), nombre: escuela } : null,
+        };
+    }
+
+    /**
+     * Las habilidades de clase que añade el juego del nivel de sustitución: de clase para el máximo de rangos (D14, como las
+     * de cualquier clase que tiene), anotadas con el origen del juego. Su coste de clase es solo el de su nivel
+     * (`iniciarDistribucionHabilidadesPorClase`).
+     */
+    private aplicarHabilidadesDeSustitucion(sustitucion: NivelDeSustitucion | null): void {
+        if (!sustitucion)
+            return;
+        const { anade } = habilidadesDelJuego(sustitucion.juego);
+        if (anade.length < 1)
+            return;
+        const aseguradas = anade.map((ref) => this.asegurarHabilidadDesdeReferencia(ref as unknown as Record<string, any>, { marcarClasea: true, customPreferido: false }));
+        this.anotarHabilidadesDeClase(origenDeSustitucion(sustitucion.juego), aseguradas);
+        this.personajeCreacion.Habilidades = this.personajeCreacion.Habilidades.slice().sort(porNombre);
+    }
+
+    /** Los conjuros que el nivel de sustitución le hace conocer sin elegirlos (`Conocido`), como de su clase. */
+    private aplicarConjurosConocidosDeSustitucion(clase: Clase, sustitucion: NivelDeSustitucion | null, nivelClase: number): void {
+        conjurosConocidosDelNivel(sustitucion).forEach((ref) => {
+            if (this.esConjuroYaConocidoPorClase(clase.Nombre, ref.Id))
+                return;
+            const conjuro = this.obtenerConjuroCatalogoPorId(ref.Id) ?? this.crearConjuroPlaceholderDesdeClase(clase, ref, nivelClase);
+            this.agregarConjuroSesionAPersonaje({
+                claseObjetivo: { id: toInt(clase.Id), nombre: clase.Nombre },
+                nivelesPorConjuro: { [ref.Id]: ref.Nivel },
+                origen: origenDeNivelDeClase(clase.Nombre, nivelClase),
+                nivel: { idClase: toInt(clase.Id), nivelClase },
+            } as unknown as ConjurosSesionStateEntrada, conjuro);
+        });
     }
 
     private obtenerClaseCatalogoPorNombre(nombreClase: string): Clase | null {
@@ -8190,7 +8382,7 @@ export class NuevoPersonajeService {
     private requierePrimerEscalonLanzadorEnNivelUno(clase: Clase | null | undefined): boolean {
         if (!this.tieneLanzamientoPropio(clase))
             return false;
-        return listadoConjurosClase(clase, this.aptitudesDelPersonaje(), this.claseOrigenDe(clase)).some((ref) => Math.max(0, toNumber(ref?.Nivel)) === 0);
+        return this.listadoConjurosDe(clase).some((ref) => Math.max(0, toNumber(ref?.Nivel)) === 0);
     }
 
     private obtenerNivelesClaseQueAumentanNivelLanzador(clase: Clase | null | undefined): number[] {
@@ -8257,6 +8449,22 @@ export class NuevoPersonajeService {
     /** Las clases que tiene el personaje y cómo buscar una en el catálogo, para `esClaseCompatibleConRestringida`. */
     private contextoCompatibles(tiene: number[]): ContextoCompatibles {
         return { tiene: tiene.filter((id) => id > 0), clase: (id) => this.catalogoClases.find((c) => toInt(c?.Id) === id) };
+    }
+
+    /** Los niveles de sustitución de la clase en su entrada del desglose (`Niveles_sustitucion`), como en la ficha guardada. */
+    private anotarSustitucionesEnElDesglose(clase: Clase): void {
+        const entrada = (this.personajeCreacion.desgloseClases ?? [])
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === normalizarTexto(clase?.Nombre ?? ''));
+        if (!entrada)
+            return;
+        const niveles = sustitucionesDeLaClase(this.personajeCreacion.Orden_niveles, toInt(clase?.Id))
+            .map((t) => ({ t, s: sustitucionDelNivel(clase, [t], t.nivelClase) }))
+            .filter((x) => !!x.s)
+            .map(({ t, s }) => ({ nivelClase: t.nivelClase, id: t.idNivelSustitucion, sustitucion: { id: s!.juego.Id, nombre: s!.juego.Nombre } }));
+        if (niveles.length > 0)
+            entrada.Niveles_sustitucion = niveles;
+        else
+            delete entrada.Niveles_sustitucion;
     }
 
     private actualizarDesgloseClase(clase: Clase, nivel: number): void {
@@ -8917,6 +9125,27 @@ export class NuevoPersonajeService {
     }
 
     /** Los especiales de las tablas de nivel del catálogo de clases (con sus datos: `Modificadores`…), en su orden. */
+    /** Las aptitudes de los niveles de sustitución que tiene, de cada clase (`especialesDeSusSustituciones`). */
+    private especialesDeSusNivelesDeSustitucion(): ClaseEspecialNivel[] {
+        return (this.personajeCreacion?.desgloseClases ?? [])
+            .map((entrada) => this.obtenerClaseDeDesglose(entrada))
+            .filter((clase): clase is Clase => !!clase && (clase.Sustituciones ?? []).length > 0)
+            .flatMap((clase) => especialesDeSusSustituciones(clase, this.sustitucionesTomadasDe(clase)));
+    }
+
+    /**
+     * El extra de las aptitudes de `Por_nivel_del_juego` que tiene, con su número por los niveles del juego que tiene de
+     * ahora (Perspicacia arcana, +2 con uno y +4 con dos). Tras tomar o perder un nivel del juego.
+     */
+    private ponerAlDiaLasAptitudesPorNivelDelJuego(): void {
+        this.especialesDeSusNivelesDeSustitucion()
+            .filter((e) => (e as SustitucionEspecialNivel).Por_nivel_del_juego && multiplicarCifra(e.Extra, 1) !== null)
+            .forEach((e) => {
+                const id = toInt((e.Especial as Record<string, any>)?.['Id']);
+                (this.personajeCreacion?.Claseas ?? []).filter((c: any) => toInt(c?.Id) === id).forEach((c: any) => c.Extra = `${e.Extra ?? ''}`);
+            });
+    }
+
     private especialesNivelDeLasTablasDeClases(): ClaseEspecialNivel[] {
         return (this.catalogoClases ?? []).flatMap((clase) => (clase?.Desglose_niveles ?? []).flatMap((nivel) => nivel?.Especiales ?? []));
     }
@@ -9659,7 +9888,7 @@ export class NuevoPersonajeService {
             resultado.push(conjuro);
         });
 
-        listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje(), this.claseOrigenDe(claseObjetivo)).forEach((ref) => {
+        this.listadoConjurosDe(claseObjetivo).forEach((ref) => {
             const id = toNumber(ref?.Id);
             const nivel = toNumber(ref?.Nivel);
             if (id <= 0)
@@ -9686,6 +9915,10 @@ export class NuevoPersonajeService {
         conjuro: Conjuro,
         dominiosSeleccionados: Set<string>
     ): number | null {
+        // Lo que cambian sus niveles de sustitución en la lista de la clase manda: el que entra, a su nivel; el que sale, fuera.
+        const cambio = cambiosDeLaListaDeConjuros(claseObjetivo, this.sustitucionesTomadasDe(claseObjetivo)).get(toInt(conjuro?.Id));
+        if (cambio !== undefined)
+            return cambio ? toInt(cambio.Nivel) : null;
         const nombreClaseNorm = normalizarTexto(claseObjetivo?.Nombre ?? '');
         const idClase = toNumber(claseObjetivo?.Id);
         const niveles = nivelesDeClaseDelConjuro(conjuro);
@@ -9715,7 +9948,7 @@ export class NuevoPersonajeService {
                 return compatibles[0].nivel;
         }
 
-        const refListado = listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje(), this.claseOrigenDe(claseObjetivo))
+        const refListado = this.listadoConjurosDe(claseObjetivo)
             .find((ref) => toNumber(ref?.Id) === toNumber(conjuro?.Id));
         if (refListado)
             return toNumber(refListado?.Nivel);
@@ -10004,6 +10237,12 @@ export class NuevoPersonajeService {
             .some((conjuro) => toNumber(conjuro?.Id) === id && esConjuroDeLaClase(conjuro, claseNorm));
     }
 
+    /** La lista de conjuros de la clase (`listadoConjurosClase`) con lo que cambian sus niveles de sustitución. */
+    private listadoConjurosDe(clase: Clase | null | undefined): ClaseConjuroRef[] {
+        return listadoConSustituciones(clase, listadoConjurosClase(clase, this.aptitudesDelPersonaje(), this.claseOrigenDe(clase ?? null)),
+            this.sustitucionesTomadasDe(clase), Number.MAX_SAFE_INTEGER);
+    }
+
     private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {
         const nombreClase = `${clase?.Nombre ?? ''}`.trim();
         const nombre = `${ref?.Nombre ?? ''}`.trim();
@@ -10244,8 +10483,9 @@ export class NuevoPersonajeService {
     }
 
     /** Las caras del DG de un nivel de la clase con sus plantillas de ahora (`dadoComunDePlantillas`), o las de la clase. */
-    carasDadoGolpeDeClase(clase: Clase | null | undefined): number {
-        return this.dadoComunDePlantillas(this.estadoFlujo.plantillas.seleccionadas ?? []) ?? carasDado(clase?.Tipo_dado?.Nombre);
+    carasDadoGolpeDeClase(clase: Clase | null | undefined, nivelClase?: number): number {
+        const sustitucion = nivelClase !== undefined ? this.sustitucionDelNivelDeClase(clase, nivelClase) : null;
+        return this.dadoComunDePlantillas(this.estadoFlujo.plantillas.seleccionadas ?? []) ?? carasDado(dadoDelNivel(clase, sustitucion));
     }
 
     /** Las caras del dado de los DG raciales de ahora (el de su tipo, movido por sus plantillas: `Dados_golpe`). */
@@ -10358,7 +10598,8 @@ export class NuevoPersonajeService {
     /** El primer especial de las tablas de clase de cada id de aptitud (el mismo especial trae los mismos datos). */
     private especialesNivelPorId(): Map<number, ClaseEspecialNivel> {
         const porId = new Map<number, ClaseEspecialNivel>();
-        this.especialesNivelDeLasTablasDeClases().forEach((especialNivel) => {
+        // Primero las de sus niveles de sustitución, con su valor por los niveles del juego (`Por_nivel_del_juego`).
+        [...this.especialesDeSusNivelesDeSustitucion(), ...this.especialesNivelDeLasTablasDeClases()].forEach((especialNivel) => {
             const id = toNumber((especialNivel?.Especial as Record<string, any>)?.['Id']);
             if (id > 0 && !porId.has(id))
                 porId.set(id, especialNivel);
@@ -12052,7 +12293,9 @@ export class NuevoPersonajeService {
         const niveles = datos.entrada?.niveles ?? [];
         // Con lo que se eligió en cada nivel: la corrección evalúa con ello las dotes en su nivel y reparte los rangos.
         pj.Orden_niveles = niveles.map((n) => ({
-            idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase), elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
+            idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase),
+            ...(toInt(n?.idNivelSustitucion) > 0 ? { idNivelSustitucion: toInt(n?.idNivelSustitucion) } : {}),
+            elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
         }));
         this.ordenConocidoNiveles = niveles.map((n) => (n as any)?.ordenConocido !== false);
         this.razaSeleccionada = this.clonarProfundo(datos.raza ?? (pj.Raza as Raza) ?? null);
@@ -12131,6 +12374,9 @@ export class NuevoPersonajeService {
                     .forEach((e) => this.registrarIdInternoEspecial(clase, toInt(e?.Id_interno)));
             }
             this.aplicarHabilidadesPrimerNivelClase(clase);
+            // Las de clase de sus niveles de sustitución, para el máximo de rangos (D14).
+            for (let nivel = 1; nivel <= toInt(entrada?.Nivel); nivel++)
+                this.aplicarHabilidadesDeSustitucion(this.sustitucionDelNivelDeClase(clase, nivel));
         });
 
         // La base de las características: la final menos lo que suma lo que el motor vuelve a calcular.
@@ -12272,9 +12518,11 @@ export class NuevoPersonajeService {
     }
 
     /** Lo que se eligió en cada nivel, en su orden (una copia). */
-    getOrdenNiveles(): Array<{ idClase: number; nivelClase: number; elecciones: PersonajeCreateNivelEleccionDto[]; }> {
+    getOrdenNiveles(): Array<{ idClase: number; nivelClase: number; idNivelSustitucion?: number; elecciones: PersonajeCreateNivelEleccionDto[]; }> {
         return (this.personajeCreacion?.Orden_niveles ?? []).map((n) => ({
-            idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase), elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
+            idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase),
+            ...(toInt(n?.idNivelSustitucion) > 0 ? { idNivelSustitucion: toInt(n?.idNivelSustitucion) } : {}),
+            elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
         }));
     }
 
@@ -12476,6 +12724,8 @@ export class NuevoPersonajeService {
             pj.Orden_niveles = (pj.Orden_niveles ?? []).filter((_, i) => i !== indice);
             this.ordenConocidoNiveles = this.ordenConocidoNiveles.filter((_, i) => i !== indice);
         }
+        // Con un nivel menos de un juego, sus aptitudes de `Por_nivel_del_juego` valen menos.
+        this.ponerAlDiaLasAptitudesPorNivelDelJuego();
         // Lo ya concedido por la progresión (las dotes de nivel y los incrementos cada 4), con su nivel de ahora, como al
         // hidratarlo: el nivel siguiente vuelve a dar lo de ese nivel (el guerrero 4 que pasa a guerrero 3 / engendro 1).
         const dotesPendientes = this.dotesPendientes;
@@ -13193,14 +13443,28 @@ export class NuevoPersonajeService {
 
         const nivelesClase: GrupoDadosGolpe[] = (this.personajeCreacion.desgloseClases ?? [])
             .filter((entrada) => toInt(entrada?.Nivel) > 0)
-            .map((entrada) => {
+            .flatMap((entrada) => {
                 const clase = this.obtenerClaseDeDesglose(entrada);
+                const idClase = toInt(clase?.Id) || toInt(entrada?.Id) || undefined;
+                const caras = (nivelClase?: number) => dadoComun
+                    ?? (carasDado(dadoDelNivel(clase, nivelClase ? this.sustitucionDelNivelDeClase(clase, nivelClase) : null)) || dadoRacial);
+                // Con niveles de sustitución con otro DG (el guerrero enano, d12), un grupo por tramo del mismo dado, en el
+                // orden de sus niveles (la k-ésima tirada de la clase es su k-ésimo nivel: `construirNivelesCreacion`).
+                if (this.sustitucionesTomadasDe(clase).length > 0) {
+                    const grupos: GrupoDadosGolpe[] = [];
+                    for (let nivel = 1; nivel <= toInt(entrada.Nivel); nivel++) {
+                        if (!daDgEnNivel(clase, nivel))
+                            continue;
+                        const ultimo = grupos[grupos.length - 1];
+                        if (ultimo && ultimo.caras === caras(nivel))
+                            ultimo.cantidad++;
+                        else
+                            grupos.push({ cantidad: 1, caras: caras(nivel), idClase });
+                    }
+                    return grupos;
+                }
                 // Una clase con tabla por nivel (las de monstruo) solo da DG en sus niveles con `Dg` (`clase-niveles.ts`).
-                return {
-                    cantidad: dgsDeClase(clase, toInt(entrada.Nivel)),
-                    caras: dadoComun ?? (carasDado(clase?.Tipo_dado?.Nombre) || dadoRacial),
-                    idClase: toInt(clase?.Id) || toInt(entrada?.Id) || undefined,
-                };
+                return [{ cantidad: dgsDeClase(clase, toInt(entrada.Nivel)), caras: caras(), idClase }];
             })
             .filter((grupo) => grupo.cantidad > 0);
         flags.dadosGolpe = nivelesClase.length > 0;

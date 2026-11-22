@@ -1,3 +1,4 @@
+import { VistaJuegoSustitucion, vistaDeLosJuegos } from 'src/app/services/utils/niveles-sustitucion';
 import { Component, EventEmitter, Input, Optional, Output } from '@angular/core';
 import { UserService } from 'src/app/services/user.service';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
@@ -172,6 +173,8 @@ export class DetallesClaseComponent {
 
     /** Los prerrequisitos con la frase de la API, agrupados por `Opcional`. */
     prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
+    /** Sus juegos de niveles de sustitución (R8): requisitos, lo que cambia y lo que gana y pierde cada nivel. */
+    juegosSustitucion: VistaJuegoSustitucion[] = [];
 
     @Input()
     set clase(value: Clase) {
@@ -205,6 +208,7 @@ export class DetallesClaseComponent {
         this.recalcularBloquesVisuales();
         this.recalcularTablaProgresion();
         this.recalcularMoldeado();
+        this.juegosSustitucion = vistaDeLosJuegos(value);
     }
 
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();

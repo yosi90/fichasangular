@@ -17,6 +17,8 @@
                     (click)="alternarPrestigio();">{{anuncioPrestigio}}</mat-chip-option>
                 <mat-chip-option color="accent" class="filtro-chip" [selected]="ocultarConPrerrequisitos"
                     (click)="alternarFiltroPrerrequisitos();">{{anuncioPrerrequisitos}}</mat-chip-option>
+                <mat-chip-option color="accent" class="filtro-chip" [selected]="soloConSustitucion"
+                    (click)="alternarSustitucion();">Con niveles de sustitución</mat-chip-option>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
     </app-listado-cabecera>

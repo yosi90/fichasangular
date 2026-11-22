@@ -7,6 +7,7 @@ import { minusculaInicial } from 'src/app/services/utils/formato-registros';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { CasillaFicha } from './ficha';
+import { textoNivelesSustitucion } from 'src/app/services/utils/niveles-sustitucion';
 
 /*
  * Lo que enseñan igual la ficha del personaje (`detalles-personaje`) y la creación (su cabecera y el panel «Tu
@@ -48,12 +49,17 @@ export function casillasCaracteristicasPersonaje(pj: Personaje | null | undefine
  * Una clase con su nivel: «Guerrero 5»; con los DG de su tabla si no son su nivel (`Dgs` de la ficha de la API: las clases
  * de monstruo de *Libris Mortis*), «Engendro vampírico 5 (3 DG)».
  */
-export function textoClasePersonaje(clase: { Nombre: string; Nivel: number; Dgs?: number | null; Ex?: { Nombre: string; } | null; }): string {
+export function textoClasePersonaje(clase: {
+    Nombre: string; Nivel: number; Dgs?: number | null; Ex?: { Nombre: string; } | null;
+    Niveles_sustitucion?: ReadonlyArray<{ nivelClase: number; sustitucion: { id: number; nombre: string; }; }> | null;
+}): string {
     const nivel = toNumber(clase.Nivel);
     const dgs = clase.Dgs === undefined || clase.Dgs === null ? nivel : toNumber(clase.Dgs);
     // Una ex clase, con su nombre en minúscula: «Paladín 6 (ex paladín)» (MJ, «Ex paladines»).
     const ex = `${clase.Ex?.Nombre ?? ''}`.trim();
-    return `${clase.Nombre.trim()} ${nivel}${dgs !== nivel ? ` (${dgs} DG)` : ''}${ex ? ` (${ex.toLowerCase()})` : ''}`;
+    // Sus niveles de sustitución: «Guerrero 4 (sustitución: guerrero enano 1.º y 2.º)» (R8).
+    const sustitucion = textoNivelesSustitucion(clase.Niveles_sustitucion);
+    return `${clase.Nombre.trim()} ${nivel}${dgs !== nivel ? ` (${dgs} DG)` : ''}${ex ? ` (${ex.toLowerCase()})` : ''}${sustitucion ? ` (${sustitucion})` : ''}`;
 }
 
 /**
