@@ -552,6 +552,21 @@ export class CampanasGestionEstado implements OnDestroy {
         });
     }
 
+    abrirInfoCampaignNivelesSustitucion(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        void Swal.fire({
+            title: 'Niveles de sustitución',
+            icon: 'info',
+            html: `
+                <p style="text-align:left; margin-bottom:8px;">Al crear y al subir de nivel, un personaje que cumple sus requisitos (casi siempre, su raza) puede tomar un nivel de su clase <strong>en lugar del estándar</strong>: cambia algunos rasgos de ese nivel por otros, y a veces su dado de golpe o sus habilidades de clase (la serie <em>Razas…</em>, <em>Manual del jugador II</em>, pág. 196).</p>
+                <p style="text-align:left; margin-bottom:8px;">Los libros los presentan como opcionales, pero no son homebrew, así que vienen activados. Si los desactivas, la creación y la subida solo ofrecen el nivel estándar.</p>
+                <p style="text-align:left; margin:0;">Los PNJ quedan fuera de esta opción.</p>
+            `,
+            confirmButtonText: 'Entendido',
+        });
+    }
+
     async crearCampana(): Promise<void> {
         if (!this.canCreateCampaign || this.campaignCreateSaving)
             return;
@@ -1111,6 +1126,7 @@ export class CampanasGestionEstado implements OnDestroy {
             maxTiradasPuntosGolpe: this.campaignHpRollsMax,
             permitirClasesDeMonstruo: true,
             permitirReciclaje: true,
+            permitirNivelesSustitucion: true,
         };
     }
 
@@ -1138,6 +1154,7 @@ export class CampanasGestionEstado implements OnDestroy {
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe),
             permitirClasesDeMonstruo: this.campaignCreatePolicyDraft.permitirClasesDeMonstruo !== false,
             permitirReciclaje: this.campaignCreatePolicyDraft.permitirReciclaje !== false,
+            permitirNivelesSustitucion: this.campaignCreatePolicyDraft.permitirNivelesSustitucion !== false,
         };
     }
 
@@ -1431,6 +1448,7 @@ export class CampanasGestionEstado implements OnDestroy {
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(source?.maxTiradasPuntosGolpe),
             permitirClasesDeMonstruo: source?.permitirClasesDeMonstruo !== false,
             permitirReciclaje: source?.permitirReciclaje !== false,
+            permitirNivelesSustitucion: source?.permitirNivelesSustitucion !== false,
         };
     }
 

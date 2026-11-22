@@ -222,6 +222,11 @@ export interface PersonajeCreateNivelEleccionDto {
 export interface PersonajeCreateNivelDto {
     idClase: number;
     nivelClase: number;
+    /**
+     * El nivel de sustitución que toma en lugar del estándar (`SustitucionNivel.Id` de su clase y de ese nivel de clase;
+     * desde el 2026-11-22, R8). Sin él o `null`, el estándar.
+     */
+    idNivelSustitucion?: number | null;
     /** Su DG: lo que salió en el dado y si se tomó al máximo sin tirar (el primer DG del personaje). */
     pg?: { tirada: number | null; maximo: boolean; };
     elecciones?: PersonajeCreateNivelEleccionDto[];
@@ -354,6 +359,17 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
      * Conserva sus niveles, pierde lo que dice la clase y no sube. `null` si no lo es.
      */
     ex?: PersonajeExClaseDto | null;
+    /**
+     * Los niveles de esta clase que tomó como niveles de sustitución, por nivel de clase (desde el 2026-11-22, R8): `id`, el
+     * del `SustitucionNivel`; `sustitucion`, su juego. Vacía si no tiene ninguno.
+     */
+    nivelesSustitucion?: PersonajeNivelSustitucionDto[];
+}
+
+export interface PersonajeNivelSustitucionDto {
+    nivelClase: number;
+    id: number;
+    sustitucion: { id: number; nombre: string; };
 }
 
 export interface PersonajeExClaseDto {

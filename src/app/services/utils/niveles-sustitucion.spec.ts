@@ -3,7 +3,7 @@ import {
     AVISO_NO_VERIFICABLE, ContextoRequisitosSustitucion, ajustarCifras, competenciasQueQuita, conjurosConocidosDelNivel,
     dadoDelNivel, detalleConSustituciones, evaluarRequisitosDeSustitucion, habilidadesDelJuego, listadoConSustituciones,
     nivelDeSustitucion, opcionesDeSustitucion, puntosHabilidadDelNivel, sustitucionDelNivel, sustitucionesDeLaClase,
-    textoNivelesSustitucion,
+    textoNivelesSustitucion, opcionesDelSelectorDeNivel, idDeLaClaveDelSelector, vistaDeLosJuegos, CLAVE_NIVEL_ESTANDAR,
 } from './niveles-sustitucion';
 import {
     ID_DOTE_ADICIONAL, ID_ENEMIGO_PREDILECTO, ID_FIRMEZA_ENANA, ID_FURIA, ID_FURIA_DE_LA_MONTANA, ID_GRUPO_HACHAS,
@@ -147,5 +147,34 @@ describe('niveles-sustitucion (R8, primera tanda)', () => {
             { nivelClase: 1, sustitucion: { id: 1, nombre: 'Guerrero enano' } },
         ])).toBe('sustitución: guerrero enano 1.º y 2.º');
         expect(textoNivelesSustitucion([])).toBe('');
+    });
+
+    it('el selector del nivel: el estándar primero y el de sustitución, bloqueado con su motivo si no lo cumple', () => {
+        const juego = guerrero.Sustituciones![0];
+        const opcion = { juego, nivel: juego.Niveles[0], sinAplicar: [] };
+        const humano = opcionesDelSelectorDeNivel(guerrero, 1, [{ ...opcion, ...evaluarRequisitosDeSustitucion(juego, 1, contexto(ID_RAZA_HUMANO, 'Humano')) }]);
+        expect(humano.map((o) => o.clave)).toEqual([CLAVE_NIVEL_ESTANDAR, 'sustitucion:11']);
+        expect(humano[0].nombre).toBe('Guerrero 1 (nivel estándar)');
+        expect(humano[1].nombre).toBe('Niveles de sustitución racial del guerrero enano (1.º)');
+        expect(humano[1].bloqueada).toBeTrue();
+        expect(humano[1].motivo).toBe('No cumple: Enano');
+        expect(humano[1].extra).toContain('DG d12');
+        expect(humano[1].extra).toContain('En lugar de: Dote adicional y Hachas');
+        const enano = opcionesDelSelectorDeNivel(guerrero, 1, [{ ...opcion, ...evaluarRequisitosDeSustitucion(juego, 1, contexto(ID_RAZA_ENANO, 'Enano')) }]);
+        expect(enano[1].bloqueada).toBeUndefined();
+        expect(idDeLaClaveDelSelector('sustitucion:11')).toBe(11);
+        expect(idDeLaClaveDelSelector(CLAVE_NIVEL_ESTANDAR)).toBeNull();
+    });
+
+    it('el detalle de la clase enseña cada juego con sus requisitos y lo que gana y pierde cada nivel', () => {
+        const [vista] = vistaDeLosJuegos(barbaro);
+        expect(vista.titulo).toBe('Niveles de sustitución racial del bárbaro de la montaña');
+        expect(vista.requisitos).toEqual(['Enano', 'Haber vivido en las montañas']);
+        expect(vista.datos).toEqual(['Puntos de habilidad: 6 + mod. de Int por nivel']);
+        expect(vista.niveles.map((n) => [n.nivel, n.gana, n.enLugarDe])).toEqual([
+            ['1.º', 'Furia de la montaña', 'Furia, desde este nivel'],
+            ['3.º', '', 'Sentido de las trampas, un paso más tarde'],
+        ]);
+        expect(vistaDeLosJuegos(explorador)[0].niveles[0].enLugarDe).toBe('Enemigo predilecto, que pasa al 15.º y Enmarañar (fuera de su lista)');
     });
 });

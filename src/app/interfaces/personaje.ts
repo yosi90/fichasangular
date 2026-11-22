@@ -188,6 +188,11 @@ export interface Personaje extends PersonajeSimple {
         Nivel_lanzamiento_racial?: number | null;
         /** Solo en la ficha: si es una ex clase (el paladín que se volvió vampiro), con lo que pierde. */
         Ex?: PersonajeExClase | null;
+        /**
+         * Los niveles de la clase que tomó como niveles de sustitución (`PersonajeClase.nivelesSustitucion`, R8; en la
+         * creación, los de su orden de niveles): «Guerrero 4 (sustitución: guerrero enano 1.º y 2.º)».
+         */
+        Niveles_sustitucion?: Array<{ nivelClase: number; id: number; sustitucion: { id: number; nombre: string; }; }>;
     }[],
     Ataque_base: string;
     /** Solo en la ficha que llega de la API; el borrador de la creación los calcula (`totalesPersonaje`). */

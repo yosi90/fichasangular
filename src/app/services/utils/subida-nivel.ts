@@ -486,7 +486,11 @@ export function conElNivelNuevo(ficha: PersonajeCreateRequestDto, guardados: Per
     col.clases = clases;
     ficha.niveles = [
         ...(guardados ?? []).map((n) => ({ ...n })),
-        { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase), elecciones: [...(nivel.elecciones ?? [])] },
+        {
+            idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase),
+            ...(toInt(nivel.idNivelSustitucion) > 0 ? { idNivelSustitucion: toInt(nivel.idNivelSustitucion) } : {}),
+            elecciones: [...(nivel.elecciones ?? [])],
+        },
     ];
 }
 

@@ -95,5 +95,6 @@ export function leerPoliticaCompra(valor: any): CampaignPurchasePolicy | null {
         permitirCopiarConjuros: toBoolean(valor.permitirCopiarConjuros, true),
         permitirIgnorarRestriccionesAlineamiento: toBoolean(valor.permitirIgnorarRestriccionesAlineamiento, false),
         permitirReciclaje: toBoolean(valor.permitirReciclaje, true),
+        permitirNivelesSustitucion: toBoolean(valor.permitirNivelesSustitucion, true),
     };
 }

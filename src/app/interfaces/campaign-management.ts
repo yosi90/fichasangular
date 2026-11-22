@@ -91,6 +91,11 @@ export interface CampaignCreationPolicy {
      * jugador II*, págs. 194-196; 2026-11-19); sin dato, sí. Con `false`, la subida da `reciclaje_no_permitido`, salvo a un PNJ.
      */
     permitirReciclaje?: boolean;
+    /**
+     * Si se pueden tomar niveles de sustitución al crear y al subir de nivel (*Races of Stone*, pág. 145: «si tu campaña
+     * los usa»; 2026-11-22, R8); sin dato, sí. Con `false`, `niveles_sustitucion_no_permitidos`, salvo a un PNJ o al máster.
+     */
+    permitirNivelesSustitucion?: boolean;
 }
 
 /**
@@ -102,7 +107,7 @@ export interface CampaignCreationPolicy {
 export type CampaignPurchasePolicy = Required<Pick<CampaignCreationPolicy,
     'permitirHomebrewGeneral' | 'maxFuentesHomebrewGeneralesPorPersonaje' | 'permitirObjetosMagicos' | 'permitirObjetosAMedida'
     | 'precioMaximoPorObjeto' | 'permitirCopiarConjuros'>>
-    & Partial<Pick<CampaignCreationPolicy, 'permitirIgnorarRestriccionesAlineamiento' | 'permitirReciclaje'>>;
+    & Partial<Pick<CampaignCreationPolicy, 'permitirIgnorarRestriccionesAlineamiento' | 'permitirReciclaje' | 'permitirNivelesSustitucion'>>;
 
 export interface CreateCampaignInput {
     nombre: string;

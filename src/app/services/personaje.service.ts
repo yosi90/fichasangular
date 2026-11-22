@@ -1099,6 +1099,13 @@ export class PersonajeService {
                 ...(toNumberOrNull(clase?.nivelLanzamientoRacial) !== null ? { Nivel_lanzamiento_racial: toNumberOrNull(clase?.nivelLanzamientoRacial) } : {}),
                 // Una ex clase (desde el 2026-11-13): la API ya le quita la magia si la pierde.
                 ...(leerExClase(clase?.ex) ? { Ex: leerExClase(clase?.ex) } : {}),
+                // Sus niveles de sustitución (R8), si tiene alguno.
+                ...(toArray<any>(clase?.nivelesSustitucion).length > 0 ? {
+                    Niveles_sustitucion: toArray<any>(clase?.nivelesSustitucion).map((n) => ({
+                        nivelClase: toInt(n?.nivelClase), id: toInt(n?.id),
+                        sustitucion: { id: toInt(n?.sustitucion?.id), nombre: toText(n?.sustitucion?.nombre) },
+                    })),
+                } : {}),
             }))
             .filter((clase) => clase.Nombre.length > 0);
         const plantillas = toArray<any>(element?.pla);

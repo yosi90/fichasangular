@@ -31,6 +31,14 @@ export interface NivelDeSustitucion {
     nivel: SustitucionNivel;
 }
 
+/** Una opción del selector del nivel: el nivel del juego, lo que dicen sus requisitos y las quitas que la web no aplica. */
+export type OpcionDeSustitucion = NivelDeSustitucion & EvaluacionRequisitosSustitucion & { sinAplicar: string[]; };
+
+/** El origen de las habilidades de clase de un juego (`habilidadesDeClasePorOrigen` del motor). */
+export function origenDeSustitucion(juego: SustitucionDetalle): string {
+    return `Sustitución ${toInt(juego?.Id)}`;
+}
+
 /** Los juegos de la clase (vacío si no tiene o si la caché es de antes de la versión 26). */
 export function juegosDeLaClase(clase: Clase | null | undefined): SustitucionDetalle[] {
     return clase?.Sustituciones ?? [];
@@ -288,31 +296,29 @@ export function competenciasQueQuita(clase: Clase | null | undefined, tomados: r
  */
 export function listadoConSustituciones(clase: Clase | null | undefined, listado: readonly ClaseConjuroRef[], tomados: readonly NivelSustitucionTomado[],
     nivelClase: number): ClaseConjuroRef[] {
-    const deLosTomados = tomadosConDatos(clase, tomados).filter(({ nivel }) => nivel.Nivel <= toInt(nivelClase));
-    if (deLosTomados.length < 1)
+    const cambios = cambiosDeLaListaDeConjuros(clase, tomados, nivelClase);
+    if (cambios.size < 1)
         return [...listado];
-    const salen = new Set<number>();
-    const entran: ClaseConjuroRef[] = [];
-    deLosTomados.forEach(({ nivel }) => nivel.Conjuros.forEach((c) => {
-        const id = toInt(c.Conjuro?.Id);
-        if (id <= 0)
-            return;
-        if (c.Quita) {
-            salen.add(id);
-            return;
-        }
-        salen.delete(id);
-        entran.push({ Id: id, Nombre: `${c.Conjuro?.Nombre ?? ''}`, Nivel: toInt(c.Nivel), Espontaneo: false });
-    }));
-    const vistos = new Set<number>();
-    return [...listado.filter((r) => !entran.some((e) => e.Id === toInt(r.Id))), ...entran]
-        .filter((r) => !salen.has(toInt(r.Id)))
-        .filter((r) => {
-            if (vistos.has(toInt(r.Id)))
-                return false;
-            vistos.add(toInt(r.Id));
-            return true;
-        });
+    const entran: ClaseConjuroRef[] = Array.from(cambios.values()).filter((c): c is ClaseConjuroRef => !!c);
+    return [...listado.filter((r) => !cambios.has(toInt(r.Id))), ...entran];
+}
+
+/**
+ * Lo que cambian en la lista de la clase sus niveles de sustitución hasta `nivelClase`, por id de conjuro: el conjuro que
+ * entra (con su nivel de conjuro) o `null` si sale. Mandan los de los niveles más altos.
+ */
+export function cambiosDeLaListaDeConjuros(clase: Clase | null | undefined, tomados: readonly NivelSustitucionTomado[],
+    nivelClase = Number.MAX_SAFE_INTEGER): Map<number, ClaseConjuroRef | null> {
+    const cambios = new Map<number, ClaseConjuroRef | null>();
+    tomadosConDatos(clase, tomados)
+        .filter(({ nivel }) => nivel.Nivel <= toInt(nivelClase))
+        .sort((a, b) => a.nivel.Nivel - b.nivel.Nivel)
+        .forEach(({ nivel }) => nivel.Conjuros.forEach((c) => {
+            const id = toInt(c.Conjuro?.Id);
+            if (id > 0)
+                cambios.set(id, c.Quita ? null : { Id: id, Nombre: `${c.Conjuro?.Nombre ?? ''}`, Nivel: toInt(c.Nivel), Espontaneo: false });
+        }));
+    return cambios;
 }
 
 /** Los conjuros que conoce sin elegirlos por el nivel de sustitución que toma (`Conocido`). */
@@ -466,6 +472,57 @@ export function textoNivelesSustitucion(niveles: ReadonlyArray<{ nivelClase: num
     return partes.length > 0 ? `sustitución: ${partes.join('; ')}` : '';
 }
 
+/** La clave del nivel estándar en el selector del nivel. */
+export const CLAVE_NIVEL_ESTANDAR = 'estandar';
+
+/** Una opción del selector del nivel (la forma de `SelectorClaseOpcionalModalOpcion`). */
+export interface OpcionDelSelectorDeNivel {
+    clave: string;
+    tipo: 'especial';
+    etiqueta: string;
+    nombre: string;
+    extra: string;
+    bloqueada?: boolean;
+    motivo?: string;
+}
+
+/** Las quitas que la web no aplica todavía, por su tipo, para el aviso. */
+const NOMBRE_QUITA_SIN_APLICAR: Record<string, string> = {
+    libro_por_nivel: 'los conjuros gratis del libro',
+    escuela: 'la especialización',
+    dominios: 'los dominios',
+};
+
+/**
+ * El selector del nivel `nivelClase` de la clase: el estándar (primero, por defecto) y uno por cada nivel de sustitución,
+ * con lo que da y quita, el aviso de lo que la web no puede comprobar (D6) y, si no cumple sus requisitos, bloqueado con
+ * el motivo.
+ */
+export function opcionesDelSelectorDeNivel(clase: Clase, nivelClase: number, opciones: readonly OpcionDeSustitucion[]): OpcionDelSelectorDeNivel[] {
+    return [
+        { clave: CLAVE_NIVEL_ESTANDAR, tipo: 'especial', etiqueta: 'Estándar', nombre: `${clase.Nombre} ${toInt(nivelClase)} (nivel estándar)`, extra: '' },
+        ...opciones.map((opcion) => {
+            const sinAplicar = opcion.sinAplicar.map((t) => NOMBRE_QUITA_SIN_APLICAR[t] ?? t);
+            const extra = [
+                resumenDelNivelDeSustitucion(opcion),
+                ...opcion.avisos,
+                sinAplicar.length > 0 ? `La web aún no quita ${unirLista(sinAplicar, 'y')}: corrígelo en la ficha si hace falta.` : '',
+            ].filter((t) => t.length > 0).join(' ');
+            return {
+                clave: `sustitucion:${opcion.nivel.Id}`, tipo: 'especial' as const, etiqueta: 'Sustitución',
+                nombre: nombreDeOpcionDeSustitucion(opcion), extra,
+                ...(!opcion.cumple ? { bloqueada: true, motivo: opcion.motivos.join(' · ') } : {}),
+            };
+        }),
+    ];
+}
+
+/** El id del nivel de sustitución de una clave del selector; `null` el estándar. */
+export function idDeLaClaveDelSelector(clave: string | null | undefined): number | null {
+    const encontrado = `${clave ?? ''}`.match(/^sustitucion:(\d+)$/);
+    return encontrado ? toInt(encontrado[1]) : null;
+}
+
 /** El nombre de una opción del selector: «Guerrero enano, 1.º (nivel de sustitución)». */
 export function nombreDeOpcionDeSustitucion(opcion: NivelDeSustitucion): string {
     return `${opcion.juego.Titulo} (${ordinalDeNivel(opcion.nivel.Nivel)})`;
@@ -485,4 +542,72 @@ export function resumenDelNivelDeSustitucion(opcion: NivelDeSustitucion): string
         quita.length > 0 ? `En lugar de: ${unirLista(quita, 'y')}` : '',
     ].filter((t) => t.length > 0);
     return partes.join('. ');
+}
+
+// --- El detalle de la clase -------------------------------------------------------------------------------------------
+
+/** Un juego en el detalle de la clase (la biblioteca): sus requisitos, lo que cambia y sus niveles. */
+export interface VistaJuegoSustitucion {
+    id: number;
+    titulo: string;
+    nombreOriginal: string | null;
+    descripcion: string;
+    manual: string;
+    oficial: boolean;
+    requisitos: string[];
+    /** DG y puntos de habilidad, si son otros que los de la clase. */
+    datos: string[];
+    habilidadesAnade: string[];
+    habilidadesQuita: string[];
+    niveles: Array<{ nivel: string; gana: string; enLugarDe: string; descripcion: string; }>;
+}
+
+function nombreDeHabilidad(h: SustitucionDetalle['Habilidades'][number]): string {
+    return `${h.Habilidad?.Nombre ?? ''}${h.Extra && `${h.Extra.Nombre ?? ''}`.trim() ? ` (${h.Extra.Nombre})` : ''}`.trim();
+}
+
+function textoDeQuita(q: SustitucionQuita): string {
+    const nombre = `${q.Elemento?.Nombre ?? ''}`.trim()
+        || (q.Tipo === 'conjuros_diarios' ? `${Math.max(1, toInt(q.Cantidad ?? 1))} conjuro${Math.max(1, toInt(q.Cantidad ?? 1)) > 1 ? 's' : ''} al día de nivel ${toInt(q.Nivel_conjuro)}`
+            : q.Tipo === 'conjuros_conocidos' ? `${Math.max(1, toInt(q.Cantidad ?? 1))} conjuro${Math.max(1, toInt(q.Cantidad ?? 1)) > 1 ? 's' : ''} conocido${Math.max(1, toInt(q.Cantidad ?? 1)) > 1 ? 's' : ''}${q.Nivel_conjuro !== null ? ` de nivel ${toInt(q.Nivel_conjuro)}` : ''}`
+                : NOMBRE_QUITA_SIN_APLICAR[q.Tipo] ?? q.Tipo);
+    const conExtra = `${nombre}${`${q.Extra ?? ''}`.trim() ? ` (${q.Extra})` : ''}`;
+    switch (q.Alcance) {
+        case 'desde': return `${conExtra}, desde este nivel`;
+        case 'retrasa': return `${conExtra}, un paso más tarde`;
+        case 'aplaza': return `${conExtra}, que pasa al ${ordinalDeNivel(toInt(q.Aplaza_a_nivel))}`;
+        default: return conExtra;
+    }
+}
+
+/** Los juegos de la clase para su detalle, por nombre. */
+export function vistaDeLosJuegos(clase: Clase | null | undefined): VistaJuegoSustitucion[] {
+    return juegosDeLaClase(clase).map((juego) => ({
+        id: juego.Id,
+        titulo: juego.Titulo,
+        nombreOriginal: juego.Nombre_original,
+        descripcion: juego.Descripcion,
+        manual: `${juego.Manual?.Nombre ?? ''}`.trim() ? `${juego.Manual.Nombre}${toInt(juego.Manual.Pagina) > 0 ? `, pág. ${toInt(juego.Manual.Pagina)}` : ''}` : '',
+        oficial: juego.Oficial,
+        requisitos: juego.Prerrequisitos.map((p) => `${p.Frase}${p.Nivel !== null ? ` (solo en el ${ordinalDeNivel(p.Nivel)})` : ''}${p.Opcional > 0 ? ' (o una de las alternativas)' : ''}`),
+        datos: [
+            juego.Tipo_dado?.Nombre ? `Dado de golpe: ${juego.Tipo_dado.Nombre}` : '',
+            juego.Puntos_habilidad ? `Puntos de habilidad: ${toInt(juego.Puntos_habilidad.Valor)} + mod. de Int por nivel` : '',
+        ].filter((t) => t.length > 0),
+        habilidadesAnade: juego.Habilidades.filter((h) => !h.Quita).map(nombreDeHabilidad),
+        habilidadesQuita: juego.Habilidades.filter((h) => h.Quita).map(nombreDeHabilidad),
+        niveles: juego.Niveles.map((n) => ({
+            nivel: ordinalDeNivel(n.Nivel),
+            gana: unirLista([
+                ...n.Especiales.map((e) => `${(e.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim()),
+                ...n.Dotes.map((d) => `${(d.Dote as any)?.Nombre ?? ''}`.trim()),
+                ...n.Conjuros.filter((c) => !c.Quita).map((c) => `${c.Conjuro.Nombre} (conjuro de nivel ${toInt(c.Nivel)}${c.Conocido ? ', conocido' : ''})`),
+            ].filter((t) => t.length > 0), 'y'),
+            enLugarDe: unirLista([
+                ...n.Quita.map(textoDeQuita),
+                ...n.Conjuros.filter((c) => c.Quita).map((c) => `${c.Conjuro.Nombre} (fuera de su lista)`),
+            ].filter((t) => t.length > 0), 'y'),
+            descripcion: `${n.Descripcion ?? ''}`.trim(),
+        })),
+    }));
 }

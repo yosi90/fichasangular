@@ -43,6 +43,7 @@ import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { construirCatalogoCompanerosDesdeMonstruos } from 'src/app/services/utils/companero-reglas';
 import { construirCatalogoFamiliaresDesdeMonstruos } from 'src/app/services/utils/familiar-reglas';
 import { mismoExtra, toInt } from 'src/app/services/utils/normalizacion';
+import { esPnj } from 'src/app/services/utils/tipo-personaje';
 import { dotesQueVuelvenACumplir, marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
 import {
@@ -156,6 +157,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     pasos: PasoSubida[] = ['clase', 'resumen'];
     /** Si la subida deja reciclar: la campaña (`politicaCompra.permitirReciclaje`); sin campaña o en un PNJ, sí. */
     permiteReciclar = false;
+    /** Si la subida deja tomar un nivel de sustitución: la campaña (`permitirNivelesSustitucion`); sin campaña o en un PNJ, sí. */
+    private permiteNivelesSustitucion = true;
 
     pj: Personaje | null = null;
     entrada: PersonajeCreateRequestDto | null = null;
@@ -318,6 +321,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.pj = pj;
             this.tiradasPermitidas = await tiradasPermitidasDe(entrada, this.campanaSvc);
             this.permiteReciclar = pj.PoliticaCompra?.permitirReciclaje !== false;
+            // Los niveles de sustitución (R8): los de la campaña; sin campaña o en un PNJ, sí (D10).
+            this.permiteNivelesSustitucion = pj.PoliticaCompra?.permitirNivelesSustitucion !== false || esPnj((pj as any)?.tipo);
             this.pasos = this.pasosIniciales();
             await this.hidratar();
             if (!this.cuenta.sigue())
@@ -333,6 +338,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     private async hidratar(): Promise<void> {
         await this.motor.hidratar(this.svc, this.pj!, this.entrada!, this.nivelesPerdidos);
+        this.svc.setPermiteNivelesSustitucion(this.permiteNivelesSustitucion);
         this.antes = this.cuerpoDelMotor();
         this.recalcularClases();
         await this.prepararReciclaje();
@@ -383,7 +389,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.nivelClase = nivel.nivelClase;
         this.daDg = daDgEnNivel(clase, this.nivelClase);
         // Con una plantilla que actualiza los DG (el vampiro), su dado: d12.
-        this.carasDg = this.svc.carasDadoGolpeDeClase(clase);
+        this.carasDg = this.svc.carasDadoGolpeDeClase(clase, this.nivelClase);
         this.svc.iniciarDistribucionHabilidadesPorClase(clase);
         this.intercambio = this.svc.getIntercambioConjurosDelNivel();
         this.pasos = [
@@ -1077,7 +1083,12 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             antes: this.antes!,
             despues,
             idClase: toInt(this.claseElegida?.Id),
-            nivel: { idClase: toInt(this.claseElegida?.Id), nivelClase: this.nivelClase, elecciones },
+            nivel: {
+                idClase: toInt(this.claseElegida?.Id), nivelClase: this.nivelClase,
+                // El nivel de sustitución que tomó en lugar del estándar (R8), si es de uno.
+                idNivelSustitucion: this.svc.sustitucionDelNivelDeClase(this.claseElegida, this.nivelClase)?.nivel.Id ?? null,
+                elecciones,
+            },
             puntosGolpe: this.pg?.total ?? toInt(this.entrada?.personaje.puntosGolpe),
             olvidados: elecciones.filter((e) => e.tipo === 'conjuro_olvidado')
                 .map((e) => ({ idConjuro: toInt(e.idElemento), idClase: toInt(e.idExtra) })),
@@ -1251,7 +1262,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.tiradaElegida = borrador.tiradaElegida ?? null;
         this.daDg = clase ? daDgEnNivel(clase, this.nivelClase) : true;
         // Con una plantilla que actualiza los DG (el vampiro), su dado: d12.
-        this.carasDg = clase ? this.svc.carasDadoGolpeDeClase(clase) : 0;
+        this.carasDg = clase ? this.svc.carasDadoGolpeDeClase(clase, this.nivelClase) : 0;
         this.intercambio = clase ? this.svc.getIntercambioConjurosDelNivel() : null;
         this.olvidado = borrador.olvidado ? { ...borrador.olvidado, nivel: -1 } as any : null;
         this.calcularPg();

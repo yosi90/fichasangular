@@ -169,6 +169,7 @@ import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
 import { ORIGEN_IDIOMAS_INICIALES, origenDeNivelDeClase } from 'src/app/services/utils/niveles-creacion';
+import { idDeLaClaveDelSelector, opcionesDelSelectorDeNivel } from 'src/app/services/utils/niveles-sustitucion';
 import { formatoNumero, textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
@@ -4216,6 +4217,10 @@ export class NuevoPersonajeComponent {
         if (!await this.confirmarSiVuelveHomebrew(tituloClase, motivosClase))
             return;
 
+        // El nivel estándar o uno de sustitución (R8, D2): lo que pide el nivel se lee ya con el elegido.
+        if (!await this.elegirNivelDeSustitucion(seleccion.clase))
+            return;
+
         let seleccionesOpcionales: SeleccionOpcionalesClase | null = null;
         let seleccionesDominios: SeleccionDominiosClase | null = null;
         const gruposOpcionales = this.nuevoPSvc.obtenerOpcionalesSiguienteNivelClase(seleccion.clase);
@@ -6461,6 +6466,30 @@ export class NuevoPersonajeComponent {
         } catch {
             return null;
         }
+    }
+
+    /**
+     * Si el siguiente nivel de la clase tiene niveles de sustitución (y la campaña los deja; a un PNJ y al máster de la
+     * campaña no les aplica, D10), el selector con el estándar y cada uno (los que no cumple, bloqueados con su motivo).
+     * `false` si se cancela. Sin ninguno, se queda el estándar.
+     */
+    private async elegirNivelDeSustitucion(clase: Clase): Promise<boolean> {
+        const politica = this.selectedCampaignPolicy;
+        this.nuevoPSvc.setPermiteNivelesSustitucion(!politica || politica.permitirNivelesSustitucion !== false
+            || this.esPnjCreacion || this.isSelectedCampaignActiveMaster);
+        this.nuevoPSvc.elegirSustitucionSiguienteNivel(clase, null);
+        const opciones = this.nuevoPSvc.opcionesDeSustitucionSiguienteNivel(clase);
+        if (opciones.length < 1)
+            return true;
+        const siguiente = opciones[0].nivel.Nivel;
+        this.selectorClaseOpcionalTitulo = `Nivel ${siguiente} de ${clase.Nombre}`;
+        this.selectorClaseOpcionalDescripcion = 'El nivel estándar o uno de sustitución, que lo reemplaza para siempre.';
+        this.selectorClaseOpcionalOpciones = opcionesDelSelectorDeNivel(clase, siguiente, opciones);
+        this.modalSelectorClaseOpcionalAbierto = true;
+        const clave = await new Promise<string | null>((resolve) => this.resolverSelectorClaseOpcional = resolve);
+        if (!clave)
+            return false;
+        return this.nuevoPSvc.elegirSustitucionSiguienteNivel(clase, idDeLaClaveDelSelector(clave));
     }
 
     private abrirSelectorClaseOpcional(grupo: ClaseGrupoOpcionalPendiente): Promise<string | null> {

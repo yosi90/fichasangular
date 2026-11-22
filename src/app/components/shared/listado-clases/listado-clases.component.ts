@@ -26,6 +26,8 @@ export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
     incluirHomebrew: boolean = false;
     soloPrestigio: boolean = false;
     ocultarConPrerrequisitos: boolean = false;
+    /** Solo las clases con juegos de niveles de sustitución (`Sustituciones`, R8). */
+    soloConSustitucion = false;
     /** El buscador rápido de la cabecera (nombre y descripción). */
     textoBusqueda = '';
     cargado = false;
@@ -90,6 +92,7 @@ export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
             && (this.defaultManual === 'Cualquiera' || clase.Manual?.Nombre === this.defaultManual)
             && (!this.soloPrestigio || clase.Prestigio)
             && (!this.ocultarConPrerrequisitos || !this.tienePrerrequisitos(clase))
+            && (!this.soloConSustitucion || (clase.Sustituciones ?? []).length > 0)
             && (this.incluirHomebrew || clase.Oficial)
         );
 
@@ -116,7 +119,7 @@ export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
 
     get hayFiltros(): boolean {
         return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera'
-            || this.incluirHomebrew || this.soloPrestigio || this.ocultarConPrerrequisitos;
+            || this.incluirHomebrew || this.soloPrestigio || this.ocultarConPrerrequisitos || this.soloConSustitucion;
     }
 
     limpiarFiltros(): void {
@@ -125,6 +128,7 @@ export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
         this.incluirHomebrew = false;
         this.soloPrestigio = false;
         this.ocultarConPrerrequisitos = false;
+        this.soloConSustitucion = false;
         this.filtroClases();
     }
 
@@ -139,6 +143,11 @@ export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
 
     get anuncioPrerrequisitos(): string {
         return this.ocultarConPrerrequisitos ? 'Solo sin prerrequisitos' : 'Ocultar prerrequisitos';
+    }
+
+    alternarSustitucion(): void {
+        this.soloConSustitucion = !this.soloConSustitucion;
+        this.filtroClases();
     }
 
     alternarFiltroPrerrequisitos() {
