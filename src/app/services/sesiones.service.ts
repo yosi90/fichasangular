@@ -35,6 +35,7 @@ import {
     VueltaALaVidaDto,
     RespuestaVuelta,
     CausaMascotaPerdida,
+    CosteDeLaMascota,
     MascotaPerdida,
     TIPOS_DE_MASCOTA,
     TipoDeMascota,
@@ -66,6 +67,29 @@ const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
 
 const MASCOTAS: ReadonlySet<string> = new Set<string>(TIPOS_DE_MASCOTA);
 const CAUSAS_MASCOTA: ReadonlySet<string> = new Set<CausaMascotaPerdida>(['muerte', 'liberacion', 'abandono']);
+
+/** `mascotas` de `GET …/sesiones/{numero}` (contrato, «La mascota fuera del reciclaje»): el coste de cada una; sin ella, vacía. */
+export function leerCostesDeLasMascotas(valor: unknown): CosteDeLaMascota[] {
+    const numeroONulo = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : toInt(v));
+    return (Array.isArray(valor) ? valor : [])
+        .filter((m: any) => MASCOTAS.has(`${m?.mascota ?? ''}`))
+        .map((m: any) => ({
+            mascota: m.mascota as TipoDeMascota,
+            tiene: m?.tiene === true,
+            cd: numeroONulo(m?.cd),
+            pxAntes: toInt(m?.pxAntes),
+            pxSiFalla: toInt(m?.pxSiFalla),
+            pxSiSupera: toInt(m?.pxSiSupera),
+            bajaSiFalla: m?.bajaSiFalla === true,
+            bajaSiSupera: m?.bajaSiSupera === true,
+            poObtener: Number(m?.poObtener) || 0,
+            horasObtener: numeroONulo(m?.horasObtener),
+            esperaReemplazo: `${m?.esperaReemplazo ?? ''}`.trim() || null,
+            tarifaPorClase: (Array.isArray(m?.tarifaPorClase) ? m.tarifaPorClase : []).map((t: any) => ({
+                idClase: toInt(t?.idClase), clase: `${t?.clase ?? ''}`.trim(), nivel: toInt(t?.nivel), px: toInt(t?.px),
+            })),
+        }));
+}
 
 /** `mascotasPerdidas` de `GET …/sesiones/{numero}` (contrato, «La mascota fuera del reciclaje»); sin ella, vacía. */
 export function leerMascotasPerdidas(valor: unknown): MascotaPerdida[] {
@@ -260,6 +284,7 @@ export class SesionesService {
                 restablecible: n?.restablecible === true,
             })),
             mascotasPerdidas: leerMascotasPerdidas(respuesta?.mascotasPerdidas),
+            mascotas: leerCostesDeLasMascotas(respuesta?.mascotas),
         };
     }
 

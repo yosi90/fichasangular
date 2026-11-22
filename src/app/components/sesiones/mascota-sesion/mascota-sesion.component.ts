@@ -15,28 +15,29 @@ import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from 'src/app/inter
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import {
-    CausaMascotaPerdida, EventoSesionDto, ExperienciaPersonaje, MascotaPerdida, SalvacionMascota, SesionPersonaje, TipoDeMascota,
+    CausaMascotaPerdida, CosteDeLaMascota, EventoSesionDto, ExperienciaPersonaje, MascotaPerdida, SalvacionMascota, SesionPersonaje,
+    TipoDeMascota,
 } from 'src/app/interfaces/sesiones';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { AccionMascota, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { daDotePorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
-import { bajaDeNivel } from 'src/app/services/utils/experiencia-nivel';
+import { daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { construirCatalogoCompanerosDesdeMonstruos, entradasDelSelectorCompanero } from 'src/app/services/utils/companero-reglas';
 import { construirCatalogoFamiliaresDesdeMonstruos, entradasDelSelectorFamiliar } from 'src/app/services/utils/familiar-reglas';
 import { fichaSinLaMascota, FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
 import {
-    CAUSAS_DE_PERDER, costeDeLaMascota, CosteDeLaMascotaEnLaSesion, fortalezaDelPersonaje, fuentesDeLaMascota,
-    mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA,
+    CAUSAS_DE_PERDER, costeDeLaMascotaEnLaSesion, costeDeLasFuentes, fortalezaDelPersonaje, fuentesDeLaMascota,
+    mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasLaSalvacion, TEXTOS_MASCOTA,
     TextosMascotaEnLaSesion, tirarFortaleza,
 } from 'src/app/services/utils/mascota-sesion';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
-    caracteristicaMasAlta, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, FilaPerdida, filasDelNivelPerdido,
-    indiceDelNivelQueSePierde, nombresDeLaFicha, ordenPorConocer, perdidaDelNivel,
+    caracteristicaMasAlta, caracteristicasDelIncrementoPerdido, clasesQuePuedenPerder, doteDeLaClave, dotesQuePuedePerder, FilaPerdida,
+    indiceDelNivelQueSePierde, ordenPorConocer,
 } from 'src/app/services/utils/perder-nivel';
+import { filasDeLaPerdidaConTodo, perdidaDeUnNivelConTodo } from 'src/app/services/utils/perdida-con-todo';
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 
@@ -80,7 +81,8 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     experiencia: ExperienciaPersonaje | null = null;
     entrada: PersonajeCreateRequestDto | null = null;
     perdida: MascotaPerdida | null = null;
-    coste: CosteDeLaMascotaEnLaSesion | null = null;
+    /** Lo que le costaría perderla u obtenerla, calculado por la API (`mascotas` de la sesión). */
+    coste: CosteDeLaMascota | null = null;
 
     // Perder
     causa: CausaMascotaPerdida = 'muerte';
@@ -88,6 +90,8 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     tirada: { d20: number; total: number; } | null = null;
     concepto = '';
     idClaseElegida: number | null = null;
+    /** Sin su registro, la característica del incremento que pierde con el nivel (la elige el jugador). */
+    incrementoElegido: number | null = null;
     doteElegida = '';
     filasPerdida: FilaPerdida[] = [];
     impedimento = '';
@@ -161,15 +165,16 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
 
     /** Los PX que le quedan tras perder el familiar (el compañero no cuesta PX). */
     get pxDespues(): number {
-        return this.mascota === 'familiar' ? pxTrasPerderLaMascota(this.pxActuales, this.coste?.tarifa ?? 0, this.salvacion) : this.pxActuales;
+        return this.mascota === 'familiar' ? pxTrasLaSalvacion(this.coste, this.pxActuales, this.salvacion).px : this.pxActuales;
     }
 
     get bajaNivel(): boolean {
-        return this.mascota === 'familiar' && !!this.salvacion && bajaDeNivel(this.pxActuales, this.pxDespues);
+        return this.mascota === 'familiar' && pxTrasLaSalvacion(this.coste, this.pxActuales, this.salvacion).baja;
     }
 
-    get cd(): number {
-        return this.coste?.cd ?? 15;
+    /** La CD de su salvación, de la API (`mascotas` de la sesión); `null` sin el dato. */
+    get cd(): number | null {
+        return this.coste?.cd ?? null;
     }
 
     get sinOrden(): boolean {
@@ -180,8 +185,17 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
         return clasesQuePuedenPerder(this.svc, this.entrada);
     }
 
+    /** Sin su registro, si el DG que pierde daba incremento o dote (cada 4 y 1.º y cada 3), como en «Perder un nivel». */
+    get pideIncremento(): boolean {
+        return this.sinOrden && daIncrementoPorNivelDePersonaje(toInt(this.pj?.Nivel_personaje));
+    }
+
     get pideDote(): boolean {
         return this.sinOrden && daDotePorNivelDePersonaje(toInt(this.pj?.Nivel_personaje));
+    }
+
+    get caracteristicas(): Array<{ id: number; nombre: string; valor: number; }> {
+        return caracteristicasDelIncrementoPerdido(this.entrada);
     }
 
     get dotes(): Array<{ clave: string; nombre: string; }> {
@@ -214,11 +228,13 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
             await this.motor.hidratar(this.svc, this.pj, this.entrada, cargada.nivelesPerdidos);
             if (!this.cuenta.sigue())
                 return;
-            this.coste = costeDeLaMascota(fuentesDeLaMascota(this.pj, this.svc.CatalogoClases, this.mascota));
+            this.coste = costeDeLaMascotaEnLaSesion(cargada.mascotas, this.mascota, () => costeDeLasFuentes(
+                fuentesDeLaMascota(this.pj, this.svc.CatalogoClases, this.mascota), this.mascota, this.pxActuales, !!this.laMascota));
             if (this.accion === 'perder') {
                 if (!this.laMascota)
                     throw new Error(`El personaje no tiene ${this.textos.que}.`);
                 this.idClaseElegida = this.sinOrden ? this.clases[this.clases.length - 1]?.id ?? null : null;
+                this.incrementoElegido = this.entrada ? caracteristicaMasAlta(this.entrada) : null;
                 this.recalcularPerdida();
             } else if (this.laMascota) {
                 throw new Error(this.mascota === 'companero'
@@ -252,6 +268,8 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
 
     /** «Tirar»: una ayuda (d20 + su Fortaleza contra la CD); lo que cuenta es lo que se apunta. */
     tirar(): void {
+        if (this.cd === null)
+            return;
         const t = tirarFortaleza(fortalezaDelPersonaje(this.pj), this.cd);
         this.tirada = { d20: t.d20, total: t.total };
         this.elegirSalvacion(t.salvacion);
@@ -259,6 +277,11 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
 
     elegirClase(id: string): void {
         this.idClaseElegida = toInt(id) || null;
+        this.recalcularPerdida();
+    }
+
+    elegirIncremento(id: string): void {
+        this.incrementoElegido = toInt(id) || null;
         this.recalcularPerdida();
     }
 
@@ -294,8 +317,10 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
                 return;
             }
             const conMascota = this.motor.cuerpoDelMotor(this.svc, entrada);
-            const { resultado, filaDelNivel } = perdidaDelNivel(this.svc, this.motor, {
-                entrada, indice, dgs: toInt(this.pj?.Nivel_personaje), incremento: this.sinOrden ? caracteristicaMasAlta(entrada) : null,
+            // La misma pérdida que «Perder un nivel» (`perdidaDeUnNivelConTodo`): el nivel con lo que eligió en él, las dotes
+            // que se quedan sin sus prerrequisitos y el compañero juzgado otra vez sin el nivel.
+            const perdida = perdidaDeUnNivelConTodo(this.svc, this.motor, {
+                entrada, indice, dgs: toInt(this.pj?.Nivel_personaje), incremento: this.sinOrden ? this.incrementoElegido : null,
                 dote: this.pideDote ? doteDeLaClave(this.doteElegida) : null,
             });
             // Lo que daba el familiar al amo, del motor sin él (Alerta con su origen, sus aptitudes de amo).
@@ -303,12 +328,11 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
             try {
                 this.svc.quitarFamiliar();
                 const sinMascota = this.motor.cuerpoDelMotor(this.svc, entrada);
-                this.fichaSinNivel = fichaSinLaMascota(resultado.ficha, conMascota, sinMascota, 'familiar');
+                this.fichaSinNivel = fichaSinLaMascota(perdida.resultado.ficha, conMascota, sinMascota, 'familiar');
             } finally {
                 this.svc.restaurarEstadoSubida(estado);
             }
-            filas.push(filaDelNivel, { que: 'Puntos de golpe', antes: `${resultado.pg.antes}`, ahora: `${resultado.pg.despues}${resultado.pg.exacto ? '' : ' (aproximado)'}` });
-            filas.push(...filasDelNivelPerdido(resultado, nombresDeLaFicha(this.svc, this.pj, entrada)));
+            filas.push(perdida.filaDelNivel, ...filasDeLaPerdidaConTodo(this.svc, this.pj, entrada, perdida, this.fichaSinNivel));
         }
         this.filasPerdida = filas;
     }
@@ -316,7 +340,8 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     get puedePerder(): boolean {
         return !this.guardando && !this.impedimento && this.filasPerdida.length > 0
             && (this.mascota !== 'familiar' || !!this.salvacion) && (!this.bajaNivel || !!this.fichaSinNivel)
-            && (!this.bajaNivel || !this.pideDote || !!this.doteElegida);
+            && (!this.bajaNivel || !this.pideDote || !!this.doteElegida)
+            && (!this.bajaNivel || !this.pideIncremento || !!this.incrementoElegido);
     }
 
     async perder(): Promise<void> {
@@ -438,7 +463,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     get puedeObtener(): boolean {
         const bloque = this.mascota === 'companero' ? this.cuerpo?.companero : this.cuerpo?.familiar;
         return this.paso === 'resumen' && !this.guardando && !!bloque && (!this.plazo || this.plazoCumplido)
-            && (this.mascota !== 'familiar' || this.poPagadasPorOtro || (this.coste?.po ?? 0) <= this.saldo);
+            && (this.mascota !== 'familiar' || this.poPagadasPorOtro || (this.coste?.poObtener ?? 0) <= this.saldo);
     }
 
     get saldo(): number {

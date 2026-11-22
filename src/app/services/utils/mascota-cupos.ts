@@ -3,13 +3,13 @@ import { Id_nombre } from 'src/app/interfaces/genericas';
 import {
     EspecialContextualMonstruo,
     MascotaAptitudNivel,
-    MascotaDeFila,
     MonstruoDetalle,
     MonstruoNivelClase,
     MonstruoOrigenRef,
     PersonajeRefMonstruo,
 } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { doteDeNivelClase, idPlantillaDeNivel } from 'src/app/services/utils/nivel-clase-monstruo';
@@ -69,11 +69,11 @@ export interface FuenteMascota {
     aporta: number;
     lista: { id: number; nombre: string; };
     /** Lo que cuesta perderla u obtener otra, de su aptitud (`Mascota` del nivel de la clase; tanda (i)); `null` sin dato. */
-    coste?: CosteDeLaMascota;
+    coste?: CosteDeLaAptitudDeMascota;
 }
 
 /** Lo que cuesta perder la mascota u obtener otra, de la aptitud que la da (contrato: catalogos.md, la `Mascota`). */
-export interface CosteDeLaMascota {
+export interface CosteDeLaAptitudDeMascota {
     pxPerdidaPorNivel: number | null;
     cdPerdida: number | null;
     poObtener: number | null;
@@ -474,7 +474,7 @@ export function resolverFilaMascota(
  */
 export function filasPorPlantilla(
     monstruo: Pick<MonstruoDetalle, 'Niveles_clase'> | null | undefined,
-    mascota: MascotaDeFila,
+    mascota: TipoDeMascota,
 ): Map<number, MonstruoNivelClase[]> {
     const porPlantilla = new Map<number, MonstruoNivelClase[]>();
     (monstruo?.Niveles_clase ?? [])
@@ -504,7 +504,7 @@ export type EntradaDeMascota = MonstruoDetalle & {
  */
 export function catalogoDeMascotaDesdeMonstruos<T>(
     monstruos: MonstruoDetalle[],
-    mascota: MascotaDeFila,
+    mascota: TipoDeMascota,
     puedeSerlo: (monstruo: MonstruoDetalle) => boolean,
     conSuId: (entrada: EntradaDeMascota, id: number) => T,
 ): T[] {

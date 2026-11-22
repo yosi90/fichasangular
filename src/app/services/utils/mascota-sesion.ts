@@ -2,10 +2,11 @@ import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { CausaMascotaPerdida, MascotaPerdida, SalvacionMascota, TipoDeMascota } from 'src/app/interfaces/sesiones';
+import { CausaMascotaPerdida, CosteDeLaMascota, MascotaPerdida, SalvacionMascota, TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { TEXTOS_COMPANERO } from './companero-reglas';
 import { tirarDado } from './dados';
 import { TEXTOS_FAMILIAR } from './familiar-reglas';
+import { bajaDeNivel } from './experiencia-nivel';
 import { FuenteMascota, fuentesMascota } from './mascota-cupos';
 import { toInt } from './normalizacion';
 import { totalesPersonaje } from './personaje-totales';
@@ -56,23 +57,26 @@ export function fuentesDeLaMascota(pj: Personaje | null | undefined, clases: Cla
     return pj ? fuentesMascota(pj, clases, mascota === 'companero' ? 'Otorga_companero' : 'Otorga_familiar') : [];
 }
 
-/** Lo que cuesta perderla u obtener otra, con las fuentes de ahora (como `utils/mascota_perdida.coste` de la API). */
-export interface CosteDeLaMascotaEnLaSesion {
-    /** Los PX que pierde el amo: los de cada clase que se la da por sus niveles, sumados (MJ pág. 44). */
-    tarifa: number;
-    /** La CD de su salvación de Fortaleza (15), o `null` sin dato. */
-    cd: number | null;
-    /** Las po de obtener otra (el familiar, 100; el compañero, 0). */
-    po: number;
-    horas: number | null;
-    /** La espera para reemplazar al familiar muerto o abandonado («un año y un día»), o `null`. */
-    espera: string | null;
+/**
+ * Su coste de la sesión: el de la API (`mascotas` de `GET …/sesiones/{numero}`, ya calculado) o, si no llega (una API de
+ * antes de la tanda (j)), el de sus fuentes (`costeDeLasFuentes`, la misma regla que `utils/mascota_perdida.coste`).
+ */
+export function costeDeLaMascotaEnLaSesion(mascotas: readonly CosteDeLaMascota[] | null | undefined, mascota: TipoDeMascota,
+    respaldo: () => CosteDeLaMascota): CosteDeLaMascota {
+    return (mascotas ?? []).find((m) => m.mascota === mascota) ?? respaldo();
 }
 
-/** El coste con las fuentes de esa mascota (una vez por clase; el filo aojador, por todos sus niveles, sin el −3). */
-export function costeDeLaMascota(fuentes: readonly FuenteMascota[]): CosteDeLaMascotaEnLaSesion {
+/** La CD de la salvación del familiar sin su dato en la aptitud (MJ pág. 45). */
+const CD_SIN_DATO = 15;
+
+/**
+ * El coste con las fuentes de esa mascota, con la forma de la API, para cuando la sesión no lo trae: los PX de cada clase que
+ * se la da por sus niveles, sumados (MJ pág. 44; una vez por clase; el filo aojador, por todos sus niveles, sin el −3), la
+ * mitad si supera la salvación, sin bajar de 0, y si con ellos baja de nivel.
+ */
+export function costeDeLasFuentes(fuentes: readonly FuenteMascota[], mascota: TipoDeMascota, pxAhora: number, tiene: boolean): CosteDeLaMascota {
     const vistas = new Set<number>();
-    let tarifa = 0;
+    const tarifaPorClase: CosteDeLaMascota['tarifaPorClase'] = [];
     const cds: number[] = [];
     const pos: number[] = [];
     const horas: number[] = [];
@@ -84,8 +88,10 @@ export function costeDeLaMascota(fuentes: readonly FuenteMascota[]): CosteDeLaMa
         const coste = fuente.coste;
         if (!coste)
             return;
-        if (coste.pxPerdidaPorNivel !== null && coste.pxPerdidaPorNivel !== undefined)
-            tarifa += toInt(coste.pxPerdidaPorNivel) * Math.max(0, toInt(fuente.nivelActual));
+        if (coste.pxPerdidaPorNivel !== null && coste.pxPerdidaPorNivel !== undefined) {
+            const nivel = Math.max(0, toInt(fuente.nivelActual));
+            tarifaPorClase.push({ idClase: fuente.idClase, clase: fuente.nombreClase, nivel, px: toInt(coste.pxPerdidaPorNivel) * nivel });
+        }
         if (coste.cdPerdida !== null && coste.cdPerdida !== undefined)
             cds.push(toInt(coste.cdPerdida));
         if (coste.poObtener !== null && coste.poObtener !== undefined)
@@ -94,19 +100,29 @@ export function costeDeLaMascota(fuentes: readonly FuenteMascota[]): CosteDeLaMa
             horas.push(toInt(coste.horasObtener));
         espera = espera ?? (coste.esperaReemplazo || null);
     });
+    const px = Math.max(0, toInt(pxAhora));
+    const tarifa = mascota === 'familiar' ? tarifaPorClase.reduce((total, t) => total + t.px, 0) : 0;
+    const pxSiFalla = Math.max(0, px - tarifa);
+    const pxSiSupera = Math.max(0, px - Math.floor(tarifa / 2));
     return {
-        tarifa,
-        cd: cds.length > 0 ? Math.max(...cds) : null,
-        po: pos.length > 0 ? Math.max(...pos) : 0,
-        horas: horas.length > 0 ? Math.max(...horas) : null,
-        espera,
+        mascota, tiene,
+        cd: mascota === 'familiar' ? (cds.length > 0 ? Math.max(...cds) : CD_SIN_DATO) : null,
+        pxAntes: px, pxSiFalla, pxSiSupera,
+        bajaSiFalla: bajaDeNivel(px, pxSiFalla), bajaSiSupera: bajaDeNivel(px, pxSiSupera),
+        poObtener: pos.length > 0 ? Math.max(...pos) : 0,
+        horasObtener: horas.length > 0 ? Math.max(...horas) : null,
+        esperaReemplazo: espera,
+        tarifaPorClase,
     };
 }
 
-/** Los PX que le quedan al perder el familiar: la tarifa, la mitad si supera la salvación, sin bajar de 0 (MJ pág. 45). */
-export function pxTrasPerderLaMascota(px: number, tarifa: number, salvacion: SalvacionMascota | null): number {
-    const perdidos = salvacion === 'superada' ? Math.floor(Math.max(0, tarifa) / 2) : Math.max(0, tarifa);
-    return Math.max(0, toInt(px) - perdidos);
+/** Los PX que le quedan con esa salvación (sin salvación, los de ahora) y si con ellos baja de nivel, de la API. */
+export function pxTrasLaSalvacion(coste: CosteDeLaMascota | null, pxAhora: number, salvacion: SalvacionMascota | null): { px: number; baja: boolean; } {
+    if (!coste || !salvacion)
+        return { px: toInt(pxAhora), baja: false };
+    return salvacion === 'superada'
+        ? { px: coste.pxSiSupera, baja: coste.bajaSiSupera }
+        : { px: coste.pxSiFalla, baja: coste.bajaSiFalla };
 }
 
 /** Su Fortaleza total, para la ayuda de «Tirar» (d20 + Fortaleza). */

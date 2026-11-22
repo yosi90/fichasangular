@@ -1,10 +1,11 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { leerMascotasPerdidas } from 'src/app/services/sesiones.service';
+import { leerCostesDeLasMascotas, leerMascotasPerdidas } from 'src/app/services/sesiones.service';
 import { bajaDeNivel } from './experiencia-nivel';
 import { fichaSinLaMascota } from './mascota-al-dia';
 import { FuenteMascota } from './mascota-cupos';
+import { CosteDeLaMascota } from 'src/app/interfaces/sesiones';
 import {
-    costeDeLaMascota, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasPerderLaMascota, sinMascotaNueva,
+    costeDeLaMascotaEnLaSesion, costeDeLasFuentes, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasLaSalvacion, sinMascotaNueva,
     tirarFortaleza,
 } from './mascota-sesion';
 
@@ -17,24 +18,32 @@ describe('mascota-sesion', () => {
         coste: { pxPerdidaPorNivel: px, cdPerdida: px === null ? null : 15, poObtener: po, horasObtener: 24, esperaReemplazo: px === null ? null : 'un año y un día' },
     });
 
-    it('lo que cuesta: 200 PX por cada nivel de las clases que dan el familiar, sumados (hechicero 3 / mago 2: 1.000), una vez por clase', () => {
-        const coste = costeDeLaMascota([fuente(1, 3, 200), fuente(2, 2, 200), fuente(2, 2, 200)]);
-        expect(coste.tarifa).toBe(1000);
-        expect(coste.cd).toBe(15);
-        expect(coste.po).toBe(100);
-        expect(coste.espera).toBe('un año y un día');
-        // El compañero no cuesta PX ni po; sin dato (una caché de antes), nada.
-        expect(costeDeLaMascota([fuente(3, 4, null, 0)])).toEqual({ tarifa: 0, cd: null, po: 0, horas: 24, espera: null });
-        expect(costeDeLaMascota([{ ...fuente(4, 2, 200), coste: undefined }]).tarifa).toBe(0);
+    it('sin el dato de la API, lo que cuesta de sus fuentes: 200 PX por nivel de las clases que dan el familiar, sumados, una vez por clase', () => {
+        // Hechicero 3 / mago 2 (y el mago repetido): 1.000; con 3.230 PX, los que le quedan y si baja de nivel.
+        const coste = costeDeLasFuentes([fuente(1, 3, 200), fuente(2, 2, 200), fuente(2, 2, 200)], 'familiar', 3230, true);
+        expect(coste.tarifaPorClase.map((t) => t.px)).toEqual([600, 400]);
+        expect([coste.cd, coste.poObtener, coste.esperaReemplazo]).toEqual([15, 100, 'un año y un día']);
+        expect([coste.pxSiFalla, coste.bajaSiFalla, coste.pxSiSupera, coste.bajaSiSupera]).toEqual([2230, true, 2730, true]);
+        // Sin bajar de 0; el compañero no cuesta PX ni tiene CD; sin dato (una caché de antes), nada.
+        expect(costeDeLasFuentes([fuente(1, 3, 200)], 'familiar', 100, true).pxSiFalla).toBe(0);
+        const companero = costeDeLasFuentes([fuente(3, 4, null, 0)], 'companero', 5000, true);
+        expect([companero.cd, companero.pxSiFalla, companero.bajaSiFalla, companero.poObtener]).toEqual([null, 5000, false, 0]);
+        expect(costeDeLasFuentes([{ ...fuente(4, 2, 200), coste: undefined }], 'familiar', 5000, true).pxSiFalla).toBe(5000);
     });
 
-    it('los PX: la tarifa, la mitad si supera la salvación, sin bajar de 0; y si le bajan del nivel que le dan sus PX', () => {
-        // El ejemplo del libro: Hennet, hechicero 3 con 3.230 PX, supera la salvación y queda con 2.930, en 2.º nivel.
-        expect(pxTrasPerderLaMascota(3230, 600, 'superada')).toBe(2930);
-        expect(bajaDeNivel(3230, 2930)).toBeTrue();
-        expect(pxTrasPerderLaMascota(3230, 600, 'fallada')).toBe(2630);
-        expect(pxTrasPerderLaMascota(100, 600, 'fallada')).toBe(0);
-        expect(pxTrasPerderLaMascota(0, 200, 'fallada')).toBe(0);
+    it('el coste de la API (`mascotas` de la sesión) manda; sin él, el de sus fuentes; los PX con la salvación', () => {
+        const deLaApi: CosteDeLaMascota = {
+            mascota: 'familiar', tiene: true, cd: 15, pxAntes: 3230, pxSiFalla: 2630, pxSiSupera: 2930, bajaSiFalla: true, bajaSiSupera: true,
+            poObtener: 100, horasObtener: 24, esperaReemplazo: 'un año y un día', tarifaPorClase: [],
+        };
+        const respaldo = jasmine.createSpy('respaldo').and.returnValue({ ...deLaApi, pxSiFalla: 0 });
+        expect(costeDeLaMascotaEnLaSesion([deLaApi], 'familiar', respaldo)).toBe(deLaApi);
+        expect(respaldo).not.toHaveBeenCalled();
+        expect(costeDeLaMascotaEnLaSesion([], 'familiar', respaldo).pxSiFalla).toBe(0);
+        // El ejemplo del libro: Hennet supera la salvación y queda con 2.930, en 2.º nivel; sin salvación, los de ahora.
+        expect(pxTrasLaSalvacion(deLaApi, 3230, 'superada')).toEqual({ px: 2930, baja: true });
+        expect(pxTrasLaSalvacion(deLaApi, 3230, 'fallada')).toEqual({ px: 2630, baja: true });
+        expect(pxTrasLaSalvacion(deLaApi, 3230, null)).toEqual({ px: 3230, baja: false });
         expect(bajaDeNivel(4500, 4300)).toBeFalse();
     });
 
@@ -78,5 +87,17 @@ describe('mascota-sesion', () => {
         expect(perdidaDeLaMascota(perdidas, 'companero')?.revivible).toBeFalse();
         expect(leerMascotasPerdidas(undefined)).toEqual([]);
         expect(mascotaDeLaFicha({ Companeros: [], Familiares: [{ Nombre: 'Mur' }] } as any, 'familiar')?.Nombre).toBe('Mur');
+    });
+
+    it('lee el coste de la sesión (`mascotas`): la CD del familiar, `null` en el compañero; lo que no es una mascota, fuera', () => {
+        const costes = leerCostesDeLasMascotas([
+            { mascota: 'familiar', tiene: true, cd: 15, pxAntes: 3230, pxSiFalla: 2630, pxSiSupera: 2930, bajaSiFalla: true, bajaSiSupera: true,
+                poObtener: 100, horasObtener: 24, esperaReemplazo: 'un año y un día', tarifaPorClase: [{ idClase: 8, clase: 'Hechicero', nivel: 3, px: 600 }] },
+            { mascota: 'companero', tiene: false, cd: null, pxAntes: 3230, pxSiFalla: 3230, pxSiSupera: 3230, poObtener: 0, horasObtener: 24, esperaReemplazo: '' },
+            { mascota: 'montura' },
+        ]);
+        expect(costes.map((c) => [c.mascota, c.cd, c.pxSiFalla, c.esperaReemplazo])).toEqual([['familiar', 15, 2630, 'un año y un día'], ['companero', null, 3230, null]]);
+        expect(costes[0].tarifaPorClase).toEqual([{ idClase: 8, clase: 'Hechicero', nivel: 3, px: 600 }]);
+        expect(leerCostesDeLasMascotas(undefined)).toEqual([]);
     });
 });

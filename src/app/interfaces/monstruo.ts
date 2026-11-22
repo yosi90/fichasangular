@@ -11,6 +11,7 @@ import { Maniobrabilidad } from "./maniobrabilidad";
 import { Movimientos } from "./movimientos";
 import { RacialDetalle } from "./racial";
 import { Tamano } from "./tamaño";
+import type { TipoDeMascota } from "./sesiones";
 
 export interface MonstruoTipoRef {
     Id: number;
@@ -89,9 +90,6 @@ export interface MonstruoHabilidad {
     Rangos: number;
 }
 
-/** De qué mascota es una fila de `Niveles_clase`: la que da su clase (contrato, `MonstruoNivelClase.Mascota`). */
-export type MascotaDeFila = 'companero' | 'familiar';
-
 export interface MonstruoNivelClase {
     Clase: {
         Id: number;
@@ -136,7 +134,8 @@ export interface MonstruoNivelClase {
      * compañero); `null` si su clase no da ninguna. Desde el 2026-11-21 (cachés `Monstruos` 16, `Familiares` y `Compañeros
      * animales` 13).
      */
-    Mascota: MascotaDeFila | null;
+    /** De qué mascota es la fila: la que da su clase (contrato, `MonstruoNivelClase.Mascota`). */
+    Mascota: TipoDeMascota | null;
 }
 
 export interface PersonajeRefMonstruo {
