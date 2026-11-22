@@ -11,6 +11,7 @@ import {
 import { Id_nombre } from 'src/app/interfaces/genericas';
 import { uidDeFila } from 'src/app/components/shared/insercion-marco/filas-repetibles';
 import type { FilaDeLista } from 'src/app/components/shared/lista-de-catalogo/lista-de-catalogo.component';
+import { minusculaInicial } from './formato-registros';
 import { toArray, toBoolean, toInt, toNullableText, toText } from './normalizacion';
 
 /*
@@ -238,7 +239,7 @@ export function problemaDeArmasNaturales(filas: readonly FilaArmaNatural[], plan
     for (const fila of filas) {
         const problema = problemaDeArmaNatural(fila, filas, plantilla);
         if (problema)
-            return `${fila.nombre || 'Arma natural'}: ${problema.charAt(0).toLowerCase()}${problema.slice(1)}`;
+            return `${fila.nombre || 'Arma natural'}: ${minusculaInicial(problema)}`;
     }
     return null;
 }

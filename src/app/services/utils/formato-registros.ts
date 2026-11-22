@@ -23,6 +23,12 @@ export function mayusculaInicial(texto: string | null | undefined): string {
     return limpio.charAt(0).toUpperCase() + limpio.slice(1);
 }
 
+/** El texto recortado y con la primera letra en minúscula, para seguir una frase («Garra: la cantidad va de 1 a 99»). */
+export function minusculaInicial(texto: string | null | undefined): string {
+    const limpio = `${texto ?? ''}`.trim();
+    return limpio.charAt(0).toLowerCase() + limpio.slice(1);
+}
+
 /** Una clave como etiqueta: guiones bajos por espacios y la primera letra en mayúscula. */
 export function formatearClave(texto: string): string {
     if (!texto)

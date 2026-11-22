@@ -90,9 +90,9 @@ export interface TrucoEnsenablePanel extends TrucoConMotivo {
 }
 
 const MAXIMO_CONJUROS_LISTA = 30;
-/** Los eventos del panel que cambian la ficha (su alineamiento, su deidad o sus ex clases): al apuntarlos o deshacerlos se vuelve a leer. */
 /** El tipo de dote de las dotes elevadas (`tipos_dotes`), por su nombre normalizado: un dato, como en la API. */
 const TIPO_DOTE_ELEVADA = 'elevada';
+/** Los eventos del panel que cambian la ficha (su alineamiento, su deidad o sus ex clases): al apuntarlos o deshacerlos se vuelve a leer. */
 const CAMBIAN_LA_FICHA: ReadonlySet<string> = new Set(['cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado']);
 const AVISO_DESACTUALIZADA = 'Otra persona ha apuntado algo en esta sesión mientras la tenías abierta. Ya está al día: '
     + 'revisa lo que ha cambiado y, si hace falta, vuelve a apuntarlo.';

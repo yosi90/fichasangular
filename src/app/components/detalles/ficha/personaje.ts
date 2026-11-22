@@ -3,6 +3,7 @@ import { DoteLegacy } from 'src/app/interfaces/dote-contextual';
 import { CaracteristicaPerdidaKey, Personaje } from 'src/app/interfaces/personaje';
 import { NOMBRES_CARACTERISTICAS, abreviaturaCaracteristica, caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { minusculaInicial } from 'src/app/services/utils/formato-registros';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { CasillaFicha } from './ficha';
@@ -63,7 +64,7 @@ export function textoExClasePersonaje(clase: { Nombre: string; Ex?: { Nombre: st
     const ex = clase.Ex;
     if (!ex)
         return '';
-    const motivos = ex.Motivos.map((m) => m.charAt(0).toLowerCase() + m.slice(1)).join('; ');
+    const motivos = ex.Motivos.map((m) => minusculaInicial(m)).join('; ');
     // Con su magia pierde también los niveles de lanzador que sume a otra clase (el ex hospitalario: la ficha de la API ya
     // no los cuenta en el nivel de lanzador de esa clase).
     const pierde = ex.Pierde_magia
