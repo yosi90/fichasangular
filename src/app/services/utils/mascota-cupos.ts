@@ -254,9 +254,10 @@ export function aportaAlDarLaMascota(clase: Clase | null | undefined, otorga: Ot
 export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], otorga: OtorgaMascota): FuenteMascota[] {
     const clases = Array.isArray(catalogoClases) ? catalogoClases : [];
     const elegidas = new Set((personaje?.Claseas ?? []).map((especial) => toInt(especial?.Id)).filter((id) => id > 0));
-    // Las aptitudes que ha perdido por una ex clase (`Perdida_por` de la ficha, con el nombre de la ex clase: el ex druida
-    // pierde «Compañero animal», MJ pág. 37): los niveles de esa clase no suman al nivel efectivo de la mascota, y los de otra
-    // que da la misma aptitud (el explorador), sí (contrato: personajes.md, «La mascota y el alineamiento»).
+    // Las aptitudes que ha perdido por una ex clase (el ex druida pierde «Compañero animal», MJ pág. 37): los niveles de esa
+    // clase no suman al nivel efectivo de la mascota, y los de otra que da la misma aptitud (el explorador), sí (contrato:
+    // personajes.md, «La mascota y el alineamiento»). Con los ids de su ex clase (`Ex.Especiales`, aunque otra clase siga
+    // dándola); sin ellos (una ficha de antes), con `Perdida_por` (solo si todas las clases que la dan son ex).
     const perdidaPor = new Map<number, Set<string>>();
     (personaje?.Claseas ?? []).forEach((especial) => {
         const nombres = (especial?.Perdida_por ?? []).map((n) => normalizarTexto(n ?? '')).filter((n) => n.length > 0);
@@ -274,7 +275,10 @@ export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], ot
             if (nivelActual < aptitud.nivel || (aptitud.opcional && !elegidas.has(aptitud.idEspecial)))
                 return;
             const ex = normalizarTexto(`${entrada?.Ex?.Nombre ?? ''}`);
-            if (ex.length > 0 && perdidaPor.get(aptitud.idEspecial)?.has(ex))
+            const pierdeEsa = Array.isArray(entrada?.Ex?.Especiales)
+                ? entrada.Ex.Especiales.some((id) => toInt(id) === aptitud.idEspecial)
+                : ex.length > 0 && !!perdidaPor.get(aptitud.idEspecial)?.has(ex);
+            if (pierdeEsa)
                 return;
             const fuente: FuenteMascota = {
                 idClase: toInt(clase.Id),

@@ -61,7 +61,8 @@ export function conLaInteligenciaDeSuFila(companero: CompaneroMonstruoDetalle,
         return;
     const deLaFila = fila?.Inteligencia;
     if (deLaFila !== null && deLaFila !== undefined) {
-        if (!companero.Inteligencia_de_su_fila && sinPuntuacion(c['Inteligencia']))
+        // La de su monstruo, siempre (también si la tiene), para volver a ella al quedar inactivo o dejar su fila.
+        if (!companero.Inteligencia_de_su_fila)
             companero.Inteligencia_del_monstruo = c['Inteligencia'] ?? null;
         const id = idDeLaCaracteristica('Inteligencia');
         const mejoras = (companero.Mejoras ?? []).filter((m) => toInt(m?.Id_caracteristica) === id).length;

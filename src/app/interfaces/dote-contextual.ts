@@ -32,6 +32,12 @@ export interface DoteContextoPersonaje extends DoteContextoBase {
      */
     Sin_prerrequisitos?: boolean;
     /**
+     * Suspendida: una dote elevada tras una caída con `dotesElevadas` sin su expiación (contrato: personajes.md, «La mascota
+     * inactiva…»; *Libro de obras elevadas*, pág. 39). Se conserva sin poder usarla: no abre la mascota de su fila ni cuenta
+     * como prerrequisito.
+     */
+    Suspendida?: boolean;
+    /**
      * En una dote del compañero animal, el DG total en que la eligió (contrato: «Las dotes y las mejoras que elige el
      * compañero»); sin él, la de su monstruo o su tabla.
      */

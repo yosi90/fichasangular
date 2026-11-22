@@ -39,6 +39,19 @@ function crearClaseConEspeciales(
     } as any;
 }
 
+/**
+ * Una preferencia con el dato que da la API desde la tanda (h) (`Valor`, `Prohibe`, `Id_prioridad`; contrato: catalogos.md,
+ * `Preferencia_legal`), por su fila de `preferencia_ley`/`preferencia_moral`: 4-6 «Siempre…» (1, 0, −1), 7-9 «Nunca…» y las
+ * demás sin exigencia.
+ */
+function conSuDato(pref: { Id: number; Nombre: string; }): MonstruoNivelClase['Preferencia_legal'] {
+    const id = Number(pref?.Id);
+    const valores: Record<number, number> = { 4: 1, 5: 0, 6: -1, 7: 1, 8: 0, 9: -1 };
+    return id in valores
+        ? { ...pref, Valor: valores[id], Prohibe: id >= 7, Id_prioridad: 3 }
+        : { ...pref, Valor: null, Prohibe: false, Id_prioridad: 1 };
+}
+
 function crearNivelClase(
     idClase: number,
     nivel: number,
@@ -53,8 +66,8 @@ function crearNivelClase(
         Ajuste: 0,
         Ataque_base_minimo: null,
         Plantilla: { Id: plantilla, Nombre: `Plantilla ${plantilla}` },
-        Preferencia_legal: { Id: prefLegal, Nombre: `${prefLegal}` },
-        Preferencia_moral: { Id: prefMoral, Nombre: `${prefMoral}` },
+        Preferencia_legal: conSuDato({ Id: prefLegal, Nombre: `${prefLegal}` }),
+        Preferencia_moral: conSuDato({ Id: prefMoral, Nombre: `${prefMoral}` }),
         Dote: dote,
         Mascota: 'familiar',
     };
@@ -409,7 +422,11 @@ describe('familiar-reglas', () => {
 describe('familiar-reglas con las respuestas reales de la API', () => {
     // La respuesta es de antes de `Mascota` (2026-11-21): todas sus filas son de clases que dan familiar.
     const serpiente = normalizeMonstruoDetalle({
-        ...SERPIENTE_API, Niveles_clase: SERPIENTE_API.Niveles_clase.map((fila: any) => ({ ...fila, Mascota: 'familiar' })),
+        ...SERPIENTE_API, Niveles_clase: SERPIENTE_API.Niveles_clase.map((fila: any) => ({
+            ...fila, Mascota: 'familiar',
+            // Con el dato de sus preferencias, que la API da desde la tanda (h).
+            Preferencia_legal: conSuDato(fila.Preferencia_legal), Preferencia_moral: conSuDato(fila.Preferencia_moral),
+        })),
     }, 1);
     const magiingeniero = normalizeClase(MAGIINGENIERO_API);
     const convocador = normalizeClase(CONVOCADOR_DIVINO_API);

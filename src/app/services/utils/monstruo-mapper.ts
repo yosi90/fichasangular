@@ -415,6 +415,15 @@ export function normalizeCompaneroMonstruoDetalle(raw: any, depth = 1): Companer
         Personajes: toArray(raw?.Personajes).map((item) => normalizePersonajeRef(item)),
         // La de una ficha, inactiva hasta que vuelva a cumplir (`Inactiva`, desde el 2026-11-21); sin él, activa.
         ...(raw?.Inactiva === true ? { Inactiva: true } : {}),
+        // Lo que le falta por elegir (`Pendiente` de la ficha); sin él, no se sabe.
+        ...(raw?.Pendiente && typeof raw.Pendiente === 'object' ? {
+            Pendiente: {
+                Puntos: Math.max(0, toNumber(raw.Pendiente.Puntos)),
+                Dotes: Math.max(0, toNumber(raw.Pendiente.Dotes)),
+                Mejoras: Math.max(0, toNumber(raw.Pendiente.Mejoras)),
+                Trucos: Math.max(0, toNumber(raw.Pendiente.Trucos)),
+            },
+        } : {}),
         // Sus mejoras de característica (contrato: «Las dotes y las mejoras que elige el compañero»).
         ...(Array.isArray(raw?.Mejoras) ? {
             Mejoras: toArray(raw.Mejoras).map((m: any) => ({

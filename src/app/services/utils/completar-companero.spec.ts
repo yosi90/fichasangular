@@ -1,7 +1,15 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { companeroCompletado, frasesDeLoQueLeFalta, rangosQueCambian } from './completar-companero';
+import { companeroCompletado, frasesDeLoQueLeFalta, leFaltaAlgoAlCompanero, rangosQueCambian } from './completar-companero';
 
 describe('completar-companero (lo que le falta al compañero, fuera de una subida)', () => {
+    it('le falta algo si su Pendiente de la ficha tiene algo mayor que 0; sin el dato, no se sabe (sí)', () => {
+        const con = (p: any) => ({ Pendiente: p } as any);
+        expect(leFaltaAlgoAlCompanero(con({ Puntos: 0, Dotes: 0, Mejoras: 0, Trucos: 0 }))).toBeFalse();
+        expect(leFaltaAlgoAlCompanero(con({ Puntos: 0, Dotes: 1, Mejoras: 0, Trucos: 0 }))).toBeTrue();
+        expect(leFaltaAlgoAlCompanero(con({ Puntos: 0, Dotes: 0, Mejoras: 0, Trucos: 2 }))).toBeTrue();
+        expect(leFaltaAlgoAlCompanero({} as any)).toBeTrue();
+    });
+
     const ficha = (rangos: number, dotes: any[] = []) => ({
         personaje: { nombre: 'Faren' }, colecciones: {},
         companero: { nombre: 'Gruk', idMonstruo: 3, dgAdi: 2, habilidades: [{ idHabilidad: 1, idExtra: -1, rangos }], dotes },

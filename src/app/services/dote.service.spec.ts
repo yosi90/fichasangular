@@ -126,6 +126,14 @@ describe('DoteService', () => {
         expect(normalizeContexto({ Entidad: 'raza', Extra: null, Id_extra: null }).Extra).toBe('');
     });
 
+    it('lee la dote suspendida (`Contexto.Suspendida`) y la Inteligencia para los trucos (`Inteligencia_para_trucos`)', () => {
+        expect((normalizeContexto({ Entidad: 'personaje', Suspendida: true }) as any).Suspendida).toBeTrue();
+        expect((normalizeContexto({ Entidad: 'personaje', Suspendida: false }) as any).Suspendida).toBeUndefined();
+        const entrenador = normalizeDoteApi(createDoteApiRaw({ Inteligencia_para_trucos: { Inteligencia: 1, Tipo: { Id: 15, Nombre: 'Sabandija' } } }));
+        expect(entrenador.Inteligencia_para_trucos).toEqual({ Inteligencia: 1, Tipo: { Id: 15, Nombre: 'Sabandija' } });
+        expect(normalizeDoteLegacy({ Id: 9, Nombre: 'Alerta', Inteligencia_para_trucos: null }).Inteligencia_para_trucos).toBeNull();
+    });
+
     it('lee lo de Magic of Incarnum: `Incarnum`, `Cuenta_como` y los extras de chakra y de fusión, de la API y de la caché', () => {
         const raw = createDoteApiRaw({
             Incarnum: { Esencia_reserva: 1, Esencia_reserva_moldeador: null, Receptaculo: true, Capacidad: null, Abre_chakra: false, Divisor_nivel_moldeador: null, Descriptores_sin_alineamiento: [] },

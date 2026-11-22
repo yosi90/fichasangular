@@ -1409,6 +1409,7 @@ function leerExClase(raw: any): PersonajeExClase | null {
         Requiere_expiacion: toBoolean(raw.requiereExpiacion),
         Necesita_expiacion: toBoolean(raw.necesitaExpiacion),
         Sin_vuelta: toBoolean(raw.sinVuelta),
+        ...(Array.isArray(raw.especiales) ? { Especiales: toArray<unknown>(raw.especiales).map((id) => toInt(id)).filter((id) => id > 0) } : {}),
     };
 }
 

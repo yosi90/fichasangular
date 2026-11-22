@@ -164,6 +164,21 @@ export function trucosExtraDeSusDotes(companero: CompaneroMonstruoDetalle | null
     }, 0);
 }
 
+/**
+ * La Inteligencia con la que aprende trucos una mascota sin Inteligencia por una dote de su amo (`Inteligencia_para_trucos`
+ * del catálogo, con el tipo de su monstruo: Entrenador de sabandijas, una sabandija como Int 1), o `null` si ninguna se la
+ * da. Como la API (`trucos.inteligencia_por_dote`).
+ */
+export function inteligenciaPorDoteDelAmo(companero: CompaneroMonstruoDetalle | null | undefined, catalogoDotes: readonly Dote[],
+    idsDotesDelAmo: readonly number[]): number | null {
+    const idTipo = toInt(companero?.Tipo?.Id);
+    const delAmo = new Set(idsDotesDelAmo.map(toInt));
+    const valores = catalogoDotes
+        .filter((d) => delAmo.has(toInt(d.Id)) && idTipo > 0 && toInt(d.Inteligencia_para_trucos?.Tipo?.Id) === idTipo)
+        .map((d) => toInt(d.Inteligencia_para_trucos?.Inteligencia));
+    return valores.length > 0 ? Math.max(...valores) : null;
+}
+
 /** Los que ha aprendido (los enseñados y los de su monstruo): los que cuentan para su límite. */
 export function trucosAprendidosDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined): TrucoDeMascota[] {
     return trucosDelCompanero(companero).filter((t) => t.Origen !== 'adicional');
@@ -187,11 +202,13 @@ export interface ContextoTrucoEnsenado extends Pick<ContextoTrucosDelCompanero, 
 
 /** El contexto de un truco enseñado: lo que sabe, sus raciales, su tipo, su Inteligencia, su límite y lo que lleva. */
 export function contextoDelTrucoEnsenado(companero: CompaneroMonstruoDetalle | null | undefined, catalogo: readonly Truco[],
-    catalogoDotes: readonly Dote[]): ContextoTrucoEnsenado {
+    catalogoDotes: readonly Dote[], idsDotesDelAmo: readonly number[] = []): ContextoTrucoEnsenado {
     const inteligencia = inteligenciaDelCompanero(companero);
-    // Descerebrada en su monstruo, con Inteligencia solo por su fila (F21: Compañero sabandija), no aprende trucos enseñados
-    // sin la dote del amo que la deja (`dote_trucos_inteligencia`, que la web aún no tiene): solo los adicionales.
-    const int = sinPuntuacion(inteligencia) || companero?.Inteligencia_de_su_fila === true ? null : toInt(inteligencia);
+    // Sin Inteligencia, o descerebrada en su monstruo con Inteligencia solo por su fila (F21: Compañero sabandija), aprende
+    // trucos enseñados solo con la que le da una dote del amo (`inteligenciaPorDoteDelAmo`); si no, solo los adicionales.
+    const int = sinPuntuacion(inteligencia) || companero?.Inteligencia_de_su_fila === true
+        ? inteligenciaPorDoteDelAmo(companero, catalogoDotes, idsDotesDelAmo)
+        : toInt(inteligencia);
     const aprendidos = trucosAprendidosDelCompanero(companero);
     // Lo que sabe, sus aptitudes y su tipo, como para los adicionales.
     const { sabe, aptitudes, idsTipo } = contextoDeTrucosDelCompanero(companero, catalogo);

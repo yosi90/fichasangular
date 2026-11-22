@@ -120,6 +120,12 @@ export interface Dote {
      * completo*, pág. 102): el límite de los enseñados es 3 × Int más la suma de las de sus dotes. 0 si no da trucos.
      */
     Trucos_extra?: number;
+    /**
+     * La Inteligencia con la que cuenta para los trucos una mascota sin Inteligencia de ese `Tipo` si su amo tiene la dote
+     * (Entrenador de sabandijas: una sabandija, como Int 1; *Drow of the Underdark*, pág. 53; contrato: catalogos.md,
+     * `Inteligencia_para_trucos`). `null` en las demás.
+     */
+    Inteligencia_para_trucos?: { Inteligencia: number; Tipo: { Id: number; Nombre: string; }; } | null;
     Prerrequisitos: DotePrerrequisitos;
 }
 

@@ -1,5 +1,6 @@
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { PersonajeCreateHabilidadMascotaDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { FilaDeLaMascota, NombresDeLaMascota, tituloDeLaMascota } from './mascota-al-dia';
 import { toInt } from './normalizacion';
 import { compararTexto } from './orden-texto';
@@ -22,6 +23,15 @@ export interface LoQueLeFaltaAlCompanero {
     dotes: number[];
     mejoras: number[];
     trucos: number;
+}
+
+/**
+ * Si al compañero le falta algo por su `Pendiente` de la ficha (algún valor mayor que 0); sin el dato, `true` (no se sabe:
+ * lo dice la pantalla de «Completar el compañero», que carga su criatura).
+ */
+export function leFaltaAlgoAlCompanero(companero: CompaneroMonstruoDetalle | null | undefined): boolean {
+    const p = companero?.Pendiente;
+    return !p || p.Puntos > 0 || p.Dotes > 0 || p.Mejoras > 0 || p.Trucos > 0;
 }
 
 /** Lo que le falta (`NuevoPersonajeService.loQueLeFaltaAlCompanero`), en frases: «2 puntos de habilidad», «1 dote (la de su 6.º DG)». */
