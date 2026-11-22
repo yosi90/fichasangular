@@ -3,14 +3,16 @@ import {
     SustitucionNivel, SustitucionQuita,
 } from 'src/app/interfaces/clase';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
+import { textoAtaqueBase } from './ataque-base';
 import { filaDeNivel } from './clase-niveles';
+import { textoConSigno } from './equipo-texto';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import {
     DeidadDelPersonaje, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararAlineamientoBasico,
     compararDeidad, compararGenero, compararRangosHabilidad, compararSubtipo,
 } from './prerrequisitos-evaluacion';
 import { minusculaInicial } from './formato-registros';
-import { mismoExtra, toInt } from './normalizacion';
+import { mismoExtra, primerEntero, toInt } from './normalizacion';
 import { nivelDeClaveConjuro } from './reglas-magia';
 
 /**
@@ -141,14 +143,20 @@ function ponerFilas(detalle: ClaseNivelDetalle, tipo: 'especial' | 'dote', filas
         detalle.Dotes = filas as ClaseDoteNivel[];
 }
 
-/** Suma `delta` a cada cifra de una casilla de la tabla («+6/+1» con −1, «+5/+0»). */
+/** Suma `delta` a cada cifra de una casilla de la tabla (una salvación: «+2» con −1, «+1»). */
 export function ajustarCifras(texto: string, delta: number): string {
     if (!delta)
         return texto;
-    return `${texto ?? ''}`.replace(/[+\-−]?\d+/g, (cifra) => {
-        const valor = Number(cifra.replace('−', '-')) + delta;
-        return valor >= 0 ? `+${valor}` : `${valor}`;
-    });
+    return `${texto ?? ''}`.replace(/[+\-−]?\d+/g, (cifra) => textoConSigno(Number(cifra.replace('−', '-')) + delta));
+}
+
+/**
+ * El ataque base de una fila de la tabla con `delta` (los ajustes de los niveles de sustitución), con sus ataques
+ * adicionales de nuevo (`textoAtaqueBase`: «+6/+1» con −1 es «+5», no «+5/+0»). Sin número, tal cual.
+ */
+export function ajustarAtaqueBase(texto: string, delta: number): string {
+    const base = primerEntero(texto);
+    return !delta || base === null ? texto : textoAtaqueBase(base + delta);
 }
 
 /** Resta `cantidad` a la casilla de nivel de conjuro `nivelConjuro` (sin bajar de 0; -1, sin acceso, se queda). */
@@ -272,7 +280,7 @@ export function detalleConSustituciones(clase: Clase, nivelClase: number, tomado
             ajustes.Voluntad += toInt(tomado.Ajustes?.Voluntad);
         }
     });
-    detalle.Ataque_base = ajustarCifras(detalle.Ataque_base, ajustes.Ataque_base);
+    detalle.Ataque_base = ajustarAtaqueBase(detalle.Ataque_base, ajustes.Ataque_base);
     detalle.Salvaciones = {
         Fortaleza: ajustarCifras(detalle.Salvaciones.Fortaleza, ajustes.Fortaleza),
         Reflejos: ajustarCifras(detalle.Salvaciones.Reflejos, ajustes.Reflejos),
@@ -296,7 +304,7 @@ export function multiplicarCifra(texto: string | null | undefined, veces: number
     if (!cifra)
         return null;
     const valor = Number(cifra[0].replace('−', '-')) * Math.max(1, toInt(veces));
-    const conSigno = /^[+\-−]/.test(cifra[0]) ? (valor >= 0 ? `+${valor}` : `${valor}`) : `${valor}`;
+    const conSigno = /^[+\-−]/.test(cifra[0]) ? textoConSigno(valor) : `${valor}`;
     return limpio.replace(cifra[0], conSigno);
 }
 
