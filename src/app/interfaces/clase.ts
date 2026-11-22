@@ -162,6 +162,16 @@ export interface ClaseEspecialMascota {
     Divisor: number;
     Ajuste: number;
     Lista: { Id: number; Nombre: string; };
+    /**
+     * Lo que cuesta perderla u obtener otra (desde la tanda (i); contrato: catalogos.md, la `Mascota` del nivel de la clase):
+     * los PX que pierde el amo por cada nivel de esta clase si muere o la abandona (el familiar, 200), su salvación de
+     * Fortaleza, las po de obtener otra, las horas y la espera para reemplazarla («un año y un día»). `null` sin dato.
+     */
+    Px_perdida_por_nivel?: number | null;
+    Cd_perdida?: number | null;
+    Po_obtener?: number | null;
+    Horas_obtener?: number | null;
+    Espera_reemplazo?: string | null;
 }
 
 export interface ClaseEspecialNivel {

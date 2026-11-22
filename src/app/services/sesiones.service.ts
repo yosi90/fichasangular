@@ -34,6 +34,9 @@ import {
     TipoEventoSesion,
     VueltaALaVidaDto,
     RespuestaVuelta,
+    CausaMascotaPerdida,
+    MascotaPerdida,
+    TipoDeMascota,
 } from 'src/app/interfaces/sesiones';
 import { environment } from 'src/environments/environment';
 import { AppToastService } from './app-toast.service';
@@ -56,8 +59,28 @@ const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
     'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'raza_mutada_adquirida',
     'conversion_muerto_viviente', 'nivel_perdido', 'vuelta_a_la_vida',
-    'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado', 'nota',
+    'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado', 'mascota_perdida', 'mascota_obtenida',
+    'mascota_revivida', 'nota',
 ]);
+
+const MASCOTAS: ReadonlySet<string> = new Set<TipoDeMascota>(['companero', 'familiar']);
+const CAUSAS_MASCOTA: ReadonlySet<string> = new Set<CausaMascotaPerdida>(['muerte', 'liberacion', 'abandono']);
+
+/** `mascotasPerdidas` de `GET …/sesiones/{numero}` (contrato, «La mascota fuera del reciclaje»); sin ella, vacía. */
+export function leerMascotasPerdidas(valor: unknown): MascotaPerdida[] {
+    return (Array.isArray(valor) ? valor : [])
+        .filter((m: any) => MASCOTAS.has(`${m?.mascota ?? ''}`))
+        .map((m: any) => ({
+            idEvento: toInt(m?.idEvento),
+            mascota: m.mascota as TipoDeMascota,
+            nombre: `${m?.nombre ?? ''}`.trim(),
+            idMonstruo: toInt(m?.idMonstruo),
+            idPlantilla: toInt(m?.idPlantilla),
+            causa: CAUSAS_MASCOTA.has(`${m?.causa ?? ''}`) ? m.causa as CausaMascotaPerdida : null,
+            revivible: m?.revivible === true,
+            esperaReemplazo: `${m?.esperaReemplazo ?? ''}`.trim() || null,
+        }));
+}
 
 /** Si el error es el `409 sesion_desactualizada` (otra persona apuntó algo entre medias). */
 export function esSesionDesactualizada(error: unknown): boolean {
@@ -235,6 +258,7 @@ export class SesionesService {
                 causa: CAUSAS_CONOCIDAS.has(`${n?.causa ?? ''}`) ? n.causa as CausaNivelPerdido : null,
                 restablecible: n?.restablecible === true,
             })),
+            mascotasPerdidas: leerMascotasPerdidas(respuesta?.mascotasPerdidas),
         };
     }
 

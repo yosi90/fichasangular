@@ -25,7 +25,7 @@ import {
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { idNombre, idNombres, normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombre, idNombres, normalizarTexto, toArray, toBoolean, toInt, toIntOrNull, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
@@ -266,6 +266,11 @@ function normalizeMascotaEspecial(raw: any): ClaseEspecialMascota | null {
         Divisor: Math.max(1, toInt(raw?.Divisor, 1)),
         Ajuste: toInt(raw?.Ajuste),
         Lista: { Id: toInt(raw?.Lista?.Id), Nombre: toText(raw?.Lista?.Nombre) },
+        Px_perdida_por_nivel: toIntOrNull(raw?.Px_perdida_por_nivel),
+        Cd_perdida: toIntOrNull(raw?.Cd_perdida),
+        Po_obtener: toNumberOrNull(raw?.Po_obtener),
+        Horas_obtener: toIntOrNull(raw?.Horas_obtener),
+        Espera_reemplazo: toText(raw?.Espera_reemplazo) || null,
     };
 }
 

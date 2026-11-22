@@ -113,13 +113,17 @@ describe('ClaseService normalizeClase: el Mascota de la tabla (el compañero ani
         const clase = normalizeClase({
             Id: 6, Nombre: 'Explorador', Desglose_niveles: [{
                 Nivel: 4, Especiales: [
-                    { Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true }, Mascota: { Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } } },
+                    { Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true }, Mascota: { Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' }, Po_obtener: 0, Horas_obtener: 24 } },
                     { Especial: { Id: 30, Nombre: 'Rastrear' } },
                 ],
             }],
         });
         const [companero, rastrear] = clase.Desglose_niveles[0].Especiales;
-        expect(companero.Mascota).toEqual({ Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } });
+        // Con lo que cuesta perderla u obtener otra (tanda (i)): sin dato, null.
+        expect(companero.Mascota).toEqual({
+            Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' },
+            Px_perdida_por_nivel: null, Cd_perdida: null, Po_obtener: 0, Horas_obtener: 24, Espera_reemplazo: null,
+        });
         expect(rastrear.Mascota).toBeNull();
     });
 });

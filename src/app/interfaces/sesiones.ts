@@ -1,4 +1,4 @@
-import { PersonajeCompraConjuroLibroDto, PersonajeCompraPiezaDto, PersonajeCreateRequestDto } from './personajes-api';
+import { PersonajeCompraConjuroLibroDto, PersonajeCompraPiezaDto, PersonajeCreateCompaneroDto, PersonajeCreateFamiliarDto, PersonajeCreateRequestDto } from './personajes-api';
 import type { ReglaIgnorada } from '../services/utils/reglas-ignoradas';
 
 /*
@@ -53,6 +53,13 @@ export type TipoEventoSesion =
     | 'expiacion'
     /** El compañero aprende un truco o un fin con Trato con animales (contrato: `personajes.md`, «Los trucos del compañero»). */
     | 'truco_ensenado'
+    /**
+     * La mascota fuera del reciclaje (contrato: `personajes.md`, «La mascota fuera del reciclaje»): se pierde (el compañero se
+     * libera o muere; el familiar muere o se abandona), se obtiene otra o se le devuelve la vida.
+     */
+    | 'mascota_perdida'
+    | 'mascota_obtenida'
+    | 'mascota_revivida'
     | 'nota';
 
 export type ActorRolSesion = 'jugador' | 'master' | 'sistema';
@@ -135,6 +142,28 @@ export interface SesionConFicha {
     entrada?: PersonajeCreateRequestDto | null;
     /** Para quien apunta: los niveles que ha perdido y siguen perdidos (los de ahora). La subida los mira (el paladín). */
     nivelesPerdidos?: NivelPerdido[];
+    /** Para quien apunta: las mascotas que siguen perdidas (una por mascota; contrato, «La mascota fuera del reciclaje»). */
+    mascotasPerdidas?: MascotaPerdida[];
+}
+
+export type TipoDeMascota = 'companero' | 'familiar';
+export type CausaMascotaPerdida = 'muerte' | 'liberacion' | 'abandono';
+export type SalvacionMascota = 'superada' | 'fallada';
+
+/**
+ * Una mascota que sigue perdida (`mascotasPerdidas` de `GET …/sesiones/{numero}`): sin las deshechas, las revividas ni las
+ * que ya tienen otra. `revivible`, la que murió con el hueco libre; `esperaReemplazo`, el plazo del familiar muerto o
+ * abandonado («un año y un día»), o `null`.
+ */
+export interface MascotaPerdida {
+    idEvento: number;
+    mascota: TipoDeMascota;
+    nombre: string;
+    idMonstruo: number;
+    idPlantilla: number;
+    causa: CausaMascotaPerdida | null;
+    revivible: boolean;
+    esperaReemplazo: string | null;
 }
 
 /** Un nivel de clase perdido (`nivelesPerdidos` de `GET …/sesiones/{numero}`), con las clases que tenía al perderlo. */
@@ -456,6 +485,11 @@ export type EventoSesionDto =
     | { tipo: 'caida'; clases: number[]; motivo: string; dotesElevadas?: boolean; }
     | { tipo: 'expiacion'; clases: number[]; idAlineamiento?: number; voluntaria?: boolean; lanzador?: string; concepto?: string; dotesElevadas?: boolean; }
     | { tipo: 'truco_ensenado'; idTruco: number; concepto?: string; }
+    /** `ficha`, sin el último nivel que ganó y sin el familiar, si los PX que pierde le bajan del nivel que le dan. */
+    | { tipo: 'mascota_perdida'; mascota: TipoDeMascota; causa: CausaMascotaPerdida; salvacion?: SalvacionMascota; concepto?: string; ficha?: PersonajeCreateRequestDto; idClase?: number; }
+    /** El bloque de la mascota con la forma del alta (`companero` o `familiar` de `POST /personajes/add`). */
+    | { tipo: 'mascota_obtenida'; mascota: TipoDeMascota; companero?: PersonajeCreateCompaneroDto; familiar?: PersonajeCreateFamiliarDto; plazoCumplido?: boolean; poPagadasPorOtro?: boolean; concepto?: string; }
+    | { tipo: 'mascota_revivida'; mascota: TipoDeMascota; concepto?: string; }
     | { tipo: 'nota'; texto: string; };
 
 /** El cuerpo de `POST …/{numero}/compras` (sin la `version`): añade y cobra del saldo, sin `dineroInicial`. */

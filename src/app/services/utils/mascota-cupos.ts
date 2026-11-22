@@ -68,6 +68,17 @@ export interface FuenteMascota {
     /** máx(0, ⌊nivel / divisor⌋ + ajuste). */
     aporta: number;
     lista: { id: number; nombre: string; };
+    /** Lo que cuesta perderla u obtener otra, de su aptitud (`Mascota` del nivel de la clase; tanda (i)); `null` sin dato. */
+    coste?: CosteDeLaMascota;
+}
+
+/** Lo que cuesta perder la mascota u obtener otra, de la aptitud que la da (contrato: catalogos.md, la `Mascota`). */
+export interface CosteDeLaMascota {
+    pxPerdidaPorNivel: number | null;
+    cdPerdida: number | null;
+    poObtener: number | null;
+    horasObtener: number | null;
+    esperaReemplazo: string | null;
 }
 
 /** Las fuentes de la mascota, su cupo, su nivel efectivo (la suma de lo que aportan) y las listas de las que elige. */
@@ -291,6 +302,13 @@ export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], ot
                 lista: {
                     id: toInt(aptitud.mascota.Lista?.Id) || toInt(clase.Id),
                     nombre: `${aptitud.mascota.Lista?.Nombre || clase.Nombre || ''}`.trim(),
+                },
+                coste: {
+                    pxPerdidaPorNivel: aptitud.mascota.Px_perdida_por_nivel ?? null,
+                    cdPerdida: aptitud.mascota.Cd_perdida ?? null,
+                    poObtener: aptitud.mascota.Po_obtener ?? null,
+                    horasObtener: aptitud.mascota.Horas_obtener ?? null,
+                    esperaReemplazo: aptitud.mascota.Espera_reemplazo ?? null,
                 },
             };
             const clave = `${fuente.idClase}:${fuente.idEspecial}`;

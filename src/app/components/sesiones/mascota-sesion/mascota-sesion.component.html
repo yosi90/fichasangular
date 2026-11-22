@@ -1,0 +1,157 @@
+<!-- La mascota fuera del reciclaje (tanda (i)): las piezas de la subida (subir-nivel.component.sass) -->
+<section class="subida" aria-live="polite">
+    <header class="subida__cabecera">
+        <div class="subida__titulos">
+            <span class="subida__antetitulo">{{titulo}}<ng-container *ngIf="sesion"> · Sesión {{sesion.numero}}</ng-container></span>
+            <h1 class="subida__titulo">{{pj?.Nombre || 'Personaje'}}</h1>
+        </div>
+        <span *ngIf="experiencia" class="subida__px">{{px(experiencia.px)}} PX · NEP {{experiencia.nivel}}</span>
+    </header>
+
+    <p *ngIf="cargando" class="subida__estado">Preparando la ficha…</p>
+    <div *ngIf="!cargando && error" class="subida__aviso subida__aviso--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{error}}</span>
+    </div>
+
+    <!-- Perder la mascota -->
+    <ng-container *ngIf="!cargando && pj && entrada && accion === 'perder' && laMascota">
+        <section class="subida__tarjeta">
+            <h2 class="subida__seccion">{{mascota === 'companero' ? 'Su compañero animal' : 'Su familiar'}}: {{nombreDeLaMascota}}</h2>
+            <div class="subida__botones">
+                <label class="subida__campo">
+                    Qué pasa
+                    <select [value]="causa" (change)="elegirCausa($any($event.target).value)">
+                        <option *ngFor="let c of causas" [value]="c.valor">{{c.nombre}}</option>
+                    </select>
+                </label>
+                <label class="subida__campo">
+                    Concepto (opcional)
+                    <input type="text" maxlength="150" [value]="concepto" (input)="concepto = $any($event.target).value"
+                        [placeholder]="mascota === 'companero' ? 'Se queda en el bosque de Brindol' : 'En la cripta'">
+                </label>
+            </div>
+            <p *ngIf="mascota === 'companero'" class="subida__nota">
+                Liberarlo es inmediato y no cuesta nada; para llamar a otro hace falta una ceremonia de 24 horas de oración
+                (Manual del jugador, pág. 35). Perder el compañero tampoco cuesta PX.
+            </p>
+            <ng-container *ngIf="mascota === 'familiar'">
+                <p class="subida__nota">
+                    Si muere o lo abandona, su amo hace una salvación de Fortaleza (CD {{cd}}): pierde {{px(coste?.tarifa ?? 0)}} PX
+                    si la falla y la mitad si la supera, sin bajar de 0 (Manual del jugador, pág. 45). No puede tener otro hasta
+                    pasado un año y un día. La tirada la apunta quien juega: «Tirar» solo es una ayuda (d20 + su Fortaleza).
+                </p>
+                <div class="subida__botones" role="radiogroup" aria-label="La salvación de Fortaleza">
+                    <button mat-stroked-button type="button" [color]="salvacion === 'superada' ? 'primary' : undefined" [attr.aria-pressed]="salvacion === 'superada'" (click)="elegirSalvacion('superada')">La superó</button>
+                    <button mat-stroked-button type="button" [color]="salvacion === 'fallada' ? 'primary' : undefined" [attr.aria-pressed]="salvacion === 'fallada'" (click)="elegirSalvacion('fallada')">La falló</button>
+                    <button mat-button type="button" (click)="tirar()"><mat-icon aria-hidden="true">casino</mat-icon> Tirar</button>
+                    <span *ngIf="tirada" class="subida__nota">d20 {{tirada.d20}} + Fortaleza = {{tirada.total}} contra CD {{cd}}</span>
+                </div>
+            </ng-container>
+
+            <ng-container *ngIf="bajaNivel">
+                <p class="subida__nota">Perder {{px(pxActuales - pxDespues)}} PX le baja del nivel que le dan sus PX: pierde el último
+                    nivel que ganó, sin punto medio, como al perder PX (Manual del jugador, pág. 45).</p>
+                <ng-container *ngIf="sinOrden">
+                    <h2 class="subida__seccion">Su ficha no sabe en qué orden ganó sus niveles</h2>
+                    <app-nivel-que-pierde [clases]="clases" [caracteristicas]="[]" [dotes]="dotes"
+                        [idClase]="idClaseElegida" [incremento]="null" [dote]="doteElegida"
+                        [pideIncremento]="false" [pideDote]="pideDote"
+                        (claseElegida)="elegirClase($event)" (doteElegida)="elegirDote($event)">
+                    </app-nivel-que-pierde>
+                </ng-container>
+            </ng-container>
+        </section>
+
+        <div *ngIf="impedimento" class="subida__aviso subida__aviso--error" role="alert">
+            <mat-icon aria-hidden="true">block</mat-icon>
+            <span>{{impedimento}}</span>
+        </div>
+
+        <section class="subida__tarjeta" *ngIf="!impedimento && filasPerdida.length > 0">
+            <h2 class="subida__seccion">Lo que cambia</h2>
+            <table class="subida__tabla subida__tabla--resumen">
+                <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th></tr></thead>
+                <tbody>
+                    <tr *ngFor="let f of filasPerdida">
+                        <th scope="row">{{f.que}}</th>
+                        <td>{{f.antes}}</td>
+                        <td class="subida__ahora">{{f.ahora}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+            <span class="subida__hueco"></span>
+            <button mat-flat-button color="primary" type="button" [disabled]="!puedePerder" (click)="perder()">
+                {{guardando ? 'Guardando…' : 'Apuntarlo'}}
+            </button>
+        </footer>
+    </ng-container>
+
+    <!-- Obtener una mascota -->
+    <ng-container *ngIf="!cargando && !error && pj && entrada && accion === 'obtener'">
+        <ng-container [ngSwitch]="paso">
+            <section *ngSwitchCase="'inicio'" class="subida__tarjeta">
+                <h2 class="subida__seccion">{{titulo}}</h2>
+                <p *ngIf="mascota === 'companero'" class="subida__nota">Con una ceremonia de 24 horas de oración, sin coste (Manual del
+                    jugador, pág. 35): el selector de la creación, con las listas a su nivel efectivo de ahora, y después lo que elige
+                    con sus DG adicionales (sus rangos, sus dotes, sus mejoras y sus trucos adicionales).</p>
+                <p *ngIf="mascota === 'familiar'" class="subida__nota">Lleva 24 horas y cuesta {{precio(coste?.po ?? 0)}} (Manual del
+                    jugador, pág. 45): el selector de la creación, con las listas al nivel de su amo de ahora.</p>
+                <p *ngIf="perdida && perdida.causa" class="subida__nota">Perdió a {{perdida.nombre || 'su mascota'}}.</p>
+            </section>
+
+            <ng-container *ngSwitchCase="'rangos'">
+                <app-reparto-rangos [motor]="svc" [titulo]="'Habilidades de ' + (nombreElegido || 'su compañero')"></app-reparto-rangos>
+                <p class="subida__nota">Los puntos de todos sus DG adicionales: las habilidades de su criatura son de clase. Al continuar,
+                    sus mejoras de característica, sus dotes y sus trucos, si le tocan, en sus selectores.</p>
+            </ng-container>
+
+            <section *ngSwitchCase="'resumen'" class="subida__tarjeta">
+                <h2 class="subida__seccion">Lo que cambia</h2>
+                <table *ngIf="filasObtener.length > 0" class="subida__tabla">
+                    <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let f of filasObtener">
+                            <th scope="row">{{f.que}}</th>
+                            <td>{{f.antes}}</td>
+                            <td class="subida__ahora">{{f.ahora}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="subida__botones">
+                    <label class="subida__campo">
+                        Concepto (opcional)
+                        <input type="text" maxlength="150" [value]="concepto" (input)="concepto = $any($event.target).value">
+                    </label>
+                </div>
+                <label *ngIf="plazo" class="subida__campo subida__campo--casilla">
+                    <input type="checkbox" [checked]="plazoCumplido" (change)="plazoCumplido = $any($event.target).checked">
+                    Ha pasado {{plazo}} desde que perdió a {{perdida?.nombre || 'su familiar'}} (Manual del jugador, pág. 45).
+                </label>
+                <ng-container *ngIf="mascota === 'familiar' && (coste?.po ?? 0) > 0">
+                    <label class="subida__campo subida__campo--casilla">
+                        <input type="checkbox" [checked]="poPagadasPorOtro" (change)="poPagadasPorOtro = $any($event.target).checked">
+                        Las {{precio(coste?.po ?? 0)}} las paga otro
+                    </label>
+                    <p *ngIf="!poPagadasPorOtro" class="subida__nota">Se pagan de su saldo ({{precio(saldo)}}).</p>
+                </ng-container>
+            </section>
+        </ng-container>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+            <button *ngIf="paso !== 'inicio'" mat-button type="button" (click)="empezarDeNuevo()" [disabled]="guardando">Empezar de nuevo</button>
+            <span class="subida__hueco"></span>
+            <button *ngIf="paso === 'inicio'" mat-flat-button color="primary" type="button" [disabled]="eligiendo" (click)="elegirMascota()">Elegir</button>
+            <button *ngIf="paso === 'rangos'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades() || eligiendo" (click)="cerrarRangos()">Continuar</button>
+            <button *ngIf="paso === 'resumen'" mat-flat-button color="primary" type="button" [disabled]="!puedeObtener" (click)="obtener()">
+                {{guardando ? 'Guardando…' : 'Apuntarlo'}}
+            </button>
+        </footer>
+    </ng-container>
+    <ng-container #modalHost></ng-container>
+</section>

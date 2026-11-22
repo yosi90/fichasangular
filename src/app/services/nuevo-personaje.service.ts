@@ -2169,6 +2169,11 @@ export class NuevoPersonajeService {
         this.catalogoClases = [...clases];
     }
 
+    /** El catálogo de clases del motor (las fuentes de la mascota, el coste de perderla u obtener otra). */
+    get CatalogoClases(): Clase[] {
+        return [...this.catalogoClases];
+    }
+
     setCatalogoDotes(dotes: Dote[]): void {
         this.catalogoDotes = [...(dotes ?? [])];
     }
