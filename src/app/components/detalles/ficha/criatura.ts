@@ -4,6 +4,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Movimientos } from 'src/app/interfaces/movimientos';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { minusculaInicial } from 'src/app/services/utils/formato-registros';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
@@ -58,7 +59,7 @@ export function nivelLanzadorEnFrase(valor: unknown): string {
     const texto = `${valor ?? ''}`.trim();
     if (texto.length < 1 || Number.isFinite(Number(texto)))
         return `${toNumber(valor)}`;
-    return `${texto.charAt(0).toLowerCase()}${texto.slice(1)}`;
+    return minusculaInicial(texto);
 }
 
 /** El nivel de lanzador de una aptitud sortílega en su línea: «NL 5» o «Nivel de lanzador igual a sus niveles de clase». */

@@ -70,6 +70,7 @@ import { ClaveHabilidad, claveDeHabilidad, claveHabilidad, clavesDeReferenciaGua
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
 import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
+import { minusculaInicial } from './utils/formato-registros';
 import {
     aptitudesFamiliarDelNivel,
     EstadoCuposFamiliar as EstadoCuposFamiliarUtil,
@@ -77,6 +78,7 @@ import {
     resolverFilaFamiliar,
     TablaDelFamiliar,
     tablaDelFamiliar,
+    TEXTOS_FAMILIAR,
 } from './utils/familiar-reglas';
 import {
     aptitudesCompaneroDelNivel,
@@ -90,6 +92,7 @@ import {
     puntosPorDgDelCompanero,
     resolverEstadoCuposCompanero,
     resolverFilaCompanero,
+    TEXTOS_COMPANERO,
 } from './utils/companero-reglas';
 import {
     aplicarMejoraAlCompanero,
@@ -5348,11 +5351,11 @@ export class NuevoPersonajeService {
         const razones = razonesAlineamientoMascota(requeridos, [resuelta.fila], alineamiento, sustantivo);
         if (razones.length < 1)
             return resuelta;
-        const la = tipo === 'companero' ? 'El compañero animal' : 'El familiar';
+        const textos = tipo === 'companero' ? TEXTOS_COMPANERO : TEXTOS_FAMILIAR;
         const porque = razones[0].replace(/\.$/, '');
         return {
             ...resuelta, fila: null, nivelTabla: 0, razones,
-            motivo: `${la} «${criaturaDeLaMascota(mascota)}»: ${porque.charAt(0).toLowerCase()}${porque.slice(1)} (el personaje es ${alineamiento.toLowerCase()}): queda inactivo hasta que vuelva a cumplir.`,
+            motivo: `El ${textos.mascota} «${criaturaDeLaMascota(mascota)}»: ${minusculaInicial(porque)} (el personaje es ${alineamiento.toLowerCase()}): queda inactivo hasta que vuelva a cumplir.`,
         };
     }
 
