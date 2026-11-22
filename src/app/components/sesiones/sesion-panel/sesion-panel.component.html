@@ -213,6 +213,15 @@
                                             }
                                         </div>
                                     }
+                                    @if (alineamientoModo !== 'cambio' && tieneDotesElevadas) {
+                                        <label class="sesion__campo">
+                                            <span>Sus dotes elevadas</span>
+                                            <input type="checkbox" name="dotesElevadas" [(ngModel)]="dotesElevadas">
+                                        </label>
+                                        <p class="sesion__nota">{{alineamientoModo === 'caida'
+                                            ? 'Un acto maligno voluntario suspende todas sus dotes elevadas (y la mascota que abren) hasta una expiación (Libro de obras elevadas, pág. 39).'
+                                            : 'La expiación le devuelve las dotes elevadas suspendidas (Libro de obras elevadas, pág. 20).'}}</p>
+                                    }
                                     @if (alineamientoModo === 'caida') {
                                         <label class="sesion__campo sesion__campo--ancho">
                                             <span>Por qué cae</span>

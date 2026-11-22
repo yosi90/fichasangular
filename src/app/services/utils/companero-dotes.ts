@@ -42,6 +42,42 @@ export function companeroSinInteligencia(companero: CompaneroMonstruoDetalle | n
     return sinPuntuacion(inteligenciaDelCompanero(companero));
 }
 
+/**
+ * Si sus DG adicionales no le dan habilidades ni dotes: sin Inteligencia (el «—», MM pág. 290) o porque lo dice su fila
+ * (`Sin_habilidades_dotes`: Compañero sabandija, *Eberron* pág. 51; F21).
+ */
+export function companeroSinLoDeSusDg(companero: CompaneroMonstruoDetalle | null | undefined): boolean {
+    return companeroSinInteligencia(companero) || companero?.Sin_habilidades_dotes === true;
+}
+
+/**
+ * La Inteligencia que le da su `fila` (F21: Compañero sabandija, 1), más sus mejoras de Inteligencia, y si sus DG adicionales
+ * no le dan habilidades ni dotes; sin fila (inactivo) o sin Inteligencia en ella, vuelve a la de su monstruo.
+ */
+export function conLaInteligenciaDeSuFila(companero: CompaneroMonstruoDetalle,
+    fila: { Inteligencia?: number | null; Sin_habilidades_dotes?: boolean; } | null | undefined): void {
+    const c = companero.Caracteristicas as Record<string, number | null> | undefined;
+    if (!c)
+        return;
+    const deLaFila = fila?.Inteligencia;
+    if (deLaFila !== null && deLaFila !== undefined) {
+        if (!companero.Inteligencia_de_su_fila && sinPuntuacion(c['Inteligencia']))
+            companero.Inteligencia_del_monstruo = c['Inteligencia'] ?? null;
+        const id = idDeLaCaracteristica('Inteligencia');
+        const mejoras = (companero.Mejoras ?? []).filter((m) => toInt(m?.Id_caracteristica) === id).length;
+        c['Inteligencia'] = toInt(deLaFila) + mejoras;
+        companero.Inteligencia_de_su_fila = true;
+    } else if (companero.Inteligencia_de_su_fila) {
+        c['Inteligencia'] = companero.Inteligencia_del_monstruo ?? null;
+        delete companero.Inteligencia_de_su_fila;
+        delete companero.Inteligencia_del_monstruo;
+    }
+    if (fila?.Sin_habilidades_dotes === true)
+        companero.Sin_habilidades_dotes = true;
+    else
+        delete companero.Sin_habilidades_dotes;
+}
+
 /** Su nombre, o `porDefecto` si no lo tiene, para los textos de sus huecos y sus selectores. */
 export function nombreDelCompanero(companero: CompaneroMonstruoDetalle | null | undefined, porDefecto = 'compañero'): string {
     return `${companero?.Nombre ?? ''}`.trim() || porDefecto;
@@ -93,7 +129,7 @@ export function esDoteDelMonstruoDelCompanero(companero: CompaneroMonstruoDetall
 
 /** Cuántas le tocan: 1 + ⌊DG totales / 3⌋; sin Inteligencia, solo las de los DG de su monstruo (MM, pág. 290). */
 export function dotesQueLeTocanAlCompanero(companero: CompaneroMonstruoDetalle | null | undefined): number {
-    const dg = companeroSinInteligencia(companero) ? dgDelMonstruoDelCompanero(companero) : dadosGolpeCompanero(companero);
+    const dg = companeroSinLoDeSusDg(companero) ? dgDelMonstruoDelCompanero(companero) : dadosGolpeCompanero(companero);
     return dotesDeDgs(dg);
 }
 

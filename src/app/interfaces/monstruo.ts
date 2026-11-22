@@ -1,3 +1,4 @@
+import { DatoPreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { Alineamiento } from "./alineamiento";
 import { ArmaNatural } from "./arma-natural";
 import { Caracteristica } from "./caracteristica";
@@ -113,14 +114,19 @@ export interface MonstruoNivelClase {
         Id: number;
         Nombre: string;
     };
+    /** Con `Valor`, `Prohibe` e `Id_prioridad` si la API los da (las preferencias como dato). */
     Preferencia_legal: {
         Id: number;
         Nombre: string;
-    };
+    } & DatoPreferenciaAlineamiento;
     Preferencia_moral: {
         Id: number;
         Nombre: string;
-    };
+    } & DatoPreferenciaAlineamiento;
+    /** La Inteligencia que da la fila a la criatura (F21: Compañero sabandija, 1); `null` o sin ella, la de su monstruo. */
+    Inteligencia?: number | null;
+    /** Que sus DG adicionales no le dan habilidades ni dotes (F21). */
+    Sin_habilidades_dotes?: boolean;
     Dote: {
         Id: number;
         Nombre: string;
@@ -367,6 +373,14 @@ export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
     Tipo_prerrequisitos?: { Id: number; Nombre: string; } | null;
     /** El límite de Inteligencia del tipo de su monstruo (`Limite_inteligencia`: 2 en un animal; 0, sin límite). */
     Limite_inteligencia_tipo?: number;
+    /**
+     * F21 (contrato: personajes.md, «F21: la Inteligencia de su fila»), que pone el motor con su fila: que su Inteligencia es
+     * la que le da su fila (Compañero sabandija, 1), la de su monstruo («—», `null`) para volver a ella al quedar inactivo,
+     * y que sus DG adicionales no le dan habilidades ni dotes.
+     */
+    Inteligencia_de_su_fila?: boolean;
+    Inteligencia_del_monstruo?: number | null;
+    Sin_habilidades_dotes?: boolean;
     /**
      * Las dotes de su monstruo (las que no se cambian; con `Adicional`, las «(B)»): las pone la creación al elegirlo y la
      * carga de las sesiones. Con ellas se cuentan las que le tocan elegir (`huecosDeDotesDelCompanero`).

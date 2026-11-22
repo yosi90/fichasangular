@@ -1,5 +1,5 @@
 import { MonstruoNivelClase } from 'src/app/interfaces/monstruo';
-import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
+import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, reglaDePreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 // Lo común de las reglas de compañeros animales (companero-reglas.ts) y familiares (familiar-reglas.ts): leer lo que
@@ -144,10 +144,29 @@ function cumplePreferenciaMoral(idPreferencia: number, idAlineamientoBasico: num
     return true;
 }
 
+/**
+ * Si el alineamiento cumple las preferencias de la fila. Con su dato (`Valor`, `Prohibe`, `Id_prioridad`), como la API
+ * (`utils/mascota_alineamiento.incumple`): solo cuentan las estrictas («siempre» y «nunca», las de prioridad 3), por su
+ * valor; sin él (una caché de antes), por su id.
+ */
 function cumpleAlineamientoPorPreferencias(
     nivelClase: MonstruoNivelClase,
     idAlineamientoBasico: number
 ): boolean {
+    const legal = reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_legal);
+    const moral = reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_moral);
+    if (legal || moral) {
+        const vector = getVectorDesdeIdBasico(idAlineamientoBasico);
+        if (!vector)
+            return true;
+        return [[legal, vector.ley], [moral, vector.moral]].every(([regla, valor]) => {
+            const r = regla as ReturnType<typeof reglaDePreferenciaAlineamiento>;
+            if (!r || !r.estricta)
+                return true;
+            const coincide = valor === r.valor;
+            return r.prohibe ? !coincide : coincide;
+        });
+    }
     const idLegal = toNumber(nivelClase?.Preferencia_legal?.Id);
     const idMoral = toNumber(nivelClase?.Preferencia_moral?.Id);
     return cumplePreferenciaLegal(idLegal, idAlineamientoBasico)

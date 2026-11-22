@@ -2,7 +2,7 @@ import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import {
     aplicarMejoraAlCompanero, ataqueBaseDelCompaneroConDg, contextoDeDotesDelCompanero, dgDeLaDote, dgsDeLasMejorasDelCompanero,
     dotesDeDgs, dotesQueLeTocanAlCompanero, huecosDeDotesDelCompanero, huecosDeMejorasDelCompanero,
-    quitarLoDeLosDgQueNoTieneElCompanero, tiposQueCuentaElCompanero,
+    quitarLoDeLosDgQueNoTieneElCompanero, tiposQueCuentaElCompanero, conLaInteligenciaDeSuFila,
 } from './companero-dotes';
 import { evaluarElegibilidadDote } from './dote-elegibilidad';
 import { construirCompaneroParaGuardar } from './mascota-payload';
@@ -57,6 +57,22 @@ describe('las dotes y las mejoras del compañero animal', () => {
         expect(huecosDeDotesDelCompanero(arana)).toEqual([1]);
         expect(huecosDeDotesDelCompanero(companero({ int: 0, Dotes_monstruo: [ALERTA] }))).toEqual([3]);
         expect(huecosDeDotesDelCompanero(companero({ Dotes_monstruo: undefined }))).toEqual([]);
+    });
+
+    it('F21: la araña de Compañero sabandija tiene la Inteligencia 1 de su fila, sin dotes por sus DG; inactiva, la de su monstruo', () => {
+        const arana = companero({ dg: 1, int: null, Dotes: [], Dotes_monstruo: [] });
+        conLaInteligenciaDeSuFila(arana, { Inteligencia: 1, Sin_habilidades_dotes: true });
+        expect((arana.Caracteristicas as any).Inteligencia).toBe(1);
+        expect(arana.Sin_habilidades_dotes).toBeTrue();
+        // Con Int 1 y 1 + 2 DG le tocarían 2 dotes; su fila dice que sus DG adicionales no le dan ninguna.
+        expect(dotesQueLeTocanAlCompanero(arana)).toBe(1);
+        conLaInteligenciaDeSuFila(arana, null);
+        expect((arana.Caracteristicas as any).Inteligencia).toBeNull();
+        expect(arana.Sin_habilidades_dotes).toBeUndefined();
+        // Una fila sin Inteligencia no toca la del lobo.
+        const lobo = companero({ dg: 2 });
+        conLaInteligenciaDeSuFila(lobo, { Inteligencia: null });
+        expect((lobo.Caracteristicas as any).Inteligencia).toBe(2);
     });
 
     it('las mejoras: cada múltiplo de 4 al que llega por sus DG adicionales, nunca por los de su monstruo', () => {

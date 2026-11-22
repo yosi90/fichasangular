@@ -91,6 +91,8 @@ export interface TrucoEnsenablePanel extends TrucoConMotivo {
 
 const MAXIMO_CONJUROS_LISTA = 30;
 /** Los eventos del panel que cambian la ficha (su alineamiento, su deidad o sus ex clases): al apuntarlos o deshacerlos se vuelve a leer. */
+/** El tipo de dote de las dotes elevadas (`tipos_dotes`), por su nombre normalizado: un dato, como en la API. */
+const TIPO_DOTE_ELEVADA = 'elevada';
 const CAMBIAN_LA_FICHA: ReadonlySet<string> = new Set(['cambio_alineamiento', 'caida', 'expiacion', 'truco_ensenado']);
 const AVISO_DESACTUALIZADA = 'Otra persona ha apuntado algo en esta sesión mientras la tenías abierta. Ya está al día: '
     + 'revisa lo que ha cambiado y, si hace falta, vuelve a apuntarlo.';
@@ -172,6 +174,8 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     motivoCaida = '';
     clasesAlineamiento = new Set<number>();
     voluntaria = false;
+    /** En la caída y la expiación: sus dotes elevadas (`dotesElevadas`; contrato, «Las dotes elevadas y la mascota»). */
+    dotesElevadas = false;
     lanzador = '';
     basicos: OpcionPanel[] = [];
     deidades: OpcionPanel[] = [];
@@ -355,6 +359,15 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         return this.clasesDelPersonaje((entrada) => entrada.Ex?.Necesita_expiacion === true);
     }
 
+    /**
+     * Si tiene dotes elevadas (las de tipo «Elevada», por su dato): la caída o la expiación pueden llevar `dotesElevadas`
+     * (*Libro de obras elevadas*, págs. 20 y 39). Si no las tiene suspendidas, la API responde con su frase.
+     */
+    get tieneDotesElevadas(): boolean {
+        return (this.pj?.DotesContextuales ?? []).some((d) => (d?.Dote?.Tipos ?? [])
+            .some((t: any) => normalizarTexto(`${t?.Nombre ?? ''}`, true) === TIPO_DOTE_ELEVADA));
+    }
+
     /** Las clases de la caída o de la expiación, según el modo. */
     get clasesDelModo(): OpcionPanel[] {
         return this.alineamientoModo === 'caida' ? this.clasesQuePuedenCaer : this.alineamientoModo === 'expiacion' ? this.clasesCaidas : [];
@@ -487,6 +500,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     elegirModoAlineamiento(modo: ModoAlineamiento): void {
         this.alineamientoModo = modo;
         this.clasesAlineamiento = new Set();
+        this.dotesElevadas = false;
         this.idBasico = null;
         this.idDeidad = null;
         this.error = '';
@@ -748,8 +762,10 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
                 return 'Elige el alineamiento nuevo, la deidad nueva o los dos.';
             return largo(this.alineamientoConcepto, 'El motivo');
         }
-        if (this.clasesAlineamiento.size < 1)
-            return this.alineamientoModo === 'caida' ? 'Elige la clase que cae.' : 'Elige la clase que recupera.';
+        if (this.clasesAlineamiento.size < 1 && !this.dotesElevadas) {
+            const o = this.tieneDotesElevadas ? ' (o sus dotes elevadas)' : '';
+            return this.alineamientoModo === 'caida' ? `Elige la clase que cae${o}.` : `Elige la clase que recupera${o}.`;
+        }
         if (this.alineamientoModo === 'caida')
             return this.motivoCaida.trim().length < 1 ? 'Di por qué cae: un acto maligno, su código, su juramento…' : largo(this.motivoCaida, 'El motivo');
         return largo(this.lanzador, 'Quién la lanza') ?? largo(this.alineamientoConcepto, 'El motivo');
@@ -759,10 +775,10 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         const texto = (valor: string) => valor.trim() || undefined;
         const clases = [...this.clasesAlineamiento];
         if (this.alineamientoModo === 'caida')
-            return { tipo: 'caida', clases, motivo: this.motivoCaida.trim() };
+            return { tipo: 'caida', clases, motivo: this.motivoCaida.trim(), ...(this.dotesElevadas ? { dotesElevadas: true } : {}) };
         if (this.alineamientoModo === 'expiacion')
             return {
-                tipo: 'expiacion', clases, voluntaria: this.voluntaria,
+                tipo: 'expiacion', clases, voluntaria: this.voluntaria, ...(this.dotesElevadas ? { dotesElevadas: true } : {}),
                 ...(this.idBasico !== null ? { idAlineamiento: this.idBasico } : {}),
                 ...(texto(this.lanzador) ? { lanzador: texto(this.lanzador) } : {}),
                 ...(texto(this.alineamientoConcepto) ? { concepto: texto(this.alineamientoConcepto) } : {}),
@@ -822,6 +838,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         this.motivoCaida = '';
         this.clasesAlineamiento = new Set();
         this.voluntaria = false;
+        this.dotesElevadas = false;
         this.lanzador = '';
         this.trucoElegido = null;
         this.trucoConcepto = '';

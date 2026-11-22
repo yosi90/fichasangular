@@ -149,6 +149,33 @@ describe('SesionPanelComponent', () => {
         expect(sesiones.apuntar.calls.mostRecent().args[2]).toEqual({ tipo: 'caida', clases: [11], motivo: 'un acto maligno' });
     });
 
+    it('con dotes elevadas, la caída y la expiación pueden llevar solo `dotesElevadas` (contrato, «Las dotes elevadas y la mascota»)', async () => {
+        const pj = ficha();
+        pj.DotesContextuales = [{ Dote: { Id: 53, Nombre: 'Compañero elevado', Tipos: [{ Id: 9, Nombre: 'Elevada' }] }, Contexto: {} } as any];
+        crear({ pj, controlaAlineamiento: true } as any);
+        sesiones.apuntar.and.resolveTo(leerRespuestaSesion(respuestaSesiones('dinero')));
+        const puerta = TestBed.inject(SubidaNivelPuertaService);
+        spyOn(puerta, 'subidaHecha');
+        boton('Alineamiento y expiación')!.click();
+        await estable();
+        component.elegirModoAlineamiento('caida');
+        expect(component.tieneDotesElevadas).toBeTrue();
+        expect(component.motivoNoApuntar).toBe('Elige la clase que cae (o sus dotes elevadas).');
+        component.dotesElevadas = true;
+        component.motivoCaida = 'un acto maligno';
+        await component.apuntar();
+        expect(sesiones.apuntar.calls.mostRecent().args[2]).toEqual({ tipo: 'caida', clases: [], motivo: 'un acto maligno', dotesElevadas: true });
+        // Vuelve a leer la ficha: la mascota la pone al día la API.
+        expect(puerta.subidaHecha).toHaveBeenCalledWith(129);
+
+        component.elegirTipo('alineamiento');
+        component.elegirModoAlineamiento('expiacion');
+        expect(component.dotesElevadas).toBeFalse();
+        component.dotesElevadas = true;
+        await component.apuntar();
+        expect(sesiones.apuntar.calls.mostRecent().args[2]).toEqual({ tipo: 'expiacion', clases: [], voluntaria: false, dotesElevadas: true });
+    });
+
     it('«Enseñar un truco», solo con compañero: los que puede aprender y por qué no los demás; manda el evento y lee la ficha', async () => {
         crear();
         expect(boton('Enseñar un truco')).toBeUndefined();

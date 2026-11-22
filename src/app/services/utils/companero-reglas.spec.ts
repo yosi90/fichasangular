@@ -1,7 +1,7 @@
 import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import {
-    ARANA_PEQUENA, ATAQUE_MULTIPLE, BISONTE, CELESTIAL, CLASES_CON_COMPANERO, COMPANERO_ARANA, COMPANERO_ELEVADO, COMPANERO_SABANDIJA,
+    ARANA_PEQUENA, ATAQUE_MULTIPLE, BISONTE, CELESTIAL, CLASES_CON_COMPANERO, COMPANERO_ANIMAL, COMPANERO_ARANA, COMPANERO_ELEVADO, COMPANERO_SABANDIJA,
     COMPARTIR_CONJUROS, DEVOCION, DRUIDA, ESCORPION_PEQUENO, EVASION, EVASION_MEJORADA, EXPLORADOR, LOBO, MEJOR_AMIGO_DEL_PIRATA,
     MONSTRUOS_COMPANERO, MONSTRUOS_SABANDIJA, PELEA_SUCIA, PIRATA, PROGRESION_API, SEGUNDO_ATAQUE_NATURAL, SENOR_DE_LAS_BESTIAS, TEJON,
     VINCULO,
@@ -80,6 +80,17 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
             const conAmigo = estadoDe([['Pirata', 4]], { Claseas: [{ Id: MEJOR_AMIGO_DEL_PIRATA, Nombre: 'El mejor amigo del pirata', Extra: '' }] as any });
             expect(conAmigo.fuentesClaseIds).toEqual([PIRATA]);
             expect(conAmigo.nivelEfectivo).toBe(2);
+        });
+
+        it('el ex druida: los niveles del druida no suman, los del explorador sí (contrato, «La mascota y el alineamiento»)', () => {
+            const ex = { Nombre: 'Ex druida', Motivos: [], Pierde_magia: true, Requiere_expiacion: true };
+            const pj = (perdida: string[]) => ({
+                desgloseClases: [{ Nombre: 'Druida', Nivel: 6, Ex: ex }, { Nombre: 'Explorador', Nivel: 4 }],
+                Claseas: [{ Id: COMPANERO_ANIMAL, Nombre: 'Compañero animal', Extra: '', Perdida_por: perdida }],
+            } as any);
+            expect(estadoDe([], pj(['Ex druida'])).nivelEfectivo).toBe(2);
+            // Sin la aptitud perdida (una ex clase que conserva la mascota), cuentan las dos.
+            expect(estadoDe([], pj([])).nivelEfectivo).toBe(8);
         });
 
         it('cuenta el compañero que ya tiene', () => {
