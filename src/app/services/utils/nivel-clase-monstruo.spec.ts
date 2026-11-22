@@ -14,6 +14,17 @@ describe('razonesAlineamientoMascota', () => {
         expect(razonesAlineamientoMascota([], [fila(NO_BUENO)], 'Caotico maligno', 'compañero')).toEqual([]);
     });
 
+    it('sin el dato de la preferencia (una caché de antes) no exige nada: ya no se juzga por su id', () => {
+        expect(razonesAlineamientoMascota([], [fila({ Id: 4, Nombre: 'Siempre Bueno' })], 'Caotico maligno', 'compañero')).toEqual([]);
+    });
+
+    it('el motivo nombra solo las preferencias estrictas de su fila', () => {
+        const [motivo] = razonesAlineamientoMascota([], [fila(NO_BUENO, { Id: 3, Nombre: 'Normalmente legal', Valor: 1, Prohibe: false, Id_prioridad: 2 })],
+            'Neutral bueno', 'compañero');
+        expect(motivo).toContain('moral: Nunca bueno');
+        expect(motivo).not.toContain('Normalmente legal');
+    });
+
     it('una preferencia que no es estricta (prioridad 2) no cuenta', () => {
         expect(razonesAlineamientoMascota([], [fila({ ...NO_BUENO, Id_prioridad: 2 })], 'Neutral bueno', 'compañero')).toEqual([]);
     });

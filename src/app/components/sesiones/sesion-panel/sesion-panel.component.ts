@@ -39,6 +39,7 @@ import {
     trucosQueSeEnsenan,
 } from 'src/app/services/utils/companero-trucos';
 import { nombreDelCompanero } from 'src/app/services/utils/companero-dotes';
+import { leFaltaAlgoAlCompanero } from 'src/app/services/utils/completar-companero';
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { nivelLanzadorMinimo, precioCopiaLibro } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
@@ -360,12 +361,15 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     }
 
     /**
-     * Si tiene dotes elevadas (las de tipo «Elevada», por su dato): la caída o la expiación pueden llevar `dotesElevadas`
-     * (*Libro de obras elevadas*, págs. 20 y 39). Si no las tiene suspendidas, la API responde con su frase.
+     * Si la caída o la expiación pueden llevar `dotesElevadas` (*Libro de obras elevadas*, págs. 20 y 39): la caída, si tiene
+     * dotes elevadas (las de tipo «Elevada», por su dato) que no estén suspendidas; la expiación, si alguna lo está
+     * (`Contexto.Suspendida` de la ficha; contrato: SESIONES_FRONT.md, «Los datos de las mascotas que da la API»).
      */
     get tieneDotesElevadas(): boolean {
-        return (this.pj?.DotesContextuales ?? []).some((d) => (d?.Dote?.Tipos ?? [])
+        const elevadas = (this.pj?.DotesContextuales ?? []).filter((d) => (d?.Dote?.Tipos ?? [])
             .some((t: any) => normalizarTexto(`${t?.Nombre ?? ''}`, true) === TIPO_DOTE_ELEVADA));
+        const suspendida = (d: (typeof elevadas)[number]) => (d?.Contexto as any)?.Suspendida === true;
+        return this.alineamientoModo === 'expiacion' ? elevadas.some(suspendida) : elevadas.some((d) => !suspendida(d));
     }
 
     /** Las clases de la caída o de la expiación, según el modo. */
@@ -386,11 +390,16 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
      * Los trucos y los fines que se le pueden enseñar con Trato con animales (evento `truco_ensenado`): primero los que puede
      * aprender, después los demás con su motivo (`motivoTrucoEnsenado`, el mismo criterio que la API), y lo que sustituyen.
      */
+    /** Las dotes del personaje (el amo del compañero), por su id: las de `Inteligencia_para_trucos`. */
+    private get idsDotesDelAmo(): number[] {
+        return (this.pj?.DotesContextuales ?? []).map((d) => toInt(d?.Dote?.Id)).filter((id) => id > 0);
+    }
+
     get trucosEnsenables(): TrucoEnsenablePanel[] {
         if (!this.companero || !this.trucosCatalogo)
             return [];
         const catalogo = this.trucosCatalogo;
-        const contexto = contextoDelTrucoEnsenado(this.companero, catalogo, this.dotesCatalogo ?? []);
+        const contexto = contextoDelTrucoEnsenado(this.companero, catalogo, this.dotesCatalogo ?? [], this.idsDotesDelAmo);
         return trucosQueSeEnsenan(catalogo, this.pj?.Oficial === false && !this.soloOficial)
             .map((truco) => ({ truco, motivo: motivoTrucoEnsenado(truco, contexto), sustituye: textoDeLoQueSustituye(truco, contexto) }))
             .sort(porMotivoYNombre);
@@ -400,7 +409,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
     get notaTrucos(): string {
         if (!this.companero || !this.trucosCatalogo)
             return '';
-        const contexto = contextoDelTrucoEnsenado(this.companero, this.trucosCatalogo, this.dotesCatalogo ?? []);
+        const contexto = contextoDelTrucoEnsenado(this.companero, this.trucosCatalogo, this.dotesCatalogo ?? [], this.idsDotesDelAmo);
         if (contexto.inteligencia === null || contexto.inteligencia >= 3)
             return '';
         return `Ha aprendido ${contexto.cuenta} de ${contexto.limite} (${TRUCOS_POR_INTELIGENCIA} por punto de Inteligencia, más lo que dan sus dotes). `
@@ -616,11 +625,11 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
 
     /**
      * «Completar el compañero» (contrato: SESIONES_FRONT, «Lo que la mascota tiene pendiente, fuera de una subida»): para quien
-     * apunta, con su compañero activo. Lo que le falta (puntos, dotes, mejoras, trucos) lo dice su pantalla, que carga su
-     * criatura: la ficha sola no lo sabe.
+     * apunta, con su compañero activo y algo que le falte (`Pendiente` de la ficha: «Los datos de las mascotas que da la
+     * API»). Sin el dato (una ficha de antes), sale siempre y lo dice su pantalla, que carga su criatura.
      */
     get puedeCompletarCompanero(): boolean {
-        return this.editable && !!this.companero && !this.companero.Inactiva;
+        return this.editable && !!this.companero && !this.companero.Inactiva && leFaltaAlgoAlCompanero(this.companero);
     }
 
     pedirCompletarCompanero(): void {

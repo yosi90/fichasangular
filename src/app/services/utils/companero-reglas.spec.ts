@@ -93,6 +93,20 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
             expect(estadoDe([], pj([])).nivelEfectivo).toBe(8);
         });
 
+        it('el ex druida y explorador, con los ids de su ex clase (`Ex.Especiales`): el druida no suma aunque el explorador dé la aptitud', () => {
+            // La API deja `Perdida_por` vacío (el explorador sigue dándola) y dice en `Ex.Especiales` lo que pierde el ex druida.
+            const pj = (especiales: number[]) => ({
+                desgloseClases: [
+                    { Nombre: 'Druida', Nivel: 6, Ex: { Nombre: 'Ex druida', Motivos: [], Pierde_magia: true, Requiere_expiacion: true, Especiales: especiales } },
+                    { Nombre: 'Explorador', Nivel: 4 },
+                ],
+                Claseas: [{ Id: COMPANERO_ANIMAL, Nombre: 'Compañero animal', Extra: '', Perdida_por: [] }],
+            } as any);
+            expect(estadoDe([], pj([COMPANERO_ANIMAL])).nivelEfectivo).toBe(2);
+            // Una ex clase que no pierde esa aptitud: cuentan las dos.
+            expect(estadoDe([], pj([])).nivelEfectivo).toBe(8);
+        });
+
         it('cuenta el compañero que ya tiene', () => {
             const estado = estadoDe([['Druida', 4]], { Companeros: [delCatalogo(LOBO)] });
             expect(estado.cuposConsumidos).toBe(1);

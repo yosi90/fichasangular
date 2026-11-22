@@ -108,119 +108,34 @@ function getAlineamientosRequeridosLabel(items: AlineamientoRequeridoNormalizado
     return labels.join(', ');
 }
 
-function cumplePreferenciaLegal(idPreferencia: number, idAlineamientoBasico: number): boolean {
-    if (idPreferencia < 4 || idPreferencia > 9)
-        return true;
-    if (idPreferencia === 4)
-        return idAlineamientoBasico < 4;
-    if (idPreferencia === 5)
-        return idAlineamientoBasico > 3 && idAlineamientoBasico < 7;
-    if (idPreferencia === 6)
-        return idAlineamientoBasico > 6;
-    if (idPreferencia === 7)
-        return idAlineamientoBasico > 3;
-    if (idPreferencia === 8)
-        return idAlineamientoBasico < 4 || idAlineamientoBasico > 6;
-    if (idPreferencia === 9)
-        return idAlineamientoBasico < 7;
-    return true;
-}
-
-function cumplePreferenciaMoral(idPreferencia: number, idAlineamientoBasico: number): boolean {
-    if (idPreferencia < 4 || idPreferencia > 9)
-        return true;
-    if (idPreferencia === 4)
-        return idAlineamientoBasico === 1 || idAlineamientoBasico === 4 || idAlineamientoBasico === 7;
-    if (idPreferencia === 5)
-        return idAlineamientoBasico === 2 || idAlineamientoBasico === 5 || idAlineamientoBasico === 8;
-    if (idPreferencia === 6)
-        return idAlineamientoBasico === 3 || idAlineamientoBasico === 6 || idAlineamientoBasico === 9;
-    if (idPreferencia === 7)
-        return idAlineamientoBasico !== 1 && idAlineamientoBasico !== 4 && idAlineamientoBasico !== 7;
-    if (idPreferencia === 8)
-        return idAlineamientoBasico !== 2 && idAlineamientoBasico !== 5 && idAlineamientoBasico !== 8;
-    if (idPreferencia === 9)
-        return idAlineamientoBasico !== 3 && idAlineamientoBasico !== 6 && idAlineamientoBasico !== 9;
-    return true;
-}
-
 /**
- * Si el alineamiento cumple las preferencias de la fila. Con su dato (`Valor`, `Prohibe`, `Id_prioridad`), como la API
- * (`utils/mascota_alineamiento.incumple`): solo cuentan las estrictas («siempre» y «nunca», las de prioridad 3), por su
- * valor; sin él (una caché de antes), por su id.
+ * Si el alineamiento cumple las preferencias de la fila, con su dato (`Valor`, `Prohibe`, `Id_prioridad`), como la API
+ * (`utils/mascota_alineamiento.incumple`; contrato: `catalogos.md`, `Preferencia_legal`): solo cuentan las estrictas
+ * («siempre» y «nunca», las de prioridad 3), por su valor. Sin el dato (una caché de antes) no exige nada.
  */
 function cumpleAlineamientoPorPreferencias(
     nivelClase: MonstruoNivelClase,
     idAlineamientoBasico: number
 ): boolean {
-    const legal = reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_legal);
-    const moral = reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_moral);
-    if (legal || moral) {
-        const vector = getVectorDesdeIdBasico(idAlineamientoBasico);
-        if (!vector)
+    const vector = getVectorDesdeIdBasico(idAlineamientoBasico);
+    if (!vector)
+        return true;
+    return [
+        [reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_legal), vector.ley],
+        [reglaDePreferenciaAlineamiento(nivelClase?.Preferencia_moral), vector.moral],
+    ].every(([regla, valor]) => {
+        const r = regla as ReturnType<typeof reglaDePreferenciaAlineamiento>;
+        if (!r || !r.estricta)
             return true;
-        return [[legal, vector.ley], [moral, vector.moral]].every(([regla, valor]) => {
-            const r = regla as ReturnType<typeof reglaDePreferenciaAlineamiento>;
-            if (!r || !r.estricta)
-                return true;
-            const coincide = valor === r.valor;
-            return r.prohibe ? !coincide : coincide;
-        });
-    }
-    const idLegal = toNumber(nivelClase?.Preferencia_legal?.Id);
-    const idMoral = toNumber(nivelClase?.Preferencia_moral?.Id);
-    return cumplePreferenciaLegal(idLegal, idAlineamientoBasico)
-        && cumplePreferenciaMoral(idMoral, idAlineamientoBasico);
+        const coincide = valor === r.valor;
+        return r.prohibe ? !coincide : coincide;
+    });
 }
 
-function getPreferenciaEjeLabel(
-    idPreferencia: number,
-    nombrePreferencia: string,
-    eje: 'legal' | 'moral'
-): string | null {
-    const nombre = `${nombrePreferencia ?? ''}`.trim();
-    const nombreNormalizado = normalizarTexto(nombre);
-    const nombreVisible = nombre.length > 0
-        && nombreNormalizado !== 'ninguna preferencia'
-        && nombreNormalizado !== 'no aplica'
-        && nombreNormalizado !== 'no especifica'
-        && nombreNormalizado !== '-'
-        && nombreNormalizado !== 'cualquiera';
-    if (nombreVisible)
-        return nombre;
-
-    if (idPreferencia < 4 || idPreferencia > 9)
-        return null;
-
-    if (eje === 'legal') {
-        if (idPreferencia === 4)
-            return 'Legal';
-        if (idPreferencia === 5)
-            return 'Neutral';
-        if (idPreferencia === 6)
-            return 'Caótico';
-        if (idPreferencia === 7)
-            return 'No legal';
-        if (idPreferencia === 8)
-            return 'No neutral';
-        if (idPreferencia === 9)
-            return 'No caótico';
-    } else {
-        if (idPreferencia === 4)
-            return 'Bueno';
-        if (idPreferencia === 5)
-            return 'Neutral';
-        if (idPreferencia === 6)
-            return 'Maligno';
-        if (idPreferencia === 7)
-            return 'No bueno';
-        if (idPreferencia === 8)
-            return 'No neutral';
-        if (idPreferencia === 9)
-            return 'No maligno';
-    }
-
-    return null;
+/** Si la preferencia de un eje exige algo (con su dato, solo las estrictas): las que se nombran en el motivo. */
+function preferenciaQueExige(preferencia: MonstruoNivelClase['Preferencia_legal'] | null | undefined): boolean {
+    const regla = reglaDePreferenciaAlineamiento(preferencia);
+    return !!regla && regla.estricta;
 }
 
 function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelClase[]): string {
@@ -228,16 +143,10 @@ function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelClase[]):
     const detalles = new Set<string>();
 
     lista.forEach((nivelClase) => {
-        const legal = getPreferenciaEjeLabel(
-            toNumber(nivelClase?.Preferencia_legal?.Id),
-            `${nivelClase?.Preferencia_legal?.Nombre ?? ''}`,
-            'legal'
-        );
-        const moral = getPreferenciaEjeLabel(
-            toNumber(nivelClase?.Preferencia_moral?.Id),
-            `${nivelClase?.Preferencia_moral?.Nombre ?? ''}`,
-            'moral'
-        );
+        const nombreDe = (p: MonstruoNivelClase['Preferencia_legal'] | null | undefined) =>
+            preferenciaQueExige(p) ? `${p?.Nombre ?? ''}`.trim() || null : null;
+        const legal = nombreDe(nivelClase?.Preferencia_legal);
+        const moral = nombreDe(nivelClase?.Preferencia_moral);
         const partes: string[] = [];
         if (legal)
             partes.push(`legal: ${legal}`);

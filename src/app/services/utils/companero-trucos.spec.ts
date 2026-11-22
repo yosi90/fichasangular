@@ -4,6 +4,7 @@ import { Truco } from 'src/app/interfaces/truco';
 import { leerTrucos } from 'src/app/services/truco.service';
 import {
     aplicarTrucosAdicionales, conLosTrucosDeSuMonstruo, contextoDelTrucoEnsenado, contextoDeTrucosDelCompanero, hayTrucoAdicionalQueElegir,
+    inteligenciaPorDoteDelAmo,
     idsDeLoQueSabe, motivoTrucoAdicional, motivoTrucoEnsenado, quitarLosTrucosQueNoCaben, textoDeLoQueSustituye, trucosAdicionalesPendientes,
     trucosExtraDeSusDotes, trucosParaGuardar, trucosParaLaFicha,
 } from './companero-trucos';
@@ -196,6 +197,21 @@ describe('los trucos del compañero animal', () => {
         it('F21: la sabandija con Inteligencia solo por su fila no aprende trucos enseñados (sin la dote del amo)', () => {
             const arana = lobo({ int: 1, Inteligencia_de_su_fila: true } as any);
             expect(motivoTrucoEnsenado(ATRAS, contextoDelTrucoEnsenado(arana, CATALOGO, []))).toBe('Sin Inteligencia no se le pueden enseñar trucos.');
+        });
+
+        it('con la dote del amo para su tipo (Inteligencia_para_trucos: Entrenador de sabandijas), aprende como con esa Inteligencia', () => {
+            const SABANDIJA = { Id: 15, Nombre: 'Sabandija' };
+            const ENTRENADOR = { Id: 2267, Nombre: 'Entrenador de sabandijas', Inteligencia_para_trucos: { Inteligencia: 1, Tipo: SABANDIJA } } as any;
+            const descerebrada = lobo({ int: null, Tipo: SABANDIJA } as any);
+            const deSuFila = lobo({ int: 1, Inteligencia_de_su_fila: true, Tipo: SABANDIJA } as any);
+            expect(inteligenciaPorDoteDelAmo(descerebrada, [ENTRENADOR], [2267])).toBe(1);
+            expect(inteligenciaPorDoteDelAmo(descerebrada, [ENTRENADOR], [])).toBeNull();
+            // Otro tipo (un animal), no.
+            expect(inteligenciaPorDoteDelAmo(lobo({ int: null }), [ENTRENADOR], [2267])).toBeNull();
+            const contexto = contextoDelTrucoEnsenado(deSuFila, CATALOGO, [ENTRENADOR], [2267]);
+            expect([contexto.inteligencia, contexto.limite]).toEqual([1, 3]);
+            expect(motivoTrucoEnsenado(ATRAS, contexto)).toBeNull();
+            expect(contextoDelTrucoEnsenado(descerebrada, CATALOGO, [ENTRENADOR], [2267]).inteligencia).toBe(1);
         });
 
         it('lo que sustituye a uno de sus trucos adicionales no se le enseña: esos no se cambian', () => {

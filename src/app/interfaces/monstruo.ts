@@ -359,6 +359,12 @@ export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
     /** El de una ficha, inactivo hasta que vuelva a cumplir lo que pide su fila de la lista (como el familiar). Sin él, activo. */
     Inactiva?: boolean;
     /**
+     * Lo que le falta por elegir con sus valores guardados (`Pendiente` de la ficha; contrato: personajes.md, «Lo
+     * pendiente»): los puntos de habilidad, las dotes, las mejoras y lo que cuestan los trucos adicionales. Sin él (una ficha
+     * de antes), no se sabe.
+     */
+    Pendiente?: { Puntos: number; Dotes: number; Mejoras: number; Trucos: number; };
+    /**
      * Las habilidades de su monstruo, sin las suyas: las pone la carga de las sesiones (`MotorDesdeFichaService`) para que sus
      * rangos sigan el criterio «todo o nada» al bajar sus DG adicionales (`rangosDelCompaneroQueCaben`). Sin ellas, sus
      * rangos se quedan como están.

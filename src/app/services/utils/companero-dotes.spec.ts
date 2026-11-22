@@ -75,6 +75,15 @@ describe('las dotes y las mejoras del compañero animal', () => {
         expect((lobo.Caracteristicas as any).Inteligencia).toBe(2);
     });
 
+    it('la fila que da Inteligencia a una criatura que ya la tiene: al dejar su fila, vuelve a la de su monstruo', () => {
+        const lobo = companero({ dg: 2 });
+        conLaInteligenciaDeSuFila(lobo, { Inteligencia: 1 });
+        expect((lobo.Caracteristicas as any).Inteligencia).toBe(1);
+        conLaInteligenciaDeSuFila(lobo, null);
+        expect((lobo.Caracteristicas as any).Inteligencia).toBe(2);
+        expect(lobo.Inteligencia_del_monstruo).toBeUndefined();
+    });
+
     it('las mejoras: cada múltiplo de 4 al que llega por sus DG adicionales, nunca por los de su monstruo', () => {
         expect(dgsDeLasMejorasDelCompanero(companero({ dg: 3 }))).toEqual([4]);   // el caballo de Eren, 3 → 5
         expect(dgsDeLasMejorasDelCompanero(companero({ dg: 2 }))).toEqual([4]);   // el lobo de un druida 3, 2 → 4

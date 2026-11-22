@@ -527,4 +527,10 @@ export interface PersonajeExClase {
     Necesita_expiacion?: boolean;
     /** Cayó y no vuelve nunca (`sinVuelta`: el caballero protector, El combatiente completo, pág. 26). */
     Sin_vuelta?: boolean;
+    /**
+     * Los ids de las aptitudes que pierde esta ex clase (`especiales`, `clases_especial_ex`), aunque otra clase siga dándolas:
+     * con ellos sus niveles dejan de sumar al nivel efectivo de la mascota (el ex druida, MJ pág. 37). Sin él (una ficha de
+     * antes), no se sabe.
+     */
+    Especiales?: number[];
 }

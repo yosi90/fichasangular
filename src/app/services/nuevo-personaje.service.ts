@@ -4508,7 +4508,9 @@ export class NuevoPersonajeService {
 
         const nivelesClase = this.nivelesDeClaseParaPrerrequisitos();
 
+        // Una dote suspendida (la elevada tras una caída, `Contexto.Suspendida`) no se puede usar: no cuenta como prerrequisito.
         const dotes = (this.personajeCreacion.DotesContextuales ?? [])
+            .filter((item) => !(item?.Contexto as any)?.Suspendida)
             .map((item) => ({
                 id: toNumber(item?.Dote?.Id) > 0 ? toNumber(item?.Dote?.Id) : null,
                 nombre: `${item?.Dote?.Nombre ?? ''}`.trim(),
@@ -5314,15 +5316,16 @@ export class NuevoPersonajeService {
 
     /**
      * Las dotes del personaje que abren una fila de su mascota: las que tiene y puede usar, sin las que conserva sin sus
-     * prerrequisitos (`Sin_prerrequisitos` de su ficha) ni las que ya no los cumplen (`dotesSinSusPrerrequisitos`, donde no
-     * cuenta «poder adquirir una mascota nueva»: MJ pág. 87).
+     * prerrequisitos (`Sin_prerrequisitos` de su ficha), las suspendidas (`Suspendida`: las elevadas tras una caída, LOE
+     * pág. 39) ni las que ya no los cumplen (`dotesSinSusPrerrequisitos`, donde no cuenta «poder adquirir una mascota
+     * nueva»: MJ pág. 87).
      */
     private idsDotesQueValen(): Set<number> {
         const sin = new Set(this.dotesSinSusPrerrequisitos().map(claveDoteDeLaFicha));
         const ids = new Set<number>();
         (this.personajeCreacion.DotesContextuales ?? []).forEach((d) => {
             const clave = claveDoteDeLaFicha({ idDote: toInt(d?.Dote?.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${(d?.Contexto as any)?.Origen ?? ''}` });
-            if (!(d?.Contexto as any)?.Sin_prerrequisitos && !sin.has(clave))
+            if (!(d?.Contexto as any)?.Sin_prerrequisitos && !(d?.Contexto as any)?.Suspendida && !sin.has(clave))
                 ids.add(toInt(d?.Dote?.Id));
         });
         (this.personajeCreacion.Dotes ?? []).forEach((item) => ids.add(toNumber((item as any)?.Id)));

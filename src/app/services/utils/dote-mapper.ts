@@ -1,6 +1,6 @@
 import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteSalvacionCondicional, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
-import { idNombres, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombre, idNombres, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { porNombre } from './orden-texto';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
@@ -194,6 +194,7 @@ export function normalizeDoteApi(raw: any): Dote {
         Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         // Los trucos de más de su criatura (Truco adicional, 3; sin el dato, 0).
         Trucos_extra: Math.max(0, toNumber(raw?.Trucos_extra, 0)),
+        Inteligencia_para_trucos: inteligenciaParaTrucos(raw?.Inteligencia_para_trucos),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
 }
@@ -252,6 +253,7 @@ export function normalizeDoteLegacy(raw: any): Dote {
         Cuenta_como: idNombres(raw?.Cuenta_como),
         Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         Trucos_extra: Math.max(0, toNumber(raw?.Trucos_extra, 0)),
+        Inteligencia_para_trucos: inteligenciaParaTrucos(raw?.Inteligencia_para_trucos),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
 }
@@ -299,11 +301,20 @@ export function normalizeContexto(raw: any): DoteContexto {
         Id_personaje: toNumber(raw?.Id_personaje, 0),
         Origen: raw?.Origen ?? "Desconocido",
         ...(raw?.Sin_prerrequisitos === true ? { Sin_prerrequisitos: true } : {}),
+        // La dote elevada suspendida por una caída (`Contexto.Suspendida` de la ficha).
+        ...(raw?.Suspendida === true ? { Suspendida: true } : {}),
         // La que eligió el compañero animal con sus DG.
         ...(toNumber(raw?.Dg, 0) > 0 ? { Dg: toNumber(raw?.Dg, 0) } : {}),
         // La de un monstruo (`Entidad` «Monstruo»), la «(B)» de su bloque.
         ...(typeof raw?.Adicional === "boolean" ? { Adicional: raw.Adicional } : {}),
     };
+}
+
+/** `Inteligencia_para_trucos` de la dote: `{ Inteligencia, Tipo }` con su tipo y una Inteligencia de 1 o más, o `null`. */
+function inteligenciaParaTrucos(raw: any): Dote['Inteligencia_para_trucos'] {
+    const inteligencia = toNumber(raw?.Inteligencia, 0);
+    const tipo = idNombre(raw?.Tipo);
+    return inteligencia > 0 && tipo ? { Inteligencia: inteligencia, Tipo: tipo } : null;
 }
 
 export function toDoteContextualArray(raw: any): DoteContextual[] {

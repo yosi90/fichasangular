@@ -176,6 +176,23 @@ describe('SesionPanelComponent', () => {
         expect(sesiones.apuntar.calls.mostRecent().args[2]).toEqual({ tipo: 'expiacion', clases: [], voluntaria: false, dotesElevadas: true });
     });
 
+    it('la casilla de las dotes elevadas: en la caída, si alguna no está suspendida; en la expiación, si alguna lo está (`Contexto.Suspendida`)', async () => {
+        const pj = ficha();
+        const elevada = { Dote: { Id: 53, Nombre: 'Compañero elevado', Tipos: [{ Id: 9, Nombre: 'Elevada' }] }, Contexto: { Suspendida: false } } as any;
+        pj.DotesContextuales = [elevada];
+        crear({ pj, controlaAlineamiento: true } as any);
+        boton('Alineamiento y expiación')!.click();
+        await estable();
+        component.elegirModoAlineamiento('caida');
+        expect(component.tieneDotesElevadas).toBeTrue();
+        component.elegirModoAlineamiento('expiacion');
+        expect(component.tieneDotesElevadas).toBeFalse();
+        elevada.Contexto.Suspendida = true;
+        expect(component.tieneDotesElevadas).toBeTrue();
+        component.elegirModoAlineamiento('caida');
+        expect(component.tieneDotesElevadas).toBeFalse();
+    });
+
     it('«Enseñar un truco», solo con compañero: los que puede aprender y por qué no los demás; manda el evento y lee la ficha', async () => {
         crear();
         expect(boton('Enseñar un truco')).toBeUndefined();
