@@ -193,11 +193,13 @@ function normalizeHabilidad(raw: any): MonstruoHabilidad {
 }
 
 
-/** `Valor`, `Prohibe` e `Id_prioridad` de una preferencia de la fila, si llegan (sin `Valor`, nada). */
+/**
+ * `Valor`, `Prohibe` e `Id_prioridad` de una preferencia de la fila (`datoDePreferencia`, la de las clases y las razas),
+ * si llegan: sin `Valor` (una caché de antes de la tanda (g), o una fila sin preferencia), nada.
+ */
 function datoDePreferenciaDeFila(raw: any): { Valor?: number; Prohibe?: boolean; Id_prioridad?: number; } {
-    if (raw?.Valor === null || raw?.Valor === undefined)
-        return {};
-    return { Valor: toInt(raw.Valor), Prohibe: raw?.Prohibe === true, Id_prioridad: toInt(raw?.Id_prioridad) };
+    const dato = datoDePreferencia(raw);
+    return dato.Valor === null ? {} : { Valor: dato.Valor, Prohibe: dato.Prohibe, Id_prioridad: dato.Id_prioridad };
 }
 
 function normalizeNivelClase(raw: any): MonstruoNivelClase {

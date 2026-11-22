@@ -75,6 +75,7 @@ import { idsUnicosOrdenados, normalizarTexto, toInt } from 'src/app/services/uti
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { familiaDeExtraDeCriatura } from 'src/app/services/utils/dote-extras-de-criatura';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { armadurasQueAdmiteLaDote, doteAdmiteExtra, doteSoportaArmaduras, doteSoportaEscudos } from 'src/app/services/utils/dote-extras-soportados';
 
 type RepeticionKey = 'repetible' | 'repetible_distinto_extra' | 'repetible_comb';
 type ExtraFamilyKey = 'extra_arma' | 'extra_armadura' | 'extra_escuela' | 'extra_habilidad' | ExtraDeCriaturaKey;
@@ -1093,7 +1094,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     doteCatalogoPermiteExtra(idDote: number): boolean {
         const dote = this.dotesExistentes.find((item) => toInt(item?.Id, 0) === toInt(idDote, 0));
-        return !!dote && this.doteTieneAlgunExtra(dote);
+        return !!dote && doteAdmiteExtra(dote, { incarnum: false });
     }
 
     private getClaveCatalogoExtraDote(idDote: number): PrerequisiteCatalogKey | null {
@@ -1102,7 +1103,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return null;
         if (toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0)
             return 'armas';
-        if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote))
+        if (doteSoportaArmaduras(dote) || doteSoportaEscudos(dote))
             return 'armaduras';
         if (toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0)
             return 'escuelas';
@@ -1230,7 +1231,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .filter((tipo) => (dote.Prerrequisitos[tipo] ?? []).length > 0)
             .filter((tipo): tipo is PrerequisiteType => this.prerrequisitoOpciones.some((opcion) => opcion.key === tipo));
         const cargas: Promise<void>[] = [this.precargarCatalogosPrerrequisitos(tipos)];
-        if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote))
+        if (doteSoportaArmaduras(dote) || doteSoportaEscudos(dote))
             cargas.push(this.asegurarCatalogo('armaduras'));
         await Promise.all(cargas.map((carga) => carga.catch(() => undefined)));
     }
@@ -1854,23 +1855,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return idsUnicosOrdenados(ids, 0).filter((id) => this.armaduraSeleccionablePorSubtipo(id));
     }
 
-    private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {
-        return toInt(dote?.Extras_soportados?.Extra_armadura_armaduras, toInt(dote?.Extras_soportados?.Extra_armadura, 0)) > 0;
-    }
-
-    private doteSoportaEscudos(dote: Dote | null | undefined): boolean {
-        return toInt(dote?.Extras_soportados?.Extra_armadura_escudos, toInt(dote?.Extras_soportados?.Extra_armadura, 0)) > 0;
-    }
-
-    private doteTieneAlgunExtra(dote: Dote | null | undefined): boolean {
-        return toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0
-            || this.doteSoportaArmaduras(dote)
-            || this.doteSoportaEscudos(dote)
-            || toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0
-            || toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0
-            || familiaDeExtraDeCriatura(dote) !== null;
-    }
-
     private getOpcionesArmaduraParaDote(dote: Dote): ExtraSelectorItem[] {
         const directos = (dote?.Extras_disponibles?.Armaduras ?? [])
             .map((item) => ({
@@ -1884,7 +1868,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             ? directos
             : this.armadurasCatalogo;
 
-        return base.filter((item) => this.filtraArmaduraPorSoporteDote(dote, item));
+        return armadurasQueAdmiteLaDote(dote, base, (item) => item.esEscudo === true);
     }
 
     private resolverOpcionesExtraDote(dote: Dote): ExtraSelectorItem[] {
@@ -1907,11 +1891,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0)
             return directosArmas.length > 0 && deTodoElCatalogo?.Armas !== true ? directosArmas : this.armasCatalogo;
 
-        if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote)) {
+        if (doteSoportaArmaduras(dote) || doteSoportaEscudos(dote)) {
             const directosArmadura = this.getOpcionesArmaduraParaDote(dote);
             if (directosArmadura.length > 0 && deTodoElCatalogo?.Armaduras !== true)
                 return directosArmadura;
-            return this.armadurasCatalogo.filter((item) => this.filtraArmaduraPorSoporteDote(dote, item));
+            return armadurasQueAdmiteLaDote(dote, this.armadurasCatalogo, (item) => item.esEscudo === true);
         }
 
         if (toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0)
@@ -1924,15 +1908,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
 
-    private filtraArmaduraPorSoporteDote(dote: Dote, item: ArmaduraSelectorItem): boolean {
-        if (this.doteSoportaArmaduras(dote) && this.doteSoportaEscudos(dote))
-            return true;
-        if (this.doteSoportaEscudos(dote))
-            return item.esEscudo === true;
-        if (this.doteSoportaArmaduras(dote))
-            return item.esEscudo !== true;
-        return false;
-    }
+
 
     private esExtraFamilyKey(value: any): value is ExtraFamilyKey {
         return this.extraFamilyKeys.includes(value as ExtraFamilyKey);

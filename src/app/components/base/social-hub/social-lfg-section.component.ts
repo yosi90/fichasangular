@@ -19,6 +19,7 @@ import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { textoPersona } from '../user-profile/perfil-acciones';
 
 @Component({
@@ -831,13 +832,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private formatScheduleDaysLabel(labels: string[]): string {
-        if (labels.length < 1)
-            return '';
-        if (labels.length === 1)
-            return labels[0];
-        if (labels.length === 2)
-            return `${labels[0]} y ${labels[1]}`;
-        return `${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}`;
+        return unirLista(labels, 'y');
     }
 
     private expandKnownLanguageAlias(value: string | null | undefined): string {

@@ -573,7 +573,7 @@ describe('TabControlComponent navegación por origen', () => {
         (component as any).__puertaSubida.solicitar(42);
         tick(120);
 
-        expect(abrir).toHaveBeenCalledWith(42);
+        expect(abrir).toHaveBeenCalledWith(42, 'subida');
         expect(component.subidasNivelAbiertas.map((s) => [s.idPersonaje, s.nombre])).toEqual([[42, 'Tordek']]);
         expect((component as any).activeTabKey).toBe('subida:42');
 
@@ -592,7 +592,7 @@ describe('TabControlComponent navegación por origen', () => {
 
         (component as any).__puertaSubida.solicitar(42);
         tick(120);
-        (component as any).__puertaSubida.solicitarPlantilla(42);
+        (component as any).__puertaSubida.solicitar(42, 'plantilla');
         tick(120);
 
         expect(component.subidasNivelAbiertas.map((s) => [s.idPersonaje, s.modo])).toEqual([[42, 'subida'], [42, 'plantilla']]);

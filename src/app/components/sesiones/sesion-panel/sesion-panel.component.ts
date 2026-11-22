@@ -715,7 +715,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
 
     pedirCompletarCompanero(): void {
         if (this.idPersonaje > 0)
-            this.puertaSubida.solicitarCompanero(this.idPersonaje);
+            this.puertaSubida.solicitar(this.idPersonaje, 'companero');
     }
 
     trackEvento(_indice: number, evento: SesionEvento): number {

@@ -28,6 +28,7 @@ import { AVISO_TRUCOS_QUE_YA_NO_VALEN, tituloDeLosTrucosDelCompanero } from 'src
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { HuecoDeSelectores } from './hueco-selectores';
+import { origenDeNivelDeClase } from 'src/app/services/utils/niveles-creacion';
 
 /*
  * Los pasos que la subida de nivel y la adquisición de una plantilla resuelven igual, con el motor de la creación en su
@@ -359,7 +360,7 @@ export async function tomarNivelDeClase(svc: NuevoPersonajeService, selectores: 
     const especiales = resultado.especialesAplicados ?? [];
     if (!await resolverEspecialidad(svc, selectores, clase, nivelClase, catalogos) || !await resolverEnemigos(svc, selectores, especiales, catalogos))
         return { estado: 'deshacer' };
-    const contexto = `${clase.Nombre} nivel ${nivelClase}`;
+    const contexto = origenDeNivelDeClase(clase.Nombre, nivelClase);
     svc.registrarAumentosPendientesPorEspeciales(especiales, contexto);
     svc.registrarAumentosPendientesPorProgresion(contexto);
     if (!await resolverEleccionesRaciales(svc, selectores))

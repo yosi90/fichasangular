@@ -10,9 +10,10 @@ import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from './caracteris
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, caracteristicaDelAlta, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { bajaDeNivel, experienciaParaNivel } from './experiencia-nivel';
-import { mismoExtra, primerEntero, toInt } from './normalizacion';
+import { claveDeDote, extraComparable, mismoExtra, primerEntero, toInt } from './normalizacion';
 import { aplicarLoQueDanLasDotes, modConstitucionDeEntrada, pgDeUnDgGuardado, pgTrasCambioDeCon } from './subida-nivel';
 import { nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
+import { origenDeNivelDeClase } from './niveles-creacion';
 
 /*
  * Perder un nivel con el personaje ya creado (roadmap de sesiones, fase 7, segunda tanda; guía
@@ -80,7 +81,7 @@ export function marcarDotesSinPrerrequisitos(
  */
 export function dotesQueVuelvenACumplir(dotes: any[] | undefined, siguenSin: ReadonlyArray<{ idDote: unknown; idExtra: unknown; }>)
     : Array<{ idDote: number; idExtra: number; origen: string; }> {
-    const clave = (d: { idDote: unknown; idExtra: unknown; }) => `${toInt(d.idDote)}|${Math.max(0, toInt(d.idExtra))}`;
+    const clave = (d: { idDote: unknown; idExtra: unknown; }) => claveDeDote(d.idDote, d.idExtra);
     const siguen = new Set(siguenSin.map(clave));
     return (dotes ?? []).filter((d: any) => d?.sinPrerrequisitos && !siguen.has(clave(d)))
         .map((d: any) => ({ idDote: toInt(d.idDote), idExtra: toInt(d.idExtra), origen: `${d.origen ?? ''}` }));
@@ -336,7 +337,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
                         const quita = Math.min(toInt(h.rangos), Math.max(0, toInt(e.valor)));
                         h.rangos = toInt(h.rangos) - quita;
                         if (quita > 0)
-                            quitado.rangos.push({ idHabilidad: id, idExtra: Math.max(0, toInt(e.idExtra)), rangos: quita });
+                            quitado.rangos.push({ idHabilidad: id, idExtra: extraComparable(e.idExtra), rangos: quita });
                     }
                     break;
                 }
@@ -353,7 +354,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
         (detalle?.Dotes ?? []).forEach((d) => {
             const idDote = toInt(d?.Dote?.Id);
             if (idDote > 0)
-                quitarDote(idDote, toInt(d?.Id_extra), `${clase?.Nombre ?? ''} nivel ${nivelClase}`);
+                quitarDote(idDote, toInt(d?.Id_extra), origenDeNivelDeClase(clase?.Nombre ?? '', nivelClase));
         });
         (detalle?.Especiales ?? []).forEach((e) => {
             const idEspecial = toInt((e?.Especial as any)?.Id);
@@ -372,7 +373,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
             if (ya)
                 ya.rangos += 1;
             else
-                quitado.rangos.push({ idHabilidad: toInt(h.idHabilidad), idExtra: Math.max(0, toInt(h.idExtra)), rangos: 1 });
+                quitado.rangos.push({ idHabilidad: toInt(h.idHabilidad), idExtra: extraComparable(h.idExtra), rangos: 1 });
         }
         if (clase?.Conjuros?.Conocidos_total || clase?.Conjuros?.Conocidos_nivel_a_nivel || (entrada.colecciones?.conjurosConocidos ?? []).some((c) => toInt(c.idClase) === idClase))
             avisos.push('No se sabe qué conjuros conocidos ganó en ese nivel: quita los que toquen con «Corregir la ficha».');
@@ -392,7 +393,7 @@ export function fichaSinElNivel(datos: DatosPerdida): ResultadoPerdida {
     const deltaAtaque = (primerEntero(ahora?.Ataque_base) ?? 0) - (primerEntero(previo?.Ataque_base) ?? 0);
     ficha.personaje.ataqueBase = textoAtaqueBase((primerEntero(ataqueAntes) ?? 0) - deltaAtaque);
     const salvaciones: ResultadoPerdida['salvaciones'] = {};
-    const origen = `${clase?.Nombre ?? ''} nivel ${nivelClase}`;
+    const origen = origenDeNivelDeClase(clase?.Nombre ?? '', nivelClase);
     const mods: any = ficha.modificadores = { ...(ficha.modificadores ?? {}), salvaciones: { ...((ficha.modificadores as any)?.salvaciones ?? {}) } };
     SALVACIONES.forEach(([s, campo]) => {
         const delta = (primerEntero(ahora?.Salvaciones?.[campo]) ?? 0) - (primerEntero(previo?.Salvaciones?.[campo]) ?? 0);

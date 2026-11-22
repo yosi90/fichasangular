@@ -71,7 +71,7 @@ import { ClaveHabilidad, claveDeHabilidad, claveHabilidad, clavesDeReferenciaGua
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
 import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
-import { minusculaInicial } from './utils/formato-registros';
+import { mayusculaInicial, minusculaInicial } from './utils/formato-registros';
 import {
     aptitudesFamiliarDelNivel,
     EstadoCuposFamiliar as EstadoCuposFamiliarUtil,
@@ -121,7 +121,7 @@ import { Truco } from '../interfaces/truco';
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { mismoExtra, normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
+import { extraComparable, mismoExtra, normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { ajustesCaracteristicaDeRaciales, caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
@@ -154,8 +154,8 @@ import {
 } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
 import {
-    apuntarEleccion, construirNivelesCreacion, esLaEleccion, nivelDelOrden, nivelesDeClaseHasta, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
-    origenDotePorNivelDePersonaje, RefNivelTomado,
+    apuntarEleccion, construirNivelesCreacion, esLaEleccion, etiquetaDelNivel, nivelDelOrden, nivelesDeClaseHasta, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
+    origenDeNivelDeClase, origenDotePorNivelDePersonaje, RefNivelTomado,
 } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
@@ -171,6 +171,7 @@ import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
 import { ajustesEnvejecimiento, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
+import { armadurasQueAdmiteLaDote, doteAdmiteExtra, doteSoportaArmaduras, doteSoportaEscudos } from './utils/dote-extras-soportados';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -3717,7 +3718,7 @@ export class NuevoPersonajeService {
                 Entidad: 'personaje',
                 Id_personaje: toNumber(this.personajeCreacion?.Id),
                 Extra: extraTexto,
-                Id_extra: Math.max(0, toInt(idExtra)),
+                Id_extra: extraComparable(idExtra),
                 Origen: pendiente.origen,
                 Dg: dg,
             },
@@ -3964,8 +3965,22 @@ export class NuevoPersonajeService {
      * dotes con su origen: Alerta): para elegir otro cuando la API no acepta el que se mandó.
      */
     quitarFamiliar(): void {
-        this.personajeCreacion.Familiares = [];
-        this.quitarLoQueLeDaSuMascota('familiar');
+        this.quitarMascota('familiar');
+    }
+
+    /**
+     * Quita la mascota (`tipo`) y lo que el personaje lleva por ella (`quitarLoQueLeDaSuMascota`); del compañero, además,
+     * lo que se le había repartido por sus DG. Lo común de `quitarFamiliar` y `quitarCompanero`.
+     */
+    private quitarMascota(tipo: TipoDeMascota): void {
+        if (tipo === 'companero') {
+            this.personajeCreacion.Companeros = [];
+            this.dgsCompaneroRepartidos = 0;
+            this.rangosDelCompaneroRepartidos = false;
+        } else {
+            this.personajeCreacion.Familiares = [];
+        }
+        this.quitarLoQueLeDaSuMascota(tipo);
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
     }
@@ -4073,12 +4088,7 @@ export class NuevoPersonajeService {
      * animal»): para elegir otro cuando la API no acepta el que se mandó.
      */
     quitarCompanero(): void {
-        this.personajeCreacion.Companeros = [];
-        this.quitarLoQueLeDaSuMascota('companero');
-        this.dgsCompaneroRepartidos = 0;
-        this.rangosDelCompaneroRepartidos = false;
-        this.recalcularDerivadasPorCaracteristicas();
-        this.recalcularDerivadasPorCombate();
+        this.quitarMascota('companero');
     }
 
     getEnemigosPredilectos(): EnemigoPredilectoSeleccion[] {
@@ -4189,42 +4199,11 @@ export class NuevoPersonajeService {
         return normalizado.sort(porNombre);
     }
 
-    private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {
-        return toBoolean(
-            dote?.Extras_soportados?.Extra_armadura_armaduras ?? dote?.Extras_soportados?.Extra_armadura
-        );
-    }
-
-    private doteSoportaEscudos(dote: Dote | null | undefined): boolean {
-        return toBoolean(
-            dote?.Extras_soportados?.Extra_armadura_escudos ?? dote?.Extras_soportados?.Extra_armadura
-        );
-    }
-
-    private doteTieneExtrasSoportados(dote: Dote | null | undefined): boolean {
-        return !!(
-            toBoolean(dote?.Extras_soportados?.Extra_arma)
-            || this.doteSoportaArmaduras(dote)
-            || this.doteSoportaEscudos(dote)
-            || toBoolean(dote?.Extras_soportados?.Extra_escuela)
-            || toBoolean(dote?.Extras_soportados?.Extra_habilidad)
-            || toBoolean(dote?.Extras_soportados?.Extra_chakra)
-            || toBoolean(dote?.Extras_soportados?.Extra_fusion)
-            || familiaDeExtraDeCriatura(dote) !== null
-        );
-    }
-
     private filtrarExtrasArmaduraPorSoporte(
         dote: Dote,
         extras: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }>
     ): Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> {
-        if (this.doteSoportaArmaduras(dote) && this.doteSoportaEscudos(dote))
-            return extras;
-        if (this.doteSoportaEscudos(dote))
-            return extras.filter((item) => item.Es_escudo === true);
-        if (this.doteSoportaArmaduras(dote))
-            return extras.filter((item) => item.Es_escudo !== true);
-        return [];
+        return armadurasQueAdmiteLaDote(dote, extras, (item) => item.Es_escudo === true);
     }
 
     private crearCandidatoDote(
@@ -4237,7 +4216,7 @@ export class NuevoPersonajeService {
             return null;
 
         const restringidaPorTipo = !this.cumpleRestriccionTipoDote(dote, pendiente.tipoPermitido);
-        const requiereExtra = this.doteTieneExtrasSoportados(dote);
+        const requiereExtra = doteAdmiteExtra(dote);
         const sujeto = this.dotesDelSujetoDeLaPendiente(pendiente);
         const extrasBase = this.resolverExtrasDisponiblesDote(dote, sujeto);
         const extrasDisponibles = this.filtrarExtrasPorRepeticionDote(dote, extrasBase, sujeto);
@@ -4386,7 +4365,7 @@ export class NuevoPersonajeService {
         const disponibles = dote?.Extras_disponibles;
         anadir(toBoolean(soportados?.Extra_arma), normalizar(disponibles?.Armas), deTodoElCatalogo?.Armas, () => this.catalogoArmasDotes);
         anadir(
-            this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote),
+            doteSoportaArmaduras(dote) || doteSoportaEscudos(dote),
             this.filtrarExtrasArmaduraPorSoporte(dote, normalizar(disponibles?.Armaduras)),
             deTodoElCatalogo?.Armaduras,
             () => this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes),
@@ -4453,7 +4432,7 @@ export class NuevoPersonajeService {
         sujeto: SujetoDeDotes = this.dotesDelSujetoDeLaPendiente(null)): boolean {
         const idDote = toNumber(dote?.Id);
         const nombreNorm = normalizarTexto(`${dote?.Nombre ?? ''}`);
-        const repetibleDistintoExtra = toBoolean(dote?.Repetible_distinto_extra) && this.doteTieneExtrasSoportados(dote);
+        const repetibleDistintoExtra = toBoolean(dote?.Repetible_distinto_extra) && doteAdmiteExtra(dote);
         const contextuales = sujeto.contextuales.filter((item) => {
             const id = toNumber(item?.Dote?.Id);
             const nombre = normalizarTexto(item?.Dote?.Nombre ?? '');
@@ -5827,7 +5806,7 @@ export class NuevoPersonajeService {
 
     private resolverExtraTextoDote(dote: Dote, idExtra: number, extraSeleccionado: string,
         sujeto: SujetoDeDotes = this.dotesDelSujetoDeLaPendiente(null)): string {
-        const requiereExtra = this.doteTieneExtrasSoportados(dote);
+        const requiereExtra = doteAdmiteExtra(dote);
         if (!requiereExtra)
             return 'No aplica';
 
@@ -7597,10 +7576,10 @@ export class NuevoPersonajeService {
     private yaTieneLaDote(dote: Dote, idExtra: number): boolean {
         const id = toNumber(dote?.Id);
         const nombre = normalizarTexto(`${dote?.Nombre ?? ''}`);
-        const extra = Math.max(0, toInt(idExtra));
+        const extra = extraComparable(idExtra);
         return (this.personajeCreacion.DotesContextuales ?? []).some((entrada) =>
             (id > 0 ? toNumber(entrada?.Dote?.Id) === id : normalizarTexto(`${entrada?.Dote?.Nombre ?? ''}`) === nombre)
-            && Math.max(0, toInt(entrada?.Contexto?.Id_extra)) === extra);
+            && extraComparable(entrada?.Contexto?.Id_extra) === extra);
     }
 
     private limpiarDotesAplicadasPorPlantillas(): void {
@@ -7655,7 +7634,7 @@ export class NuevoPersonajeService {
             : `nombre:${normalizarTexto(nombre)}`;
         return [
             identidad,
-            `extra:${Math.max(0, toInt(idExtra))}`,
+            `extra:${extraComparable(idExtra)}`,
             `origen:${normalizarTexto(origen)}`,
         ].join('|');
     }
@@ -8345,7 +8324,7 @@ export class NuevoPersonajeService {
         detalleSiguiente: ClaseNivelDetalle,
         detalleAnterior: ClaseNivelDetalle | null
     ): void {
-        const origen = `${nombreClase} nivel ${nivel}`;
+        const origen = origenDeNivelDeClase(nombreClase, nivel);
         const definiciones: Array<{ key: SalvacionKey; campo: 'Fortaleza' | 'Reflejos' | 'Voluntad'; }> = [
             { key: 'fortaleza', campo: 'Fortaleza' },
             { key: 'reflejos', campo: 'Reflejos' },
@@ -8553,7 +8532,7 @@ export class NuevoPersonajeService {
             const conArmaDeidad = !!doteDominio?.Extra_arma_deidad;
             if (conArmaDeidad && !(toInt(armaDeidad?.Id) > 0))
                 return;
-            const idExtra = conArmaDeidad ? toInt(armaDeidad?.Id) : Math.max(0, toInt(doteDominio?.Id_extra));
+            const idExtra = conArmaDeidad ? toInt(armaDeidad?.Id) : extraComparable(doteDominio?.Id_extra);
             const extra = conArmaDeidad ? `${armaDeidad?.Nombre ?? ''}`.trim() : `${doteDominio?.Extra ?? ''}`.trim();
             if (doteDominio?.Solo_sin_competencia && this.esCompetenteConArma(idExtra, extra))
                 return;
@@ -8841,7 +8820,7 @@ export class NuevoPersonajeService {
     }
 
     private aplicarDotesNivelClase(clase: Clase, nivel: number, dotesNivel: ClaseDoteNivel[]): void {
-        const origen = `${clase.Nombre} nivel ${nivel}`;
+        const origen = origenDeNivelDeClase(clase.Nombre, nivel);
         dotesNivel.forEach((doteNivel) => {
             const nombre = `${doteNivel?.Dote?.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
@@ -9114,7 +9093,7 @@ export class NuevoPersonajeService {
     ): string[] {
         const entradas: ConjurosSesionStateEntrada[] = [];
         const avisos: string[] = [...(advertenciasAumentos ?? [])];
-        const origenBase = `${claseAplicada?.Nombre ?? 'Clase'} nivel ${Math.max(1, toInt(nivelAplicado))}`;
+        const origenBase = origenDeNivelDeClase(claseAplicada?.Nombre ?? 'Clase', Math.max(1, toInt(nivelAplicado)));
 
         // El lanzamiento racial (los dragones, el rakshasa) entra en la primera sesión: sus conjuros se eligen aquí, con la
         // tabla de la clase al nivel de la raza, y ese nivel se suma desde ya a los niveles reales de la clase (*Draconomicón*,
@@ -9353,7 +9332,7 @@ export class NuevoPersonajeService {
 
         const entrada: ConjurosSesionStateEntrada = {
             id: `${normalizarTexto(claseObjetivo.Nombre)}:${origen}:${nivelLanzadorActual}`,
-            origen: `${origen ?? ''}`.trim() || `${claseObjetivo.Nombre} nivel ${nivelLanzadorActual}`,
+            origen: `${origen ?? ''}`.trim() || origenDeNivelDeClase(claseObjetivo.Nombre, nivelLanzadorActual),
             claseObjetivo: {
                 id: toNumber(claseObjetivo?.Id),
                 nombre: `${claseObjetivo?.Nombre ?? ''}`.trim(),
@@ -10076,7 +10055,7 @@ export class NuevoPersonajeService {
         };
 
         const conjuroConOrigen = base as Record<string, any>;
-        conjuroConOrigen['Origen'] = `${nombreClase} nivel ${nivelClase}`;
+        conjuroConOrigen['Origen'] = origenDeNivelDeClase(nombreClase, nivelClase);
         conjuroConOrigen['Clase_origen'] = nombreClase;
         conjuroConOrigen['Origen_clase'] = nombreClase;
         return base;
@@ -12237,7 +12216,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Conjuros.splice(indice, 1);
         this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'conjuro_olvidado', idElemento: toInt(idOlvidado), idExtra: opciones.clase.id, valor: toInt(idNuevo) });
         this.agregarConjuroSesionAPersonaje({
-            origen: `${opciones.clase.nombre} nivel ${this.nivelEnCurso!.nivelClase} (intercambio)`,
+            origen: `${origenDeNivelDeClase(opciones.clase.nombre, this.nivelEnCurso!.nivelClase)} (intercambio)`,
             claseObjetivo: { id: opciones.clase.id, nombre: opciones.clase.nombre },
             nivelesPorConjuro: { [toInt(idNuevo)]: olvidado.nivel },
             nivel: this.nivelEnCurso,
@@ -12596,7 +12575,7 @@ export class NuevoPersonajeService {
                 for (let n = 1; clase && n <= toInt(entrada?.Nivel); n++)
                     (this.obtenerDetalleNivelClase(clase, n)?.Especiales ?? [])
                         .filter((e) => toBoolean((e?.Especial as Record<string, any>)?.['Otorga_dote']))
-                        .forEach((e) => huecos.push(this.crearDotePendiente('adicional', `${clase.Nombre} nivel ${n}`, tipoDeDoteDeLaAptitud(e))));
+                        .forEach((e) => huecos.push(this.crearDotePendiente('adicional', origenDeNivelDeClase(clase.Nombre, n), tipoDeDoteDeLaAptitud(e))));
             });
             for (let n = 0; n < toNumber(this.razaSeleccionada?.Dotes_adicionales); n++)
                 huecos.push(this.crearDotePendiente('raza', raza, null));
@@ -12649,7 +12628,7 @@ export class NuevoPersonajeService {
                 grupo: opcion.grupoOpcional,
                 id: toInt(elemento?.['Id']),
                 nombre: opcion.nombre,
-                idExtra: Math.max(0, toInt(fila?.Id_extra)),
+                idExtra: extraComparable(fila?.Id_extra),
                 extra: opcion.extra,
                 elegir: fila?.Extra_comodin === 'elegir',
                 otorgaDote,
@@ -12728,7 +12707,7 @@ export class NuevoPersonajeService {
 
         for (const cambio of cambios.filter((c) => !!c.pone)) {
             const pone = cambio.pone!;
-            const idExtra = Math.max(0, toInt(pone.idExtra));
+            const idExtra = extraComparable(pone.idExtra);
             if (cambio.tipo === 'especial') {
                 if (!(pj.Claseas ?? []).some((e) => toInt(e?.Id) === toInt(pone.id) && mismoExtra(e?.Id_extra, idExtra)))
                     pj.Claseas.push({ Id: toInt(pone.id), Id_extra: idExtra, Nombre: pone.nombre, Extra: pone.extra });
@@ -12737,7 +12716,7 @@ export class NuevoPersonajeService {
                 const dote = this.doteDelCatalogo(toInt(pone.id));
                 if (!dote)
                     return false;
-                const origen = `${pone.origen ?? ''}`.trim() || `${clase.Nombre} nivel ${toInt(cambio.nivelClase)}`;
+                const origen = `${pone.origen ?? ''}`.trim() || origenDeNivelDeClase(clase.Nombre, toInt(cambio.nivelClase));
                 const extra = idExtra > 0 ? this.resolverExtraTextoDote(dote, idExtra, pone.extra) : `${pone.extra ?? ''}`.trim() || 'No aplica';
                 // Lo que da (sus modificadores), con el recálculo de abajo, que parte de todas sus dotes.
                 if (!this.agregarDoteAlPersonaje(dote, origen, idExtra, extra))
@@ -12999,7 +12978,7 @@ export class NuevoPersonajeService {
     private quitarDoteDeRaza({ dote, idExtra, origen }: DoteDeRaza): void {
         const pj = this.personajeCreacion;
         const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(dote?.Id)
-            && toInt(d?.Contexto?.Id_extra) === Math.max(0, toInt(idExtra))
+            && toInt(d?.Contexto?.Id_extra) === extraComparable(idExtra)
             && normalizarTexto(`${(d?.Contexto as any)?.Origen ?? ''}`) === normalizarTexto(origen));
         if (i >= 0)
             pj.DotesContextuales.splice(i, 1);
@@ -13022,7 +13001,7 @@ export class NuevoPersonajeService {
                 });
         });
         this.personajeCreacion.Claseas = especialesDevueltos(this.personajeCreacion.Claseas ?? [], sustituidos, deLasTablas,
-            (e) => ({ id: toInt(e?.Id), extra: Math.max(0, toInt(e?.Id_extra)) }));
+            (e) => ({ id: toInt(e?.Id), extra: extraComparable(e?.Id_extra) }));
     }
 
     /**
@@ -13054,7 +13033,7 @@ export class NuevoPersonajeService {
             const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(n?.idClase));
             pasos.push({
                 tipo: 'clase', indice: i, nivelPersonaje: dgRaza + dgPlantillas + i + 1,
-                etiqueta: `Nivel ${i + 1}: ${`${clase?.Nombre ?? 'clase'}`.toLowerCase()} ${toInt(n?.nivelClase)}`,
+                etiqueta: mayusculaInicial(etiquetaDelNivel(i, clase?.Nombre, n?.nivelClase)),
             });
         });
         return pasos;
@@ -13145,7 +13124,7 @@ export class NuevoPersonajeService {
             return false;
         const clase = this.claseDelCatalogo(nivel.idClase);
         this.aumentosPendientesCaracteristica = [...this.aumentosPendientesCaracteristica, {
-            ...this.crearPendienteAumento(1, `${clase?.Nombre ?? 'Clase'} nivel ${toInt(nivel.nivelClase)}`, DESCRIPCION_AUMENTO_POR_PROGRESION),
+            ...this.crearPendienteAumento(1, origenDeNivelDeClase(clase?.Nombre ?? 'Clase', toInt(nivel.nivelClase)), DESCRIPCION_AUMENTO_POR_PROGRESION),
             nivel: { idClase: toInt(nivel.idClase), nivelClase: toInt(nivel.nivelClase) },
         }];
         return true;

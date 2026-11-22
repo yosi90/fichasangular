@@ -2,7 +2,7 @@ import { ClaseIntercambioConjuros } from 'src/app/interfaces/clase';
 import { PersonajeCreateCompaneroDto, PersonajeCreateFamiliarDto, PersonajeCreateNivelDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { modificadorCaracteristica } from './caracteristicas';
 import { claveDeDoteDelCompaneroGuardada, mitadDeLosPg } from './mascota-payload';
-import { toInt } from './normalizacion';
+import { extraComparable, toInt } from './normalizacion';
 
 /*
  * La subida de nivel (roadmap de sesiones, fase 4; guía `docs/publica/SESIONES_FRONT.md`, «La subida de nivel»): la web
@@ -206,7 +206,7 @@ function aplicarDiferencia(guardada: Lista | undefined, antes: Lista | undefined
  * de varios. Lo que el motor ya contaba antes y la ficha guardada no (una ficha de antes) no se toca.
  */
 function aplicarRangos(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
-    const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${Math.max(0, toInt(h?.['idExtra']))}`;
+    const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${extraComparable(h?.['idExtra'])}`;
     const previas = new Map((antes ?? []).map((h) => [clave(h), h]));
     const resultado = (guardadas ?? []).map((h) => ({ ...h }));
     (despues ?? []).forEach((h) => {
@@ -299,7 +299,7 @@ export function aplicarLoQueDanLasDotes(ficha: PersonajeCreateRequestDto, antes:
  * o un rasgo), sin tocar los rangos comprados ni si es de clase: lo que cambia al quitar o poner una dote.
  */
 function conLosRangosVariosDelMotor(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
-    const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${Math.max(0, toInt(h?.['idExtra']))}`;
+    const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${extraComparable(h?.['idExtra'])}`;
     const previas = new Map((antes ?? []).map((h) => [clave(h), h]));
     const soloVarios = (despues ?? []).map((h) => {
         const previa = previas.get(clave(h));

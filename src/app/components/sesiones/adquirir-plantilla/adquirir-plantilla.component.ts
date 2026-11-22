@@ -37,6 +37,7 @@ import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import {
     cambiosDeLasMascotas, EstadoDeLasMascotas, sinLoQueYaNoDaLaMascota,
 } from 'src/app/services/utils/mascota-al-dia';
+import { tirarDado } from 'src/app/services/utils/dados';
 
 export type PasoPlantilla = 'plantilla' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'resumen';
 
@@ -70,7 +71,7 @@ export interface OpcionPlantilla {
  * creación (en el hueco común, `HuecoDeSelectores`) y el resumen con lo que cambia antes de guardar
  * (`POST /personajes/{id}/plantillas`). Usa el motor de la creación en su propia instancia (`MotorDesdeFichaService`) y las
  * piezas de la subida (`subir-nivel.component.sass`, `app-reparto-rangos`).
- * Se abre desde «Adquirir una plantilla» del historial (`SubidaNivelPuertaService.solicitarPlantilla`) en su pestaña.
+ * Se abre desde «Adquirir una plantilla» del historial (`SubidaNivelPuertaService.solicitar(id, 'plantilla')`) en su pestaña.
  */
 @Component({
     selector: 'app-adquirir-plantilla',
@@ -351,7 +352,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     tirar(): void {
         if (this.tiradas.length >= this.tiradasPermitidas || this.dgsNuevos < 1 || this.carasNuevos < 1)
             return;
-        const tirada = Array.from({ length: this.dgsNuevos }, () => 1 + Math.floor(Math.random() * this.carasNuevos));
+        const tirada = Array.from({ length: this.dgsNuevos }, () => tirarDado(this.carasNuevos));
         this.tiradas = [...this.tiradas, tirada];
         const suma = (t: number[]) => t.reduce((a, b) => a + b, 0);
         this.tiradaElegida = this.tiradas.reduce((mejor, t, i) => suma(t) > suma(this.tiradas[mejor]) ? i : mejor, 0);

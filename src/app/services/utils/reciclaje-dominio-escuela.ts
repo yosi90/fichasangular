@@ -8,7 +8,7 @@ import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from
 import { nombreDeHabilidadConExtra } from './habilidad-extra-visible';
 import { coincideClaveEntidad } from './identidad-prerrequisitos';
 import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
-import { mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
+import { extraComparable, mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import { nombreConExtra } from './reciclaje-rasgos';
 import { escuelasProhibibles, esEspecializable, prohibidasAlEspecializarse } from './reglas-magia';
@@ -181,7 +181,7 @@ export function loQueDaElDominio(motor: NuevoPersonajeService, dominio: DominioD
         }));
     const aptitudes = (datos?.Especiales ?? []).flatMap((e) => (pj.Claseas ?? [])
         .filter((x) => coincideClaveEntidad({ id: toInt(x?.Id), nombre: `${x?.Nombre ?? ''}` }, e?.Id, e?.Nombre))
-        .slice(0, 1).map((x) => ({ id: toInt(x.Id), idExtra: Math.max(0, toInt(x.Id_extra)), nombre: `${x.Nombre ?? ''}`, extra: `${x.Extra ?? ''}` })));
+        .slice(0, 1).map((x) => ({ id: toInt(x.Id), idExtra: extraComparable(x.Id_extra), nombre: `${x.Nombre ?? ''}`, extra: `${x.Extra ?? ''}` })));
     const habilidades = (datos?.Habilidades_claseas ?? []).map((h) => nombreConExtra({ nombre: `${h.Habilidad ?? ''}`, idExtra: toInt(h.Id_extra), extra: `${h.Extra ?? ''}` }));
     const conjuros = motor.CatalogoConjuros.flatMap((c) => nivelesDeDominioDelConjuro(c)
         .filter((n) => (n.id > 0 ? n.id === dominio.id : n.nombre === normalizarTexto(dominio.nombre)) && n.nivel >= 0)
@@ -249,7 +249,7 @@ export function fichaConElDominio(entrada: PersonajeCreateRequestDto, plan: Plan
     conLasAptitudesYDotesDelMotor(col, colA, colD, (d) => origenes.has(normalizarTexto(`${d?.origen ?? ''}`)));
 
     // Si son de clase: lo que cambia el motor (las del dominio que sale dejan de serlo, las del que entra lo son).
-    const clave = (h: any) => `${toInt(h?.idHabilidad)}:${Math.max(0, toInt(h?.idExtra))}`;
+    const clave = (h: any) => `${toInt(h?.idHabilidad)}:${extraComparable(h?.idExtra)}`;
     const previas = new Map<string, any>((colA.habilidades?.base ?? []).map((h: any) => [clave(h), h]));
     const base: any[] = (col.habilidades?.base ?? []).map((h: any) => ({ ...h }));
     (colD.habilidades?.base ?? []).forEach((h: any) => {
@@ -259,7 +259,7 @@ export function fichaConElDominio(entrada: PersonajeCreateRequestDto, plan: Plan
         if (fila)
             fila.clasea = !!h.clasea;
         else if (h.clasea)
-            base.push({ idHabilidad: toInt(h.idHabilidad), idExtra: Math.max(0, toInt(h.idExtra)), clasea: true, rangos: 0, rangosVarios: 0, modVarios: '' });
+            base.push({ idHabilidad: toInt(h.idHabilidad), idExtra: extraComparable(h.idExtra), clasea: true, rangos: 0, rangosVarios: 0, modVarios: '' });
     });
     if (col.habilidades || base.length > 0)
         col.habilidades = { ...(col.habilidades ?? {}), base };

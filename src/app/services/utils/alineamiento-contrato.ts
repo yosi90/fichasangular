@@ -13,30 +13,34 @@ export interface AlineamientoEjes {
     moral: number | null;
 }
 
-const ALINEAMIENTO_POR_NOMBRE: Record<string, AlineamientoVector> = {
-    "legal bueno": { ley: 1, moral: 1 },
-    "legal neutral": { ley: 1, moral: 0 },
-    "legal maligno": { ley: 1, moral: -1 },
-    "neutral bueno": { ley: 0, moral: 1 },
-    "neutral autentico": { ley: 0, moral: 0 },
-    "neutral maligno": { ley: 0, moral: -1 },
-    "caotico bueno": { ley: -1, moral: 1 },
-    "caotico neutral": { ley: -1, moral: 0 },
-    "caotico maligno": { ley: -1, moral: -1 },
-};
+/**
+ * Los nueve alineamientos básicos (`alineamientos_basicos`): su id, su nombre y su vector (ley, moral). Una sola tabla
+ * para los nombres por id, los ids por nombre y los vectores.
+ */
+const ALINEAMIENTOS_BASICOS: ReadonlyArray<{ id: number; nombre: string; ley: number; moral: number; }> = [
+    { id: 1, nombre: 'Legal bueno', ley: 1, moral: 1 },
+    { id: 2, nombre: 'Legal neutral', ley: 1, moral: 0 },
+    { id: 3, nombre: 'Legal maligno', ley: 1, moral: -1 },
+    { id: 4, nombre: 'Neutral bueno', ley: 0, moral: 1 },
+    { id: 5, nombre: 'Neutral auténtico', ley: 0, moral: 0 },
+    { id: 6, nombre: 'Neutral maligno', ley: 0, moral: -1 },
+    { id: 7, nombre: 'Caótico bueno', ley: -1, moral: 1 },
+    { id: 8, nombre: 'Caótico neutral', ley: -1, moral: 0 },
+    { id: 9, nombre: 'Caótico maligno', ley: -1, moral: -1 },
+];
+
+const ALINEAMIENTO_POR_NOMBRE: Record<string, AlineamientoVector> = Object.fromEntries(
+    ALINEAMIENTOS_BASICOS.map((b) => [normalizarTexto(b.nombre), { ley: b.ley, moral: b.moral }]));
 
 const BASICO_ID_POR_NOMBRE: Record<string, number> = {
-    "legal bueno": 1,
-    "legal neutral": 2,
-    "legal maligno": 3,
-    "neutral bueno": 4,
-    "neutral autentico": 5,
+    ...Object.fromEntries(ALINEAMIENTOS_BASICOS.map((b) => [normalizarTexto(b.nombre), b.id])),
     "neutral verdadero": 5,
-    "neutral maligno": 6,
-    "caotico bueno": 7,
-    "caotico neutral": 8,
-    "caotico maligno": 9,
 };
+
+/** El nombre de un alineamiento básico por su id («Neutral auténtico»), o vacío si no es uno de los nueve. */
+export function nombreDeAlineamientoBasico(idBasico: number): string {
+    return ALINEAMIENTOS_BASICOS.find((b) => b.id === idBasico)?.nombre ?? '';
+}
 
 const NOMBRE_POR_VECTOR: Record<string, string> = {
     "1,1": "Legal bueno",
@@ -132,8 +136,8 @@ function valorExigido(preferencia: DatoPreferenciaAlineamiento | null | undefine
 
 /** El vector (ley, moral) de un alineamiento básico por su id (`alineamientos_basicos`: 1 legal bueno … 9 caótico maligno). */
 export function getVectorDesdeIdBasico(idBasico: number): AlineamientoVector | null {
-    const nombre = Object.keys(BASICO_ID_POR_NOMBRE).find((clave) => BASICO_ID_POR_NOMBRE[clave] === idBasico);
-    return nombre ? getVectorDesdeNombreBasico(nombre) : null;
+    const basico = ALINEAMIENTOS_BASICOS.find((b) => b.id === idBasico);
+    return basico ? { ley: basico.ley, moral: basico.moral } : null;
 }
 
 /** Los pasos entre dos alineamientos, sumando los dos ejes (legal bueno → neutral bueno, 1; → caótico maligno, 4). */

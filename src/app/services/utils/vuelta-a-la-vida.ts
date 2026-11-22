@@ -12,7 +12,7 @@ import {
 } from './clase-niveles';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
 import { esDotePorNivelDePersonaje } from './niveles-creacion';
-import { mismoExtra, toInt } from './normalizacion';
+import { extraComparable, mismoExtra, toInt } from './normalizacion';
 import { puntosHabilidadNivelClase } from './puntos-habilidad';
 import {
     CONSTITUCION_PERDIDA, FilaPerdida, marcarDotesSinPrerrequisitos, ordenConocido, ordenPorConocer, pxTrasPerder, quitadoVacio, ResultadoPerdida,
@@ -296,7 +296,7 @@ export function especialesDeLasTablas(clases: ReadonlyArray<{ clase: Pick<Clase,
     clases.forEach(({ clase, nivel }) => {
         for (let n = 1; clase && n <= toInt(nivel); n++)
             (filaDeNivel(clase, n)?.Especiales ?? []).forEach((e) => {
-                const especial = { idEspecial: toInt((e?.Especial as any)?.Id), idExtra: Math.max(0, toInt(e?.Id_extra)) };
+                const especial = { idEspecial: toInt((e?.Especial as any)?.Id), idExtra: extraComparable(e?.Id_extra) };
                 if (especial.idEspecial > 0 && !lista.some((x) => x.idEspecial === especial.idEspecial && x.idExtra === especial.idExtra))
                     lista.push(especial);
             });
@@ -374,7 +374,7 @@ export function fichaDeLaVuelta(d: EntradaFichaVuelta): PersonajeCreateRequestDt
     col.dominios = [...(colSin.dominios ?? [])];
     col.conjurosConocidos = [...(colSin.conjurosConocidos ?? [])];
     col.especiales = especialesDevueltos(colSin.especiales ?? [], d.sustituidos, d.deLasTablas,
-        (e: any) => ({ id: toInt(e?.idEspecial), extra: Math.max(0, toInt(e?.idExtra)) }));
+        (e: any) => ({ id: toInt(e?.idEspecial), extra: extraComparable(e?.idExtra) }));
     if (ficha.decisionesHomebrew)
         ficha.decisionesHomebrew = sinDecisionesDeDotesQueNoTiene(ficha.decisionesHomebrew, col.dotes);
     return marcarDotesSinPrerrequisitos(ficha, d.marcar, d.desmarcar);
@@ -542,7 +542,7 @@ export function rangosQueSobran(niveles: PersonajeCreateNivelDto[],
     const quitados: RangosDelNivel[] = [];
     habilidades.forEach((h) => {
         const idHabilidad = toInt(h.idHabilidad);
-        const idExtra = Math.max(0, toInt(h.idExtra));
+        const idExtra = extraComparable(h.idExtra);
         let sobra = toInt(h.rangos) - Math.max(0, toInt(h.maximo));
         for (let i = lista.length - 1; i >= 0 && sobra > 0; i--) {
             const elecciones = lista[i].elecciones;
@@ -630,12 +630,12 @@ export function filasDeLaRenumeracion(r: ResumenRenumerado): CambioPlantilla[] {
         filas.push({ que: 'Incremento', antes: '—', ahora: `+1 ${r.incrementoElegido.nombre}`, porque: `${hito} le falta el de su ${r.incrementoElegido.nivelPersonaje}.º nivel` });
     if (r.rangosQuitados.length)
         filas.push({
-            que: 'Rangos que pasan del máximo', antes: r.rangosQuitados.map((q) => `${q.nombre} −${q.rangos} (${q.nivel})`).join(', '), ahora: '—',
+            que: 'Rangos que pasan del máximo', antes: r.rangosQuitados.map((q) => `${q.nombre} −${q.rangos} en el ${q.nivel}`).join(', '), ahora: '—',
             porque: `El máximo, con su nivel de personaje nuevo, es ${r.maximoDeRangos} (la mitad si no es de ninguna de sus clases): se quitan desde los últimos niveles y sus puntos vuelven a ese nivel (Manual del jugador, pág. 62)`,
         });
     if (r.rangosRepartidos.length)
         filas.push({
-            que: 'Rangos repartidos', antes: '—', ahora: r.rangosRepartidos.map((q) => `${q.nombre} +${q.rangos} (${q.nivel})`).join(', '),
+            que: 'Rangos repartidos', antes: '—', ahora: r.rangosRepartidos.map((q) => `${q.nombre} +${q.rangos} en el ${q.nivel}`).join(', '),
             porque: 'Los puntos que vuelven y los de su primer DG, en el nivel del que salen, con el coste de su clase',
         });
     r.prestigio.forEach((c) => filas.push({

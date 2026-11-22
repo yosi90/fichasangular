@@ -32,6 +32,7 @@ import {
     PERRO_INTERMITENTE, PROGRESION_FAMILIAR_API, RC, TRANSMITIR, VINCULO as VINCULO_FAMILIAR,
 } from 'src/testing/familiar-api';
 import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos } from './utils/familiar-reglas';
+import { doteAdmiteExtra } from './utils/dote-extras-soportados';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -9491,7 +9492,7 @@ describe('NuevoPersonajeService (Magic of Incarnum)', () => {
             Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 37, Nombre: 'Brazos' }, { Id: 38, Nombre: 'Frente' }], Fusiones: [] },
             Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false, Chakras: false, Fusiones: false },
         } as any;
-        expect((service as any).doteTieneExtrasSoportados(dote)).toBeTrue();
+        expect(doteAdmiteExtra(dote)).toBeTrue();
         expect((service as any).resolverExtrasDisponiblesDote(dote).map((e: any) => e.Nombre)).toEqual(['Brazos', 'Frente']);
     });
 });

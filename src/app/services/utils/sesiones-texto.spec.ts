@@ -1,5 +1,5 @@
 import { leerHistorial, leerRespuestaSesion } from 'src/app/services/sesiones.service';
-import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { SolicitudDeSesion, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { respuestaSesiones } from 'src/testing/sesiones-api';
 import { barraExperiencia, cambiosSesion, fechaSesion, pxConPenalizacion, tituloSesion } from './sesiones-texto';
 
@@ -42,18 +42,19 @@ describe('sesiones-texto', () => {
 });
 
 describe('SubidaNivelPuertaService', () => {
-    it('lleva el id del personaje de quien pide la subida a quien la abre, y el aviso de vuelta', () => {
+    it('lleva el id del personaje y la vía de quien la pide a quien la abre (la subida por defecto), y el aviso de vuelta', () => {
         const puerta = new SubidaNivelPuertaService();
-        const pedidas: number[] = [];
+        const pedidas: SolicitudDeSesion[] = [];
         const hechas: number[] = [];
-        puerta.solicitudes$.subscribe((id) => pedidas.push(id));
+        puerta.solicitudes$.subscribe((s) => pedidas.push(s));
         puerta.subidasHechas$.subscribe((id) => hechas.push(id));
 
         puerta.solicitar(129);
         puerta.solicitar(0);
+        puerta.solicitar(129, 'perdida');
         puerta.subidaHecha(129);
 
-        expect(pedidas).toEqual([129]);
+        expect(pedidas).toEqual([{ idPersonaje: 129, modo: 'subida' }, { idPersonaje: 129, modo: 'perdida' }]);
         expect(hechas).toEqual([129]);
     });
 });

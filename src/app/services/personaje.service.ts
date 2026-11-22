@@ -47,7 +47,7 @@ import { normalizarListasLanzamiento } from './utils/raza-mapper';
 import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toPositiveInt, idNombre, toText } from 'src/app/services/utils/normalizacion';
+import { extraComparable, idNombre, normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toPositiveInt, toText } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoYNivelPersonaje } from './utils/tipo-personaje';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
@@ -716,7 +716,7 @@ export class PersonajeService {
                 const idEspecial = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idEspecial);
                 if (idEspecial <= 0)
                     return null;
-                return { idEspecial, idExtra: Math.max(0, toInt(entrada?.Id_extra ?? entrada?.idExtra)) };
+                return { idEspecial, idExtra: extraComparable(entrada?.Id_extra ?? entrada?.idExtra) };
             })
             .filter((entrada): entrada is { idEspecial: number; idExtra: number; } => !!entrada);
         if (especiales.length > 0)

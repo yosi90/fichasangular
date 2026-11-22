@@ -10,17 +10,18 @@ import {
 import { Personaje } from 'src/app/interfaces/personaje';
 import { normalizarTexto, primerEntero, toInt } from 'src/app/services/utils/normalizacion';
 import { razonesAlineamientoMascota } from 'src/app/services/utils/nivel-clase-monstruo';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
 import {
     AptitudesMascotaDelNivel,
     aptitudesMascotaDelNivel,
     catalogoDeMascotaDesdeMonstruos,
     criaturaDeLaMascota,
     EstadoMascota,
+    evaluarMascotasDelCatalogo,
     filaDelNivel,
     FilaMascotaResuelta,
     filasDeSusListas,
     resolverEstadoMascota,
+    RAZON_MASCOTA_HOMEBREW,
     resolverFilaMascota,
     TextosMascota,
 } from 'src/app/services/utils/mascota-cupos';
@@ -195,44 +196,32 @@ export function filtrarCompanerosElegibles(input: FiltroCompanerosElegiblesInput
 
 /** Si un compañero vale con lo que tiene el personaje y, si no, por qué (su lista, su dote, su nivel, su alineamiento). */
 export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesInput): CompaneroElegibilidadEvaluadaItem[] {
-    const companeros = Array.isArray(input?.companeros) ? input.companeros : [];
     const nivelSeleccionado = Math.max(0, toInt(input?.nivelSeleccionado));
     const dotes = input?.dotesPersonaje ?? new Set<number>();
     const listas = new Set(input?.estado?.listasIds ?? []);
-    const dedupe = new Map<string, CompaneroElegibilidadEvaluadaItem>();
-
-    companeros.forEach((companero) => {
-        const idCompanero = toInt(companero?.Id_companero);
-        if (idCompanero <= 0)
-            return;
-        const resuelta = resolverFilaCompanero(companero, input.estado, dotes);
-        const razones = [...resuelta.razones];
-        if (!input?.incluirHomebrew && companero?.Oficial === false)
-            razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
-        if (resuelta.fila && nivelSeleccionado > 0 && toInt(resuelta.fila.Nivel) !== nivelSeleccionado)
-            razones.push(`No cumple el filtro de nivel ${nivelSeleccionado}.`);
-        razones.push(...razonesAlineamientoMascota(
-            companero?.Alineamientos_requeridos?.Companero ?? [],
-            filasDeSusListas(companero, listas),
-            input?.alineamientoPersonaje ?? '',
-            'compañero'
-        ));
-
-        const evaluacion: CompaneroElegibilidadEvaluadaItem = {
-            companero,
-            elegible: razones.length < 1,
-            razones: Array.from(new Set(razones)),
-            nivelMinimoRequerido: resuelta.nivelMinimo,
-            ajuste: resuelta.ajuste,
-        };
-        const clave = claveCompanero(companero);
-        const previa = dedupe.get(clave);
-        if (!previa || (!previa.elegible && evaluacion.elegible))
-            dedupe.set(clave, evaluacion);
+    return evaluarMascotasDelCatalogo(input?.companeros, {
+        id: (companero) => toInt(companero?.Id_companero),
+        clave: claveCompanero,
+        nombre: (companero) => companero?.Nombre,
+        evaluar: (companero): CompaneroElegibilidadEvaluadaItem => {
+            const resuelta = resolverFilaCompanero(companero, input.estado, dotes);
+            const razones = [...resuelta.razones];
+            if (!input?.incluirHomebrew && companero?.Oficial === false)
+                razones.push(RAZON_MASCOTA_HOMEBREW);
+            if (resuelta.fila && nivelSeleccionado > 0 && toInt(resuelta.fila.Nivel) !== nivelSeleccionado)
+                razones.push(`No cumple el filtro de nivel ${nivelSeleccionado}.`);
+            razones.push(...razonesAlineamientoMascota(
+                companero?.Alineamientos_requeridos?.Companero ?? [],
+                filasDeSusListas(companero, listas),
+                input?.alineamientoPersonaje ?? '',
+                'compañero'
+            ));
+            return {
+                companero, elegible: razones.length < 1, razones: Array.from(new Set(razones)),
+                nivelMinimoRequerido: resuelta.nivelMinimo, ajuste: resuelta.ajuste,
+            };
+        },
     });
-
-    return Array.from(dedupe.values())
-        .sort((a, b) => compararTexto(a?.companero?.Nombre, b?.companero?.Nombre));
 }
 
 /** Los niveles mínimos de las filas con que el personaje puede tener los compañeros que puede elegir (el filtro «Nivel»). */

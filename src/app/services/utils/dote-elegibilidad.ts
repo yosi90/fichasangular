@@ -6,7 +6,7 @@ import {
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from './alineamiento-contrato';
-import { normalizarTexto, primerEntero, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { extraComparable, normalizarTexto, primerEntero, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { ClaseConNivel, DeidadDelPersonaje, EvaluacionPrerrequisito, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararNivelDeClase, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
@@ -857,7 +857,7 @@ export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluac
     const motivos = new MotivosPrerrequisitos();
     const advertencias: string[] = [];
     const prerrequisitos = (dote?.Prerrequisitos ?? {}) as Record<string, any>;
-    const idExtraSeleccionado = Math.max(0, toInt(input?.idExtraSeleccionado));
+    const idExtraSeleccionado = extraComparable(input?.idExtraSeleccionado);
     const extraSeleccionado = `${input?.extraSeleccionado ?? ''}`.trim();
     const idAlineamiento = getAlineamientoBasicoIdPorNombre(ctx.alineamiento);
 

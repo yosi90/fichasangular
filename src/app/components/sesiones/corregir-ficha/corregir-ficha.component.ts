@@ -38,6 +38,7 @@ import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, CambiosCorreccion, DoteDeLaFicha, fichaDeLaCorreccion } from 'src/app/services/utils/correccion-ficha';
 import { comoSaleLaEdadDelManual, motivoEdadFueraDelManual } from 'src/app/services/utils/edad-personaje';
 import { alturaFueraDeRango, pesoFueraDeRango, textoRangoAltura, textoRangoPeso } from 'src/app/services/utils/medidas-raza';
+import { etiquetaDelNivel } from 'src/app/services/utils/niveles-creacion';
 import { toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import {
     claveFuenteHomebrewDe,
@@ -368,7 +369,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             if (!clase || caras < 1 || !daDgEnNivel(clase, toInt(n.nivelClase)))
                 return [];
             const fila = {
-                indice, etiqueta: `nivel ${indice + 1} (${clase.Nombre.toLowerCase()} ${toInt(n.nivelClase)})`, caras,
+                indice, etiqueta: etiquetaDelNivel(indice, clase.Nombre, n.nivelClase), caras,
                 antes: toInt(n.pg?.tirada) > 0 ? toInt(n.pg?.tirada) : null, tirada: toInt(n.pg?.tirada) > 0 ? toInt(n.pg?.tirada) : null,
                 maximo: !!n.pg?.maximo,
             };

@@ -12,17 +12,19 @@ import {
 import { Personaje } from 'src/app/interfaces/personaje';
 import { toInt, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { idPlantillaDeNivel, razonesAlineamientoMascota } from 'src/app/services/utils/nivel-clase-monstruo';
-import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 import {
     AptitudesMascotaDelNivel,
     aptitudesMascotaDelNivel,
     catalogoDeMascotaDesdeMonstruos,
     EstadoMascota,
+    evaluarMascotasDelCatalogo,
     filaDelNivel,
     FilaMascotaResuelta,
     filasDeSusListas,
     filasQueLeValen,
     resolverEstadoMascota,
+    RAZON_MASCOTA_HOMEBREW,
     resolverFilaMascota,
     TextosMascota,
 } from 'src/app/services/utils/mascota-cupos';
@@ -163,41 +165,28 @@ function filasParaElAlineamiento(familiar: FamiliarMonstruoDetalle, estado: Esta
 
 /** Si un familiar vale con lo que tiene el personaje y, si no, por qué (su lista, su dote, el nivel de su amo, su alineamiento). */
 export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesInput): FamiliarElegibilidadEvaluadaItem[] {
-    const familiares = Array.isArray(input?.familiares) ? input.familiares : [];
     const plantillaSeleccionada: FamiliarPlantillaId | null = toPositiveInt(input?.plantillaSeleccionada);
     const dotes = input?.dotesPersonaje ?? new Set<number>();
-    const dedupe = new Map<string, FamiliarElegibilidadEvaluadaItem>();
-
-    familiares.forEach((familiar) => {
-        if (toInt(familiar?.Id_familiar) <= 0)
-            return;
-        if (plantillaSeleccionada !== null && toInt(familiar?.Plantilla?.Id) !== plantillaSeleccionada)
-            return;
-        const resuelta = resolverFilaFamiliar(familiar, input.estado, dotes);
-        const razones = [...resuelta.razones];
-        if (!input?.incluirHomebrew && familiar?.Oficial === false)
-            razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
-        razones.push(...razonesAlineamientoMascota(
-            familiar?.Alineamientos_requeridos?.Familiar ?? [],
-            filasParaElAlineamiento(familiar, input.estado, dotes),
-            input?.alineamientoPersonaje ?? '',
-            'familiar'
-        ));
-
-        const evaluacion: FamiliarElegibilidadEvaluadaItem = {
-            familiar,
-            elegible: razones.length < 1,
-            razones: Array.from(new Set(razones)),
-            nivelMinimoRequerido: resuelta.nivelMinimo,
-        };
-        const clave = claveFamiliar(familiar);
-        const previa = dedupe.get(clave);
-        if (!previa || (!previa.elegible && evaluacion.elegible))
-            dedupe.set(clave, evaluacion);
+    return evaluarMascotasDelCatalogo(input?.familiares, {
+        id: (familiar) => toInt(familiar?.Id_familiar),
+        clave: claveFamiliar,
+        nombre: (familiar) => familiar?.Nombre,
+        evaluar: (familiar): FamiliarElegibilidadEvaluadaItem | null => {
+            if (plantillaSeleccionada !== null && toInt(familiar?.Plantilla?.Id) !== plantillaSeleccionada)
+                return null;
+            const resuelta = resolverFilaFamiliar(familiar, input.estado, dotes);
+            const razones = [...resuelta.razones];
+            if (!input?.incluirHomebrew && familiar?.Oficial === false)
+                razones.push(RAZON_MASCOTA_HOMEBREW);
+            razones.push(...razonesAlineamientoMascota(
+                familiar?.Alineamientos_requeridos?.Familiar ?? [],
+                filasParaElAlineamiento(familiar, input.estado, dotes),
+                input?.alineamientoPersonaje ?? '',
+                'familiar'
+            ));
+            return { familiar, elegible: razones.length < 1, razones: Array.from(new Set(razones)), nivelMinimoRequerido: resuelta.nivelMinimo };
+        },
     });
-
-    return Array.from(dedupe.values())
-        .sort((a, b) => compararTexto(a?.familiar?.Nombre, b?.familiar?.Nombre));
 }
 
 /** Lo que enseña el selector del familiar (`selector-familiar-modal`), del catálogo y del personaje. */

@@ -32,6 +32,30 @@ describe('SelectorEspecialidadMagicaModalComponent', () => {
         expect(cancelada).toHaveBeenCalledTimes(1);
     });
 
+    it('en el reciclaje se abre con lo que ya tiene: su especialista y sus prohibidas, o generalista', () => {
+        component.mostrarArcano = true;
+        component.seleccionInicial = { especialista: 3, prohibidas: [2, 4] };
+        expect(component.arcanoEspecializar).toBeTrue();
+        expect(component.arcanoEscuelaEspecialistaId).toBe(3);
+        expect(component.idsEscuelasProhibidasSeleccionadas).toEqual([2, 4]);
+        expect(component.arcanoValido).toBeTrue();
+
+        const generalista = new SelectorEspecialidadMagicaModalComponent();
+        generalista.escuelas = component.escuelas;
+        generalista.mostrarArcano = true;
+        generalista.seleccionInicial = { especialista: null, prohibidas: [] };
+        expect(generalista.arcanoEspecializar).toBeFalse();
+        expect(generalista.arcanoEscuelaEspecialistaId).toBeNull();
+    });
+
+    it('con escuela fija, la marcada es la suya y conserva sus prohibidas', () => {
+        component.mostrarArcano = true;
+        component.escuelaFija = component.escuelas.find((e) => e.Id === 3)!;
+        component.seleccionInicial = { especialista: 2, prohibidas: [4, 2] };
+        expect(component.arcanoEscuelaEspecialistaId).toBe(3);
+        expect(component.idsEscuelasProhibidasSeleccionadas).toEqual([4, 2]);
+    });
+
     it('arcano permite continuar sin especializarse', () => {
         component.mostrarArcano = true;
         component.arcanoEspecializar = false;

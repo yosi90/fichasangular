@@ -33,7 +33,7 @@ import { motivoRevivirSinConstitucion } from 'src/app/services/utils/vuelta-a-la
  * un nivel negativo permanente, el coste de una plantilla u otra) y un concepto, lo que pierde a la vista (el último nivel
  * que ganó con lo que eligió en él: `fichaSinElNivel`; con un solo DG, al volver a la vida, 2 puntos de Constitución) y
  * confirmar (`POST /personajes/{id}/niveles/perdida`). La subida siguiente vuelve a pedir lo de ese nivel.
- * Se abre desde «Perder un nivel» del historial (`SubidaNivelPuertaService.solicitarPerdida`) en su pestaña. Usa el motor
+ * Se abre desde «Perder un nivel» del historial (`SubidaNivelPuertaService.solicitar(id, 'perdida')`) en su pestaña. Usa el motor
  * de la creación en su propia instancia (`MotorDesdeFichaService`) para el catálogo de clases y el dado de golpe.
  */
 @Component({

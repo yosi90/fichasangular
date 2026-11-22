@@ -5,8 +5,8 @@ import type {
 } from 'src/app/services/nuevo-personaje.service';
 import { extrasElegiblesEspecial } from './aptitudes-clase';
 import { sacarDoteDeLaFicha, sacarPrimero, sinDecisionesDeDotesQueNoTiene } from './correccion-ficha';
-import { esLaEleccion, nivelDelOrden } from './niveles-creacion';
-import { mismoExtra, normalizarTexto, toInt } from './normalizacion';
+import { esLaEleccion, nivelDelOrden, origenDeNivelDeClase } from './niveles-creacion';
+import { extraComparable, mismoExtra, normalizarTexto, toInt } from './normalizacion';
 import { tieneTextoVisible } from './texto-visible';
 
 /*
@@ -152,10 +152,10 @@ function opcionDeFila(fila: FilaDeTablaDeClase, extra?: { id: number; nombre: st
 export function huecosDeRasgo(motor: NuevoPersonajeService, aptitudes: ReadonlyMap<number, EspecialClaseDetalle | null> = new Map()): HuecoDeRasgo[] {
     const pj = motor.PersonajeCreacion;
     const especiales: EspecialQueTiene[] = (pj.Claseas ?? []).map((e) => ({
-        id: toInt(e?.Id), idExtra: Math.max(0, toInt(e?.Id_extra)), nombre: `${e?.Nombre ?? ''}`, extra: `${e?.Extra ?? ''}`, usada: false,
+        id: toInt(e?.Id), idExtra: extraComparable(e?.Id_extra), nombre: `${e?.Nombre ?? ''}`, extra: `${e?.Extra ?? ''}`, usada: false,
     })).filter((e) => e.id > 0);
     const dotes: DoteQueTiene[] = motor.dotesDelPersonaje().map((d) => ({
-        id: toInt(d?.Dote?.Id), idExtra: Math.max(0, toInt(d?.Contexto?.Id_extra)), nombre: `${d?.Dote?.Nombre ?? ''}`,
+        id: toInt(d?.Dote?.Id), idExtra: extraComparable(d?.Contexto?.Id_extra), nombre: `${d?.Dote?.Nombre ?? ''}`,
         extra: toInt(d?.Contexto?.Id_extra) > 0 ? `${d?.Contexto?.Extra ?? ''}` : '', origen: `${(d?.Contexto as any)?.Origen ?? ''}`, usada: false,
     })).filter((d) => d.id > 0);
     const orden = pj.Orden_niveles ?? [];
@@ -170,7 +170,7 @@ export function huecosDeRasgo(motor: NuevoPersonajeService, aptitudes: ReadonlyM
             const filas = motor.filasDeLaTablaDeClase(clase, n);
             const indice = orden.findIndex((o) => toInt(o?.idClase) === idClase && toInt(o?.nivelClase) === n);
             const base = { idClase, clase: `${clase.Nombre}`, nivelClase: n, indiceNivel: indice >= 0 ? indice : null };
-            const origenDeNivel = `${clase.Nombre} nivel ${n}`;
+            const origenDeNivel = origenDeNivelDeClase(clase.Nombre, n);
             const origenDeAptitud = normalizarTexto(motor.origenDeLaDoteDeAptitud(origenDeNivel));
             const conOrigen = (d: DoteQueTiene, origen: string) => normalizarTexto(d.origen) === normalizarTexto(origen);
             const conOrigenDeAptitud = (d: DoteQueTiene) => normalizarTexto(d.origen) === origenDeAptitud
@@ -374,12 +374,12 @@ export function derivadasDelCambio(motor: NuevoPersonajeService, hueco: HuecoDeR
     const dotes = motor.dotesDelPersonaje();
     const usadas = new Set<number>();
     const claseas = motor.PersonajeCreacion.Claseas ?? [];
-    const canonico = (nivelClase: number) => `${hueco.clase} nivel ${nivelClase}`;
+    const canonico = (nivelClase: number) => origenDeNivelDeClase(hueco.clase, nivelClase);
     /** Lo que tiene de esa fila: la dote (la del origen de su nivel, si la hay) o la aptitud; `null` si no la tiene. */
     const loQueTiene = ({ nivelClase, fila }: FilaConNivel): { id: number; idExtra: number; origen?: string; } | null => {
         if (fila.tipo === 'especial') {
             const aptitud = claseas.find((e) => toInt(e?.Id) === fila.id && (fila.elegir ? toInt(e?.Id_extra) > 0 : mismoExtra(toInt(e?.Id_extra), fila.idExtra)));
-            return aptitud ? { id: fila.id, idExtra: Math.max(0, toInt(aptitud.Id_extra)) } : null;
+            return aptitud ? { id: fila.id, idExtra: extraComparable(aptitud.Id_extra) } : null;
         }
         const candidatas = dotes.map((d, i) => ({ d, i })).filter(({ d, i }) => !usadas.has(i) && toInt(d?.Dote?.Id) === fila.id
             && (fila.idExtra <= 0 || mismoExtra(toInt(d?.Contexto?.Id_extra), fila.idExtra)));
@@ -387,7 +387,7 @@ export function derivadasDelCambio(motor: NuevoPersonajeService, hueco: HuecoDeR
         if (!elegida)
             return null;
         usadas.add(elegida.i);
-        return { id: fila.id, idExtra: Math.max(0, toInt(elegida.d?.Contexto?.Id_extra)), origen: `${(elegida.d?.Contexto as any)?.Origen ?? ''}` };
+        return { id: fila.id, idExtra: extraComparable(elegida.d?.Contexto?.Id_extra), origen: `${(elegida.d?.Contexto as any)?.Origen ?? ''}` };
     };
     const laDaOtraFila = (f: FilaDeTablaDeClase) => filas.some((x) => !involucradas.has(x) && x.fila.tipo === 'especial' && x.fila.grupo === 0
         && !esDerivada(x.fila) && x.fila.id === f.id && mismoExtra(x.fila.idExtra, f.idExtra));
@@ -445,7 +445,7 @@ export function cambiosDelRasgo(motor: NuevoPersonajeService, hueco: HuecoDeRasg
     if (pone.dote)
         cambios.push({
             nivelClase: n, tipo: 'dote', derivado: false, quita: null,
-            pone: { ...pone.dote, origen: `${hueco.clase} nivel ${n}`, idInterno: pone.idInterno },
+            pone: { ...pone.dote, origen: origenDeNivelDeClase(hueco.clase, n), idInterno: pone.idInterno },
             nombreQuita: '', nombrePone: nombreConExtra(pone.dote),
         });
     return [...cambios, ...derivadasDelCambio(motor, hueco, pone)];
@@ -453,7 +453,7 @@ export function cambiosDelRasgo(motor: NuevoPersonajeService, hueco: HuecoDeRasg
 
 /** El origen de la dote que se elige con la aptitud nueva: el de la que tenía con la misma aptitud o el de la creación. */
 export function origenDeLaDoteNueva(motor: NuevoPersonajeService, hueco: HuecoDeRasgo): string {
-    return hueco.tiene.daDote && hueco.doteQueTiene ? hueco.doteQueTiene.origen : motor.origenDeLaDoteDeAptitud(`${hueco.clase} nivel ${hueco.nivelClase}`);
+    return hueco.tiene.daDote && hueco.doteQueTiene ? hueco.doteQueTiene.origen : motor.origenDeLaDoteDeAptitud(origenDeNivelDeClase(hueco.clase, hueco.nivelClase));
 }
 
 /**
@@ -477,7 +477,7 @@ export function huecoDeLaDoteDelRasgo(motor: NuevoPersonajeService, hueco: Hueco
     if (!pone.daDote || !motor.aplicarCambiosDeRasgo(hueco.idClase, cambios))
         return null;
     const pendiente = motor.registrarDotePendienteDeAptitud({
-        origen: `${hueco.clase} nivel ${hueco.nivelClase}`, tipoPermitido: pone.daDote.tipo,
+        origen: origenDeNivelDeClase(hueco.clase, hueco.nivelClase), tipoPermitido: pone.daDote.tipo,
         nivel: { idClase: hueco.idClase, nivelClase: hueco.nivelClase }, alNivel: hueco.indiceNivel, origenFijo: origenDeLaDoteNueva(motor, hueco),
     });
     const candidatos = candidatasEnLugarDe(motor.obtenerCandidatosDotePendiente(pendiente.id), hueco.tiene.daDote ? hueco.doteQueTiene : null);
@@ -524,7 +524,7 @@ export function fichaConElRasgo(entrada: PersonajeCreateRequestDto, plan: PlanRa
             sacarPrimero(elecciones, (e) => esLaEleccion(e, c.tipo, c.quita!.id, c.quita!.idExtra));
         }
         if (c.pone) {
-            const idExtra = Math.max(0, toInt(c.pone.idExtra));
+            const idExtra = extraComparable(c.pone.idExtra);
             if (c.tipo === 'especial' && !especiales.some((x) => toInt(x?.idEspecial) === c.pone!.id && mismoExtra(toInt(x?.idExtra), idExtra)))
                 especiales.push({ idEspecial: c.pone.id, idExtra });
             if (c.tipo === 'dote')
@@ -546,7 +546,7 @@ export function huecoDelCuerpo(hueco: HuecoDeRasgo): { idClase: number; nivelCla
 
 /** Lo que tiene y lo que pone, como en el contrato: `{ especial: { id, idExtra } | null, dote: { id, idExtra } | null }`. */
 export function opcionesDelCuerpo(plan: PlanRasgo) {
-    const ref = (e: ElementoDeRasgo | null | undefined) => e ? { id: e.id, idExtra: Math.max(0, toInt(e.idExtra)) } : null;
+    const ref = (e: ElementoDeRasgo | null | undefined) => e ? { id: e.id, idExtra: extraComparable(e.idExtra) } : null;
     const { hueco, pone } = plan;
     return {
         quita: { especial: ref(hueco.tiene.especial), dote: ref(hueco.tiene.dote || hueco.tiene.daDote ? hueco.doteQueTiene : null) },

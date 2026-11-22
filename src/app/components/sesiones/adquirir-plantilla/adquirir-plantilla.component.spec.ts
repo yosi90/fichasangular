@@ -86,6 +86,23 @@ describe('AdquirirPlantillaComponent (adquirir una plantilla, fase 7)', () => {
         expect(bloqueada.motivo).toContain('no se pueden saltar sus requisitos');
     });
 
+    it('tira los DG de la plantilla con el dado sin sesgo de la web (`tirarDado`), no con `Math.random`', async () => {
+        const componente: any = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+        spyOn(componente, 'calcularPg');
+        spyOnProperty(componente, 'dgsNuevos').and.returnValue(2);
+        spyOnProperty(componente, 'carasNuevos').and.returnValue(8);
+        const azar = spyOn(Math, 'random').and.returnValue(0);
+        spyOn(crypto, 'getRandomValues').and.callFake(<T extends ArrayBufferView | null>(destino: T): T => {
+            (destino as unknown as Uint32Array)[0] = 2;
+            return destino;
+        });
+        componente.tiradasPermitidas = 1;
+        componente.tiradas = [];
+        componente.tirar();
+        expect(componente.tiradas).toEqual([[3, 3]]);
+        expect(azar).not.toHaveBeenCalled();
+    });
+
     it('la cabecera dice qué hace y sus PX con su NEP', async () => {
         await crear({ experiencia: experiencia({ sesionAbierta: null }) });
         const texto = fixture.nativeElement.querySelector('.subida__cabecera')?.textContent ?? '';

@@ -12,6 +12,7 @@ import { DecisionHomebrew } from './personaje-oficialidad';
 import { experienciaParaNivel } from './experiencia-nivel';
 import { formatoPx } from './sesiones-texto';
 import { fichaConLoDelMotor, SE_CONSERVAN_PERSONAJE } from './subida-nivel';
+import { tieneTextoVisible } from './texto-visible';
 
 /*
  * Adquirir una plantilla con el personaje ya creado (roadmap de sesiones, fase 7; guía `docs/publica/SESIONES_FRONT.md`,
@@ -196,7 +197,7 @@ export function filasDeCaracteristicas(antes: Personaje, despues: Personaje, por
 export function nombresDeDotes(pj: Personaje): string[] {
     return (pj?.DotesContextuales ?? []).map((d) => {
         const extra = `${d?.Contexto?.Extra ?? ''}`.trim();
-        return `${d?.Dote?.Nombre ?? ''}`.trim() + (extra && extra !== 'No aplica' ? ` (${extra})` : '');
+        return `${d?.Dote?.Nombre ?? ''}`.trim() + (tieneTextoVisible(extra) ? ` (${extra})` : '');
     }).filter((n) => n.length > 0);
 }
 

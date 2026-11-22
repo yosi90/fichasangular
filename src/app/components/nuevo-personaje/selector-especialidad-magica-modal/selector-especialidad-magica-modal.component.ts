@@ -53,6 +53,20 @@ export class SelectorEspecialidadMagicaModalComponent {
     private escuelaFijaActual: EscuelaConjuros | null = null;
 
     /**
+     * Lo que ya tiene (el reciclaje de la escuela en la subida de nivel): se abre con su especialista y sus prohibidas
+     * marcadas; `especialista: null`, generalista. Va después de `escuelas` y `escuelaFija` (con escuela fija, manda ella).
+     */
+    @Input() set seleccionInicial(inicial: { especialista: number | null; prohibidas: number[]; } | null) {
+        if (!inicial)
+            return;
+        const especialista = this.escuelaFijaActual ? this.toPositiveId(this.escuelaFijaActual.Id) : this.toPositiveId(inicial.especialista);
+        this.arcanoEspecializar = especialista > 0;
+        this.arcanoEscuelaEspecialistaId = especialista > 0 ? especialista : null;
+        this.arcanoEscuelasProhibidasIds = (inicial.prohibidas ?? []).map((id) => this.toPositiveId(id)).filter((id) => id > 0);
+        this.reconciliarEscuelasProhibidas();
+    }
+
+    /**
      * Si se puede cerrar sin elegir (el reciclaje de la escuela en la subida de nivel; al crear, la especialización es
      * obligatoria): con «Cancelar», la cruz y el fondo, que emiten `cancelar`.
      */

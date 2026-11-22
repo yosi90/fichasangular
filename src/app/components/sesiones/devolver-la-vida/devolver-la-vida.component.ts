@@ -34,7 +34,7 @@ import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/serv
 import { daDgEnNivel, daDotePorNivelDePersonaje, daIncrementoPorNivelDePersonaje, dgsDeClase } from 'src/app/services/utils/clase-niveles';
 import { caracteristicaDelAlta } from 'src/app/services/utils/correccion-ficha';
 import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from 'src/app/services/utils/habilidad-extra-visible';
-import { toInt } from 'src/app/services/utils/normalizacion';
+import { claveDeDote, extraComparable, toInt } from 'src/app/services/utils/normalizacion';
 import { limiteRangosHabilidad } from 'src/app/services/utils/puntos-habilidad';
 import { clasesQueDejanDeCumplir, razonesDeSusClases } from 'src/app/services/utils/reciclaje';
 import {
@@ -49,7 +49,7 @@ import { diferencia, fichaDeLaSubida, modConstitucionDeEntrada, pgTrasCambioDeCo
 import { cambiosDeLaSubida } from 'src/app/services/utils/subida-nivel-vista';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
-import { apartarLoDelPrimerNivel, origenDotePorNivelDePersonaje } from 'src/app/services/utils/niveles-creacion';
+import { apartarLoDelPrimerNivel, etiquetaDelNivel, origenDotePorNivelDePersonaje } from 'src/app/services/utils/niveles-creacion';
 import { campanaDejaSaltarAlineamiento } from 'src/app/services/utils/politica-campana';
 import {
     cambiosDeLaVuelta, claveDelNivel, conLaConstitucionDeVuelta, dgsAntesDeSusNiveles, eleccionesApuntadas, esClaseParaVolverSinDg,
@@ -139,7 +139,7 @@ interface Renumeracion {
  * niveles de otra clase después (y su orden conocido), se renumeran (`renumerar`): lo que sobra se pierde y lo que falta (el
  * incremento, la dote y los puntos que vuelven o los ×4 de su primer DG) se elige con los pasos de la subida. Lo que no se
  * puede (los `409` del contrato) se enseña deshabilitado, con su porqué. Se abre desde «Devolver la vida» del historial
- * (`SubidaNivelPuertaService.solicitarVuelta`) en su pestaña.
+ * (`SubidaNivelPuertaService.solicitar(id, 'vuelta')`) en su pestaña.
  */
 @Component({
     selector: 'app-devolver-la-vida',
@@ -634,7 +634,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
 
     /** Las dotes, con el motor de ahora: las que se quedan sin un prerrequisito (`marcar`) y las que lo vuelven a cumplir. */
     private dotesVueltasAEvaluar(rotasAntes: SinLaClaseDeMonstruo['rotasAntes']) {
-        const clave = (d: { idDote: unknown; idExtra: unknown; }) => `${toInt(d.idDote)}|${Math.max(0, toInt(d.idExtra))}`;
+        const clave = (d: { idDote: unknown; idExtra: unknown; }) => claveDeDote(d.idDote, d.idExtra);
         const rotas = this.svc.dotesSinSusPrerrequisitos();
         const rotasAntesClaves = new Set(rotasAntes.map(clave));
         const marcar = rotas.filter((d) => !rotasAntesClaves.has(clave(d)));
@@ -708,7 +708,7 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         if (sobraDote) {
             const e = sobraDote.eleccion;
             const idDote = toInt(e.idElemento);
-            const idExtra = Math.max(0, toInt(e.idExtra));
+            const idExtra = extraComparable(e.idExtra);
             resumen.dotePerdida = nombres.dote(idDote, idExtra);
             ficha.personaje.puntosGolpe = Math.max(0, toInt(ficha.personaje.puntosGolpe) - svc.pgQueDanLasDotes([{ idDote }], dgs));
             if (!svc.quitarDoteDeLaFicha(idDote, idExtra, `${e.origen ?? ''}`))
@@ -799,11 +799,10 @@ export class DevolverLaVidaComponent implements OnInit, OnDestroy {
         return this.paso === 'resumen';
     }
 
-    /** Un nivel de la ficha para enseñarlo: «guerrero 1». */
+    /** Un nivel de la ficha para enseñarlo: «nivel 1 (guerrero 1)» (`etiquetaDelNivel`, la de toda la web). */
     private etiquetaDelNivel(ficha: PersonajeCreateRequestDto, indice: number): string {
         const nivel = ficha.niveles?.[indice];
-        const nombre = this.svc.claseDelCatalogo(toInt(nivel?.idClase))?.Nombre ?? `Clase ${toInt(nivel?.idClase)}`;
-        return `${nombre.toLowerCase()} ${toInt(nivel?.nivelClase)}`;
+        return etiquetaDelNivel(indice, this.svc.claseDelCatalogo(toInt(nivel?.idClase))?.Nombre, nivel?.nivelClase);
     }
 
     /** La ficha sin esa elección en su nivel (la dote o el incremento que sobra). */
