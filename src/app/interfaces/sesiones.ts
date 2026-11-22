@@ -146,7 +146,10 @@ export interface SesionConFicha {
     mascotasPerdidas?: MascotaPerdida[];
 }
 
+/** Las dos mascotas, como en el contrato: la de los eventos de la mascota y la del hueco del reciclaje (`hueco.mascota`). */
 export type TipoDeMascota = 'companero' | 'familiar';
+/** Las dos, en su orden (el compañero animal y el familiar). */
+export const TIPOS_DE_MASCOTA: readonly TipoDeMascota[] = ['companero', 'familiar'];
 export type CausaMascotaPerdida = 'muerte' | 'liberacion' | 'abandono';
 export type SalvacionMascota = 'superada' | 'fallada';
 
@@ -202,7 +205,7 @@ export type ReciclajeSubidaDto =
     /** La escuela del mago (R3, segunda tanda): la especialización y las prohibidas juntas; `especialista: null`, generalista. */
     | { tipo: 'rasgo'; hueco: { idClase: number; escuela: true; }; quita: { escuela: EscuelaRasgoDto; }; pone: { escuela: EscuelaRasgoDto; }; }
     /** La mascota (R3, tercera tanda): el compañero animal o el familiar, otra criatura de la misma elección. */
-    | { tipo: 'rasgo'; hueco: { idClase: number; mascota: 'companero' | 'familiar'; }; quita: { mascota: MascotaRasgoDto; }; pone: { mascota: MascotaRasgoDto; }; };
+    | { tipo: 'rasgo'; hueco: { idClase: number; mascota: TipoDeMascota; }; quita: { mascota: MascotaRasgoDto; }; pone: { mascota: MascotaRasgoDto; }; };
 
 /** La criatura de la mascota en el reciclaje: su monstruo y su plantilla (sin plantilla, 0). */
 export interface MascotaRasgoDto {

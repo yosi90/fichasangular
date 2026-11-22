@@ -8,7 +8,7 @@ import { TiendaSesionComponent } from 'src/app/components/sesiones/tienda-sesion
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
-import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraRequestDto, PersonajeEquipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import {
@@ -23,9 +23,12 @@ import {
     RespuestaSesion,
     SesionEvento,
     SesionPersonaje,
+    TIPOS_DE_MASCOTA,
     TipoDeMascota,
 } from 'src/app/interfaces/sesiones';
-import { fuentesDeLaMascota, mascotaDeLaFicha, puedeObtenerLaMascota, TEXTOS_MASCOTA } from 'src/app/services/utils/mascota-sesion';
+import {
+    fuentesDeLaMascota, mascotaDeLaFicha, nombrePropioDeLaMascota, puedeObtenerLaMascota, TEXTOS_MASCOTA,
+} from 'src/app/services/utils/mascota-sesion';
 import { Truco } from 'src/app/interfaces/truco';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
@@ -393,23 +396,17 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         return (this.pj?.Companeros ?? [])[0] ?? null;
     }
 
-    get familiar(): FamiliarMonstruoDetalle | null {
-        return (this.pj?.Familiares ?? [])[0] ?? null;
-    }
-
     // La mascota fuera del reciclaje (contrato: personajes.md, «La mascota fuera del reciclaje»)
 
     /** Las mascotas que tiene (activas o inactivas: las dos se pueden perder). */
     get mascotasQueTiene(): Array<{ mascota: TipoDeMascota; nombre: string; }> {
-        return (['companero', 'familiar'] as const)
-            .map((mascota) => ({ mascota, criatura: mascotaDeLaFicha(this.pj, mascota) }))
-            .filter((m) => !!m.criatura)
-            .map((m) => ({ mascota: m.mascota, nombre: `${m.criatura?.Nombre ?? ''}`.trim() || TEXTOS_MASCOTA[m.mascota].queConArticulo }));
+        return TIPOS_DE_MASCOTA.filter((mascota) => !!mascotaDeLaFicha(this.pj, mascota))
+            .map((mascota) => ({ mascota, nombre: nombrePropioDeLaMascota(this.pj, mascota) }));
     }
 
     /** Las que puede obtener ahora: el hueco vacío y una clase que se la dé. */
     get mascotasQuePuedeObtener(): TipoDeMascota[] {
-        return (['companero', 'familiar'] as const).filter((m) => puedeObtenerLaMascota(this.pj, this.clases, m));
+        return TIPOS_DE_MASCOTA.filter((m) => puedeObtenerLaMascota(this.pj, this.clases, m));
     }
 
     /** Las que murieron y se les puede devolver la vida (`revivible`). */
@@ -424,7 +421,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
 
     /** Si alguna clase le da una mascota (para ofrecer «Su mascota» aunque aún no sepa si alguna murió). */
     private get tieneFuenteDeMascota(): boolean {
-        return (['companero', 'familiar'] as const).some((m) => fuentesDeLaMascota(this.pj, this.clases, m).length > 0);
+        return TIPOS_DE_MASCOTA.some((m) => fuentesDeLaMascota(this.pj, this.clases, m).length > 0);
     }
 
     pedirPerderMascota(mascota: TipoDeMascota): void {

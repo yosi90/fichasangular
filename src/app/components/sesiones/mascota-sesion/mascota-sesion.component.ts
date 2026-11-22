@@ -26,14 +26,15 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
-import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { AccionMascota, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDotePorNivelDePersonaje } from 'src/app/services/utils/clase-niveles';
 import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos, entradasDelSelectorCompanero } from 'src/app/services/utils/companero-reglas';
 import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos, entradasDelSelectorFamiliar } from 'src/app/services/utils/familiar-reglas';
 import { FilaDeLaMascota, filasDeLasMascotas } from 'src/app/services/utils/mascota-al-dia';
 import {
     CAUSAS_DE_PERDER, costeDeLaMascota, CosteDeLaMascotaEnLaSesion, fichaSinLaMascota, fortalezaDelPersonaje, fuentesDeLaMascota,
-    leBajaUnNivel, mascotaDeLaFicha, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA, tirarFortaleza,
+    leBajaUnNivel, mascotaDeLaFicha, nombrePropioDeLaMascota, perdidaDeLaMascota, pxTrasPerderLaMascota, TEXTOS_MASCOTA,
+    TextosMascotaEnLaSesion, tirarFortaleza,
 } from 'src/app/services/utils/mascota-sesion';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
@@ -43,7 +44,6 @@ import {
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 
-export type AccionMascota = 'perder' | 'obtener';
 type PasoObtener = 'inicio' | 'rangos' | 'resumen';
 
 /**
@@ -129,7 +129,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
         this.selectores.cerrar();
     }
 
-    get textos(): { que: string; queConArticulo: string; } {
+    get textos(): TextosMascotaEnLaSesion {
         return TEXTOS_MASCOTA[this.mascota];
     }
 
@@ -142,13 +142,12 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
     }
 
     get nombreDeLaMascota(): string {
-        const m = this.laMascota;
-        return `${m?.Nombre ?? ''}`.trim() || this.textos.queConArticulo;
+        return nombrePropioDeLaMascota(this.pj, this.mascota);
     }
 
     get titulo(): string {
         if (this.accion === 'obtener')
-            return this.mascota === 'companero' ? 'Llamar a un compañero animal' : 'Obtener un familiar';
+            return this.textos.obtener;
         return this.mascota === 'companero' ? 'Perder el compañero animal' : 'Perder el familiar';
     }
 
@@ -230,7 +229,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
                     ? `Ya tiene un compañero animal, «${this.nombreDeLaMascota}»: para llamar a otro, libéralo antes (Manual del jugador, pág. 35).`
                     : `Ya tiene un familiar, «${this.nombreDeLaMascota}»: para tener otro, abandónalo antes (Manual del jugador, pág. 45).`);
             } else if (this.cupos() < 1) {
-                throw new Error(`Ninguna de sus clases le da ahora ${this.mascota === 'companero' ? 'un compañero animal' : 'un familiar'}.`);
+                throw new Error(`Ninguna de sus clases le da ahora un ${this.textos.que}.`);
             }
         } catch (error: any) {
             this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido preparar la ficha.';
@@ -281,7 +280,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
         if (!entrada || !this.laMascota)
             return;
         const filas: FilaPerdida[] = [{
-            que: this.mascota === 'companero' ? 'Compañero animal' : 'Familiar',
+            que: this.textos.etiqueta,
             antes: this.nombreDeLaMascota,
             ahora: this.causa === 'liberacion' ? 'Liberado' : this.causa === 'abandono' ? 'Abandonado' : 'Muerto',
         }];
@@ -409,7 +408,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
             };
         };
         const seleccion = await this.selectores.abrir<SelectorCompaneroConfirmacion>(SelectorCompaneroModalComponent, {
-            titulo: 'Llamar a un compañero animal', cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), nombreCompanero: '', ...entradas(),
+            titulo: TEXTOS_MASCOTA.companero.obtener, cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), nombreCompanero: '', ...entradas(),
         }, ['confirmar'], ['omitir'], {}, {
             incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
             nivelChange: (valor: number | null) => { nivel = valor; return entradas(); },
@@ -440,7 +439,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
             };
         };
         const seleccion = await this.selectores.abrir<SelectorFamiliarConfirmacion>(SelectorFamiliarModalComponent, {
-            titulo: 'Obtener un familiar', cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), nombreFamiliar: '', ...entradas(),
+            titulo: TEXTOS_MASCOTA.familiar.obtener, cuposDisponibles: Math.max(0, toInt(estado.cuposDisponibles)), nombreFamiliar: '', ...entradas(),
         }, ['confirmar'], ['omitir'], {}, {
             incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
             plantillaChange: (valor: number | null) => { plantilla = valor === null || valor === undefined ? null : toInt(valor) || null; return entradas(); },

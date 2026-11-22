@@ -3,7 +3,9 @@ import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from 'src/app/inter
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { CausaMascotaPerdida, MascotaPerdida, SalvacionMascota, TipoDeMascota } from 'src/app/interfaces/sesiones';
+import { TEXTOS_COMPANERO } from './companero-reglas';
 import { nivelPorExperiencia } from './experiencia-nivel';
+import { TEXTOS_FAMILIAR } from './familiar-reglas';
 import { FuenteMascota, fuentesMascota } from './mascota-cupos';
 import { toInt } from './normalizacion';
 import { totalesPersonaje } from './personaje-totales';
@@ -15,10 +17,22 @@ import { totalesPersonaje } from './personaje-totales';
  * apunta. Lo que cuesta sale de la aptitud que la da (`Mascota` del nivel de la clase).
  */
 
-/** Los nombres de cada mascota en las frases de la web. */
-export const TEXTOS_MASCOTA: Record<TipoDeMascota, { que: string; queConArticulo: string; }> = {
-    companero: { que: 'compañero animal', queConArticulo: 'el compañero animal' },
-    familiar: { que: 'familiar', queConArticulo: 'el familiar' },
+/** Los textos de cada mascota en la web: su nombre (el de la creación, `TEXTOS_COMPANERO` y `TEXTOS_FAMILIAR`), con artículo y
+ * en mayúscula, y la acción de obtener otra (el compañero se llama; el familiar se obtiene). */
+export interface TextosMascotaEnLaSesion {
+    que: string;
+    queConArticulo: string;
+    etiqueta: string;
+    obtener: string;
+}
+
+function textosDe(que: string, obtener: string): TextosMascotaEnLaSesion {
+    return { que, queConArticulo: `el ${que}`, etiqueta: que.charAt(0).toUpperCase() + que.slice(1), obtener };
+}
+
+export const TEXTOS_MASCOTA: Record<TipoDeMascota, TextosMascotaEnLaSesion> = {
+    companero: textosDe(TEXTOS_COMPANERO.mascota, `Llamar a un ${TEXTOS_COMPANERO.mascota}`),
+    familiar: textosDe(TEXTOS_FAMILIAR.mascota, `Obtener un ${TEXTOS_FAMILIAR.mascota}`),
 };
 
 /** Las causas de perder cada mascota, con su texto (MJ pág. 35: se libera al compañero; pág. 45: se abandona al familiar). */
@@ -30,6 +44,11 @@ export const CAUSAS_DE_PERDER: Record<TipoDeMascota, ReadonlyArray<{ valor: Caus
 /** La mascota de la ficha de ese tipo (activa o inactiva: las dos ocupan el hueco), o `null`. */
 export function mascotaDeLaFicha(pj: Personaje | null | undefined, mascota: TipoDeMascota): CompaneroMonstruoDetalle | FamiliarMonstruoDetalle | null {
     return (mascota === 'companero' ? pj?.Companeros?.[0] : pj?.Familiares?.[0]) ?? null;
+}
+
+/** El nombre de la mascota de la ficha de ese tipo («Ceniza»; sin él, «el familiar»). */
+export function nombrePropioDeLaMascota(pj: Personaje | null | undefined, mascota: TipoDeMascota): string {
+    return `${mascotaDeLaFicha(pj, mascota)?.Nombre ?? ''}`.trim() || TEXTOS_MASCOTA[mascota].queConArticulo;
 }
 
 /** Las clases del personaje que le dan esa mascota ahora (sin las de una ex clase que perdió la aptitud). */

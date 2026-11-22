@@ -36,6 +36,7 @@ import {
     RespuestaVuelta,
     CausaMascotaPerdida,
     MascotaPerdida,
+    TIPOS_DE_MASCOTA,
     TipoDeMascota,
 } from 'src/app/interfaces/sesiones';
 import { environment } from 'src/environments/environment';
@@ -63,7 +64,7 @@ const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'mascota_revivida', 'nota',
 ]);
 
-const MASCOTAS: ReadonlySet<string> = new Set<TipoDeMascota>(['companero', 'familiar']);
+const MASCOTAS: ReadonlySet<string> = new Set<string>(TIPOS_DE_MASCOTA);
 const CAUSAS_MASCOTA: ReadonlySet<string> = new Set<CausaMascotaPerdida>(['muerte', 'liberacion', 'abandono']);
 
 /** `mascotasPerdidas` de `GET …/sesiones/{numero}` (contrato, «La mascota fuera del reciclaje»); sin ella, vacía. */

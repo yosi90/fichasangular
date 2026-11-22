@@ -30,7 +30,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { ExperienciaPersonaje, NivelPerdido, SesionPersonaje } from 'src/app/interfaces/sesiones';
+import { ExperienciaPersonaje, NivelPerdido, SesionPersonaje, TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { CampanaService } from 'src/app/services/campana.service';
 import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
@@ -93,7 +93,7 @@ import {
 } from 'src/app/services/utils/reciclaje-mascota';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { cambiosDeLasMascotas, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
-import { sinMascotaNueva } from 'src/app/services/utils/mascota-sesion';
+import { sinMascotaNueva, TEXTOS_MASCOTA } from 'src/app/services/utils/mascota-sesion';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
@@ -1155,7 +1155,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
      * La mascota que le da ahora una clase con el hueco vacío (el explorador que llega a 4.º, el mago nuevo): la subida no la
      * trae (contrato, «La mascota fuera del reciclaje»: `400 subida_cambio_no_permitido`), se obtiene después con «Obtener».
      */
-    private mascotaQuePuedeObtener(): 'companero' | 'familiar' | null {
+    private mascotaQuePuedeObtener(): TipoDeMascota | null {
         if (!this.antes?.companero && toInt(this.svc.getEstadoCuposCompanero().cuposDisponibles) > 0)
             return 'companero';
         if (!this.antes?.familiar && toInt(this.svc.getEstadoCuposFamiliar().cuposDisponibles) > 0)
@@ -1163,13 +1163,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         return null;
     }
 
-    private async ofrecerObtenerLaMascota(mascota: 'companero' | 'familiar'): Promise<void> {
+    private async ofrecerObtenerLaMascota(mascota: TipoDeMascota): Promise<void> {
         const r = await Swal.fire({
             icon: 'info', title: mascota === 'companero' ? 'Puede tener un compañero animal' : 'Puede tener un familiar',
             text: mascota === 'companero'
                 ? 'Con este nivel le toca un compañero animal: se llama con una ceremonia de 24 horas de oración (Manual del jugador, pág. 35).'
                 : 'Con este nivel puede tener un familiar: cuesta 24 horas y sus po (Manual del jugador, pág. 45).',
-            showCancelButton: true, confirmButtonText: mascota === 'companero' ? 'Llamar a un compañero animal' : 'Obtener un familiar',
+            showCancelButton: true, confirmButtonText: TEXTOS_MASCOTA[mascota].obtener,
             cancelButtonText: 'Ahora no', target: document.body, heightAuto: false, scrollbarPadding: false,
         });
         if (r.isConfirmed)

@@ -294,7 +294,7 @@
                                     }
                                     @for (m of mascotasQuePuedeObtener; track m) {
                                         <button type="button" class="sesion__tipo-boton" (click)="pedirObtenerMascota(m)">
-                                            {{m === 'companero' ? 'Llamar a un compañero animal' : 'Obtener un familiar'}}
+                                            {{textosMascota[m].obtener}}
                                         </button>
                                     }
                                 </div>
@@ -306,7 +306,7 @@
                                             <li>
                                                 <button type="button" class="sesion__conjuro" [attr.aria-pressed]="mascotaRevivir === m.mascota" (click)="elegirRevivir(m.mascota)">
                                                     <span>Devolverle la vida a {{m.nombre || textosMascota[m.mascota].queConArticulo}}</span>
-                                                    <span class="sesion__conjuro-dato">{{m.mascota === 'companero' ? 'Compañero animal' : 'Familiar'}}, sin perder nivel ni Constitución</span>
+                                                    <span class="sesion__conjuro-dato">{{textosMascota[m.mascota].etiqueta}}, sin perder nivel ni Constitución</span>
                                                 </button>
                                             </li>
                                         }
