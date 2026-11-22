@@ -5,17 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
-import {
-    SelectorCompaneroConfirmacion, SelectorCompaneroModalComponent,
-} from 'src/app/components/nuevo-personaje/selector-companero-modal/selector-companero-modal.component';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import {
     SelectorEspecialidadMagicaConfirmacion, SelectorEspecialidadMagicaModalComponent,
 } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
-import {
-    SelectorFamiliarConfirmacion, SelectorFamiliarModalComponent,
-} from 'src/app/components/nuevo-personaje/selector-familiar-modal/selector-familiar-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
+import { elegirCompaneroEnElSelector, elegirFamiliarEnElSelector, MascotaElegida } from 'src/app/components/sesiones/selector-de-mascota';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { ClasesDelNivelComponent } from 'src/app/components/sesiones/clases-del-nivel/clases-del-nivel.component';
 import { ConjurosDelNivelComponent, nombreDeConjuro } from 'src/app/components/sesiones/conjuros-del-nivel/conjuros-del-nivel.component';
@@ -45,8 +40,8 @@ import {
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
-import { claveCompanero, construirCatalogoCompanerosDesdeMonstruos } from 'src/app/services/utils/companero-reglas';
-import { claveFamiliar, construirCatalogoFamiliaresDesdeMonstruos } from 'src/app/services/utils/familiar-reglas';
+import { construirCatalogoCompanerosDesdeMonstruos } from 'src/app/services/utils/companero-reglas';
+import { construirCatalogoFamiliaresDesdeMonstruos } from 'src/app/services/utils/familiar-reglas';
 import { mismoExtra, toInt } from 'src/app/services/utils/normalizacion';
 import { dotesQueVuelvenACumplir, marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
@@ -662,50 +657,25 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     /** El compañero que entra, del selector del compañero de la creación (con sus filtros); `null` si se cancela. */
-    private async otroCompanero(hueco: HuecoDeMascota): Promise<{ criatura: CriaturaDeMascota; nombre: string; } | null> {
+    private async otroCompanero(hueco: HuecoDeMascota): Promise<MascotaElegida<CriaturaDeMascota> | null> {
         const catalogo = this.catalogosMascotas.companeros ?? [];
-        let homebrew = this.homebrewDelSelector;
-        let nivel: number | null = null;
-        const entradas = () => {
-            const e = entradasDelCompaneroReciclado(this.svc, hueco, catalogo, { incluirHomebrew: this.conHomebrew && homebrew, nivelSeleccionado: nivel });
-            nivel = e.nivelSeleccionado;
-            return {
-                companerosElegibles: e.elegibles, companerosBloqueados: e.bloqueados, nivelesRequeridos: e.nivelesRequeridos, ajustes: e.ajustes,
-                nivelesDisponibles: e.nivelesDisponibles, nivelSeleccionado: e.nivelSeleccionado, incluirHomebrew: homebrew,
-            };
-        };
-        const seleccion = await this.abrirModal<SelectorCompaneroConfirmacion>(SelectorCompaneroModalComponent, {
-            titulo: `Reciclar el compañero animal ${hueco.nombrePropio || nombreDeLaCriatura(hueco.tiene)}`, cuposDisponibles: 0, nombreCompanero: '', ...entradas(),
-        }, ['confirmar'], ['omitir'], {}, {
-            incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
-            nivelChange: (valor: number | null) => { nivel = valor; return entradas(); },
-            nombreCompaneroChange: (valor: string) => ({ nombreCompanero: `${valor ?? ''}` }),
+        return elegirCompaneroEnElSelector(this.selectores, {
+            titulo: `Reciclar el compañero animal ${hueco.nombrePropio || nombreDeLaCriatura(hueco.tiene)}`, cuposDisponibles: 0,
+            homebrew: this.homebrewDelSelector, catalogo,
+            entradas: (filtros) => entradasDelCompaneroReciclado(this.svc, hueco, catalogo,
+                { incluirHomebrew: this.conHomebrew && filtros.incluirHomebrew, nivelSeleccionado: filtros.nivelSeleccionado }),
         });
-        const criatura = seleccion ? catalogo.find((c) => claveCompanero(c) === claveCompanero(seleccion.companero)) : null;
-        return criatura && seleccion ? { criatura, nombre: seleccion.nombre } : null;
     }
 
     /** El familiar que entra, del selector del familiar de la creación (con sus filtros); `null` si se cancela. */
-    private async otroFamiliar(hueco: HuecoDeMascota): Promise<{ criatura: CriaturaDeMascota; nombre: string; } | null> {
+    private async otroFamiliar(hueco: HuecoDeMascota): Promise<MascotaElegida<CriaturaDeMascota> | null> {
         const catalogo = this.catalogosMascotas.familiares ?? [];
-        let homebrew = this.homebrewDelSelector;
-        let plantilla: number | null = null;
-        const entradas = () => {
-            const e = entradasDelFamiliarReciclado(this.svc, hueco, catalogo, { incluirHomebrew: this.conHomebrew && homebrew, plantillaSeleccionada: plantilla });
-            return {
-                familiaresElegibles: e.elegibles, familiaresBloqueados: e.bloqueados, nivelesRequeridos: e.nivelesRequeridos,
-                plantillasDisponibles: e.plantillas, plantillaSeleccionada: plantilla, incluirHomebrew: homebrew,
-            };
-        };
-        const seleccion = await this.abrirModal<SelectorFamiliarConfirmacion>(SelectorFamiliarModalComponent, {
-            titulo: `Reciclar el familiar ${hueco.nombrePropio || nombreDeLaCriatura(hueco.tiene)}`, cuposDisponibles: 0, nombreFamiliar: '', ...entradas(),
-        }, ['confirmar'], ['omitir'], {}, {
-            incluirHomebrewChange: (valor: boolean) => { homebrew = !!valor; return entradas(); },
-            plantillaChange: (valor: number | null) => { plantilla = valor === null || valor === undefined ? null : toInt(valor) || null; return entradas(); },
-            nombreFamiliarChange: (valor: string) => ({ nombreFamiliar: `${valor ?? ''}` }),
+        return elegirFamiliarEnElSelector(this.selectores, {
+            titulo: `Reciclar el familiar ${hueco.nombrePropio || nombreDeLaCriatura(hueco.tiene)}`, cuposDisponibles: 0,
+            homebrew: this.homebrewDelSelector, catalogo,
+            entradas: (filtros) => entradasDelFamiliarReciclado(this.svc, hueco, catalogo,
+                { incluirHomebrew: this.conHomebrew && filtros.incluirHomebrew, plantillaSeleccionada: filtros.plantillaSeleccionada }),
         });
-        const criatura = seleccion ? catalogo.find((c) => claveFamiliar(c) === claveFamiliar(seleccion.familiar)) : null;
-        return criatura && seleccion ? { criatura, nombre: seleccion.nombre } : null;
     }
 
     /** El texto de una opción del hueco: la aptitud que da una dote, también la que se elija con ella. */
