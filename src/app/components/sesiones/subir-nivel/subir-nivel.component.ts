@@ -50,6 +50,7 @@ import {
     analizarElNivelParaReciclar,
     aplicarReciclajeAlMotor,
     aptitudesDelReciclaje,
+    cantidadesDeRangos,
     ClaseConConocidos,
     conjurosParaAprender,
     conocidosParaReciclar,
@@ -90,7 +91,7 @@ import {
 } from 'src/app/services/utils/reciclaje-mascota';
 import {
     CambioDeRangosDelNivel, ConocidosDeMas, destinosDelTraspaso, HabilidadDelNivel, habilidadesParaLosPuntos, huecoDeLaDoteDelNivel, HuecoDeNivelSustitucion,
-    huecosDeNivelSustitucion, MAXIMO_RANGOS_TRASPASO, motivoDelPlan, OpcionDeNivelReciclable, PlanNivelSustitucion, RefHabilidadDelNivel, textoDePg,
+    huecosDeNivelSustitucion, motivoDelPlan, OpcionDeNivelReciclable, PlanNivelSustitucion, RefHabilidadDelNivel, textoDePg,
 } from 'src/app/services/utils/reciclaje-nivel-sustitucion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { cambiosDeLasMascotas, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
@@ -240,8 +241,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     /** Las habilidades en las que se reparte la diferencia de puntos del nivel, y los rangos elegidos en cada una. */
     habilidadesDelNivel: HabilidadDelNivel[] = [];
     rangosDelNivel: Record<string, number> = {};
-    /** El traspaso de hasta 4 rangos a una habilidad que añade el nivel nuevo. */
-    readonly maximoTraspaso = MAXIMO_RANGOS_TRASPASO;
+    /** El traspaso de hasta 4 rangos (`maximoRangos`) a una habilidad que añade el nivel nuevo. */
     traspasoOrigen: number | null = null;
     traspasoDestino: number | null = null;
     traspasoRangos = 1;
@@ -800,8 +800,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     /** Cuántos rangos se pueden traspasar desde la de origen: de 1 a 4, sin pasar de los que tiene comprados. */
     get cantidadesRangos(): number[] {
-        const maximo = Math.min(this.maximoRangos, this.habilidadOrigen?.rangos ?? 0);
-        return Array.from({ length: Math.max(0, maximo) }, (_, i) => i + 1);
+        return cantidadesDeRangos(this.habilidadOrigen?.rangos ?? 0);
     }
 
     /** Con el origen y los rangos elegidos: los destinos (con su motivo si no valen) y si quitarlos rompe algo que tiene. */
@@ -970,8 +969,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     /** Cuántos rangos se pueden traspasar: de 1 a 4, sin pasar de los que tiene comprados. */
     get cantidadesTraspaso(): number[] {
-        const maximo = Math.min(this.maximoTraspaso, this.origenDelTraspaso?.rangos ?? 0);
-        return Array.from({ length: Math.max(0, maximo) }, (_, i) => i + 1);
+        return cantidadesDeRangos(this.origenDelTraspaso?.rangos ?? 0);
     }
 
     cambiarTraspaso(): void {
