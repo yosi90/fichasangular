@@ -47,6 +47,7 @@ import { esPnj } from 'src/app/services/utils/tipo-personaje';
 import { dotesQueVuelvenACumplir, marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { ofreceHomebrewALaFicha } from 'src/app/services/utils/politica-campana';
 import {
+    analizarElNivelParaReciclar,
     aplicarReciclajeAlMotor,
     aptitudesDelReciclaje,
     ClaseConConocidos,
@@ -87,6 +88,10 @@ import {
     CatalogosDeMascotas, conLosRangosDelCompaneroNuevo, CriaturaDeMascota, entradasDelCompaneroReciclado, entradasDelFamiliarReciclado, HuecoDeMascota,
     huecosDeMascota, nombreDeLaCriatura, nombreDeLaMascota, PlanMascota, planDeLaMascota,
 } from 'src/app/services/utils/reciclaje-mascota';
+import {
+    CambioDeRangosDelNivel, ConocidosDeMas, destinosDelTraspaso, HabilidadDelNivel, habilidadesParaLosPuntos, huecoDeLaDoteDelNivel, HuecoDeNivelSustitucion,
+    huecosDeNivelSustitucion, MAXIMO_RANGOS_TRASPASO, motivoDelPlan, OpcionDeNivelReciclable, PlanNivelSustitucion, RefHabilidadDelNivel, textoDePg,
+} from 'src/app/services/utils/reciclaje-nivel-sustitucion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { cambiosDeLasMascotas, sinLoQueYaNoDaLaMascota } from 'src/app/services/utils/mascota-al-dia';
 import { sinMascotaNueva, TEXTOS_MASCOTA } from 'src/app/services/utils/mascota-sesion';
@@ -113,8 +118,8 @@ interface BorradorSubida {
 }
 
 /**
- * Lo que se puede elegir en el paso «Reciclar» (MJ II, tablas 8-1 y 8-2; aún sin niveles de sustitución): un dominio, la
- * escuela del mago y la mascota van con «Reciclar un rasgo de clase».
+ * Lo que se puede elegir en el paso «Reciclar» (MJ II, tablas 8-1 y 8-2, y el nivel de sustitución, pág. 197): un dominio,
+ * la escuela del mago y la mascota van con «Reciclar un rasgo de clase».
  */
 type TipoDeReciclaje = 'ninguno' | Exclude<PlanReciclaje['tipo'], 'dominio' | 'escuela' | 'mascota'>;
 
@@ -228,6 +233,20 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     readonly nombreDeLoQueTiene = nombreDeLoQueTiene;
     readonly nombreDeOpcion = nombreDeOpcion;
     readonly nombreDeLaEspecializacion = nombreDeLaEspecializacion;
+    /** Los niveles de sus clases que pueden ser otro nivel de sustitución (o volver al estándar), el elegido y su plan. */
+    nivelesReciclables: HuecoDeNivelSustitucion[] = [];
+    nivelElegido: HuecoDeNivelSustitucion | null = null;
+    planNivel: PlanNivelSustitucion | null = null;
+    /** Las habilidades en las que se reparte la diferencia de puntos del nivel, y los rangos elegidos en cada una. */
+    habilidadesDelNivel: HabilidadDelNivel[] = [];
+    rangosDelNivel: Record<string, number> = {};
+    /** El traspaso de hasta 4 rangos a una habilidad que añade el nivel nuevo. */
+    readonly maximoTraspaso = MAXIMO_RANGOS_TRASPASO;
+    traspasoOrigen: number | null = null;
+    traspasoDestino: number | null = null;
+    traspasoRangos = 1;
+    destinosTraspaso: Array<RefHabilidadDelNivel & { rangos: number; motivo: string | null; }> = [];
+    readonly textoDePg = textoDePg;
     /** Lo reciclado, ya hecho en el motor: va en el cuerpo de la subida y en la primera fila del resumen. */
     plan: PlanReciclaje | null = null;
     /** La `entrada` con el reciclaje hecho: la ficha sobre la que va el nivel. */
@@ -431,6 +450,9 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.planEscuela = null;
         this.mascotasReciclables = [];
         this.planMascota = null;
+        this.nivelesReciclables = [];
+        this.nivelElegido = null;
+        this.limpiarPlanNivel();
         this.idiomaQuita = this.idiomaPone = null;
         this.rangosOrigen = this.rangosDestino = null;
         this.rangosCantidad = 1;
@@ -451,6 +473,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.catalogosMascotas = await this.catalogosDeMascotas();
         this.mascotasReciclables = huecosDeMascota(this.svc, this.entrada, this.catalogosMascotas);
         this.dotesReciclables = dotesParaReciclar(this.svc, this.rasgosReciclables);
+        this.nivelesReciclables = huecosDeNivelSustitucion(this.svc, this.permiteNivelesSustitucion);
         const idiomas = idiomasParaReciclar(this.svc, this.entrada, this.conHomebrew);
         this.idiomasReciclables = idiomas.quitables;
         this.idiomasAprendibles = idiomas.aprendibles;
@@ -522,6 +545,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 tipo: 'rasgo', etiqueta: 'Reciclar un rasgo de clase',
                 motivo: this.rasgosReciclables.length || this.dominiosReciclables.length || this.escuelaReciclable || this.mascotasReciclables.length
                     ? '' : 'Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios, una escuela ni una mascota.',
+            },
+            {
+                tipo: 'nivel_sustitucion', etiqueta: 'Reciclar un nivel de sustitución',
+                motivo: this.nivelesReciclables.length ? '' : 'Ninguno de sus niveles de clase tiene un nivel de sustitución de ese nivel, ni es uno.',
             },
         ];
     }
@@ -835,12 +862,178 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.cambiosConjuros = this.cambiosConjuros.length > 1 ? this.cambiosConjuros.filter((c) => c !== cambio) : [this.cambioDeConjuroVacio()];
     }
 
+    // --- Un nivel de sustitución (MJ II, pág. 197) ---------------------------------------------------------------------
+
+    /** Enseña lo que puede ser ese nivel (otro juego de ese nivel o el estándar). */
+    elegirNivel(hueco: HuecoDeNivelSustitucion): void {
+        if (hueco.motivo || this.empezada)
+            return;
+        if (this.nivelElegido !== hueco)
+            this.limpiarPlanNivel();
+        this.nivelElegido = hueco;
+    }
+
+    private limpiarPlanNivel(): void {
+        this.planNivel = null;
+        this.habilidadesDelNivel = [];
+        this.rangosDelNivel = {};
+        this.traspasoOrigen = this.traspasoDestino = null;
+        this.traspasoRangos = 1;
+        this.destinosTraspaso = [];
+    }
+
+    /**
+     * Lo que entra en el nivel elegido: lo que cambia (de los datos, con el motor) y, si la aptitud que entra da a elegir una
+     * dote, el selector de dotes de la creación, con el nivel ya cambiado y en su nivel. El motor se deja como estaba: el
+     * cambio se hace al continuar.
+     */
+    async elegirOpcionNivel(opcion: OpcionDeNivelReciclable): Promise<void> {
+        const hueco = this.nivelElegido;
+        if (!hueco || opcion.motivo || this.empezada || !this.entrada)
+            return;
+        this.limpiarPlanNivel();
+        const analisis = analizarElNivelParaReciclar(this.svc, this.entrada, hueco, opcion, this.nivelDeAntes);
+        const plan: PlanNivelSustitucion = { tipo: 'nivel_sustitucion', hueco, pone: opcion, analisis, doteElegida: null, rangos: [], traspaso: null, olvidados: [] };
+        this.habilidadesDelNivel = analisis.motivo ? [] : habilidadesParaLosPuntos(this.svc, this.entrada, hueco, opcion, analisis.puntos, this.nivelDeAntes);
+        this.planNivel = plan;
+        const dote = analisis.doteAElegir;
+        if (analisis.motivo || !dote)
+            return;
+        const estado = this.svc.exportarEstadoSubida();
+        try {
+            const delHueco = huecoDeLaDoteDelNivel(this.svc, plan);
+            const candidatos = candidatasEnLugarDe(delHueco?.candidatos ?? [], null, this.conHomebrew);
+            if (!delHueco || !candidatos.some((c) => c.evaluacion?.estado === 'eligible' && c.repeticionValida && !c.restringidaPorTipo)) {
+                await avisarPaso('No hay ninguna dote que elegir', `Con ${dote.aptitud} no puede elegir ninguna dote: no cumple los prerrequisitos de ninguna en ese nivel.`);
+                return;
+            }
+            const elegida = await this.otraDoteEnElHueco({ pendiente: delHueco.pendiente, candidatos }, `${hueco.clase}, nivel ${dote.nivelClase}: ${dote.aptitud}`,
+                null, 'Con el personaje de antes de subir, en el nivel del hueco y con el nivel nuevo, no la cumple. Elige otra.');
+            if (elegida && this.planNivel === plan) {
+                const { seleccion, pone } = elegida;
+                this.planNivel = {
+                    ...plan,
+                    doteElegida: { seleccion, dote: { id: pone.idDote, idExtra: pone.idExtra, nombre: pone.nombre, extra: pone.extra, origen: `${delHueco.pendiente.origenFijo ?? ''}` } },
+                };
+            }
+        } finally {
+            this.svc.restaurarEstadoSubida(estado);
+        }
+    }
+
+    /** Vuelve a abrir el selector de la dote del nivel. */
+    async elegirOtraDoteDelNivel(): Promise<void> {
+        if (this.planNivel)
+            await this.elegirOpcionNivel(this.planNivel.pone);
+    }
+
+    /** Lo que cambia en su tabla con el nivel elegido («pierde Dote adicional; gana Firmeza enana»). */
+    get textoDeLosCambiosDelNivel(): string {
+        const cambios = this.planNivel?.analisis.cambios ?? [];
+        const salen = cambios.map((c) => c.nombreQuita).filter((n) => n);
+        const entran = cambios.map((c) => c.nombrePone).filter((n) => n);
+        return [salen.length ? `pierde ${salen.join(', ')}` : '', entran.length ? `gana ${entran.join(', ')}` : ''].filter((t) => t).join('; ');
+    }
+
+    /** Las habilidades de clase que añade el nivel nuevo, por su nombre. */
+    get nombresDeLasAnadidas(): string {
+        return (this.planNivel?.analisis.habilidadesAnadidas ?? []).map((h) => h.nombre).join(', ');
+    }
+
+    claveDeHabilidad(h: { idHabilidad: number; idExtra: number; }): string {
+        return `${h.idHabilidad}:${h.idExtra}`;
+    }
+
+    /** Las cantidades del desplegable de una habilidad del reparto (de 0 a lo que cabe). */
+    cantidadesDe(h: HabilidadDelNivel): number[] {
+        return Array.from({ length: h.maximo + 1 }, (_, i) => i);
+    }
+
+    /** Los rangos elegidos en el reparto de la diferencia de puntos (negativos si el nivel nuevo da menos). */
+    private rangosElegidos(): CambioDeRangosDelNivel[] {
+        const signo = (this.planNivel?.analisis.puntos ?? 0) < 0 ? -1 : 1;
+        return this.habilidadesDelNivel
+            .map((h) => ({ idHabilidad: h.idHabilidad, idExtra: h.idExtra, nombre: h.nombre, rangos: signo * toInt(this.rangosDelNivel[this.claveDeHabilidad(h)]) }))
+            .filter((r) => r.rangos !== 0);
+    }
+
+    /** Cuántos rangos (con menos puntos) o puntos (con más) lleva repartidos de la diferencia. */
+    get repartidoDelNivel(): number {
+        const puntos = this.planNivel?.analisis.puntos ?? 0;
+        return this.habilidadesDelNivel.reduce((suma, h) => suma + toInt(this.rangosDelNivel[this.claveDeHabilidad(h)]) * (puntos < 0 ? 1 : h.coste), 0);
+    }
+
+    /** El origen del traspaso elegido. */
+    get origenDelTraspaso(): HabilidadConRangos | null {
+        return this.habilidadesReciclables.find((h) => h.idHabilidad === toInt(this.traspasoOrigen)) ?? null;
+    }
+
+    /** Cuántos rangos se pueden traspasar: de 1 a 4, sin pasar de los que tiene comprados. */
+    get cantidadesTraspaso(): number[] {
+        const maximo = Math.min(this.maximoTraspaso, this.origenDelTraspaso?.rangos ?? 0);
+        return Array.from({ length: Math.max(0, maximo) }, (_, i) => i + 1);
+    }
+
+    cambiarTraspaso(): void {
+        const analisis = this.planNivel?.analisis;
+        const origen = this.origenDelTraspaso;
+        this.traspasoRangos = Math.min(Math.max(1, toInt(this.traspasoRangos)), Math.max(1, this.cantidadesTraspaso.length));
+        this.destinosTraspaso = analisis && origen
+            ? destinosDelTraspaso(this.svc, analisis, this.traspasoRangos, this.nivelDeAntes).filter((d) => d.idHabilidad !== origen.idHabilidad)
+            : [];
+        if (!this.destinosTraspaso.some((d) => d.idHabilidad === this.traspasoDestino && !d.motivo))
+            this.traspasoDestino = null;
+    }
+
+    /** Si el conocido está entre los que olvida. */
+    olvidaDelNivel(idConjuro: number): boolean {
+        return !!this.planNivel?.olvidados.some((o) => o.idConjuro === idConjuro);
+    }
+
+    cambiarOlvidadoDelNivel(grupo: ConocidosDeMas, conjuro: { idConjuro: number; nombre: string; }, olvida: boolean): void {
+        if (!this.planNivel)
+            return;
+        const otros = this.planNivel.olvidados.filter((o) => o.idConjuro !== conjuro.idConjuro);
+        const delGrupo = otros.filter((o) => grupo.candidatos.some((c) => c.idConjuro === o.idConjuro)).length;
+        this.planNivel = { ...this.planNivel, olvidados: olvida && delGrupo < grupo.cantidad ? [...otros, { ...conjuro }] : otros };
+    }
+
+    /** Lo que falta o no cuadra en el plan del nivel (`null` si está completo). */
+    get motivoDelNivel(): string | null {
+        const plan = this.planNivelConLoElegido();
+        return plan ? motivoDelPlan(plan, this.habilidadesDelNivel) : null;
+    }
+
+    /** El plan del nivel con los rangos y el traspaso elegidos. */
+    private planNivelConLoElegido(): PlanNivelSustitucion | null {
+        if (!this.planNivel)
+            return null;
+        const origen = this.origenDelTraspaso;
+        const destino = this.destinosTraspaso.find((d) => d.idHabilidad === toInt(this.traspasoDestino) && !d.motivo);
+        const traspaso = origen && destino && this.cantidadesTraspaso.includes(toInt(this.traspasoRangos))
+            ? {
+                quita: { idHabilidad: origen.idHabilidad, idExtra: origen.idExtra, nombre: origen.nombre },
+                pone: { idHabilidad: destino.idHabilidad, idExtra: destino.idExtra, nombre: destino.nombre },
+                rangos: toInt(this.traspasoRangos),
+            }
+            : null;
+        return { ...this.planNivel, rangos: this.rangosElegidos(), traspaso };
+    }
+
+    /** El plan del nivel, completo; `null` si falta algo. */
+    private planNivelCompleto(): PlanNivelSustitucion | null {
+        const plan = this.planNivelConLoElegido();
+        return plan && !motivoDelPlan(plan, this.habilidadesDelNivel) ? plan : null;
+    }
+
     /** El reciclaje elegido en el paso, completo; `null` si no recicla nada o falta algo. */
     private planElegido(): PlanReciclaje | null {
         if (this.tipoReciclaje === 'dote')
             return this.planDote;
         if (this.tipoReciclaje === 'rasgo')
             return this.planRasgo ?? this.planDominio ?? this.planEscuela ?? this.planMascota;
+        if (this.tipoReciclaje === 'nivel_sustitucion')
+            return this.planNivelCompleto();
         if (this.tipoReciclaje === 'idioma') {
             const quita = this.idiomasReciclables.find((i) => i.idIdioma === toInt(this.idiomaQuita) && !i.motivo);
             const pone = this.idiomasAprendibles.find((i) => i.idIdioma === toInt(this.idiomaPone));
@@ -903,6 +1096,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 origenDote: plan.tipo === 'dote' ? plan.quita.origen : undefined,
                 claseaDestino: !!destino && destino.clases === null,
                 rasgo: esPlanDeRasgo(plan) ? plan : undefined,
+                nivel: plan.tipo === 'nivel_sustitucion' ? plan : undefined,
                 // Lo que daba lo antiguo y lo que da lo nuevo: la API guarda tal cual los modificadores que llegan.
                 motor: this.antes ? { antes: this.antes, despues } : null,
             });
@@ -978,8 +1172,11 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     private calcularPg(): void {
-        this.pg = pgTrasCambioDeCon(this.entrada!, toInt(this.pj?.Nivel_personaje),
+        const pg = pgTrasCambioDeCon(this.entrada!, toInt(this.pj?.Nivel_personaje),
             toInt(this.svc.PersonajeCreacion.ModConstitucion), this.daDg ? this.tiradaElegida : null);
+        // El nivel reciclado cambia sus PG sin volver a tirar (MJ II, pág. 197): lo mismo que guarda la API.
+        const delReciclaje = this.plan?.tipo === 'nivel_sustitucion' ? this.plan.analisis.pg.delta : 0;
+        this.pg = delReciclaje ? { ...pg, total: Math.max(1, pg.total + delReciclaje) } : pg;
     }
 
     get puedeSeguirPg(): boolean {

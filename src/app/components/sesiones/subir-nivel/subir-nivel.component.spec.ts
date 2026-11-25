@@ -139,7 +139,7 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             const texto = fixture.nativeElement.textContent;
             expect(texto).toContain('Reciclar (opcional)');
             const radios = Array.from(fixture.nativeElement.querySelectorAll('input[name="tipoReciclaje"]') as NodeListOf<HTMLInputElement>);
-            expect(radios.length).toBe(6);
+            expect(radios.length).toBe(7);
             expect(radios[0].checked).toBeTrue();
             expect(texto).toContain('No reciclar nada');
             expect(texto).toContain('Reciclar una dote');
@@ -148,6 +148,10 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
             expect(texto).toContain('Reciclar un rasgo de clase');
             expect(radios[5].disabled).toBeTrue();
             expect(texto).toContain('Ninguna de sus clases le ha dado a elegir entre opciones de su tabla, dominios, una escuela ni una mascota.');
+            // Sin un nivel de una clase con juegos de sustitución, el nivel sale desactivado, con su motivo.
+            expect(texto).toContain('Reciclar un nivel de sustitución');
+            expect(radios[6].disabled).toBeTrue();
+            expect(texto).toContain('Ninguno de sus niveles de clase tiene un nivel de sustitución de ese nivel, ni es uno.');
             expect(texto).toContain('Continuar sin reciclar');
         });
 

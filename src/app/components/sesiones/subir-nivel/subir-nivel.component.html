@@ -206,6 +206,98 @@
                             : 'Su armadura natural, su Inteligencia, su resistencia a conjuros, sus PG, su ataque y sus aptitudes, los del nivel de su amo.'}}</p>
                         <p *ngIf="planEscuela?.libroSinPreparar?.length" class="subida__nota">Se quedan en su libro, pero no se pueden preparar: {{planEscuela!.libroSinPreparar.join(', ')}}.</p>
                     </ng-container>
+                    <!-- Un nivel de sustitución (MJ II, pág. 197): uno de sus niveles de clase por otro de ese nivel -->
+                    <ng-container *ngIf="tipoReciclaje === 'nivel_sustitucion'">
+                        <p class="subida__nota">Cambia uno de sus niveles de clase por un nivel de sustitución de ese mismo nivel, o al revés, o por el de otro juego. Lo que da cambia como dice la tabla de su clase; los PG no se vuelven a tirar (1 por paso de dado, 2 en el 1.er nivel de la clase) y los puntos de habilidad, los del nivel nuevo. Lo que necesita algo que sale no deja cambiarlo.</p>
+                        <ul class="subida__lista">
+                            <li *ngFor="let h of nivelesReciclables" class="subida__fila" [class.subida__fila--bloqueada]="!!h.motivo">
+                                <div class="subida__fila-texto">
+                                    <span class="subida__fila-nombre">{{h.nombreTiene}}
+                                        <ng-container *ngIf="planNivel?.hueco === h"> → <strong>{{planNivel!.pone.nombre}}</strong></ng-container>
+                                    </span>
+                                    <span class="subida__etiqueta">{{h.clase}}, nivel {{h.nivelClase}}<ng-container *ngIf="h.indiceNivel >= 0"> · nivel {{h.indiceNivel + 1}} del personaje</ng-container></span>
+                                    <span *ngIf="h.motivo" class="subida__fila-motivo">{{h.motivo}}</span>
+                                </div>
+                                <button *ngIf="!h.motivo" mat-stroked-button type="button" [attr.aria-expanded]="nivelElegido === h" (click)="elegirNivel(h)">{{nivelElegido === h ? 'Eligiendo' : 'Cambiar'}}</button>
+                            </li>
+                        </ul>
+                        <ng-container *ngIf="nivelElegido as h">
+                            <h3 class="subida__seccion">En lugar de {{h.nombreTiene}}</h3>
+                            <div class="subida__opciones" role="radiogroup" [attr.aria-label]="'Otro nivel en lugar de ' + h.nombreTiene">
+                                <label *ngFor="let o of h.opciones" class="subida__opcion" [class.subida__opcion--bloqueada]="!!o.motivo">
+                                    <input type="radio" name="opcionNivel" [checked]="planNivel?.pone === o" [disabled]="!!o.motivo" (change)="elegirOpcionNivel(o)">
+                                    <span class="subida__opcion-texto">{{o.nombre}}</span>
+                                    <span *ngIf="o.motivo" class="subida__fila-motivo">{{o.motivo}}</span>
+                                    <span *ngFor="let a of o.avisos" class="subida__fila-motivo">{{a}}</span>
+                                </label>
+                            </div>
+                        </ng-container>
+                        <ng-container *ngIf="planNivel as p">
+                            <div *ngIf="p.analisis.motivo; else planDelNivel" class="subida__aviso" role="status"><mat-icon aria-hidden="true">block</mat-icon><span>{{p.analisis.motivo}}</span></div>
+                            <ng-template #planDelNivel>
+                                <p class="subida__nota">
+                                    <ng-container *ngIf="p.analisis.pg.pasos !== 0">De d{{p.analisis.pg.carasAntes}} a d{{p.analisis.pg.carasDespues}}: {{textoDePg(p.analisis.pg.delta)}}. </ng-container>
+                                    <ng-container *ngIf="p.analisis.cambios.length > 0">Cambia en su tabla: {{textoDeLosCambiosDelNivel}}.</ng-container>
+                                </p>
+                                <p *ngIf="p.analisis.doteAElegir" class="subida__nota">
+                                    {{p.analisis.doteAElegir.aptitud}}: <strong>{{p.doteElegida ? p.doteElegida.dote.nombre : 'falta elegir la dote'}}</strong>
+                                    <button mat-stroked-button type="button" (click)="elegirOtraDoteDelNivel()">{{p.doteElegida ? 'Elegir otra' : 'Elegir la dote'}}</button>
+                                </p>
+
+                                <!-- La diferencia de puntos de habilidad -->
+                                <ng-container *ngIf="p.analisis.puntos !== 0">
+                                    <h3 class="subida__seccion">{{p.analisis.puntos < 0 ? 'Rangos que quita' : 'Puntos que gana'}} ({{p.analisis.puntos < 0 ? -p.analisis.puntos : p.analisis.puntos}}; llevas {{repartidoDelNivel}})</h3>
+                                    <p class="subida__nota">{{p.analisis.puntos < 0
+                                        ? 'El nivel nuevo da menos puntos de habilidad: quita un rango por punto, de las habilidades que elijas.'
+                                        : 'El nivel nuevo da más puntos de habilidad: gástalos ya con su lista (de clase, 1 punto el rango; las demás, 2), sin pasar del tope de tu nivel. Los que no gastes se pierden.'}}</p>
+                                    <div class="subida__campos">
+                                        <label *ngFor="let hab of habilidadesDelNivel" class="subida__campo">{{hab.nombre}} ({{hab.rangos}}<ng-container *ngIf="p.analisis.puntos > 0">; {{hab.coste}} {{hab.coste === 1 ? 'punto' : 'puntos'}} el rango</ng-container>)
+                                            <select [(ngModel)]="rangosDelNivel[claveDeHabilidad(hab)]" [name]="'rangosNivel' + claveDeHabilidad(hab)">
+                                                <option *ngFor="let n of cantidadesDe(hab)" [ngValue]="n">{{p.analisis.puntos < 0 && n > 0 ? '−' : ''}}{{n}}</option>
+                                            </select>
+                                        </label>
+                                    </div>
+                                </ng-container>
+
+                                <!-- El traspaso: hasta 4 rangos a una habilidad que añade el nivel nuevo -->
+                                <ng-container *ngIf="p.analisis.habilidadesAnadidas.length > 0">
+                                    <h3 class="subida__seccion">Traspaso de rangos (opcional)</h3>
+                                    <p class="subida__nota">El nivel nuevo añade de clase {{nombresDeLasAnadidas}}: puedes pasar hasta {{maximoTraspaso}} rangos de otra habilidad a una de ellas, sin pasar de su nivel + 3.</p>
+                                    <div class="subida__campos">
+                                        <label class="subida__campo">Quitar rangos de
+                                            <select [(ngModel)]="traspasoOrigen" (ngModelChange)="cambiarTraspaso()" name="traspasoOrigen">
+                                                <option [ngValue]="null">—</option>
+                                                <option *ngFor="let hab of habilidadesReciclables" [ngValue]="hab.idHabilidad">{{hab.nombre}} ({{hab.rangos}})</option>
+                                            </select>
+                                        </label>
+                                        <label class="subida__campo">Rangos
+                                            <select [(ngModel)]="traspasoRangos" (ngModelChange)="cambiarTraspaso()" name="traspasoRangos" [disabled]="!origenDelTraspaso">
+                                                <option *ngFor="let n of cantidadesTraspaso" [ngValue]="n">{{n}}</option>
+                                            </select>
+                                        </label>
+                                        <label class="subida__campo">Ponerlos en
+                                            <select [(ngModel)]="traspasoDestino" name="traspasoDestino" [disabled]="!origenDelTraspaso">
+                                                <option [ngValue]="null">—</option>
+                                                <option *ngFor="let hab of destinosTraspaso" [ngValue]="hab.idHabilidad" [disabled]="!!hab.motivo">{{hab.nombre}} ({{hab.rangos}}){{hab.motivo ? ' — ' + hab.motivo : ''}}</option>
+                                            </select>
+                                        </label>
+                                    </div>
+                                </ng-container>
+
+                                <!-- Los conocidos que sobran -->
+                                <ng-container *ngFor="let grupo of p.analisis.conocidosDeMas">
+                                    <h3 class="subida__seccion">Conocidos que olvida{{grupo.nivelConjuro === null ? '' : ' de nivel ' + grupo.nivelConjuro}} ({{grupo.cantidad}})</h3>
+                                    <div class="subida__opciones">
+                                        <label *ngFor="let c of grupo.candidatos" class="subida__opcion">
+                                            <input type="checkbox" [checked]="olvidaDelNivel(c.idConjuro)" (change)="cambiarOlvidadoDelNivel(grupo, c, $any($event.target).checked)">
+                                            <span class="subida__opcion-texto">{{c.nombre}}</span>
+                                        </label>
+                                    </div>
+                                </ng-container>
+                                <p *ngIf="motivoDelNivel as m" class="subida__fila-motivo" role="status">{{m}}</p>
+                            </ng-template>
+                        </ng-container>
+                    </ng-container>
                 </ng-container>
             </ng-container>
 

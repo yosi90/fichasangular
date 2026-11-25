@@ -3,7 +3,7 @@ import type { LoQueLeFaltaAlCompanero } from './utils/completar-companero';
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
-import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEscuelaEspecialista, ClaseEspecialNivel, ClaseNivelDetalle, SustitucionEspecialNivel } from '../interfaces/clase';
+import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEscuelaEspecialista, ClaseEspecialNivel, ClaseNivelDetalle, SustitucionDetalle, SustitucionEspecialNivel } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
 import { Dote, DoteExtraItem } from '../interfaces/dote';
@@ -159,7 +159,7 @@ import {
 } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
-import { claveDoteDeLaFicha } from './utils/correccion-ficha';
+import { claveDoteDeLaFicha, sacarPrimero } from './utils/correccion-ficha';
 import { doteContextualPorId } from './utils/perder-nivel';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
@@ -173,8 +173,8 @@ import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
 import { ajustesEnvejecimiento, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
 import { armadurasQueAdmiteLaDote, doteAdmiteExtra, doteSoportaArmaduras, doteSoportaEscudos } from './utils/dote-extras-soportados';
 import {
-    ContextoRequisitosSustitucion, NivelDeSustitucion, NivelSustitucionTomado, OpcionDeSustitucion, cambiosDeLaListaDeConjuros, competenciasQueQuita,
-    especialesDeSusSustituciones, multiplicarCifra,
+    ContextoRequisitosSustitucion, EvaluacionRequisitosSustitucion, NivelDeSustitucion, NivelSustitucionTomado, OpcionDeSustitucion, cambiosDeLaListaDeConjuros,
+    competenciasQueQuita, especialesDeSusSustituciones, multiplicarCifra, nivelDeSustitucion,
     conjurosConocidosDelNivel, dadoDelNivel, detalleConSustituciones, evaluarRequisitosDeSustitucion, habilidadesDelJuego,
     listadoConSustituciones, opcionesDeSustitucion, origenDeSustitucion, puntosHabilidadDelNivel, quitasSinAplicar,
     sustitucionDelNivel, sustitucionesDeLaClase,
@@ -8294,6 +8294,71 @@ export class NuevoPersonajeService {
     /** El nivel de sustitución elegido para el siguiente nivel (sin aplicar todavía), o `null`. */
     getSustitucionPendiente(): { idClase: number; nivelClase: number; idNivelSustitucion: number; } | null {
         return this.sustitucionPendiente ? { ...this.sustitucionPendiente } : null;
+    }
+
+    /**
+     * Los requisitos de un juego para el nivel `nivelClase` de su clase con lo que tiene ahora (el personaje de antes de
+     * subir): lo que mira el reciclaje de un nivel de sustitución (`reciclaje-nivel-sustitucion.ts`).
+     */
+    requisitosDeSustitucionAhora(juego: SustitucionDetalle, nivelClase: number): EvaluacionRequisitosSustitucion {
+        return evaluarRequisitosDeSustitucion(juego, nivelClase, this.contextoRequisitosSustitucion());
+    }
+
+    /** El nivel de la clase en que está ahora (su entrada del desglose), 0 si no la tiene. */
+    nivelActualDeLaClase(clase: Clase | null | undefined): number {
+        return this.obtenerNivelActualClase(clase?.Nombre ?? '');
+    }
+
+    /**
+     * Cambia en el registro el nivel de sustitución de un nivel que ya tiene (el reciclaje R8, tanda 2; MJ II, pág. 197):
+     * `idNivelSustitucion` (`null`, el estándar) en el nivel `nivelClase` de `idClase`, con lo que va con él en el motor y
+     * no es una fila de su tabla: los ajustes de ataque base y salvaciones, las habilidades de clase del juego (D14) y los
+     * conocidos que da sin elegirlos (`Conocido`). Lo de las filas de la tabla (sus aptitudes y sus dotes) lo cambia quien
+     * llama con `aplicarCambiosDeRasgo`. `false` si no tiene ese nivel o el nivel no es de esa clase y ese nivel.
+     */
+    cambiarNivelDeSustitucion(idClase: number, nivelClase: number, idNivelSustitucion: number | null): boolean {
+        const clase = this.claseDelCatalogo(idClase);
+        const nivel = nivelDelOrden(this.personajeCreacion?.Orden_niveles, { idClase: toInt(idClase), nivelClase: toInt(nivelClase) });
+        if (!clase || !nivel)
+            return false;
+        const nuevo = toInt(idNivelSustitucion) > 0 ? nivelDeSustitucion(clase, idNivelSustitucion) : null;
+        if (toInt(idNivelSustitucion) > 0 && (!nuevo || nuevo.nivel.Nivel !== toInt(nivelClase)))
+            return false;
+        const actual = this.obtenerNivelActualClase(clase.Nombre);
+        const viejo = this.sustitucionDelNivelDeClase(clase, nivelClase);
+        const detalleAntes = this.obtenerDetalleNivelClase(clase, actual);
+        if (nuevo)
+            nivel.idNivelSustitucion = nuevo.nivel.Id;
+        else
+            delete nivel.idNivelSustitucion;
+        const detalleDespues = this.obtenerDetalleNivelClase(clase, actual);
+        this.anotarSustitucionesEnElDesglose(clase);
+        // Los ajustes de los niveles de sustitución (el −1 al ataque base de la prole de Bahamut): la diferencia, en su nivel.
+        if (detalleAntes && detalleDespues) {
+            this.aplicarDeltaAtaqueBaseClase(clase.Nombre, toInt(nivelClase), detalleDespues, detalleAntes);
+            this.recalcularDerivadasPorCombate();
+            this.aplicarDeltaSalvacionesClase(clase.Nombre, toInt(nivelClase), detalleDespues, detalleAntes);
+        }
+        // Las habilidades de clase del juego que se va, si no le queda otro nivel suyo; las del que entra.
+        if (viejo && !this.sustitucionesTomadasDe(clase).some((t) => nivelDeSustitucion(clase, t.idNivelSustitucion)?.juego.Id === viejo.juego.Id)) {
+            const origen = origenDeSustitucion(viejo.juego);
+            const salen = new Set(this.habilidadesDeClasePorOrigen[origen] ?? []);
+            delete this.habilidadesDeClasePorOrigen[origen];
+            (this.personajeCreacion.Habilidades ?? []).filter((h) => salen.has(claveHabilidad(h))).forEach((h) => {
+                const clave = claveHabilidad(h);
+                h.Clasea = Object.values(this.habilidadesDeClasePorOrigen).some((claves) => claves.includes(clave));
+            });
+        }
+        this.aplicarHabilidadesDeSustitucion(nuevo);
+        // Los conocidos que daba sin elegirlos el que se va (si el nuevo no los da) salen; los del nuevo, entran.
+        const entran = new Set(conjurosConocidosDelNivel(nuevo).map((c) => c.Id));
+        const claseNorm = normalizarTexto(clase.Nombre);
+        conjurosConocidosDelNivel(viejo).filter((c) => !entran.has(c.Id)).forEach((c) =>
+            sacarPrimero(this.personajeCreacion.Conjuros ?? [], (x) => toNumber(x?.Id) === c.Id && esConjuroDeLaClase(x, claseNorm)));
+        this.aplicarConjurosConocidosDeSustitucion(clase, nuevo, toInt(nivelClase));
+        this.recalcularEfectosConservandoVentajas();
+        this.recalcularDerivadasPorCaracteristicas();
+        return true;
     }
 
     /** Lo que miran los requisitos de un juego (`evaluarRequisitosDeSustitucion`), con lo que tiene ahora. */
