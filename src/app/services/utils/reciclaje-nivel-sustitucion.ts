@@ -232,7 +232,8 @@ const claveDeFila = (f: FilaDeTablaDeClase) => `${f.tipo}:${f.id}:${extraCompara
 function pasosDeDado(antes: number, despues: number): number {
     const a = ESCALERA_DE_DADOS.indexOf(antes);
     const d = ESCALERA_DE_DADOS.indexOf(despues);
-    return a >= 0 && d >= 0 ? d - a : Math.trunc((despues - antes) / 2);
+    // Fuera de la escala del libro (d4-d12), 0, como la API (`_pasos` de `utils/reciclaje.py`).
+    return a >= 0 && d >= 0 ? d - a : 0;
 }
 
 /**

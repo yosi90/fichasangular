@@ -1,6 +1,6 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ENTRADA_ENANO_CLERIGO_1 } from 'src/testing/subida-nivel-api';
-import { aplicarReciclajeAlMotor, cantidadesDeRangos, fichaConElReciclaje, filaDelReciclaje, PlanReciclaje, reciclajeDelPlan } from './reciclaje';
+import { aplicarReciclajeAlMotor, cantidadesDeRangos, destinosDeRangos, fichaConElReciclaje, filaDelReciclaje, habilidadesConRangos, PlanReciclaje, reciclajeDelPlan } from './reciclaje';
 import { fichaDeLaSubida } from './subida-nivel';
 
 const copia = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -104,5 +104,29 @@ describe('reciclaje (Manual del jugador II, págs. 194-196: la ficha que se mand
         expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
         expect(habilidades.map((h) => h.Rangos)).toEqual([3, 0, 4]);
         expect(aplicarReciclajeAlMotor(motor, plan)).toBeFalse();
+    });
+});
+
+describe('el reciclaje de rangos con dos especialidades de la misma habilidad', () => {
+    // Saber (arcano) y Saber (religión): cada uno es una habilidad (contrato, «El reciclaje», `rangos`).
+    const saber = (idExtra: number, extra: string, rangos: number) =>
+        ({ Id: 20, Nombre: 'Saber', Soporta_extra: true, Id_extra: idExtra, Extra: extra, Rangos: rangos, Custom: false });
+    const motor: any = {
+        PersonajeCreacion: { Habilidades: [saber(5, 'Arcano', 4), saber(6, 'Religión', 1)] },
+        esHabilidadDeClaseEnAlguna: () => true,
+    };
+    const entrada = { colecciones: { habilidades: { base: [
+        { idHabilidad: 20, idExtra: 5, rangos: 4 }, { idHabilidad: 20, idExtra: 6, rangos: 1 }] } } } as unknown as PersonajeCreateRequestDto;
+
+    it('cada una, con su nombre y sus rangos', () => {
+        expect(habilidadesConRangos(motor, entrada).map((h) => [h.nombre, h.idExtra, h.rangos]))
+            .toEqual([['Saber (Arcano)', 5, 4], ['Saber (Religión)', 6, 1]]);
+    });
+
+    it('de una a la otra, con los rangos de la de destino', () => {
+        const arcano = habilidadesConRangos(motor, entrada)[0];
+        const destinos = destinosDeRangos(motor, entrada, arcano, 2, 3, []);
+        expect(destinos.map((d) => [d.idExtra, d.rangos])).toEqual([[6, 1]]);
+        expect(destinos[0].motivo).toBeNull();
     });
 });

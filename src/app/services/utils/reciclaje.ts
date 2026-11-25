@@ -7,7 +7,7 @@ import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
 import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
 import { textoConSigno } from './equipo-texto';
-import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
+import { esLaHabilidad, idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
 import { extraComparable, mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
 import {
@@ -670,7 +670,8 @@ export function habilidadesConRangos(motor: NuevoPersonajeService, entrada: Pers
     return (entrada.colecciones?.habilidades?.base ?? [])
         .filter((h) => toInt(h?.rangos) >= 1)
         .map((h) => {
-            const delMotor = habilidades.find((x) => toInt(x.Id) === toInt(h.idHabilidad));
+            // Por su id y su especialidad: con dos Saber, cada uno es una habilidad (contrato, «El reciclaje»).
+            const delMotor = habilidades.find((x) => esLaHabilidad(x, h.idHabilidad, h.idExtra));
             return { idHabilidad: toInt(h.idHabilidad), idExtra: toInt(h.idExtra), nombre: delMotor ? nombreDeHabilidadConExtra(delMotor) : `#${toInt(h.idHabilidad)}`, rangos: toInt(h.rangos) };
         })
         .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
@@ -688,13 +689,14 @@ export function destinosDeRangos(motor: NuevoPersonajeService, entrada: Personaj
     const tope = limiteRangosHabilidad(nivelPersonaje, true);
     const guardadas = entrada.colecciones?.habilidades?.base ?? [];
     return (motor.PersonajeCreacion.Habilidades ?? [])
-        .filter((h) => !h?.Custom && toInt(h?.Id) > 0 && toInt(h.Id) !== origen.idHabilidad)
+        .filter((h) => !h?.Custom && toInt(h?.Id) > 0
+            && !(toInt(h.Id) === origen.idHabilidad && mismoExtra(idExtraHabilidadParaGuardar(h), origen.idExtra)))
         .map((h) => {
             const idHabilidad = toInt(h.Id);
             // -1 sin extra y 0 («Elegir») si lo admite y falta: el contrato lleva 0 en los dos.
             const extraGuardado = idExtraHabilidadParaGuardar(h);
             const idExtra = Math.max(0, extraGuardado);
-            const guardada = guardadas.find((g) => toInt(g?.idHabilidad) === idHabilidad);
+            const guardada = guardadas.find((g) => toInt(g?.idHabilidad) === idHabilidad && mismoExtra(g?.idExtra, idExtra));
             const tiene = toInt(guardada?.rangos ?? h.Rangos);
             const base = { idHabilidad, idExtra, nombre: nombreDeHabilidadConExtra(h), rangos: tiene };
             if (h.Soporta_extra && extraGuardado <= 0)
