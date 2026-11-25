@@ -154,11 +154,11 @@ export const MONSTRUOS_COMPANERO: MonstruoDetalle[] = [
  * backend los buscan por nombre.
  */
 export const MONSTRUOS_SABANDIJA: MonstruoDetalle[] = [
-    monstruo(ARANA_PEQUENA, 'Araña monstruosa (pequeña)', 7, 17, 1, [['Mordisco', 1]], [
+    monstruo(ARANA_PEQUENA, 'Araña monstruosa Pequeña', 7, 17, 1, [['Mordisco', 1]], [
         fila(DRUIDA, 'Druida', 1, 0, 0, COMPANERO_ARANA), fila(DRUIDA, 'Druida', 3, 0, 0, COMPANERO_SABANDIJA),
         { ...fila(HECHICERO, 'Hechicero', 3, 0, 5, 48), Plantilla: { Id: 5, Nombre: 'Mejorado' }, Dote: { Id: 48, Nombre: 'Familiar mejorado' }, Mascota: 'familiar' },
     ], true),
-    monstruo(ESCORPION_PEQUENO, 'Escorpión monstruoso (Pequeño)', 9, 10, 4, [['Pinza', 2], ['Aguijón', 1]], [
+    monstruo(ESCORPION_PEQUENO, 'Escorpión monstruoso Pequeño', 9, 10, 4, [['Pinza', 2], ['Aguijón', 1]], [
         fila(DRUIDA, 'Druida', 3, 0, 0, COMPANERO_SABANDIJA),
         { ...fila(HECHICERO, 'Hechicero', 3, 0, 5, 48), Plantilla: { Id: 5, Nombre: 'Mejorado' }, Dote: { Id: 48, Nombre: 'Familiar mejorado' }, Mascota: 'familiar' },
     ], true),
