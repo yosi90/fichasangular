@@ -208,7 +208,7 @@ describe('companero-reglas (el compañero animal, de los datos)', () => {
             const elegibles = filtrarCompanerosElegibles({
                 companeros: sabandijas, estado, alineamientoPersonaje: 'Neutral autentico', incluirHomebrew: false, dotesPersonaje: conSabandija,
             });
-            expect(elegibles.map((c) => c.Nombre)).toEqual(['Araña monstruosa (pequeña)', 'Escorpión monstruoso (Pequeño)']);
+            expect(elegibles.map((c) => c.Nombre)).toEqual(['Araña monstruosa Pequeña', 'Escorpión monstruoso Pequeño']);
         });
 
         it('a druida 2, o sin la dote, no; la araña, con Compañero araña, desde druida 1', () => {
