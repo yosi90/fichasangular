@@ -227,7 +227,18 @@ export type ReciclajeSubidaDto =
     /** La escuela del mago (R3, segunda tanda): la especialización y las prohibidas juntas; `especialista: null`, generalista. */
     | { tipo: 'rasgo'; hueco: { idClase: number; escuela: true; }; quita: { escuela: EscuelaRasgoDto; }; pone: { escuela: EscuelaRasgoDto; }; }
     /** La mascota (R3, tercera tanda): el compañero animal o el familiar, otra criatura de la misma elección. */
-    | { tipo: 'rasgo'; hueco: { idClase: number; mascota: TipoDeMascota; }; quita: { mascota: MascotaRasgoDto; }; pone: { mascota: MascotaRasgoDto; }; };
+    | { tipo: 'rasgo'; hueco: { idClase: number; mascota: TipoDeMascota; }; quita: { mascota: MascotaRasgoDto; }; pone: { mascota: MascotaRasgoDto; }; }
+    /**
+     * Un nivel de clase por un nivel de sustitución de ese nivel, al revés o por el de otro juego (R8, segunda tanda; MJ II,
+     * pág. 197): `null`, el estándar. `traspaso`, hasta 4 rangos a una habilidad de clase que añade el nivel nuevo.
+     */
+    | {
+        tipo: 'nivel_sustitucion';
+        hueco: { idClase: number; nivelClase: number; };
+        quita: { idNivelSustitucion: number | null; };
+        pone: { idNivelSustitucion: number | null; };
+        traspaso?: { quita: { idHabilidad: number; idExtra: number; }; pone: { idHabilidad: number; idExtra: number; }; rangos: number; };
+    };
 
 /** La criatura de la mascota en el reciclaje: su monstruo y su plantilla (sin plantilla, 0). */
 export interface MascotaRasgoDto {

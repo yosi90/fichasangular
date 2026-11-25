@@ -508,13 +508,24 @@ function cambiosEnLaFicha(plan: PlanRasgo): CambioDeRasgoEnElMotor[] {
  * apunta la API. Sin las decisiones homebrew de una dote que ya no tiene.
  */
 export function fichaConElRasgo(entrada: PersonajeCreateRequestDto, plan: PlanRasgo): PersonajeCreateRequestDto {
+    return fichaConLosCambiosDeClase(entrada, plan.hueco.idClase, cambiosEnLaFicha(plan));
+}
+
+/**
+ * La `entrada` con los cambios de las filas de la tabla de `idClase` (`CambioDeRasgoEnElMotor`): en sus aptitudes y sus
+ * dotes, lo que sale y lo que entra (las dotes, con su origen), y en las elecciones del nivel de cada una, lo nuevo en
+ * lugar de lo viejo, como lo apunta la API. Sin las decisiones homebrew de una dote que ya no tiene. Lo usan el reciclaje
+ * de un rasgo (`fichaConElRasgo`) y el de un nivel de sustitución (`reciclaje-nivel-sustitucion.ts`).
+ */
+export function fichaConLosCambiosDeClase(entrada: PersonajeCreateRequestDto, idClase: number, cambios: CambioDeRasgoEnElMotor[])
+    : PersonajeCreateRequestDto {
     const ficha: PersonajeCreateRequestDto = JSON.parse(JSON.stringify(entrada));
     const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) };
     const especiales: any[] = col.especiales = [...(col.especiales ?? [])];
     const dotes: any[] = col.dotes = [...(col.dotes ?? [])];
     ficha.niveles = (ficha.niveles ?? []).map((n) => ({ ...n, elecciones: [...(n.elecciones ?? [])] }));
-    const nivel = (nivelClase: number) => nivelDelOrden(ficha.niveles, { idClase: plan.hueco.idClase, nivelClase });
-    cambiosEnLaFicha(plan).forEach((c) => {
+    const nivel = (nivelClase: number) => nivelDelOrden(ficha.niveles, { idClase, nivelClase });
+    cambios.forEach((c) => {
         const elecciones = nivel(c.nivelClase)?.elecciones;
         if (c.quita) {
             if (c.tipo === 'especial' && !c.conservar)
