@@ -123,7 +123,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { extraComparable, mismoExtra, normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
-import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
+import { esLaHabilidad, extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { ajustesCaracteristicaDeRaciales, caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -155,7 +155,7 @@ import {
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
 import {
     apuntarEleccion, construirNivelesCreacion, esLaEleccion, etiquetaDelNivel, nivelDelOrden, nivelesDeClaseHasta, ORIGEN_DOTE_ADICIONAL_DE_RAZA, ORIGEN_DOTE_POR_NIVEL, ORIGEN_IDIOMAS_INICIALES,
-    origenDeNivelDeClase, origenDotePorNivelDePersonaje, RefNivelTomado,
+    origenDeNivelDeClase, origenDotePorNivelDePersonaje, ponerNivelDeSustitucion, RefNivelTomado,
 } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
@@ -8327,10 +8327,7 @@ export class NuevoPersonajeService {
         const actual = this.obtenerNivelActualClase(clase.Nombre);
         const viejo = this.sustitucionDelNivelDeClase(clase, nivelClase);
         const detalleAntes = this.obtenerDetalleNivelClase(clase, actual);
-        if (nuevo)
-            nivel.idNivelSustitucion = nuevo.nivel.Id;
-        else
-            delete nivel.idNivelSustitucion;
+        ponerNivelDeSustitucion(nivel, nuevo?.nivel.Id ?? null);
         const detalleDespues = this.obtenerDetalleNivelClase(clase, actual);
         this.anotarSustitucionesEnElDesglose(clase);
         // Los ajustes de los niveles de sustitución (el −1 al ataque base de la prole de Bahamut): la diferencia, en su nivel.
@@ -13086,8 +13083,7 @@ export class NuevoPersonajeService {
         const deLaReferencia = (ref: Record<string, any>) => {
             const id = toInt(ref?.['Id_habilidad'] ?? ref?.['id_habilidad'] ?? ref?.['Id']);
             const idExtra = toInt(ref?.['Id_extra'] ?? ref?.['id_extra']);
-            return (pj.Habilidades ?? []).filter((h) => !h?.Custom && toInt(h?.Id) === id
-                && (idExtra <= 0 || mismoExtra(idExtraHabilidadParaGuardar(h), idExtra)));
+            return (pj.Habilidades ?? []).filter((h) => esLaHabilidad(h, id, idExtra));
         };
         const siguenDeClase = new Set([
             ...Object.entries(this.habilidadesDeClasePorOrigen).filter(([origen]) => !origen.startsWith(origenDeClase(''))).flatMap(([, claves]) => claves),

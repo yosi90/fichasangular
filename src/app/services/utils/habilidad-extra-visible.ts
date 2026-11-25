@@ -1,5 +1,5 @@
 import { Comodin } from 'src/app/interfaces/comodin';
-import { normalizarTexto, toArray, toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
+import { mismoExtra, normalizarTexto, toArray, toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { PrerequisiteCatalogItem } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
@@ -25,6 +25,15 @@ export function idExtraHabilidadParaGuardar(entrada: any): number {
             return idOpcion;
     }
     return toBoolean(entrada?.Soporta_extra) ? ID_EXTRA_HABILIDAD_ELEGIR : ID_EXTRA_HABILIDAD_SIN_EXTRA;
+}
+
+/**
+ * Si `h` (una habilidad del personaje del motor) es la del catálogo `idHabilidad` con `idExtra`: no personalizada, y con
+ * un extra 0 o -1 (sin especialidad), cualquiera de esa habilidad. Lo usan el reciclaje (los rangos y el nivel de
+ * sustitución) y las de clase que deja de dar un dominio.
+ */
+export function esLaHabilidad(h: any, idHabilidad: unknown, idExtra: unknown): boolean {
+    return !h?.Custom && toInt(h?.Id) === toInt(idHabilidad) && (toInt(idExtra) <= 0 || mismoExtra(idExtraHabilidadParaGuardar(h), idExtra));
 }
 
 /**

@@ -262,7 +262,7 @@
                                 <!-- El traspaso: hasta 4 rangos a una habilidad que añade el nivel nuevo -->
                                 <ng-container *ngIf="p.analisis.habilidadesAnadidas.length > 0">
                                     <h3 class="subida__seccion">Traspaso de rangos (opcional)</h3>
-                                    <p class="subida__nota">El nivel nuevo añade de clase {{nombresDeLasAnadidas}}: puedes pasar hasta {{maximoTraspaso}} rangos de otra habilidad a una de ellas, sin pasar de su nivel + 3.</p>
+                                    <p class="subida__nota">El nivel nuevo añade de clase {{nombresDeLasAnadidas}}: puedes pasar hasta {{maximoRangos}} rangos de otra habilidad a una de ellas, sin pasar de su nivel + 3.</p>
                                     <div class="subida__campos">
                                         <label class="subida__campo">Quitar rangos de
                                             <select [(ngModel)]="traspasoOrigen" (ngModelChange)="cambiarTraspaso()" name="traspasoOrigen">

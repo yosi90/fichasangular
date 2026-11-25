@@ -1,4 +1,4 @@
-import { resolverExtraHabilidadVisible } from './habilidad-extra-visible';
+import { esLaHabilidad, resolverExtraHabilidadVisible } from './habilidad-extra-visible';
 
 describe('resolverExtraHabilidadVisible', () => {
     it('devuelve Elegir cuando idExtra es 0 y está permitido', () => {
@@ -48,5 +48,17 @@ describe('resolverExtraHabilidadVisible con el contrato sin relleno', () => {
 
     it('sin marca (el borrador de la creación), «Elegir» sigue saliendo del texto', () => {
         expect(resolverExtraHabilidadVisible({ extra: 'elegir', idExtra: 0 })).toBe('Elegir');
+    });
+});
+
+describe('esLaHabilidad', () => {
+    it('por su id y su extra; sin extra (0 o -1), cualquiera de esa habilidad; nunca una personalizada', () => {
+        const saberDungeons = { Id: 32, Id_extra: 53, Extra: 'Dungeons' };
+        expect(esLaHabilidad(saberDungeons, 32, 53)).toBeTrue();
+        expect(esLaHabilidad(saberDungeons, 32, 54)).toBeFalse();
+        expect(esLaHabilidad(saberDungeons, 32, 0)).toBeTrue();
+        expect(esLaHabilidad(saberDungeons, 32, -1)).toBeTrue();
+        expect(esLaHabilidad(saberDungeons, 42, 0)).toBeFalse();
+        expect(esLaHabilidad({ ...saberDungeons, Custom: true }, 32, 53)).toBeFalse();
     });
 });

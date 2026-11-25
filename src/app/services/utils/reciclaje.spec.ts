@@ -1,6 +1,6 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ENTRADA_ENANO_CLERIGO_1 } from 'src/testing/subida-nivel-api';
-import { fichaConElReciclaje, filaDelReciclaje, PlanReciclaje, reciclajeDelPlan } from './reciclaje';
+import { aplicarReciclajeAlMotor, cantidadesDeRangos, fichaConElReciclaje, filaDelReciclaje, PlanReciclaje, reciclajeDelPlan } from './reciclaje';
 import { fichaDeLaSubida } from './subida-nivel';
 
 const copia = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -85,5 +85,24 @@ describe('reciclaje (Manual del jugador II, págs. 194-196: la ficha que se mand
         const conjuros: PlanReciclaje = { tipo: 'conjuros', cambios: [{ idClase: 4, clase: 'Hechicero', olvida: { id: 101, nombre: 'luz' }, aprende: { id: 140, nombre: 'mano de mago' } }] };
         expect(reciclajeDelPlan(conjuros)).toEqual({ tipo: 'conjuros', cambios: [{ idClase: 4, olvida: 101, aprende: 140 }] });
         expect(filaDelReciclaje(conjuros).porque).toContain('hechicero');
+    });
+
+    it('los rangos que se pueden traspasar: de 1 a 4, sin pasar de los que tiene', () => {
+        expect(cantidadesDeRangos(0)).toEqual([]);
+        expect(cantidadesDeRangos(2)).toEqual([1, 2]);
+        expect(cantidadesDeRangos(9)).toEqual([1, 2, 3, 4]);
+    });
+
+    it('el traspaso de rangos en el motor, de la habilidad con su especialidad (no la primera de ese id)', () => {
+        const habilidades = [
+            { Id: 32, Id_extra: 52, Extra: 'Arcano', Rangos: 3 },
+            { Id: 32, Id_extra: 53, Extra: 'Dungeons', Rangos: 4 },
+            { Id: 42, Id_extra: -1, Extra: '', Rangos: 0 },
+        ];
+        const motor = { PersonajeCreacion: { Habilidades: habilidades } } as any;
+        const plan: PlanReciclaje = { tipo: 'rangos', rangos: 4, quita: { idHabilidad: 32, idExtra: 53, nombre: 'Saber (dungeons)' }, pone: { idHabilidad: 42, idExtra: 0, nombre: 'Trepar' } };
+        expect(aplicarReciclajeAlMotor(motor, plan)).toBeTrue();
+        expect(habilidades.map((h) => h.Rangos)).toEqual([3, 0, 4]);
+        expect(aplicarReciclajeAlMotor(motor, plan)).toBeFalse();
     });
 });

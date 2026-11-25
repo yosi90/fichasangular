@@ -6,6 +6,7 @@ import { ReciclajeSubidaDto } from 'src/app/interfaces/sesiones';
 import type { DotePendienteState, DoteSelectorCandidato, DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
 import { claveDoteDeLaFicha, DoteDeLaFicha, sacarDoteDeLaFicha, sacarPrimero } from './correccion-ficha';
+import { textoConSigno } from './equipo-texto';
 import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
 import { extraComparable, mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
 import { limiteRangosHabilidad } from './puntos-habilidad';
@@ -24,7 +25,7 @@ import {
 } from './reciclaje-mascota';
 import {
     AnalisisDelNivel, analizarElNivel, aplicarNivelSustitucionAlMotor, fichaConElNivelDeSustitucion, HuecoDeNivelSustitucion, OpcionDeNivelReciclable,
-    PlanNivelSustitucion, reciclajeDelNivel, textoDePg,
+    PlanNivelSustitucion, reciclajeDelNivel, textoDePg, TraspasoDeRangos, traspasarRangosEnElMotor, traspasoDelCuerpo,
 } from './reciclaje-nivel-sustitucion';
 
 /*
@@ -37,8 +38,17 @@ import {
  * nivel ya con el cambio hecho. Lo usa solo la subida (`components/sesiones/subir-nivel`, con carga diferida).
  */
 
-/** Como mucho, los rangos que se traspasan de una habilidad a otra (MJ II, tabla 8-1). */
+/**
+ * Como mucho, los rangos que se traspasan de una habilidad a otra (MJ II, tabla 8-1): en el reciclaje `rangos` y en el
+ * traspaso de un nivel de sustitución (pág. 197).
+ */
 export const MAXIMO_RANGOS_RECICLADOS = 4;
+
+/** Cuántos rangos se pueden traspasar desde una habilidad con `tiene` rangos comprados: de 1 a 4, sin pasar de ellos. */
+export function cantidadesDeRangos(tiene: number): number[] {
+    return Array.from({ length: Math.max(0, Math.min(MAXIMO_RANGOS_RECICLADOS, toInt(tiene))) }, (_, i) => i + 1);
+}
+
 /** Como mucho, los conocidos que se cambian (MJ II, pág. 196). */
 export const MAXIMO_CONJUROS_RECICLADOS = 2;
 
@@ -52,12 +62,7 @@ export type PlanReciclaje =
         pone: { idDote: number; idExtra: number; nombre: string; extra: string; };
     }
     | { tipo: 'idioma'; quita: { idIdioma: number; nombre: string; }; pone: { idIdioma: number; nombre: string; }; }
-    | {
-        tipo: 'rangos';
-        quita: { idHabilidad: number; idExtra: number; nombre: string; };
-        pone: { idHabilidad: number; idExtra: number; nombre: string; };
-        rangos: number;
-    }
+    | ({ tipo: 'rangos'; } & TraspasoDeRangos)
     | {
         tipo: 'conjuros';
         cambios: Array<{ idClase: number; clase: string; olvida: { id: number; nombre: string; }; aprende: { id: number; nombre: string; }; }>;
@@ -137,11 +142,7 @@ export function reciclajeDelPlan(plan: PlanReciclaje): ReciclajeSubidaDto {
     if (plan.tipo === 'idioma')
         return { tipo: 'idioma', quita: { idIdioma: plan.quita.idIdioma }, pone: { idIdioma: plan.pone.idIdioma } };
     if (plan.tipo === 'rangos')
-        return {
-            tipo: 'rangos', rangos: plan.rangos,
-            quita: { idHabilidad: plan.quita.idHabilidad, idExtra: plan.quita.idExtra },
-            pone: { idHabilidad: plan.pone.idHabilidad, idExtra: plan.pone.idExtra },
-        };
+        return { tipo: 'rangos', ...traspasoDelCuerpo(plan) };
     if (plan.tipo === 'rasgo')
         return { tipo: 'rasgo', hueco: huecoDelCuerpo(plan.hueco), ...opcionesDelCuerpo(plan) };
     if (plan.tipo === 'dominio' || plan.tipo === 'escuela')
@@ -245,8 +246,8 @@ export function filasDelReciclaje(plan: PlanReciclaje): CambioSubida[] {
         const rangos = plan.rangos.filter((r) => r.rangos !== 0);
         if (rangos.length > 0)
             filas.push({
-                que: 'Reciclaje: puntos de habilidad', antes: `${plan.analisis.puntos > 0 ? '+' : '−'}${Math.abs(plan.analisis.puntos)} puntos`,
-                ahora: rangos.map((r) => `${r.nombre} ${r.rangos > 0 ? '+' : '−'}${Math.abs(r.rangos)}`).join(', '), porque: 'Los puntos del nivel nuevo; Manual del jugador II, pág. 197',
+                que: 'Reciclaje: puntos de habilidad', antes: `${textoConSigno(plan.analisis.puntos, '−')} puntos`,
+                ahora: rangos.map((r) => `${r.nombre} ${textoConSigno(r.rangos, '−')}`).join(', '), porque: 'Los puntos del nivel nuevo; Manual del jugador II, pág. 197',
             });
         if (plan.traspaso)
             filas.push({
@@ -780,16 +781,8 @@ export function aplicarReciclajeAlMotor(motor: NuevoPersonajeService, plan: Plan
             Oficial: idioma.Oficial !== false, ...(quitado.Origen ? { Origen: quitado.Origen } : {}) });
         return true;
     }
-    if (plan.tipo === 'rangos') {
-        const buscar = (id: number) => (pj.Habilidades ?? []).find((h) => !h?.Custom && toInt(h?.Id) === id);
-        const origen = buscar(plan.quita.idHabilidad);
-        const destino = buscar(plan.pone.idHabilidad);
-        if (!origen || !destino || toNumber(origen.Rangos) < plan.rangos)
-            return false;
-        origen.Rangos = toNumber(origen.Rangos) - plan.rangos;
-        destino.Rangos = toNumber(destino.Rangos) + plan.rangos;
-        return true;
-    }
+    if (plan.tipo === 'rangos')
+        return traspasarRangosEnElMotor(motor, plan);
     const catalogo = motor.CatalogoConjuros;
     for (const c of plan.cambios) {
         const nuevo = catalogo.find((k) => toInt(k?.Id) === c.aprende.id);

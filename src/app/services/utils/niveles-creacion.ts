@@ -130,6 +130,17 @@ export function nivelDelOrden(orden: NivelTomado[] | null | undefined, nivel: Re
 }
 
 /**
+ * Pone en un nivel del registro (o de la ficha) su nivel de sustitución: `idNivelSustitucion` o, sin él (`null`), el
+ * estándar, sin el campo. Lo usan el motor (`cambiarNivelDeSustitucion`) y el reciclaje de un nivel de sustitución.
+ */
+export function ponerNivelDeSustitucion(nivel: { idNivelSustitucion?: number | null; }, idNivelSustitucion: number | null | undefined): void {
+    if (idNivelSustitucion)
+        nivel.idNivelSustitucion = idNivelSustitucion;
+    else
+        delete nivel.idNivelSustitucion;
+}
+
+/**
  * El nivel de cada clase al tomar el nivel `indice` del orden (incluido): el `nivelClase` más alto de cada una hasta él. Lo
  * usan los prerrequisitos de una dote con lo que tenía al elegirla (`contextoAlNivel` del motor) y el nivel efectivo de la
  * mascota al elegir su dote (`reciclaje-mascota.ts`, como `_nivel_al_elegir_la_dote` de la API).

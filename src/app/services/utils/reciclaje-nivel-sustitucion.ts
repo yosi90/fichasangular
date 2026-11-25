@@ -3,15 +3,16 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import type { CambioDeRasgoEnElMotor, FilaDeTablaDeClase, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { esConjuroDeLaClase, nivelDelConjuroEnLaClase } from 'src/app/services/nuevo-personaje.service';
 import { sacarPrimero } from './correccion-ficha';
-import { idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
-import { nivelDelOrden, origenDeNivelDeClase } from './niveles-creacion';
+import { textoConSigno } from './equipo-texto';
+import { esLaHabilidad, idExtraHabilidadParaGuardar, nombreDeHabilidadConExtra } from './habilidad-extra-visible';
+import { nivelDelOrden, origenDeNivelDeClase, ponerNivelDeSustitucion } from './niveles-creacion';
 import {
     NivelDeSustitucion, RefHabilidadDeSustitucion, conjurosConocidosDelNivel, detalleConSustituciones, habilidadesDelJuego,
     nivelDeSustitucion, nombreDeOpcionDeSustitucion, opcionesDeSustitucion, ordinalDeNivel, puntosHabilidadDelNivel, quitasSinAplicar,
     sustitucionesDeLaClase,
 } from './niveles-sustitucion';
 import { extraComparable, mismoExtra, normalizarTexto, toInt, toNumber } from './normalizacion';
-import { limiteRangosHabilidad } from './puntos-habilidad';
+import { COSTE_RANGO_CLASEA, COSTE_RANGO_TRANSCLASEA, limiteRangosHabilidad, MULTIPLICADOR_PRIMER_NIVEL } from './puntos-habilidad';
 import { nivelDeClaveConjuro } from './reglas-magia';
 import { CambioDeRasgo, DoteElegidaEnElRasgo, fichaConLosCambiosDeClase, nombreConExtra } from './reciclaje-rasgos';
 import { fichaConLoDelMotor } from './subida-nivel';
@@ -26,9 +27,6 @@ import { fichaConLoDelMotor } from './subida-nivel';
  * traspaso de hasta 4 rangos a una que añade), los conocidos y las competencias. Lo que dejaría de cumplir lo que tiene
  * bloquea; nada sale de un nombre ni de un id fijo.
  */
-
-/** Como mucho, los rangos que se traspasan a una habilidad que añade el nivel nuevo (MJ II, pág. 197). */
-export const MAXIMO_RANGOS_TRASPASO = 4;
 
 /** Los dados de golpe, en su orden (un paso es uno de ellos: MJ II, pág. 197). */
 const ESCALERA_DE_DADOS = [4, 6, 8, 10, 12];
@@ -102,8 +100,11 @@ export interface CambioDeRangosDelNivel {
     rangos: number;
 }
 
-/** El traspaso: de 1 a 4 rangos de una habilidad a una de clase que añade el nivel nuevo. */
-export interface TraspasoDelNivel {
+/**
+ * Un traspaso de rangos: de 1 a 4 (`MAXIMO_RANGOS_RECICLADOS`) de una habilidad a otra. Es el reciclaje `rangos` y el
+ * `traspaso` de un nivel de sustitución (a una de clase que añade el nivel nuevo).
+ */
+export interface TraspasoDeRangos {
     quita: { idHabilidad: number; idExtra: number; nombre: string; };
     pone: { idHabilidad: number; idExtra: number; nombre: string; };
     rangos: number;
@@ -119,7 +120,7 @@ export interface PlanNivelSustitucion {
     doteElegida: DoteElegidaEnElRasgo | null;
     /** Los rangos que quita o compra por la diferencia de puntos. */
     rangos: CambioDeRangosDelNivel[];
-    traspaso: TraspasoDelNivel | null;
+    traspaso: TraspasoDeRangos | null;
     /** Los conocidos que olvida porque el nivel nuevo da menos. */
     olvidados: Array<{ idConjuro: number; nombre: string; }>;
 }
@@ -194,17 +195,11 @@ function conElNivelCambiado<T>(motor: NuevoPersonajeService, hueco: HuecoDeNivel
     if (!nivel)
         return fn();
     const tenia = nivel.idNivelSustitucion;
-    if (idNivelSustitucion)
-        nivel.idNivelSustitucion = idNivelSustitucion;
-    else
-        delete nivel.idNivelSustitucion;
+    ponerNivelDeSustitucion(nivel, idNivelSustitucion);
     try {
         return fn();
     } finally {
-        if (tenia)
-            nivel.idNivelSustitucion = tenia;
-        else
-            delete nivel.idNivelSustitucion;
+        ponerNivelDeSustitucion(nivel, tenia);
     }
 }
 
@@ -273,7 +268,7 @@ export function analizarElNivel(motor: NuevoPersonajeService, entrada: Personaje
         : Math.max(1, tiradaDespues + mod) - Math.max(1, tiradaAntes + mod);
 
     // Los puntos y las habilidades de clase del nivel.
-    const puntos = (puntosHabilidadDelNivel(clase, pone.nivel) - puntosHabilidadDelNivel(clase, hueco.tiene)) * (hueco.indiceNivel === 0 ? 4 : 1);
+    const puntos = (puntosHabilidadDelNivel(clase, pone.nivel) - puntosHabilidadDelNivel(clase, hueco.tiene)) * (hueco.indiceNivel === 0 ? MULTIPLICADOR_PRIMER_NIVEL : 1);
     const listaAntes = habilidadesDelNivel(motor, clase, hueco.tiene);
     const listaDespues = habilidadesDelNivel(motor, clase, pone.nivel);
     const habilidadesAnadidas = listaDespues.filter((h) => !listaAntes.some((a) => mismaHabilidad(a, h)));
@@ -449,8 +444,7 @@ function rangosPorEncimaDelTope(motor: NuevoPersonajeService, clase: Clase, huec
         if (enOtro)
             return [];
         return (pj.Habilidades ?? [])
-            .filter((h) => !h?.Custom && toInt(h?.Id) === q.idHabilidad && (q.idExtra <= 0 || mismoExtra(idExtraHabilidadParaGuardar(h), q.idExtra))
-                && toNumber(h?.Rangos) > tope)
+            .filter((h) => esLaHabilidad(h, q.idHabilidad, q.idExtra) && toNumber(h?.Rangos) > tope)
             .map((h) => nombreDeHabilidadConExtra(h));
     });
 }
@@ -523,8 +517,9 @@ export function habilidadesParaLosPuntos(motor: NuevoPersonajeService, entrada: 
             const rangos = toInt(guardada?.rangos ?? h.Rangos);
             const deLaLista = lista.some((r) => mismaHabilidad(r, { idHabilidad, idExtra }));
             const tope = limiteRangosHabilidad(nivelPersonaje, deLaLista || motor.esHabilidadDeClaseEnAlguna(h));
-            const maximo = puntos < 0 ? Math.min(rangos, -puntos) : Math.max(0, Math.min(tope - rangos, Math.floor(puntos / (deLaLista ? 1 : 2))));
-            return { idHabilidad, idExtra, nombre: nombreDeHabilidadConExtra(h), rangos, coste: deLaLista ? 1 : 2, maximo };
+            const coste = deLaLista ? COSTE_RANGO_CLASEA : COSTE_RANGO_TRANSCLASEA;
+            const maximo = puntos < 0 ? Math.min(rangos, -puntos) : Math.max(0, Math.min(tope - rangos, Math.floor(puntos / coste)));
+            return { idHabilidad, idExtra, nombre: nombreDeHabilidadConExtra(h), rangos, coste, maximo };
         })
         .filter((h) => h.maximo > 0)
         .sort((a, b) => a.coste - b.coste || a.nombre.localeCompare(b.nombre, 'es'));
@@ -612,6 +607,26 @@ export function huecoDeLaDoteDelNivel(motor: NuevoPersonajeService, plan: Pick<P
     return { pendiente, candidatos: motor.obtenerCandidatosDotePendiente(pendiente.id) };
 }
 
+/** La habilidad del motor (no personalizada) de `{ idHabilidad, idExtra }` (`esLaHabilidad`). */
+function habilidadDelMotor(motor: NuevoPersonajeService, ref: { idHabilidad: number; idExtra: number; }) {
+    return (motor.PersonajeCreacion.Habilidades ?? []).find((h) => esLaHabilidad(h, ref.idHabilidad, ref.idExtra));
+}
+
+/**
+ * Pasa en el motor los rangos de un traspaso (`TraspasoDeRangos`) de la habilidad de origen a la de destino, cada una por
+ * su id y su extra. `false` si falta alguna o el origen no tiene esos rangos. Lo usan el reciclaje `rangos` y el traspaso
+ * de un nivel de sustitución.
+ */
+export function traspasarRangosEnElMotor(motor: NuevoPersonajeService, traspaso: TraspasoDeRangos): boolean {
+    const origen = habilidadDelMotor(motor, traspaso.quita);
+    const destino = habilidadDelMotor(motor, traspaso.pone);
+    if (!origen || !destino || toNumber(origen.Rangos) < traspaso.rangos)
+        return false;
+    origen.Rangos = toNumber(origen.Rangos) - traspaso.rangos;
+    destino.Rangos = toNumber(destino.Rangos) + traspaso.rangos;
+    return true;
+}
+
 /**
  * Hace el reciclaje del nivel en el motor, antes del nivel nuevo: el nivel cambiado en el registro, lo que sale y entra de
  * la tabla, la dote elegida, los rangos (los de la diferencia y el traspaso) y los conocidos que olvida. `false` si algo
@@ -627,22 +642,14 @@ export function aplicarNivelSustitucionAlMotor(motor: NuevoPersonajeService, pla
         || !motor.aplicarCambiosDeRasgo(hueco.idClase, plan.analisis.cambios))
         return false;
     const pj = motor.PersonajeCreacion;
-    const buscar = (idHabilidad: number, idExtra: number) => (pj.Habilidades ?? []).find((h) => !h?.Custom && toInt(h?.Id) === idHabilidad
-        && (idExtra <= 0 || mismoExtra(idExtraHabilidadParaGuardar(h), idExtra)));
     for (const r of plan.rangos) {
-        const h = buscar(r.idHabilidad, r.idExtra);
+        const h = habilidadDelMotor(motor, r);
         if (!h || toNumber(h.Rangos) + r.rangos < 0)
             return false;
         h.Rangos = toNumber(h.Rangos) + r.rangos;
     }
-    if (plan.traspaso) {
-        const origen = buscar(plan.traspaso.quita.idHabilidad, plan.traspaso.quita.idExtra);
-        const destino = buscar(plan.traspaso.pone.idHabilidad, plan.traspaso.pone.idExtra);
-        if (!origen || !destino || toNumber(origen.Rangos) < plan.traspaso.rangos)
-            return false;
-        origen.Rangos = toNumber(origen.Rangos) - plan.traspaso.rangos;
-        destino.Rangos = toNumber(destino.Rangos) + plan.traspaso.rangos;
-    }
+    if (plan.traspaso && !traspasarRangosEnElMotor(motor, plan.traspaso))
+        return false;
     const claseNorm = normalizarTexto(hueco.clase);
     for (const o of plan.olvidados)
         if (!sacarPrimero(pj.Conjuros ?? [], (x) => toInt(x?.Id) === o.idConjuro && esConjuroDeLaClase(x, claseNorm)))
@@ -680,10 +687,7 @@ export function fichaConElNivelDeSustitucion(entrada: PersonajeCreateRequestDto,
         if (i !== plan.hueco.indiceNivel)
             return n;
         const nivel: any = { ...n };
-        if (plan.pone.idNivelSustitucion)
-            nivel.idNivelSustitucion = plan.pone.idNivelSustitucion;
-        else
-            delete nivel.idNivelSustitucion;
+        ponerNivelDeSustitucion(nivel, plan.pone.idNivelSustitucion);
         if (n.pg && plan.analisis.pg.tiradaDespues !== null && !n.pg.maximo)
             nivel.pg = { ...n.pg, tirada: plan.analisis.pg.tiradaDespues };
         return nivel;
@@ -698,17 +702,20 @@ export function reciclajeDelNivel(plan: PlanNivelSustitucion) {
         hueco: { idClase: plan.hueco.idClase, nivelClase: plan.hueco.nivelClase },
         quita: { idNivelSustitucion: plan.hueco.tiene?.nivel.Id ?? null },
         pone: { idNivelSustitucion: plan.pone.idNivelSustitucion },
-        ...(plan.traspaso ? {
-            traspaso: {
-                quita: { idHabilidad: plan.traspaso.quita.idHabilidad, idExtra: plan.traspaso.quita.idExtra },
-                pone: { idHabilidad: plan.traspaso.pone.idHabilidad, idExtra: plan.traspaso.pone.idExtra },
-                rangos: plan.traspaso.rangos,
-            },
-        } : {}),
+        ...(plan.traspaso ? { traspaso: traspasoDelCuerpo(plan.traspaso) } : {}),
+    };
+}
+
+/** `{ quita, pone, rangos }` del contrato de un traspaso (el reciclaje `rangos` y el `traspaso` de `nivel_sustitucion`). */
+export function traspasoDelCuerpo(traspaso: TraspasoDeRangos) {
+    return {
+        quita: { idHabilidad: traspaso.quita.idHabilidad, idExtra: traspaso.quita.idExtra },
+        pone: { idHabilidad: traspaso.pone.idHabilidad, idExtra: traspaso.pone.idExtra },
+        rangos: traspaso.rangos,
     };
 }
 
 /** «+2 PG», «−1 PG» o «sin cambio de PG». */
 export function textoDePg(delta: number): string {
-    return delta === 0 ? 'sin cambio de PG' : `${delta > 0 ? '+' : '−'}${Math.abs(delta)} PG`;
+    return delta === 0 ? 'sin cambio de PG' : `${textoConSigno(delta, '−')} PG`;
 }
