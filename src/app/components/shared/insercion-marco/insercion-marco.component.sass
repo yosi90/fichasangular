@@ -24,6 +24,9 @@ app-insercion-marco
     box-sizing: border-box
     color: $ficha-texto
     --mat-form-field-filled-container-color: #{$primary}
+    // En el claro, `$primary` sigue oscuro en A y C: el relleno de Material del tema (el texto de los campos es oscuro).
+    @include en-claro($global: true)
+        --mat-form-field-filled-container-color: var(--rol-mat-superficie-variante)
 
 // Cabecera
 .insercion-cabecera
@@ -32,6 +35,8 @@ app-insercion-marco
     gap: 12px
     padding: 16px 22px 14px
     @include ficha-cabecera
+    // Los campos de la cabecera (los pasos en el móvil), oscuros en los dos modos, como ella.
+    --mat-form-field-filled-container-color: #{$primary}
 
 .insercion-cabecera__fila
     display: flex
@@ -190,6 +195,11 @@ app-insercion-marco
     color: $ficha-aviso
     background: con-alfa($ficha-aviso, .12)
     border: 1px solid con-alfa($ficha-aviso, .45)
+    // En el claro, sobre la zona, el ámbar se quedaba en 3,9:1 (A) y 2,9:1 (C): el tinte sobre la tarjeta y el ámbar
+    // del texto.
+    @include en-claro($global: true)
+        color: var(--rol-ambar-texto)
+        background: color-mix(in srgb, #{$ficha-aviso} 12%, var(--rol-tarjeta))
 
 .insercion-cargando
     color: $ficha-texto-suave

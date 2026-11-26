@@ -303,3 +303,46 @@ describe('La vista previa con la creación apilada', () => {
         expect(caja('.creacion-pie').top).toBeGreaterThanOrEqual(caja('app-creacion-vista-previa').bottom);
     });
 });
+
+@Component({
+    template: `
+        <div class="caja" style="display: flex; width: 800px; height: 420px">
+            <app-creacion-marco>
+                <app-creacion-cuerpo [lateral]="true">
+                    <div creacionTarea class="tarea" style="height: 900px">La tabla del paso</div>
+                    <div creacionLateral class="lateral" style="height: 300px">Tu personaje</div>
+                </app-creacion-cuerpo>
+                <app-creacion-pie nota="Sistema homebrew, solo con permiso del máster.">
+                    <button type="button">Continuar: Clases</button>
+                </app-creacion-pie>
+            </app-creacion-marco>
+        </div>`,
+    standalone: false
+})
+class PasoApiladoDePruebaComponent { }
+
+describe('Un paso con la creación apilada (el plegable y el móvil)', () => {
+    let fixture: ComponentFixture<PasoApiladoDePruebaComponent>;
+    const el = (): HTMLElement => fixture.nativeElement;
+    const caja = (selector: string): DOMRect => (el().querySelector(selector) as HTMLElement).getBoundingClientRect();
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            declarations: [PasoApiladoDePruebaComponent, ...CREACION_MARCO_COMPONENTES, ...FICHA_DETALLE_COMPONENTES, TextoManualComponent],
+            imports: [MatIconModule, MatTooltipModule],
+        }).compileComponents();
+        fixture = TestBed.createComponent(PasoApiladoDePruebaComponent);
+        document.body.appendChild(fixture.nativeElement);
+        fixture.detectChanges();
+    });
+
+    afterEach(() => fixture.nativeElement.remove());
+
+    it('nada se pinta encima de la tarea: la lateral va debajo y el pie, detrás del cuerpo', () => {
+        expect(getComputedStyle(el().querySelector('.creacion-cuerpo') as HTMLElement).gridTemplateColumns.split(' ').length).toBe(1);
+        const tarea = caja('.creacion-cuerpo__tarea');
+        expect(caja('.creacion-cuerpo').bottom).toBeGreaterThanOrEqual(caja('.lateral').bottom - 1);
+        expect(caja('.creacion-cuerpo__lateral').top).toBeGreaterThanOrEqual(tarea.bottom - 1);
+        expect(caja('.creacion-pie').top).toBeGreaterThanOrEqual(caja('.creacion-cuerpo').bottom - 1);
+    });
+});

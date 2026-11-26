@@ -94,7 +94,8 @@
 
     @each $grupo, $color in $iconos-grupos
         &.buscador-global__titulo--#{$grupo}
-            color: $color
+            // En oscuro, el color del grupo al 65 % con blanco: el rosa de personaje, tal cual, se quedaba en 2,8:1.
+            color: color-mix(in srgb, #{$color} 65%, white)
 
             // En claro, el color del grupo al 60 % con negro: texto pequeño, AA sobre el blanco.
             @include en-claro
@@ -122,6 +123,10 @@
 .buscador-global__opcion--activa
     background: con-alfa($active, .18)
     box-shadow: inset 3px 0 0 $active
+
+    // Sobre el rosa de la fila elegida, el gris del subtítulo no llegaba al 4,5:1 en B y C.
+    .buscador-global__subtitulo
+        color: $ficha-texto-suave
 
 .buscador-global__icono-material
     display: flex

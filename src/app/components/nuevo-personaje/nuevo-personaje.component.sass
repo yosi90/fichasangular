@@ -225,12 +225,17 @@ textarea
     border: 1px solid con-alfa(var(--rol-tinta), .12)
     background: $primary
     color: $ficha-texto
+    // En el claro, `$primary` sigue oscuro en A y C (es el cuero o la pizarra): la tarjeta, sobre la fila alterna.
+    @include en-claro
+        background: var(--rol-fila-alterna)
 
 .plantilla-card--elegible
     cursor: pointer
 
     &:hover
         background: $primary-hover
+        @include en-claro
+            background: con-alfa(var(--rol-tinta), .08)
 
     &:focus-visible
         outline: 2px solid $active
