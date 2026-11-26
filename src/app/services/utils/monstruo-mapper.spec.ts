@@ -8,7 +8,8 @@ import {
     normalizeFamiliarMonstruoDetalle,
     normalizeFamiliarMonstruoDetalleArray,
     normalizeMonstruoDetalle,
-    normalizeMonstruoDetalleArray
+    normalizeMonstruoDetalleArray,
+    normalizeMonstruoIndice
 } from "./monstruo-mapper";
 
 function createRawConjuro() {
@@ -295,5 +296,32 @@ describe("monstruo-mapper: el familiar, de los datos", () => {
         expect(cache.Tablas[0].Bonos.map((b) => b.Nivel)).toEqual([1, 3]);
         expect(cache.Plantillas[0].Sin_aptitudes).toEqual([7]);
         expect(leerFamiliarProgresion(null)).toEqual({ Tablas: [], Plantillas: [], Tipo_prerrequisitos: null });
+    });
+});
+
+describe("monstruo-mapper: el índice ligero (`MonstruosIndice/<id>`)", () => {
+    // Un nodo del índice de rol_dev, con la forma del contrato (catalogos.md, «MonstruoIndice»).
+    const nodo = {
+        Id: 48, Nombre: "Lobo", Manual: { Id: 1, Nombre: "Manual de monstruos 1", Pagina: 271 },
+        Tipo: { Id: 2, Nombre: "Animal" }, Tamano: { Id: 4, Nombre: "Mediano" }, Valor_desafio: "1",
+        Familiar: false, Companero: true, Oficial: true,
+    };
+
+    it("lee los campos del contrato, con los mismos valores que el detalle del mismo monstruo", () => {
+        const indice = normalizeMonstruoIndice(nodo);
+        expect(indice).toEqual(nodo);
+        const detalle = normalizeMonstruoDetalle({ ...nodo, Descripcion: "Un lobo." });
+        (["Id", "Nombre", "Manual", "Valor_desafio", "Familiar", "Companero", "Oficial"] as const)
+            .forEach((campo) => expect(indice[campo]).withContext(campo).toEqual(detalle[campo]));
+        expect(indice.Tipo).toEqual({ Id: detalle.Tipo.Id, Nombre: detalle.Tipo.Nombre });
+        expect(indice.Tamano).toEqual({ Id: detalle.Tamano.Id, Nombre: detalle.Tamano.Nombre });
+    });
+
+    it("no copia lo que no es del índice y deja vacío lo que falta (en la RTDB, una clave vacía no está)", () => {
+        const indice = normalizeMonstruoIndice({ Id: 7, Nombre: "Sin datos", Descripcion: "No es del índice", Niveles_clase: [{}] });
+        expect(indice).toEqual({
+            Id: 7, Nombre: "Sin datos", Manual: { Id: 0, Nombre: "", Pagina: 0 }, Tipo: { Id: 0, Nombre: "" }, Tamano: { Id: 0, Nombre: "" },
+            Valor_desafio: "", Familiar: false, Companero: false, Oficial: false,
+        });
     });
 });

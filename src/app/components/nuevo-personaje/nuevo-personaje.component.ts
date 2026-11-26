@@ -6124,7 +6124,7 @@ export class NuevoPersonajeComponent {
     private async cargarCatalogoFamiliaresSelector(): Promise<boolean> {
         try {
             const [monstruos, progresion] = await Promise.all([
-                firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1))),
+                firstValueFrom(this.monstruoSvc.getMonstruosMascota('familiar')),
                 firstValueFrom(this.monstruoSvc.getFamiliaresProgresion().pipe(take(1))),
             ]);
             this.nuevoPSvc.setProgresionFamiliar(progresion);
@@ -6170,7 +6170,7 @@ export class NuevoPersonajeComponent {
     private async cargarCatalogoCompanerosSelector(): Promise<boolean> {
         try {
             const [monstruos, progresion] = await Promise.all([
-                firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1))),
+                firstValueFrom(this.monstruoSvc.getMonstruosMascota('companero')),
                 firstValueFrom(this.monstruoSvc.getCompanerosProgresion().pipe(take(1))),
             ]);
             this.nuevoPSvc.setProgresionCompanero(progresion);

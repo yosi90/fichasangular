@@ -504,7 +504,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
         cargar(this.equipoSvc.getConjuntos(), (conjuntos) => this.conjuntos = conjuntos.map((c) => ({ Id: c.Id, Nombre: c.Nombre })));
         cargar(this.equipoSvc.getMateriales(), (materiales) => this.materiales = opcionesDeCatalogo(materiales));
         cargar(this.equipoSvc.getEncantamientos(), (aptitudes) => this.aptitudes = opcionesDeCatalogo(aptitudes));
-        cargar(this.monstruoSvc.getMonstruos(), (monstruos) => this.monstruos = opcionesDeCatalogo(monstruos as any[]));
+        cargar(this.monstruoSvc.getMonstruosIndice(), (monstruos) => this.monstruos = opcionesDeCatalogo(monstruos));
         cargar(this.armaSvc.getArmas(), (armas) => this.armas = opcionesDeCatalogo(armas));
         cargar(this.armaduraSvc.getArmaduras(), (armaduras) => this.armaduras = opcionesDeCatalogo(armaduras));
         cargar(this.conjuroSvc.getConjuros(), (conjuros) => this.conjurosOpciones = opcionesDeCatalogo(conjuros as any[]));

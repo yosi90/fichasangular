@@ -1,3 +1,5 @@
+import { construirCatalogoCompanerosDesdeMonstruos } from 'src/app/services/utils/companero-reglas';
+import { construirCatalogoFamiliaresDesdeMonstruos } from 'src/app/services/utils/familiar-reglas';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
 import Swal from 'sweetalert2';
 import { Campana } from 'src/app/interfaces/campaña';
@@ -712,7 +714,7 @@ describe('NuevoPersonajeComponent', () => {
             getTiposCriatura: () => of([]),
         };
         monstruoSvcMock = {
-            getMonstruos: () => of([]),
+            getMonstruosMascota: jasmine.createSpy('getMonstruosMascota').and.returnValue(of([])),
         };
         especialSvcMock = {
             getEspeciales: () => of([]),
@@ -5793,6 +5795,26 @@ describe('NuevoPersonajeComponent', () => {
         expect(await (component as any).volverAElegirCompanero(motivo)).toBeTrue();
         expect(quitarSpy).toHaveBeenCalled();
         expect(abrirSpy).toHaveBeenCalledWith(estadoMock, motivo);
+    });
+
+    it('los selectores del familiar y del compañero leen solo el detalle de los monstruos que pueden serlo (getMonstruosMascota)', async () => {
+        const fila = (mascota: string) => ({ Clase: { Id: 9, Nombre: 'Mago' }, Nivel: 1, Ajuste: 0, Ataque_base_minimo: null, Plantilla: { Id: 1, Nombre: 'Básica' }, Mascota: mascota });
+        const gato = { Id: 11, Nombre: 'Gato', Familiar: true, Companero: false, Niveles_clase: [fila('familiar')], Oficial: true } as any;
+        const lobo = { Id: 12, Nombre: 'Lobo', Familiar: false, Companero: true, Niveles_clase: [fila('companero')], Oficial: true } as any;
+        monstruoSvcMock.getMonstruosMascota.and.callFake((tipo: string) => of(tipo === 'familiar' ? [gato] : [lobo]));
+        monstruoSvcMock.getFamiliaresProgresion = () => of({ Tablas: [], Aptitudes: [], Plantillas: [] });
+        monstruoSvcMock.getCompanerosProgresion = () => of({ Bonos: [], Aptitudes: [] });
+        spyOn(nuevoPSvc, 'setProgresionFamiliar');
+        spyOn(nuevoPSvc, 'setProgresionCompanero');
+
+        expect(await (component as any).cargarCatalogoFamiliaresSelector()).toBeTrue();
+        expect(await (component as any).cargarCatalogoCompanerosSelector()).toBeTrue();
+
+        expect(monstruoSvcMock.getMonstruosMascota.calls.allArgs()).toEqual([['familiar'], ['companero']]);
+        expect(component.selectorFamiliarCatalogoCompleto.map((familiar) => familiar.Id)).toEqual([11]);
+        expect(component.selectorCompaneroCatalogoCompleto.map((companero) => companero.Id)).toEqual([12]);
+        expect(component.selectorFamiliarCatalogoCompleto).toEqual(construirCatalogoFamiliaresDesdeMonstruos([gato]));
+        expect(component.selectorCompaneroCatalogoCompleto).toEqual(construirCatalogoCompanerosDesdeMonstruos([lobo]));
     });
 
     it('resolverFamiliarPendienteFinNivel registra el familiar elegido, con su plantilla dentro (la de su fila)', async () => {

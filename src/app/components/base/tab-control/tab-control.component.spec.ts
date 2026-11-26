@@ -22,7 +22,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; userProfi
         banStatus$,
     } as any;
     const ngZone = { run: (fn: () => void) => fn() } as any;
-    const monstruoSvc = { getMonstruo: jasmine.createSpy('getMonstruo').and.returnValue(of({ Id: 90, Nombre: 'Grifo' })) } as any;
+    const monstruoSvc = { getMonstruo: jasmine.createSpy('getMonstruo').and.callFake((id: number) => of({ Id: id, Nombre: `Monstruo ${id}`, Descripcion: 'Detalle' })) } as any;
     const armaSvc = { getArma: jasmine.createSpy('getArma').and.returnValue(of({ Id: 70, Nombre: 'Espada larga' })) } as any;
     const armaduraSvc = { getArmadura: jasmine.createSpy('getArmadura').and.returnValue(of({ Id: 71, Nombre: 'Escudo pesado', Es_escudo: true })) } as any;
     const deidadSvc = {
@@ -221,17 +221,31 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.detallesConjuroAbiertos.length).toBe(0);
     }));
 
-    it('abre detalle de monstruo desde listado dinámico', fakeAsync(() => {
+    it('abre detalle de monstruo desde listado dinámico, con su detalle leído por el id de la entrada del índice', fakeAsync(() => {
         const component = crearComponente();
-        const monstruo = crearMonstruo(21, 'Hidra');
+        const monstruoSvc = (component as any).__monstruoSvc;
+        monstruoSvc.getMonstruo.calls.reset();
+        const entradaDelIndice = { Id: 21, Nombre: 'Hidra', Manual: { Id: 1, Nombre: 'Manual de monstruos 1', Pagina: 155 } } as any;
 
         component.abrirListadoTab('monstruos', 'detalles');
         tick(120);
-        component.recibirObjetoListado({ item: monstruo, tipo: 'monstruos' });
+        component.recibirObjetoListado({ item: entradaDelIndice, tipo: 'monstruos' });
         tick(120);
 
+        expect(monstruoSvc.getMonstruo).toHaveBeenCalledOnceWith(21);
         expect(component.detallesMonstruoAbiertos.length).toBe(1);
+        expect(component.detallesMonstruoAbiertos[0]).not.toBe(entradaDelIndice);
+        expect((component.detallesMonstruoAbiertos[0] as any).Descripcion).toBe('Detalle');
         expect((component as any).activeTabKey).toBe('monstruo:21');
+    }));
+
+    it('la búsqueda global abre un monstruo por el id de su entrada del índice', fakeAsync(() => {
+        const component = crearComponente();
+        const spy = spyOn(component, 'abrirDetallesMonstruoPorId');
+
+        component.abrirDesdeNavegacion({ clase: 'detalle', lista: 'monstruos', item: { Id: 44, Nombre: 'Mantícora' } });
+
+        expect(spy).toHaveBeenCalledOnceWith(44);
     }));
 
     it('abre detalle de arma desde listado dinámico', fakeAsync(() => {

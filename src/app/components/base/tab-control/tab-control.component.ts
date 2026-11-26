@@ -842,7 +842,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         } else if (value.tipo === 'subtipos') {
             this.abrirDetallesSubtipoDesdeResumen(value.item);
         } else if (value.tipo === 'monstruos') {
-            this.abrirDetallesMonstruo(value.item);
+            // El listado y la búsqueda global dan la entrada del índice (`MonstruoIndice`): el detalle se lee por su id.
+            this.abrirDetallesMonstruoPorId(Number(value.item?.Id));
         } else if (value.tipo === 'armas') {
             this.abrirDetallesArma(value.item);
         } else if (value.tipo === 'armaduras') {

@@ -2,7 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database } from "@angular/fire/database";
-import { Observable, firstValueFrom, map } from "rxjs";
+import { Observable, catchError, firstValueFrom, forkJoin, map, of, switchMap, take } from "rxjs";
 import { environment } from "src/environments/environment";
 import {
     CompaneroMonstruoDetalle,
@@ -12,8 +12,10 @@ import {
     LicantroposDelMonstruo,
     MonstruoCreateRequest,
     MonstruoDetalle,
+    MonstruoIndice,
     MonstruoMutacionResponse,
 } from "../interfaces/monstruo";
+import type { TipoDeMascota } from "../interfaces/sesiones";
 import { cabeceraApiConFirebase } from "./platform-session.service";
 import { errorDeCatalogo } from "./utils/error-catalogo";
 import { MONSTRUO } from "./utils/nombres-de-catalogo";
@@ -26,6 +28,7 @@ import {
     normalizeCompaneroMonstruoDetalle,
     normalizeFamiliarMonstruoDetalle,
     normalizeMonstruoDetalle,
+    normalizeMonstruoIndice,
 } from "./utils/monstruo-mapper";
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
@@ -54,11 +57,44 @@ export class MonstruoService {
         });
     }
 
-    getMonstruos(): Observable<MonstruoDetalle[]> {
+    /**
+     * El índice ligero de los monstruos (`MonstruosIndice`, ordenado por nombre): lo que leen el listado, sus filtros, la
+     * búsqueda global y las listas que solo necesitan el nombre. La rama `Monstruos` entera no se baja: el detalle se lee
+     * por su id (`getMonstruo`).
+     */
+    getMonstruosIndice(): Observable<MonstruoIndice[]> {
         return listaRtdb(
-            escucharRtdb(this.db, this.firebaseContextSvc, "Monstruos"),
-            (valor) => normalizeMonstruoDetalle(valor, 1),
+            escucharRtdb(this.db, this.firebaseContextSvc, "MonstruosIndice"),
+            (valor) => normalizeMonstruoIndice(valor),
             (monstruo) => monstruo.Id > 0,
+        );
+    }
+
+    /**
+     * El detalle de los monstruos que pueden ser mascota, para los selectores del familiar y del compañero: los ids del
+     * índice con `Familiar` o `Companero` (solo los de `tipo`, si se dice) y el `getMonstruo` de cada uno, por nombre. Emite
+     * una vez. Un monstruo que no se puede leer se queda fuera; si no se puede leer ninguno, termina con error.
+     */
+    getMonstruosMascota(tipo?: TipoDeMascota): Observable<MonstruoDetalle[]> {
+        const puedeSer = (monstruo: MonstruoIndice) => tipo === 'familiar'
+            ? monstruo.Familiar
+            : tipo === 'companero' ? monstruo.Companero : monstruo.Familiar || monstruo.Companero;
+        return this.getMonstruosIndice().pipe(
+            take(1),
+            switchMap((indice) => {
+                const ids = indice.filter(puedeSer).map((monstruo) => monstruo.Id);
+                if (ids.length < 1)
+                    return of([] as MonstruoDetalle[]);
+                return forkJoin(ids.map((id) => this.getMonstruo(id).pipe(
+                    take(1),
+                    catchError(() => of(null)),
+                ))).pipe(map((monstruos) => {
+                    const leidos = monstruos.filter((monstruo): monstruo is MonstruoDetalle => !!monstruo && monstruo.Id > 0);
+                    if (leidos.length < 1)
+                        throw new Error("No se ha podido leer ningún monstruo de las mascotas.");
+                    return leidos;
+                }));
+            }),
         );
     }
 
