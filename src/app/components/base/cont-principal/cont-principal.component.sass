@@ -2,7 +2,8 @@
 @use '../../detalles/ficha/ficha-tonos' as *
 
 // El marco (menú y pestañas) ocupa lo que deja la cinta. En el escritorio, el menú va fijo a la izquierda (250 px y
-// su margen) y la zona principal, hundida, a su lado; en el móvil (< 700 px), el menú es un cajón sobre todo lo demás.
+// su margen) y la zona principal, hundida, a su lado; por debajo de 960 px (el móvil y el plegable abierto), el menú es
+// un cajón sobre todo lo demás y la zona principal ocupa todo el ancho.
 :host
     display: block
     flex: 1 1 auto
@@ -45,8 +46,8 @@
         padding: 0
         border-radius: 0
 
-// Móvil: el cajón de min(320 px, 86 vw) con su cabecera «Menú» y la ×; la zona principal, a todo lo ancho con 8 px.
-.marco--movil
+// El cajón (< 960 px): de min(320 px, 86 vw), con su cabecera «Menú» y la ×.
+.marco--cajon
     .marco__menu.mat-drawer
         width: min(320px, 86vw)
         box-sizing: border-box
@@ -57,6 +58,8 @@
         ::ng-deep .mat-drawer-inner-container
             overflow-y: auto
 
+// Móvil (< 700 px): la zona principal, a todo lo ancho con 8 px.
+.marco--movil
     #base
         width: calc(100% - 16px)
         height: calc(100% - 8px)

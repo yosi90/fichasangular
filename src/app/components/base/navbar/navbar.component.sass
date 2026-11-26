@@ -67,6 +67,11 @@
 .ribbon-spacer
     flex: 1 1 auto
 
+// El botón «Menú», primero, solo con el menú en un cajón (< 960 px). Con `.ribbon-trigger` delante, para que el
+// `margin: 0` del móvil no le quite su hueco.
+.ribbon-trigger.ribbon-menu
+    margin-right: 6px
+
 // La barra de menús (menú de la CDK) solo agrupa los cuatro botones; se ven como antes.
 .ribbon-barra
     display: flex
@@ -151,7 +156,6 @@
 
     .ribbon-menu
         min-width: 44px
-        margin-right: 6px
 
     .ribbon-buscar
         min-width: 40px

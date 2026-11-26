@@ -8,6 +8,7 @@ import { UserService } from 'src/app/services/user.service';
 import { BaseMenuComponent } from './base-menu.component';
 import { ListadoComponent } from '../../shared/listado/listado.component';
 import { EDICIONES_CATALOGO, INSERCIONES_CATALOGO, TIPOS_EDICION, tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
+import { CATALOGOS_PRINCIPALES } from 'src/app/services/utils/catalogos-del-menu';
 
 /** Los listados que abren las opciones de «Otros» de una sección, en orden. */
 function emitidas(emitSpy: jasmine.Spy, component: BaseMenuComponent, seccion: 'insertar' | 'modificar' | 'detalles'): string[] {
@@ -56,6 +57,31 @@ describe('BaseMenuComponent', () => {
 
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'razas', operacion: 'insertar' });
         expect(component.primero.close).toHaveBeenCalled();
+    });
+
+    it('los seis principales salen de CATALOGOS_PRINCIPALES, en singular, con su icono, su permiso y lo que abren', () => {
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        for (const seccion of ['insertar', 'modificar', 'detalles'] as const) {
+            expect(component.principales[seccion].map((opcion) => opcion.etiqueta)).withContext(seccion)
+                .toEqual(['Raza', 'Clase', 'Dote', 'Conjuro', 'Monstruo', 'Plantilla']);
+            expect(component.principales[seccion].map((opcion) => opcion.tipo)).withContext(seccion)
+                .toEqual(['raza', 'clase', 'dote', 'conjuro', 'monstruo', 'plantilla']);
+        }
+        expect(component.principales.insertar.map((opcion) => opcion.etiqueta))
+            .toEqual(CATALOGOS_PRINCIPALES.map((catalogo) => catalogo.singular));
+
+        canCreateRazas = false;
+        expect(component.principales.insertar[0].habilitada()).toBeFalse();
+        component.principales.insertar[0].abrir();
+        expect(emitSpy).not.toHaveBeenCalled();
+        expect(component.principales.detalles[0].habilitada()).toBeTrue();
+        component.principales.detalles[0].abrir();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'razas', operacion: 'detalles' });
+
+        emitSpy.calls.reset();
+        permissions['dotes:create'] = true;
+        component.principales.modificar[2].abrir();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'dotes', operacion: 'modificar' });
     });
 
     it('la entrada «Dados» abre su pestaña por el bus de pestañas y cierra el cajón', () => {
@@ -262,7 +288,7 @@ describe('BaseMenuComponent', () => {
         userSvc.can.and.returnValue(true);
         const emitSpy = spyOn(component.ListadoTab, 'emit');
         const listado = new ListadoComponent({} as any);
-        const principales = ['razas', 'clases', 'dotes', 'conjuros', 'monstruos', 'plantillas'];
+        const principales = CATALOGOS_PRINCIPALES.map((catalogo) => catalogo.lista);
         const otras = (seccion: 'insertar' | 'modificar' | 'detalles') => component.gruposOtros[seccion]
             .flatMap(grupo => grupo.opciones);
 
@@ -396,6 +422,19 @@ describe('BaseMenuComponent: los grupos «Otros» y «Mis campañas» en la plan
         fixture.componentInstance.cerrarOtros();
         fixture.detectChanges();
         expect(panelAbierto()).toBeNull();
+        fixture.destroy();
+    });
+
+    it('pinta los seis principales en Insertar, Modificar y Detalles, en singular y con su icono', () => {
+        const fixture = TestBed.createComponent(BaseMenuComponent);
+        fixture.detectChanges();
+        const botones = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button.menu-opcion'));
+        const seis = ['Raza', 'Clase', 'Dote', 'Conjuro', 'Monstruo', 'Plantilla'];
+        expect(botones.map((boton) => boton.textContent?.trim())).toEqual([...seis, ...seis, ...seis]);
+        expect(botones[0].querySelector('app-icono-rol')).not.toBeNull();
+        // Insertar y Modificar, dentro de su `span` con el tooltip de los permisos; Detalles, sin él.
+        expect(botones.slice(0, 12).every((boton) => boton.parentElement?.tagName === 'SPAN')).toBeTrue();
+        expect(botones.slice(12).some((boton) => boton.parentElement?.tagName === 'SPAN')).toBeFalse();
         fixture.destroy();
     });
 

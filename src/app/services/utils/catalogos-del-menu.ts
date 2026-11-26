@@ -14,8 +14,22 @@ export interface GrupoDeCatalogos {
     readonly listas: readonly string[];
 }
 
+export interface CatalogoPrincipal {
+    /** El nombre con el que se abre su listado (`LISTADOS_ROL`). */
+    readonly lista: string;
+    /** Su nombre en singular, el de Insertar, Modificar y Detalles del menú de siempre («Raza»). */
+    readonly singular: string;
+}
+
 /** Los seis de siempre, con su fila propia en los dos menús. */
-export const CATALOGOS_PRINCIPALES: readonly string[] = ['razas', 'clases', 'dotes', 'conjuros', 'monstruos', 'plantillas'];
+export const CATALOGOS_PRINCIPALES: readonly CatalogoPrincipal[] = [
+    { lista: 'razas', singular: 'Raza' },
+    { lista: 'clases', singular: 'Clase' },
+    { lista: 'dotes', singular: 'Dote' },
+    { lista: 'conjuros', singular: 'Conjuro' },
+    { lista: 'monstruos', singular: 'Monstruo' },
+    { lista: 'plantillas', singular: 'Plantilla' },
+];
 
 export const GRUPOS_DE_CATALOGOS: readonly GrupoDeCatalogos[] = [
     {

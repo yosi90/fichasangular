@@ -13,7 +13,12 @@ describe('ContPrincipalComponent: el menú lateral de cada tema', () => {
 
     beforeEach(() => {
         menu = new BehaviorSubject<MenuLateral>('accion');
-        marco = { esMovil$: new BehaviorSubject(false), menuAbierto$: new BehaviorSubject(false), cerrarMenu: jasmine.createSpy('cerrarMenu') };
+        marco = {
+            esMovil$: new BehaviorSubject(false),
+            enCajon$: new BehaviorSubject(false),
+            menuAbierto$: new BehaviorSubject(false),
+            cerrarMenu: jasmine.createSpy('cerrarMenu'),
+        };
         usuario = {
             IsLoggedIn: true,
             can: jasmine.createSpy('can').and.returnValue(true),
@@ -59,5 +64,26 @@ describe('ContPrincipalComponent: el menú lateral de cada tema', () => {
         componente.solicitarNuevoPersonaje();
         expect(usuario.entrar).toHaveBeenCalled();
         expect(componente.NuevoPersonaje).toBe(1);
+    });
+
+    it('el plegable (700-960 px): el menú en un cajón, sin el resto del móvil; el móvil, las dos cosas', () => {
+        expect(componente.enCajon).toBeFalse();
+        expect(componente.esMovil).toBeFalse();
+
+        marco.enCajon$.next(true);
+        expect(componente.enCajon).toBeTrue();
+        expect(componente.esMovil).toBeFalse();
+
+        componente.alCerrarCajon();
+        expect(marco.cerrarMenu).toHaveBeenCalledTimes(1);
+
+        marco.esMovil$.next(true);
+        expect(componente.esMovil).toBeTrue();
+        expect(componente.enCajon).toBeTrue();
+    });
+
+    it('en la pantalla ancha, el menú fijo no avisa al cerrarse', () => {
+        componente.alCerrarCajon();
+        expect(marco.cerrarMenu).not.toHaveBeenCalled();
     });
 });

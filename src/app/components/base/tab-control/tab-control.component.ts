@@ -1,6 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, QueryList, SimpleChanges, Type, ViewChild, ViewChildren } from '@angular/core';
-import { temasWebDelEntorno } from 'src/app/services/tema-web/tema-web.service';
-import { iconoSegunTemas } from 'src/app/services/tema-web/temas-web';
+import { TemaWebService, temasWebDelEntorno } from 'src/app/services/tema-web/tema-web.service';
+import { MenuLateral, iconoSegunTemas } from 'src/app/services/tema-web/temas-web';
 import { ModoPestanaSesion, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
@@ -252,6 +252,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private incarnumSvc?: IncarnumService,
         private novedadesSvc?: NovedadesService,
         private puertaSubida?: SubidaNivelPuertaService,
+        private tema?: TemaWebService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -260,6 +261,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     @ViewChildren(EDITOR_DE_CATALOGO) editoresDeCatalogo!: QueryList<EditorDeCatalogo>;
 
     ngOnInit() {
+        this.tema?.menuLateral$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((menu) => this.menuLateral = menu);
         this.usrSvc.isLoggedIn$
             .pipe(takeUntil(this.destroy$))
             .subscribe((loggedIn) => {
@@ -1146,13 +1150,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
     /** Si la inserción de un listado ya tiene pantalla (si no, «Insertar» abre su listado). */
     readonly tieneInsercion = tieneInsercion;
 
+    /** El menú lateral del tema (`TemaWebService.menuLateral$`): por acción (A y C) o por catálogo (B). */
+    menuLateral: MenuLateral = 'accion';
+
     /**
-     * «Modificar» en los detalles que no lo tenían (especiales, raciales e idiomas): solo con el menú por catálogo (B,
-     * `data-menu="catalogo"`), donde no está «Modificar» del menú de siempre, y con permiso para ese catálogo. En A y C
-     * se siguen modificando desde el menú, como antes.
+     * «Modificar» en los detalles que no lo tenían (especiales, raciales e idiomas): solo con el menú por catálogo (B),
+     * donde no está «Modificar» del menú de siempre, y con permiso para ese catálogo. En A y C se siguen modificando
+     * desde el menú, como antes.
      */
     modificableSoloEnElDetalle(lista: string): boolean {
-        return document.documentElement.dataset['menu'] === 'catalogo' && puedeGestionarCatalogo(this.usrSvc, lista);
+        return this.menuLateral === 'catalogo' && puedeGestionarCatalogo(this.usrSvc, lista);
     }
 
     /** El nombre completo de una pestaña de «Modificar» («Editar racial: Alas»): su `label` y su tooltip. */

@@ -1,6 +1,6 @@
 <div class="ribbon-nav">
-    <button type="button" class="ribbon-trigger ribbon-trigger--icon ribbon-menu" *ngIf="esMovil" (click)="alternarMenu()"
-        aria-label="Abrir el menú" [attr.aria-expanded]="menuAbierto">
+    <button type="button" class="ribbon-trigger ribbon-trigger--icon ribbon-menu" *ngIf="menuEnCajon" (click)="alternarMenu()"
+        aria-label="Abrir el menú" aria-controls="marco-menu" [attr.aria-expanded]="menuAbierto">
         <mat-icon aria-hidden="true" data-icono="accion">menu</mat-icon>
     </button>
     <!--

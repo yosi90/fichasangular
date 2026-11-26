@@ -54,9 +54,12 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.temasWeb = temasWeb ?? temasWebDelEntorno();
     }
 
-    /** En el móvil, la cinta lleva el botón «Menú», que abre el menú lateral como cajón (vista 10 del lienzo). */
-    get esMovil(): boolean {
-        return this.marco?.esMovil ?? false;
+    /**
+     * Con el menú lateral en un cajón (el móvil, vista 10 del lienzo, y el plegable, por debajo de 960 px), la cinta
+     * lleva el botón «Menú», que lo abre.
+     */
+    get menuEnCajon(): boolean {
+        return this.marco?.enCajon ?? false;
     }
 
     get menuAbierto(): boolean {

@@ -21,42 +21,7 @@
                         <mat-icon data-icono="adorno">add_box</mat-icon>Insertar
                     </button>
                 </mat-expansion-panel-header>
-                <span
-                    [matTooltip]="puedeGestionar('razas') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('razas')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('razas')"
-                        (click)="abrirOperacion('razas', 'insertar')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Raza</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('clases') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('clases')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('clases')"
-                        (click)="abrirOperacion('clases', 'insertar')"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Clase</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('dotes') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('dotes')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('dotes')"
-                        (click)="abrirOperacion('dotes', 'insertar')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Dote</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('conjuros') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('conjuros')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('conjuros')"
-                        (click)="abrirOperacion('conjuros', 'insertar')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Conjuro</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('monstruos') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('monstruos')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"
-                        (click)="abrirOperacion('monstruos', 'insertar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Monstruo</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('plantillas') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('plantillas')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('plantillas')"
-                        (click)="abrirOperacion('plantillas', 'insertar')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Plantilla</span></button>
-                </span>
+                <ng-container *ngTemplateOutlet="principalesConPermiso; context: { $implicit: 'insertar' }"></ng-container>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'insertar' }"></ng-container>
             </mat-expansion-panel>
             <mat-expansion-panel #segundo>
@@ -65,42 +30,7 @@
                         <mat-icon data-icono="adorno">edit_square</mat-icon>Modificar
                     </button>
                 </mat-expansion-panel-header>
-                <span
-                    [matTooltip]="puedeGestionar('razas') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('razas')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('razas')"
-                        (click)="abrirOperacion('razas', 'modificar')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Raza</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('clases') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('clases')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('clases')"
-                        (click)="abrirOperacion('clases', 'modificar')"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Clase</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('dotes') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('dotes')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('dotes')"
-                        (click)="abrirOperacion('dotes', 'modificar')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Dote</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('conjuros') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('conjuros')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('conjuros')"
-                        (click)="abrirOperacion('conjuros', 'modificar')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Conjuro</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('monstruos') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('monstruos')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"
-                        (click)="abrirOperacion('monstruos', 'modificar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Monstruo</span></button>
-                </span>
-                <span
-                    [matTooltip]="puedeGestionar('plantillas') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="puedeGestionar('plantillas')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('plantillas')"
-                        (click)="abrirOperacion('plantillas', 'modificar')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Plantilla</span></button>
-                </span>
+                <ng-container *ngTemplateOutlet="principalesConPermiso; context: { $implicit: 'modificar' }"></ng-container>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'modificar' }"></ng-container>
             </mat-expansion-panel>
             <mat-expansion-panel class="tw-rounded-none tw-rounded-b-md" #tercero>
@@ -109,12 +39,8 @@
                         <mat-icon data-icono="adorno">search</mat-icon>Detalles
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('razas', 'detalles'); closeAcordion();"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Raza</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('clases', 'detalles'); closeAcordion();"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Clase</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('dotes', 'detalles'); closeAcordion();"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Dote</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('conjuros', 'detalles'); closeAcordion();"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Conjuro</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('monstruos', 'detalles'); closeAcordion();"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Monstruo</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Plantilla</span></button>
+                <button mat-button color="primary" class="menu-opcion" *ngFor="let opcion of principales.detalles"
+                    (click)="opcion.abrir()"><app-icono-rol [tipo]="opcion.tipo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>{{ opcion.etiqueta }}</span></button>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'detalles' }"></ng-container>
             </mat-expansion-panel>
             <!-- «Mis campañas» (ronda de noviembre, decisión 3): con sesión, para quien puede tener campañas o ya está en una. -->
@@ -169,6 +95,15 @@
             </mat-expansion-panel>
         </mat-accordion>
     </aside>
+    <!-- Los seis principales de Insertar y Modificar (`principales`, de `CATALOGOS_PRINCIPALES`), con su permiso. -->
+    <ng-template #principalesConPermiso let-seccion>
+        <span *ngFor="let opcion of principalesDe(seccion)"
+            [matTooltip]="opcion.habilitada() ? '' : mensajePermisosInsuficientes"
+            [matTooltipDisabled]="opcion.habilitada()">
+            <button mat-button color="primary" class="menu-opcion" [disabled]="!opcion.habilitada()"
+                (click)="opcion.abrir()"><app-icono-rol [tipo]="opcion.tipo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>{{ opcion.etiqueta }}</span></button>
+        </span>
+    </ng-template>
     <!--
         Los «Otros» de Insertar, Modificar y Detalles: los mismos grupos en los tres (gruposOtros). Son una barra de menús
         vertical (menú de la CDK): con uno abierto, pasar por encima de otro grupo cierra el primero y abre ese; se cierran

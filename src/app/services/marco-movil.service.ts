@@ -9,9 +9,17 @@ import { BehaviorSubject, Observable, Subscription, distinctUntilChanged, map } 
 export const CONSULTA_MOVIL = '(max-width: 699.98px)';
 
 /**
- * El marco en el móvil: si la pantalla es estrecha y si el cajón del menú está abierto. Lo leen la cinta (el botón
- * «Menú»), el marco principal (`mat-sidenav` en modo over) y el menú (se cierra al elegir). El gesto atrás del móvil
- * cierra el cajón: al abrirlo se apila una entrada en el historial y, al volver, se cierra.
+ * Por debajo de 960 px, el menú lateral es un cajón, también en el plegable abierto (roadmap de los temas, fase 5: el
+ * Honor abierto mide unos 719 × 781 px de CSS, y 781 de ancho en apaisado): el contenido usa todo el ancho y el listado,
+ * el detalle y la creación conservan sus columnas. El resto del diseño del móvil sigue en `CONSULTA_MOVIL`. Los estilos
+ * del cajón no llevan consulta: cuelgan de la clase `marco--cajon` que pone el marco (`ContPrincipalComponent`).
+ */
+export const CONSULTA_CAJON = '(max-width: 959.98px)';
+
+/**
+ * El marco en el móvil y el plegable: si la pantalla es la del móvil, si el menú va en un cajón y si ese cajón está
+ * abierto. Lo leen la cinta (el botón «Menú»), el marco principal (`mat-sidenav` en modo over) y el menú (se cierra al
+ * elegir). El gesto atrás cierra el cajón: al abrirlo se apila una entrada en el historial y, al volver, se cierra.
  */
 @Injectable({
     providedIn: 'root'
@@ -19,6 +27,9 @@ export const CONSULTA_MOVIL = '(max-width: 699.98px)';
 export class MarcoMovilService implements OnDestroy {
     private readonly esMovilSubject = new BehaviorSubject<boolean>(false);
     readonly esMovil$: Observable<boolean> = this.esMovilSubject.pipe(distinctUntilChanged());
+    private readonly enCajonSubject = new BehaviorSubject<boolean>(false);
+    /** Si el menú lateral va en un cajón (por debajo de 960 px: el móvil y el plegable). */
+    readonly enCajon$: Observable<boolean> = this.enCajonSubject.pipe(distinctUntilChanged());
     private readonly menuAbiertoSubject = new BehaviorSubject<boolean>(false);
     readonly menuAbierto$: Observable<boolean> = this.menuAbiertoSubject.pipe(distinctUntilChanged());
     private readonly suscripcion: Subscription;
@@ -31,16 +42,18 @@ export class MarcoMovilService implements OnDestroy {
     });
 
     constructor(breakpoints: BreakpointObserver, private ngZone: NgZone) {
-        this.suscripcion = breakpoints.observe(CONSULTA_MOVIL).pipe(map((estado) => estado.matches)).subscribe((movil) => {
-            this.esMovilSubject.next(movil);
-            if (!movil)
+        this.suscripcion = breakpoints.observe(CONSULTA_MOVIL).pipe(map((estado) => estado.matches))
+            .subscribe((movil) => this.esMovilSubject.next(movil));
+        this.suscripcion.add(breakpoints.observe(CONSULTA_CAJON).pipe(map((estado) => estado.matches)).subscribe((cajon) => {
+            this.enCajonSubject.next(cajon);
+            if (!cajon)
                 this.cerrarMenu();
-        });
+        }));
         window.addEventListener('popstate', this.alVolver);
     }
 
-    get esMovil(): boolean {
-        return this.esMovilSubject.value;
+    get enCajon(): boolean {
+        return this.enCajonSubject.value;
     }
 
     get menuAbierto(): boolean {
@@ -48,7 +61,7 @@ export class MarcoMovilService implements OnDestroy {
     }
 
     abrirMenu(): void {
-        if (!this.esMovil || this.menuAbiertoSubject.value)
+        if (!this.enCajon || this.menuAbiertoSubject.value)
             return;
         this.menuAbiertoSubject.next(true);
         history.pushState({ ...(history.state ?? {}), rolMenu: true }, '');
