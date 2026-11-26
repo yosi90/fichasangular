@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 
 :host
@@ -27,10 +28,12 @@
         justify-content: center
         width: 34px
         height: 34px
-        border: 1px solid rgba(255, 255, 255, 0.28)
+        border: 1px solid con-alfa(var(--rol-tinta), .28)
         border-radius: 999px
         background: rgba(0, 0, 0, 0.16)
         color: #d1d5db
+        @include en-claro
+            color: var(--rol-texto)
         cursor: pointer
         padding: 0
 
@@ -42,6 +45,8 @@
         &:hover
             background: rgba(0, 0, 0, 0.24)
             color: #f3f4f6
+            @include en-claro
+                color: var(--rol-texto)
 
     .grid-base,
     .grid-content
@@ -74,9 +79,9 @@
 
     .option-list--checks
         mat-checkbox
-            border: 1px solid rgba(255, 255, 255, 0.1)
+            border: 1px solid con-alfa(var(--rol-tinta), .1)
             border-radius: 6px
-            background: rgba(255, 255, 255, 0.03)
+            background: con-alfa(var(--rol-tinta), .03)
             padding: 0.35rem 0.6rem
 
         mat-checkbox:last-child:nth-child(odd)
@@ -86,15 +91,15 @@
         display: flex
         flex-direction: column
         gap: 0.35rem
-        border: 1px solid rgba(255, 255, 255, 0.12)
+        border: 1px solid con-alfa(var(--rol-tinta), .12)
         border-radius: 7px
-        background: rgba(255, 255, 255, 0.03)
+        background: con-alfa(var(--rol-tinta), .03)
         padding: 0.45rem 0.65rem
         transition: border-color 120ms ease, background-color 120ms ease
 
         &.selected
-            border-color: rgba(255, 255, 255, 0.28)
-            background: rgba(255, 255, 255, 0.06)
+            border-color: con-alfa(var(--rol-tinta), .28)
+            background: con-alfa(var(--rol-tinta), .06)
 
         mat-radio-button
             min-height: 28px
@@ -110,9 +115,9 @@
         opacity: 0.75
 
     .extra-competencia
-        border: 1px solid rgba(255, 255, 255, 0.12)
+        border: 1px solid con-alfa(var(--rol-tinta), .12)
         border-radius: 6px
-        background: rgba(255, 255, 255, 0.03)
+        background: con-alfa(var(--rol-tinta), .03)
         padding: 0.25rem 0.5rem
         margin-left: 28px
 
@@ -139,6 +144,8 @@
             font-size: 0.82rem
             font-weight: 700
             color: #d1d5db
+            @include en-claro
+                color: var(--rol-texto)
             opacity: 1
             margin-bottom: 0.25rem
             padding: 0 4px
@@ -146,7 +153,7 @@
         &.row
             margin-bottom: 0.25rem
             padding: 0.3rem 0.35rem
-            border: 1px solid rgba(255, 255, 255, 0.08)
+            border: 1px solid con-alfa(var(--rol-tinta), .08)
             border-radius: 6px
             background: rgba(0, 0, 0, 0.1)
 
@@ -157,8 +164,8 @@
         gap: 6px
 
     .mod-chip
-        border: 1px solid rgba(255, 255, 255, 0.2)
-        background: rgba(255, 255, 255, 0.08)
+        border: 1px solid con-alfa(var(--rol-tinta), .2)
+        background: con-alfa(var(--rol-tinta), .08)
 
     .mod-empty
         margin-top: 0.45rem
@@ -175,6 +182,8 @@
             font-size: 0.82rem
             font-weight: 700
             color: #d1d5db
+            @include en-claro
+                color: var(--rol-texto)
             opacity: 1
             margin-bottom: 0.25rem
             padding: 0 4px
@@ -182,7 +191,7 @@
         &.row
             margin-bottom: 0.25rem
             padding: 0.3rem 0.35rem
-            border: 1px solid rgba(255, 255, 255, 0.08)
+            border: 1px solid con-alfa(var(--rol-tinta), .08)
             border-radius: 6px
             background: rgba(0, 0, 0, 0.1)
 
@@ -196,7 +205,7 @@
         align-items: stretch
         margin-bottom: 0.35rem
         padding: 0.35rem
-        border: 1px solid rgba(255, 255, 255, 0.08)
+        border: 1px solid con-alfa(var(--rol-tinta), .08)
         border-radius: 6px
         background: rgba(0, 0, 0, 0.1)
 
@@ -227,6 +236,8 @@
     max-height: calc(100vh - 24px)
     overflow: auto
     background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    @include en-claro
+        background: var(--rol-panel)
     border: 1px solid #6f7683
     border-radius: 10px
     padding: 14px
@@ -234,6 +245,8 @@
     flex-direction: column
     gap: 10px
     color: #edf2ff
+    @include en-claro
+        color: var(--rol-texto)
 
 .selector-header
     display: flex
@@ -248,19 +261,25 @@
 
 .selector-title
     color: #f3f6ff
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 1.25rem
     font-weight: 700
 
 .selector-subtitle
     color: #d5dcef
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 0.86rem
 
 .selector-icon-btn
     color: #e9eefc
-    background: rgba(255, 255, 255, 0.08)
+    @include en-claro
+        color: var(--rol-texto)
+    background: con-alfa(var(--rol-tinta), .08)
 
 .selector-icon-btn:hover
-    background: rgba(255, 255, 255, 0.16)
+    background: con-alfa(var(--rol-tinta), .16)
 
 .selector-tools
     display: flex
@@ -289,17 +308,19 @@
 
 .extra-row
     border-radius: 8px
-    border: 1px solid rgba(255, 255, 255, 0.18)
-    background: rgba(255, 255, 255, 0.05)
+    border: 1px solid con-alfa(var(--rol-tinta), .18)
+    background: con-alfa(var(--rol-tinta), .05)
     padding: 9px 10px
     cursor: pointer
     transition: border-color .15s ease, background .15s ease
 
 .extra-row:hover
-    background: rgba(255, 255, 255, 0.1)
+    background: con-alfa(var(--rol-tinta), .1)
 
 .detalle
     color: #e7ebf6
+    @include en-claro
+        color: var(--rol-texto)
     font-size: .92rem
     opacity: .9
 
@@ -313,23 +334,33 @@
     width: 100%
 
 ::ng-deep .selector-dialog .mat-mdc-form-field .mdc-text-field--filled
-    background: rgba(255, 255, 255, 0.09)
+    background: con-alfa(var(--rol-tinta), .09)
 
 ::ng-deep .selector-dialog .mat-mdc-form-field .mdc-floating-label
     color: #dbe5ff !important
+    @include en-claro
+        color: var(--rol-texto) !important
 
 ::ng-deep .selector-dialog .mat-mdc-input-element
     color: #f6f8ff !important
+    @include en-claro
+        color: var(--rol-texto) !important
 
 ::ng-deep .selector-dialog .mat-mdc-checkbox .mdc-form-field > label
     color: #edf2ff
+    @include en-claro
+        color: var(--rol-texto)
 
 ::ng-deep .selector-dialog .mdc-label
     color: #edf2ff
+    @include en-claro
+        color: var(--rol-texto)
 
 ::ng-deep .selector-dialog .mat-mdc-button.mat-mdc-outlined-button
     border-color: rgba(203, 216, 255, 0.45)
     color: #f1f5ff
+    @include en-claro
+        color: var(--rol-texto)
 
 ::ng-deep .selector-dialog .mat-mdc-raised-button.mat-primary
     background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)

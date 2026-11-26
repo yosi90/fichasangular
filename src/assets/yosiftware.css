@@ -4,11 +4,12 @@
  * Desde el SDK 1.15, las ventanas también toman de esta hoja las variables declaradas sobre [part~="raiz"].
  * Los elementos de la página las leen de fuera: están también en src/styles.sass, con los mismos valores.
  * Solo cambia el aspecto: la marca de Yosiftware, las normas y los avisos se siguen viendo igual.
- * Colores de docs/guias-estilo/GUIA_ESTILO_WEB_GENERAL.md. Rol solo tiene tema oscuro. Hasta 64 KB.
+ * Colores de docs/guias-estilo/GUIA_ESTILO_WEB_GENERAL.md: los del tema A en oscuro y, con data-tema="claro" (el
+ * data-theme="light" que pone Rol cuando su modo es claro), los de A en claro. Las ventanas no saben el tema de Rol
+ * (A, B o C), solo el modo. Hasta 64 KB.
  */
 
 [part~="raiz"],
-[part~="raiz"][data-tema="claro"],
 [part~="raiz"][data-tema="oscuro"] {
     --yosi-color-principal: #c2185b;
     --yosi-color-principal-texto: #ffffff;
@@ -29,6 +30,30 @@
     --yosi-radio: 6px;
     --yosi-radio-ventana: 10px;
     --rol-sombra: 0 12px 32px rgba(0, 0, 0, 0.45);
+    --rol-enlace: #f06292;
+}
+
+[part~="raiz"][data-tema="claro"] {
+    --yosi-color-principal: #c2185b;
+    --yosi-color-principal-texto: #ffffff;
+    --yosi-color-principal-suave: rgba(194, 24, 91, 0.12);
+    --yosi-color-fondo: #ffffff;
+    --yosi-color-fondo-suave: #edf0f2;
+    --yosi-color-fondo-pagina: #dde2e6;
+    --yosi-color-texto: #1f2428;
+    --yosi-color-texto-suave: #45525c;
+    --yosi-color-borde: rgba(0, 0, 0, 0.1);
+    --yosi-color-borde-fuerte: rgba(0, 0, 0, 0.2);
+    --yosi-color-acento: #c2185b;
+    --yosi-color-acento-suave: rgba(194, 24, 91, 0.12);
+    --yosi-color-exito: #2e7d32;
+    --yosi-color-error: #c62828;
+    --yosi-color-error-suave: rgba(198, 40, 40, 0.1);
+    --yosi-fuente: "Roboto", "Segoe UI", system-ui, sans-serif;
+    --yosi-radio: 6px;
+    --yosi-radio-ventana: 10px;
+    --rol-sombra: 0 12px 32px rgba(0, 0, 0, 0.22);
+    --rol-enlace: #c2185b;
 }
 
 [part~="tarjeta"],
@@ -51,9 +76,9 @@
     outline-offset: 2px;
 }
 
-/* El granate principal se lee mal como texto sobre el fondo oscuro. */
+/* El granate principal se lee mal como texto sobre el fondo oscuro: allí, un rosa claro; en claro, el de siempre. */
 [part~="enlace"] {
-    color: #f06292;
+    color: var(--rol-enlace, #f06292);
 }
 
 /* La campana va en la barra de Rol: con la medida del SDK (40 px) la estiraba. Mismo tamaño que sus botones. */

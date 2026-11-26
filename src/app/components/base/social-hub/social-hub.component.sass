@@ -24,8 +24,8 @@
 .social-nav,
 .social-main
     background: rgba(45, 45, 48, .96)
-    color: #f5f7ff
-    border: 1px solid rgba(255, 255, 255, .08)
+    color: var(--rol-texto-vivo)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .social-nav
     display: flex
@@ -50,23 +50,23 @@
     gap: .75rem
     width: 100%
     padding: .8rem .95rem
-    border: 1px solid rgba(255, 255, 255, .08)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
     border-radius: .85rem
-    background: rgba(255, 255, 255, .04)
-    color: #f5f7ff
+    background: con-alfa(var(--rol-tinta), .04)
+    color: var(--rol-texto-vivo)
     cursor: pointer
     transition: background-color .2s ease, border-color .2s ease, transform .2s ease
 
     &:hover
         transform: translateY(-1px)
-        background: rgba(255, 255, 255, .08)
+        background: con-alfa(var(--rol-tinta), .08)
 
     mat-icon
         color: $accent
 
 .social-nav__item--active
-    border-color: rgba(194, 24, 91, .7)
-    background: rgba(194, 24, 91, .14)
+    border-color: con-alfa($active, .7)
+    background: con-alfa($active, .14)
 
     mat-icon
         color: $active
@@ -76,8 +76,8 @@
     margin-top: auto
     padding: .9rem
     border-radius: 1rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .06)
+    background: con-alfa(var(--rol-tinta), .04)
+    border: 1px solid con-alfa(var(--rol-tinta), .06)
 
 .social-nav__summary-row
     display: flex
@@ -88,7 +88,7 @@
         margin-top: .55rem
 
     span
-        color: rgba(245, 247, 255, .68)
+        color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-main
     display: flex
@@ -113,8 +113,8 @@
 .social-panel
     padding: 1rem
     border-radius: 1rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .04)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .social-stat-card
     display: flex
@@ -125,10 +125,10 @@
         font-size: 1.7rem
 
     small
-        color: rgba(245, 247, 255, .66)
+        color: con-alfa(var(--rol-texto-vivo), .66)
 
 .social-stat-card__label
-    color: rgba(245, 247, 255, .66)
+    color: con-alfa(var(--rol-texto-vivo), .66)
     font-size: .86rem
     text-transform: uppercase
     letter-spacing: .05em
@@ -141,35 +141,27 @@
     gap: .65rem
     min-height: 16rem
     text-align: center
-    color: rgba(245, 247, 255, .82)
+    color: con-alfa(var(--rol-texto-vivo), .82)
 
     mat-icon
         color: $accent
 
-.social-search__field,
-.social-chat__composer-field
+.social-search__field
     width: 100%
 
-::ng-deep .social-search__field .mdc-notched-outline > *,
-::ng-deep .social-chat__composer-field .mdc-notched-outline > *
-    border-color: rgba(173, 189, 196, .2) !important
+::ng-deep .social-search__field .mdc-notched-outline > *
+    border-color: con-alfa($accent, .2) !important
 
-::ng-deep .social-search__field .mdc-text-field--outlined,
-::ng-deep .social-chat__composer-field .mdc-text-field--outlined
-    background: rgba(255, 255, 255, .03)
+::ng-deep .social-search__field .mdc-text-field--outlined
+    background: con-alfa(var(--rol-tinta), .03)
 
 ::ng-deep .social-search__field .mdc-floating-label,
-::ng-deep .social-search__field input,
-::ng-deep .social-chat__composer-field .mdc-floating-label,
-::ng-deep .social-chat__composer-field textarea
-    color: #f5f7ff !important
-
-::ng-deep .social-chat__composer-field .mat-mdc-form-field-subscript-wrapper
-    display: none
+::ng-deep .social-search__field input
+    color: var(--rol-texto-vivo) !important
 
 .social-inline-hint
     margin: 0
-    color: rgba(245, 247, 255, .68)
+    color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-inline-error
     margin: 0
@@ -184,7 +176,7 @@
     width: 100%
     margin: 0
     border: 0
-    border-top: 1px solid rgba(255, 255, 255, .08)
+    border-top: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .social-user-list
     display: flex
@@ -196,9 +188,9 @@
     justify-content: space-between
     gap: 1rem
     padding: .9rem
-    border: 1px solid rgba(173, 189, 196, .16)
+    border: 1px solid con-alfa($accent, .16)
     border-radius: .9rem
-    background: rgba(255, 255, 255, .03)
+    background: con-alfa(var(--rol-tinta), .03)
 
 .social-user-card__main
     display: flex
@@ -216,7 +208,7 @@
     gap: .2rem
 
 .social-user-card__meta
-    color: rgba(245, 247, 255, .65)
+    color: con-alfa(var(--rol-texto-vivo), .65)
     text-transform: capitalize
 
 .social-user-card__actions
@@ -236,9 +228,9 @@
         padding: 0
         line-height: 1
         border-radius: .7rem
-        border: 1px solid rgba(255, 255, 255, .08)
-        background: rgba(255, 255, 255, .04)
-        color: #f5f7ff
+        border: 1px solid con-alfa(var(--rol-tinta), .08)
+        background: con-alfa(var(--rol-tinta), .04)
+        color: var(--rol-texto-vivo)
         transition: background-color .2s ease, border-color .2s ease, transform .2s ease
 
         .mat-mdc-button-persistent-ripple,
@@ -261,13 +253,13 @@
 
         &:hover
             transform: translateY(-1px)
-            background: rgba(255, 255, 255, .08)
+            background: con-alfa(var(--rol-tinta), .08)
 
         &[color="warn"]
             color: #ff7c7c
 
         &[color="primary"]
-            color: #f5f7ff
+            color: var(--rol-texto-vivo)
 
 .social-columns
     display: grid
@@ -293,23 +285,23 @@
     margin-top: .5rem !important
 
 .social-panel--nested
-    background: rgba(255, 255, 255, .03)
+    background: con-alfa(var(--rol-tinta), .03)
 
 .social-user-card--campaign
     align-items: center
 
 .social-user-card--button
     width: 100%
-    border: 1px solid rgba(173, 189, 196, .16)
+    border: 1px solid con-alfa($accent, .16)
     border-radius: .9rem
-    background: rgba(255, 255, 255, .03)
-    color: #f5f7ff
+    background: con-alfa(var(--rol-tinta), .03)
+    color: var(--rol-texto-vivo)
     text-align: left
     cursor: pointer
 
 .social-user-card--active
-    border-color: rgba(194, 24, 91, .72)
-    background: rgba(194, 24, 91, .14)
+    border-color: con-alfa($active, .72)
+    background: con-alfa($active, .14)
 
 .social-campaign-detail
     min-height: 0
@@ -329,9 +321,9 @@
     width: 100%
     padding: .8rem .95rem
     border-radius: .85rem
-    border: 1px solid rgba(173, 189, 196, .22)
-    background: rgba(255, 255, 255, .04)
-    color: #f5f7ff
+    border: 1px solid con-alfa($accent, .22)
+    background: con-alfa(var(--rol-tinta), .04)
+    color: var(--rol-texto-vivo)
     font: inherit
     resize: vertical
     box-sizing: border-box
@@ -347,8 +339,8 @@
     gap: .85rem
     padding: .9rem
     border-radius: .9rem
-    border: 1px solid rgba(173, 189, 196, .22)
-    background: rgba(255, 255, 255, .03)
+    border: 1px solid con-alfa($accent, .22)
+    background: con-alfa(var(--rol-tinta), .03)
 
 .social-campaign-detail__grid
     display: grid
@@ -365,8 +357,8 @@
 .social-campaign-substory
     padding: .9rem
     border-radius: .9rem
-    border: 1px solid rgba(255, 255, 255, .08)
-    background: rgba(255, 255, 255, .03)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
+    background: con-alfa(var(--rol-tinta), .03)
 
 .social-campaign-story__header,
 .social-campaign-substory
@@ -376,254 +368,8 @@
     align-items: center
 
     span
-        color: rgba(245, 247, 255, .66)
+        color: con-alfa(var(--rol-texto-vivo), .66)
         font-size: .88rem
-
-.social-chat
-    display: grid
-    grid-template-columns: minmax(240px, 320px) 1px minmax(0, 1fr)
-    gap: 0
-    min-height: 0
-    height: 100%
-    flex: 1 1 auto
-
-.social-chat__sidebar,
-.social-chat__detail
-    min-height: 0
-
-.social-chat__sidebar
-    display: flex
-    flex-direction: column
-    gap: .85rem
-    overflow: hidden
-    padding-right: 1rem
-
-.social-chat__sidebar-scroll
-    display: flex
-    flex: 1 1 auto
-    flex-direction: column
-    gap: .7rem
-    min-height: 0
-    overflow: auto
-    padding-right: .15rem
-
-.social-chat__sidebar-actions
-    display: flex
-    flex: 0 0 auto
-    padding-top: .85rem
-    border-top: 1px solid rgba(255, 255, 255, .08)
-
-.social-chat__floating-action
-    display: flex
-    align-items: center
-    gap: .8rem
-    width: 100%
-    padding: .85rem .95rem
-    border: 1px solid rgba(194, 24, 91, .32)
-    border-radius: .9rem
-    background: rgba(194, 24, 91, .1)
-    color: #f5f7ff
-    text-align: left
-    cursor: pointer
-    transition: transform .2s ease, border-color .2s ease, background-color .2s ease
-
-    &:hover
-        transform: translateY(-1px)
-        border-color: rgba(194, 24, 91, .56)
-        background: rgba(194, 24, 91, .16)
-
-.social-chat__floating-action-icon
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    flex: 0 0 2.75rem
-    width: 2.75rem
-    height: 2.75rem
-    border-radius: 999px
-    background: rgba(194, 24, 91, .16)
-    border: 1px solid rgba(194, 24, 91, .32)
-
-    mat-icon
-        color: $active
-        width: 1.25rem
-        height: 1.25rem
-        font-size: 1.25rem
-
-.social-chat__floating-action-copy
-    display: flex
-    flex-direction: column
-    gap: .2rem
-    min-width: 0
-
-    strong
-        line-height: 1.2
-
-    small
-        color: rgba(245, 247, 255, .68)
-        line-height: 1.3
-
-.social-chat__filters
-    display: flex
-    flex-wrap: wrap
-    gap: .45rem
-
-.social-chat__filter
-    padding: .45rem .75rem
-    border-radius: 999px
-    border: 1px solid rgba(255, 255, 255, .1)
-    background: rgba(255, 255, 255, .04)
-    color: #f5f7ff
-    cursor: pointer
-
-.social-chat__filter--active
-    border-color: rgba(194, 24, 91, .7)
-    background: rgba(194, 24, 91, .14)
-
-.social-chat__divider
-    width: 1px
-    min-height: 100%
-    background: rgba(255, 255, 255, .09)
-
-.social-chat__conversation
-    position: relative
-    display: flex
-    align-items: center
-    gap: .85rem
-    padding: .9rem
-    border: 1px solid rgba(173, 189, 196, .16)
-    border-radius: .9rem
-    background: rgba(255, 255, 255, .03)
-    color: #f5f7ff
-    text-align: left
-    cursor: pointer
-
-    small
-        color: rgba(245, 247, 255, .65)
-
-.social-chat__conversation--new
-    border-style: dashed
-
-.social-chat__conversation--active
-    border-color: rgba(194, 24, 91, .72)
-    background: rgba(194, 24, 91, .14)
-
-.social-chat__conversation--system-danger
-    background: linear-gradient(180deg, rgba(128, 20, 20, .32), rgba(85, 14, 14, .2))
-    border-color: rgba(255, 104, 104, .38)
-
-    small
-        color: rgba(255, 220, 220, .84)
-
-    .social-chat__conversation-avatar--system
-        background: rgba(155, 34, 34, .28)
-        border-color: rgba(255, 104, 104, .3)
-
-        mat-icon
-            color: #ffd0d0
-
-.social-chat__conversation-body
-    display: flex
-    flex-direction: column
-    gap: .2rem
-    min-width: 0
-    flex: 1 1 auto
-
-.social-chat__conversation-main
-    display: flex
-    gap: .5rem
-    align-items: center
-    min-width: 0
-
-    strong
-        min-width: 0
-        overflow: hidden
-        text-overflow: ellipsis
-        white-space: nowrap
-
-.social-chat__conversation-avatar
-    flex: 0 0 2.75rem
-    width: 2.75rem
-    height: 2.75rem
-    border-radius: 999px
-    border: 1px solid rgba(255, 255, 255, .12)
-    background: rgba(255, 255, 255, .05)
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    overflow: hidden
-
-    img
-        width: 100%
-        height: 100%
-        object-fit: cover
-
-    mat-icon
-        color: rgba(245, 247, 255, .82)
-
-.social-chat__conversation-avatar--new
-    background: rgba(194, 24, 91, .16)
-    border-color: rgba(194, 24, 91, .35)
-
-.social-chat__conversation-avatar--system
-    background: rgba(250, 202, 67, .12)
-    border-color: rgba(250, 202, 67, .22)
-
-    mat-icon
-        color: #f8dfa2
-
-.social-chat__badge
-    padding: .1rem .45rem
-    border-radius: 999px
-    background: rgba(250, 202, 67, .16)
-    border: 1px solid rgba(250, 202, 67, .25)
-    color: #f8dfa2
-    font-size: .75rem
-
-.social-chat__unread
-    position: absolute
-    right: .75rem
-    top: .75rem
-    min-width: 1.5rem
-    padding: .15rem .35rem
-    border-radius: 999px
-    background: rgba(194, 24, 91, .2)
-    color: #f5f7ff
-    text-align: center
-
-.social-chat__detail
-    display: flex
-    flex-direction: column
-    min-height: 0
-    padding-left: 1rem
-
-.social-chat__frame
-    display: flex
-    flex-direction: column
-    gap: .85rem
-    flex: 1 1 auto
-    min-height: 0
-    height: 100%
-    padding: 1rem
-    border-radius: 1rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
-
-.social-chat__header
-    display: flex
-    flex-direction: column
-    gap: .75rem
-
-.social-chat__header-top
-    display: flex
-    align-items: flex-start
-    justify-content: space-between
-    gap: .75rem
-
-.social-chat__participants
-    display: flex
-    flex-wrap: wrap
-    gap: .55rem
-    min-width: 0
 
 .social-chip
     display: inline-flex
@@ -631,9 +377,9 @@
     gap: .5rem
     padding: .35rem .65rem .35rem .35rem
     border-radius: 999px
-    border: 1px solid rgba(255, 255, 255, .1)
-    background: rgba(255, 255, 255, .05)
-    color: #f5f7ff
+    border: 1px solid con-alfa(var(--rol-tinta), .1)
+    background: con-alfa(var(--rol-tinta), .05)
+    color: var(--rol-texto-vivo)
     font: inherit
     text-decoration: none
     cursor: pointer
@@ -646,8 +392,8 @@
     width: 1.85rem
     height: 1.85rem
     border-radius: 999px
-    background: rgba(255, 255, 255, .06)
-    border: 1px solid rgba(255, 255, 255, .1)
+    background: con-alfa(var(--rol-tinta), .06)
+    border: 1px solid con-alfa(var(--rol-tinta), .1)
     overflow: hidden
     display: inline-flex
     align-items: center
@@ -670,80 +416,6 @@
     mat-icon
         color: #f8dfa2
 
-.social-chat__detail-meta
-    color: rgba(245, 247, 255, .68)
-
-.social-chat__detail-actions
-    display: flex
-    justify-content: flex-end
-    margin-left: auto
-    flex: 0 0 auto
-
-    button
-        width: 2.25rem
-        height: 2.25rem
-        min-width: 2.25rem
-        padding: 0
-        display: inline-flex
-        align-items: center
-        justify-content: center
-        line-height: 1
-        border: 1px solid rgba(255, 255, 255, .12)
-        background: rgba(255, 255, 255, .04)
-        color: rgba(245, 247, 255, .88)
-
-        &:hover
-            border-color: rgba(194, 24, 91, .42)
-            background: rgba(194, 24, 91, .14)
-
-        mat-icon
-            width: 1.15rem
-            height: 1.15rem
-            font-size: 1.15rem
-            line-height: 1.15rem
-
-.social-chat__admin-panel
-    display: flex
-    flex-direction: column
-    gap: .75rem
-
-.social-chat__admin-grid
-    display: grid
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr))
-    gap: .75rem
-
-.social-chat__admin-card
-    gap: .75rem
-
-    h3
-        margin: 0
-        font-size: 1rem
-
-.social-chat__inline-form
-    display: flex
-    flex-direction: column
-    gap: .65rem
-
-.social-chat__load-more
-    align-self: flex-start
-
-.social-chat__messages
-    display: flex
-    flex-direction: column
-    gap: .75rem
-    flex: 1 1 auto
-    min-height: 0
-    overflow: auto
-    padding: .15rem .2rem .15rem 0
-
-.social-chat__message-row
-    display: flex
-    align-items: flex-end
-    gap: .65rem
-
-.social-chat__message-row--own
-    flex-direction: row-reverse
-
 .social-avatar-link
     display: inline-flex
     align-items: center
@@ -751,9 +423,9 @@
     flex-shrink: 0
     padding: 0
     border-radius: 999px
-    border: 1px solid rgba(255, 255, 255, .12)
-    background: rgba(255, 255, 255, .05)
-    color: #f5f7ff
+    border: 1px solid con-alfa(var(--rol-tinta), .12)
+    background: con-alfa(var(--rol-tinta), .05)
+    color: var(--rol-texto-vivo)
     overflow: hidden
     cursor: pointer
 
@@ -763,7 +435,7 @@
         object-fit: cover
 
     mat-icon
-        color: rgba(245, 247, 255, .82)
+        color: con-alfa(var(--rol-texto-vivo), .82)
 
 .social-avatar-link--readonly
     cursor: default
@@ -781,134 +453,14 @@
     width: 2.5rem
     height: 2.5rem
 
-.social-chat__message
-    max-width: min(80%, 44rem)
-    display: flex
-    flex-direction: column
-    gap: .55rem
-    padding: .9rem 1rem
-    border-radius: .9rem
-    background: rgba(255, 255, 255, .05)
-    border: 1px solid rgba(255, 255, 255, .08)
-
-    strong
-        display: block
-        margin: 0
-        font-size: .98rem
-        line-height: 1.2
-
-    p
-        margin: 0
-        white-space: pre-wrap
-        line-height: 1.45
-        color: rgba(245, 247, 255, .9)
-
-.social-chat__message--own
-    align-self: flex-end
-    background: rgba(194, 24, 91, .14)
-    border-color: rgba(194, 24, 91, .35)
-
-.social-chat__message--system
-    background: linear-gradient(180deg, rgba(255, 248, 220, .035), rgba(255, 255, 255, .045))
-    border-color: rgba(214, 180, 95, .34)
-    box-shadow: inset 0 1px 0 rgba(255, 248, 220, .06)
-
-    strong
-        color: #fff4cf
-
-    p
-        color: rgba(255, 248, 220, .92)
-
-.social-chat__message--system-danger
-    background: linear-gradient(180deg, rgba(121, 20, 20, .42), rgba(76, 11, 11, .26))
-    border-color: rgba(255, 104, 104, .42)
-    box-shadow: inset 0 1px 0 rgba(255, 214, 214, .08)
-
-    strong
-        color: #ffd0d0
-
-    p
-        color: rgba(255, 228, 228, .94)
-
-    .social-chat__message-action
-        border-color: rgba(255, 130, 130, .32) !important
-        background: rgba(160, 36, 36, .22) !important
-        color: #ffe1e1 !important
-
-        &:hover
-            background: rgba(180, 48, 48, .3) !important
-            border-color: rgba(255, 144, 144, .42) !important
-
-.social-chat__message-actions
-    display: flex
-    flex-wrap: wrap
-    gap: .55rem
-    padding-top: .2rem
-
-.social-chat__message-action
-    min-width: 0
-    padding: .32rem .9rem
-    border-radius: .7rem
-    border-color: rgba(214, 180, 95, .34) !important
-    background: rgba(214, 180, 95, .1) !important
-    color: #fff1bf !important
-    line-height: 1.2
-    letter-spacing: .01em
-
-    &:hover
-        background: rgba(214, 180, 95, .16) !important
-        border-color: rgba(214, 180, 95, .46) !important
-
-    .mdc-button__label
-        color: inherit
-
-.social-chat__composer
-    display: flex
-    gap: .75rem
-    align-items: flex-end
-    padding-top: .75rem
-    border-top: 1px solid rgba(255, 255, 255, .08)
-    margin-top: auto
-
-.social-chat__composer-field
-    flex: 1 1 auto
-    min-width: 0
-    width: auto
-
-.social-chat__composer > button
-    flex: 0 0 auto
-    min-width: 4.75rem
-    height: 2.75rem
-
-.social-chat__search-mode
-    display: flex
-    flex-direction: column
-    gap: .95rem
-    flex: 1 1 auto
-    min-height: 0
-
-.social-chat__group-builder
-    display: flex
-    flex-direction: column
-    gap: .95rem
-    min-height: 0
-
-.social-chat__selection-summary
-    color: rgba(245, 247, 255, .78)
-    font-size: .9rem
-
-.social-chat__builder-actions
-    display: flex
-    justify-content: flex-start
-
 .social-user-list--compact
     gap: .6rem
 
 .social-empty--inline
     min-height: 8rem
     border-radius: 1rem
-    background: rgba(255, 255, 255, .03)
-    border: 1px solid rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .03)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .social-empty--compact
     min-height: 6rem
@@ -934,12 +486,12 @@
 .social-nav__contador
     margin-left: auto
     background: $active
-    color: #ffffff
+    color: var(--rol-activo-texto)
 
 .social-panel__contador
     margin-left: .35rem
-    background: rgba(255, 255, 255, .08)
-    color: rgba(245, 247, 255, .82)
+    background: con-alfa(var(--rol-tinta), .08)
+    color: con-alfa(var(--rol-texto-vivo), .82)
 
 .social-actions
     display: flex
@@ -986,10 +538,10 @@
     height: 2.5rem
     border-radius: 50%
     object-fit: cover
-    background: rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .08)
 
 .social-persona__alias
-    color: rgba(245, 247, 255, .65)
+    color: con-alfa(var(--rol-texto-vivo), .65)
     font-size: .9rem
 
 .social-bloque-error
@@ -1028,23 +580,8 @@
         width: auto
         flex: 1 1 12rem
 
-    .social-columns,
-    .social-chat
+    .social-columns
         grid-template-columns: 1fr
-
-    .social-chat__divider
-        display: none
-
-    .social-chat__sidebar
-        overflow: visible
-        padding-right: 0
-
-    .social-chat__sidebar-scroll
-        overflow: visible
-        padding-right: 0
-
-    .social-chat__detail
-        padding-left: 0
 
     .social-user-card
         flex-direction: column
@@ -1052,19 +589,21 @@
     .social-user-card__actions
         justify-content: flex-start
 
-    .social-chat__admin-grid
-        grid-template-columns: 1fr
-
-    .social-chat__message
-        max-width: 100%
-
 @media (max-width: 640px)
     .social-main
         padding: 1rem
 
-    .social-chat__composer
-        flex-direction: column
-        align-items: stretch
-
-    .social-chat__filters
-        overflow: auto
+// En claro, todo junto: los paneles en la tarjeta del tema y los textos rojos y ámbar de los avisos en sus tonos
+// oscuros (`--rol-mat-error`, `--rol-aviso`).
+:host-context(html[data-modo="claro"])
+    .social-nav, .social-main
+        background: var(--rol-tarjeta)
+    .social-inline-error
+        color: var(--rol-mat-error)
+    .social-user-card__actions
+        button[mat-icon-button]
+            &[color="warn"]
+                color: var(--rol-mat-error)
+    .social-chip__avatar--system
+        mat-icon
+            color: var(--rol-aviso)

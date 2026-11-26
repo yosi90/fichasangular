@@ -121,7 +121,7 @@
     cursor: pointer
 
     &:hover
-        background: rgba(255, 255, 255, .05)
+        background: con-alfa(var(--rol-tinta), .05)
 
     &:focus-visible
         outline: 2px solid $active
@@ -135,7 +135,7 @@
     box-shadow: inset 3px 0 0 $active
 
 .creacion-opcion--bloqueada
-    color: #8a949b
+    color: var(--rol-texto-tenue)
     cursor: not-allowed
 
 .creacion-opcion__texto
@@ -150,7 +150,7 @@
 .creacion-opcion__estado
     flex-shrink: 0
     font-size: 12px
-    color: #ffab91
+    color: var(--rol-naranja)
 
 .creacion-opcion__coste
     flex-shrink: 0
@@ -178,9 +178,9 @@
 .ficha .creacion-aviso, .creacion-ventana .creacion-aviso
     margin: 0
     padding: 10px 12px
-    border: 1px solid #ffab91
+    border: 1px solid var(--rol-naranja)
     border-radius: 6px
-    color: #ffccbc
+    color: var(--rol-aviso-suave)
     font-size: 14px
 
 // La vista previa de lo que se pulsa en una lista (raza, clase, plantilla), en la columna derecha.
@@ -210,7 +210,7 @@
     cursor: pointer
 
     &:hover td, &:hover
-        background: rgba(255, 255, 255, .05)
+        background: con-alfa(var(--rol-tinta), .05)
 
 .creacion-fila-boton
     display: inline
@@ -230,7 +230,7 @@
 
 // En una tabla, el fondo va en las celdas y la raya en la primera; en otra lista (las tarjetas de plantilla), en la fila.
 tr.creacion-fila-abierta td, tr.creacion-fila-abierta:hover td, .creacion-fila-abierta:not(tr)
-    background: rgba(173, 189, 196, .16)
+    background: con-alfa($accent, .16)
 
 tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
     box-shadow: inset 3px 0 0 $accent
@@ -269,7 +269,7 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
     box-shadow: $ficha-sombra
 
     &:hover
-        background: rgba(255, 255, 255, .08)
+        background: con-alfa(var(--rol-tinta), .08)
 
     &:focus-visible
         outline: 2px solid $active
@@ -296,6 +296,8 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
 
     .mat-icon
         color: #f48fb1
+        @include en-claro($global: true)
+            color: var(--rol-enlace)
 
 .creacion-tipo__nombre
     display: flex
@@ -318,6 +320,8 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
     padding: 0 0 0 18px
     font-size: 14px
     color: #e3eaee
+    @include en-claro($global: true)
+        color: var(--rol-texto)
 
 .creacion-tipo__nota
     width: min(980px, 100%)
@@ -412,6 +416,8 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
 
 .creacion-edad__categoria--elegida .creacion-edad__pie
     color: #f8bbd0
+    @include en-claro($global: true)
+        color: var(--rol-enlace)
 
 .creacion-edad__pasos
     display: grid

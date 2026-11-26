@@ -15,6 +15,18 @@ function diferida<T>() {
 const conSesion = (id: string): EstadoPlataforma => ({ tipo: 'con_sesion', cuenta: { id, alias: id, correo: null } });
 const bloque = (documento: Record<string, unknown>): BloqueAjustes => ({ version: 1, documento });
 
+/** Hace [fn] con el claro de [temas] listo o no, y deja `claroListo` como estaba. */
+function conClaroListo(temas: string[], listo: boolean, fn: () => void): void {
+    const definiciones = TEMAS_WEB.filter((t) => temas.includes(t.id)) as { claroListo: boolean }[];
+    const antes = definiciones.map((d) => d.claroListo);
+    definiciones.forEach((d) => d.claroListo = listo);
+    try {
+        fn();
+    } finally {
+        definiciones.forEach((d, i) => d.claroListo = antes[i]);
+    }
+}
+
 describe('TemaWebService', () => {
     let estado$: BehaviorSubject<EstadoPlataforma>;
     let sesion: jasmine.SpyObj<PlatformSessionService> & { estado$: BehaviorSubject<EstadoPlataforma> };
@@ -65,7 +77,8 @@ describe('TemaWebService', () => {
         expect(sesion.leerAjustes).not.toHaveBeenCalled();
     });
 
-    it('sin nada guardado pinta A en oscuro y avisa al SDK con data-theme="dark"', () => {
+    it('sin tema guardado pinta A; en oscuro, avisa al SDK con data-theme="dark"', () => {
+        localStorage.setItem(CLAVE_MODO, 'oscuro');
         crear();
         expect(raiz.dataset['tema']).toBe('a');
         expect(raiz.dataset['modo']).toBe('oscuro');
@@ -232,10 +245,27 @@ describe('TemaWebService', () => {
 
     it('mientras el claro de un tema no está listo, se pinta en oscuro aunque se elija claro', () => {
         localStorage.setItem(CLAVE_MODO, 'claro');
+        conClaroListo(['a'], false, () => {
+            crear();
+            expect(servicio.estado.modo).toBe('claro');
+            expect(raiz.dataset['modo']).toBe('oscuro');
+            expect(raiz.dataset['theme']).toBe('dark');
+        });
+    });
+
+    it('el claro de A está listo (fase 2): con el modo claro, data-modo="claro" y data-theme="light"', () => {
+        localStorage.setItem(CLAVE_MODO, 'claro');
         crear();
-        expect(servicio.estado.modo).toBe('claro');
-        expect(raiz.dataset['modo']).toBe('oscuro');
-        expect(raiz.dataset['theme']).toBe('dark');
+        expect(raiz.dataset['tema']).toBe('a');
+        expect(raiz.dataset['modo']).toBe('claro');
+        expect(raiz.dataset['theme']).toBe('light');
+    });
+
+    it('da el modo con el que se vería cada tema, para las vistas previas', () => {
+        localStorage.setItem(CLAVE_MODO, 'claro');
+        crear();
+        expect(servicio.modoEfectivoDe('a')).toBe('claro');
+        conClaroListo(['c'], false, () => expect(servicio.modoEfectivoDe('c')).toBe('oscuro'));
     });
 
     it('la vista previa pinta otro tema sin guardarlo y se deshace', () => {
@@ -259,23 +289,24 @@ describe('iconoSegunTemas', () => {
 });
 
 describe('modoEfectivo', () => {
-    it('sigue al sistema o a lo elegido solo cuando el claro del tema está listo', () => {
-        // Hoy ningún tema tiene su claro: todos en oscuro.
-        expect(modoEfectivo('a', 'claro', false)).toBe('oscuro');
-        expect(modoEfectivo('b', 'sistema', false)).toBe('oscuro');
-        expect(modoEfectivo('c', 'oscuro', true)).toBe('oscuro');
+    it('sin el claro de un tema listo, siempre en oscuro', () => {
+        conClaroListo(['a', 'b', 'c'], false, () => {
+            expect(modoEfectivo('a', 'claro', false)).toBe('oscuro');
+            expect(modoEfectivo('b', 'sistema', false)).toBe('oscuro');
+            expect(modoEfectivo('c', 'oscuro', true)).toBe('oscuro');
+        });
     });
 
     it('con el claro listo: «sistema» es el del dispositivo y lo elegido manda', () => {
-        const a = TEMAS_WEB[0] as { claroListo: boolean };
-        a.claroListo = true;
-        try {
+        conClaroListo(['a'], true, () => {
             expect(modoEfectivo('a', 'sistema', false)).toBe('claro');
             expect(modoEfectivo('a', 'sistema', true)).toBe('oscuro');
             expect(modoEfectivo('a', 'claro', true)).toBe('claro');
             expect(modoEfectivo('a', 'oscuro', false)).toBe('oscuro');
-        } finally {
-            a.claroListo = false;
-        }
+        });
+    });
+
+    it('los tres temas tienen su claro (fase 2: el de A; B y C salen de sus valores)', () => {
+        expect(TEMAS_WEB.map((t) => t.claroListo)).toEqual([true, true, true]);
     });
 });

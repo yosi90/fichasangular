@@ -39,8 +39,10 @@ $ficha-sombra: var(--rol-sombra)
     box-shadow: $ficha-sombra
 
 // La cabecera de la ficha y de los marcos que la copian (creación, inserciones, campañas, ayuda): tarjeta $primary con la
-// raya inferior rosa de 3px. Cada una pone su disposición, su relleno y el tamaño del nombre.
+// raya inferior rosa de 3px. Cada una pone su disposición, su relleno y el tamaño del nombre. Es pizarra también en el
+// claro (`zona-oscura`).
 @mixin ficha-cabecera
+    @include zona-oscura
     background: $primary
     border-radius: $ficha-radio
     border-bottom: 3px solid $active
@@ -73,6 +75,7 @@ $ficha-sombra: var(--rol-sombra)
     overflow: hidden
 
     button
+        @include zona-oscura($material: false)
         min-width: 44px
         height: 36px
         padding: 0 $relleno

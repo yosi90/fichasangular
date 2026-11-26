@@ -17,7 +17,7 @@
         <label *ngFor="let t of temas" class="ventana-tema__opcion" [class.ventana-tema__opcion--elegida]="t.id === seleccion">
             <input type="radio" name="ventana-tema-tema" class="ventana-tema__radio" [value]="t.id" [checked]="t.id === seleccion"
                 [attr.autofocus]="t.id === seleccion ? '' : null" (change)="seleccionar(t.id)">
-            <span class="previa" [attr.data-tema-previa]="t.id" data-modo-previa="oscuro" aria-hidden="true">
+            <span class="previa" [attr.data-tema-previa]="t.id" [attr.data-modo-previa]="modoPrevia(t.id)" aria-hidden="true">
                 <span class="previa__cinta"><i></i><i></i><i></i><i class="previa__buscar"></i></span>
                 <span class="previa__cuerpo">
                     <span class="previa__menu">

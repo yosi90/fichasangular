@@ -10,8 +10,10 @@
     z-index: 1000
     display: flex
     flex-direction: column
-    background: #505050
+    background: $contrast
     color: #e6e9eb
+    @include en-claro
+        color: var(--rol-texto)
 
 .tienda-sesion__cabecera
     display: flex
@@ -28,6 +30,8 @@
     font-size: 18px
     font-weight: 500
     color: #fff
+    @include en-claro
+        color: var(--rol-texto)
 
 .tienda-sesion__cerrar
     width: 44px

@@ -242,6 +242,18 @@
     font-size: 18px
     opacity: .7
 
+// En claro, lo de los paneles que no sale ya de `--rol-panel-*`: el rojo de cerrar sesión, el subtítulo de la sesión y
+// las pastillas de categoría de Manuales (la de Oficial y Homebrew, de color con texto blanco, valen en los dos).
+::ng-deep html[data-modo="claro"] .cdk-overlay-pane:has(.menuSuperficieOscura)
+    .menu-entry-danger
+        color: var(--rol-mat-error)
+
+    .menu-user-state__subtitle
+        color: var(--rol-panel-texto)
+
+    .chip-categoria
+        background: var(--rol-fila-alterna)
+
 ::ng-deep .cdk-overlay-pane:has(.menuSuperficieOscura--wide)
     width: min(620px, calc(100vw - 16px)) !important
     max-width: min(620px, calc(100vw - 16px)) !important
@@ -258,7 +270,7 @@
     flex-direction: column
     gap: 2px
     padding: 12px 16px 10px
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .1)
 
 .menu-user-state__eyebrow
     font-size: 11px
@@ -276,7 +288,7 @@
 
 .menu-separator
     margin: 6px 12px
-    border-top: 1px solid rgba(255, 255, 255, 0.14)
+    border-top: 1px solid con-alfa(var(--rol-tinta), .14)
 
 .ribbon-menu-shell
     min-width: 220px
@@ -341,7 +353,7 @@
     transition: background-color .15s ease
 
     &:hover, &:focus
-        background: rgba(255, 255, 255, 0.05)
+        background: con-alfa(var(--rol-tinta), .05)
 
 .manual-linea
     display: flex

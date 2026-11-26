@@ -18,3 +18,47 @@ $accent: var(--rol-acento)
 // el alfa premultiplicado), pero vale con las propiedades CSS.
 @function con-alfa($color, $alfa)
     @return color-mix(in srgb, #{$color} math.percentage($alfa), transparent)
+
+// Lo que es oscuro también en el claro (la cinta, la barra de pestañas, las cabeceras de la ficha y de los listados, las
+// cabeceras de las tablas, los conmutadores, las cabeceras del menú): sus textos, su tinta y sus campos vuelven a los del
+// oscuro del tema (`--rol-zo-*` en `_temas.sass`), para él y lo de dentro. En un modo oscuro no cambia nada. Se pone en
+// el elemento con el fondo oscuro, no en uno sin fondo. Sin Material dentro (una cabecera de tabla, un botón),
+// `$material: false`: la hoja pesa menos.
+@mixin zona-oscura($material: true)
+    --rol-texto: var(--rol-zo-texto)
+    --rol-texto-suave: var(--rol-zo-texto-suave)
+    --rol-texto-fuerte: var(--rol-zo-texto-fuerte)
+    --rol-texto-vivo: var(--rol-zo-texto-vivo)
+    --rol-acento: var(--rol-zo-acento)
+    --rol-texto-base: var(--rol-zo-texto-base)
+    --rol-separador: var(--rol-zo-separador)
+    --rol-tinta: var(--rol-zo-tinta)
+    --rol-enlace: var(--rol-zo-enlace)
+    --rol-aviso: var(--rol-zo-aviso)
+    --rol-error-texto: var(--rol-zo-error-texto)
+    --rol-zona-oscura: var(--rol-zo-campo)
+    @if $material
+        @include _zona-oscura-material
+
+// Lo de Angular Material que más va en las zonas oscuras: sus textos, como en A oscuro (el blanco y el blanco al 70 %).
+@mixin _zona-oscura-material
+    --mat-button-text-label-text-color: var(--rol-texto-fuerte)
+    --mat-button-outlined-label-text-color: var(--rol-texto-fuerte)
+    --mat-slide-toggle-label-text-color: var(--rol-texto-fuerte)
+    --mat-checkbox-label-text-color: var(--rol-texto-fuerte)
+    --mat-radio-label-text-color: var(--rol-texto-fuerte)
+    --mat-form-field-filled-input-text-color: var(--rol-texto-fuerte)
+    --mat-select-enabled-trigger-text-color: var(--rol-texto-fuerte)
+    --mat-form-field-filled-label-text-color: #{con-alfa(var(--rol-tinta), .7)}
+    --mat-expansion-header-indicator-color: #{con-alfa(var(--rol-tinta), .7)}
+
+// Lo que en el claro cambia más allá de los valores: el degradado, el tinte o la superficie propios de una vista, con
+// los valores del tema dentro (`var(--rol-tarjeta)`, `var(--rol-texto)`…). En oscuro la regla de siempre sigue sola. En
+// las hojas sin encapsular y en lo que va en el overlay (paneles de `mat-menu`, `.profile-swal`), `$global: true`.
+@mixin en-claro($global: false)
+    @if $global
+        html[data-modo="claro"] &
+            @content
+    @else
+        :host-context(html[data-modo="claro"]) &
+            @content

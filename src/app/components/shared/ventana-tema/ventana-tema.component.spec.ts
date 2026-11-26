@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TemaWebService } from 'src/app/services/tema-web/tema-web.service';
+import { TEMAS_WEB } from 'src/app/services/tema-web/temas-web';
 import { AVISO_ELEGIR_TEMA, AVISO_TEMA_SIN_GUARDAR, VentanaTemaComponent } from './ventana-tema.component';
 
 describe('VentanaTemaComponent', () => {
@@ -10,10 +11,11 @@ describe('VentanaTemaComponent', () => {
 
     function crear(bienvenida: boolean): void {
         temaWeb = Object.assign(
-            jasmine.createSpyObj<TemaWebService>('TemaWebService', ['elegirTema', 'previsualizar', 'deshacerVistaPrevia', 'elegirModo']),
+            jasmine.createSpyObj<TemaWebService>('TemaWebService', ['elegirTema', 'previsualizar', 'deshacerVistaPrevia', 'elegirModo', 'modoEfectivoDe']),
             { estado: { tema: 'a', modo: 'sistema' } },
         );
         temaWeb.elegirTema.and.resolveTo();
+        temaWeb.modoEfectivoDe.and.callFake((tema: string) => tema === 'b' ? 'oscuro' : 'claro');
         TestBed.configureTestingModule({
             imports: [VentanaTemaComponent],
             providers: [{ provide: TemaWebService, useValue: temaWeb }],
@@ -44,6 +46,9 @@ describe('VentanaTemaComponent', () => {
         expect(dialogo().matches(':modal')).toBeTrue();
         const previas = [...fixture.nativeElement.querySelectorAll('[data-tema-previa]')].map((p: HTMLElement) => p.dataset['temaPrevia']);
         expect(previas).toEqual(['a', 'b', 'c']);
+        // Cada vista previa, en el modo con el que se vería ese tema.
+        const modos = [...fixture.nativeElement.querySelectorAll('[data-tema-previa]')].map((p: HTMLElement) => p.dataset['modoPrevia']);
+        expect(modos).toEqual(['claro', 'oscuro', 'claro']);
         expect(fixture.nativeElement.textContent).toContain('B · Tinta');
     });
 
@@ -67,12 +72,29 @@ describe('VentanaTemaComponent', () => {
         expect(fixture.nativeElement.textContent).toContain(AVISO_TEMA_SIN_GUARDAR);
     });
 
-    it('el modo se elige aparte, pero mientras el tema no tiene claro está desactivado', () => {
+    it('el modo se elige aparte; con el claro del tema listo (A, fase 2), no está desactivado', () => {
         crear(false);
         const modos = [...fixture.nativeElement.querySelectorAll('input[name="ventana-tema-modo"]')] as HTMLInputElement[];
         expect(modos.length).toBe(3);
-        expect(modos.every((m) => m.disabled)).toBeTrue();
-        expect(fixture.nativeElement.textContent).toContain('solo se ve en oscuro');
+        expect(modos.some((m) => m.disabled)).toBeFalse();
+        expect(fixture.nativeElement.textContent).not.toContain('solo se ve en oscuro');
+        modos.find((m) => m.value === 'claro')!.click();
+        expect(temaWeb.elegirModo).toHaveBeenCalledWith('claro');
+    });
+
+    it('mientras un tema no tiene su claro, el modo sale desactivado con su nota', () => {
+        const c = TEMAS_WEB[2] as { claroListo: boolean };
+        c.claroListo = false;
+        try {
+            crear(false);
+            componente.seleccion = 'c';
+            fixture.detectChanges();
+            const modos = [...fixture.nativeElement.querySelectorAll('input[name="ventana-tema-modo"]')] as HTMLInputElement[];
+            expect(modos.every((m) => m.disabled)).toBeTrue();
+            expect(fixture.nativeElement.textContent).toContain('solo se ve en oscuro');
+        } finally {
+            c.claroListo = true;
+        }
     });
 
     it('la bienvenida no tiene × ni se cierra con Esc: lo dice y sigue abierta', () => {

@@ -6,8 +6,10 @@
 .public-profile-state,
 .public-profile-card
     background: rgba(45, 45, 48, .96)
-    color: #f5f7ff
-    border: 1px solid rgba(255, 255, 255, .08)
+    @include en-claro
+        background: var(--rol-tarjeta)
+    color: var(--rol-texto-vivo)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .public-profile-card
     padding: 1.25rem
@@ -28,7 +30,7 @@
     height: 8rem
     object-fit: cover
     border-radius: 1.15rem
-    border: 2px solid rgba(173, 189, 196, .24)
+    border: 2px solid con-alfa($accent, .24)
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18)
 
 .public-profile-tag
@@ -36,33 +38,33 @@
     margin-bottom: 0.55rem
     padding: 0.3rem 0.65rem
     border-radius: 999px
-    background: rgba(194, 24, 91, .16)
-    color: #f5f7ff
+    background: con-alfa($active, .16)
+    color: var(--rol-texto-vivo)
     font-weight: 600
     font-size: 0.85rem
 
 .public-profile-title
     margin: 0
-    color: #f5f7ff
+    color: var(--rol-texto-vivo)
 
 .public-profile-subtitle
     margin: 0.4rem 0 0
-    color: rgba(245, 247, 255, .72)
+    color: con-alfa(var(--rol-texto-vivo), .72)
 
 .public-profile-pronouns
     margin: 0.9rem 0 0
-    color: rgba(245, 247, 255, .92)
+    color: con-alfa(var(--rol-texto-vivo), .92)
     font-weight: 600
 
 .public-profile-bio
     margin: 0.45rem 0 0
-    color: rgba(245, 247, 255, .76)
+    color: con-alfa(var(--rol-texto-vivo), .76)
     line-height: 1.55
     white-space: pre-line
 
 .public-profile-relationship
     margin: .85rem 0 0
-    color: rgba(245, 247, 255, .84)
+    color: con-alfa(var(--rol-texto-vivo), .84)
     font-weight: 600
 
 .public-profile-actions
@@ -79,7 +81,7 @@
 
 .public-profile-note
     margin: .75rem 0 0
-    color: rgba(245, 247, 255, .66)
+    color: con-alfa(var(--rol-texto-vivo), .66)
     font-size: .9rem
 
     a
@@ -96,7 +98,7 @@
     cursor: pointer
 
     &:focus-visible
-        outline: 2px solid #c2185b
+        outline: 2px solid $active
         outline-offset: 2px
 
 .public-profile-stats
@@ -117,15 +119,15 @@
     gap: 0.2rem
     padding: 0.85rem 1rem
     border-radius: 0.95rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .04)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .public-profile-stat strong
     font-size: 1.35rem
-    color: #f5f7ff
+    color: var(--rol-texto-vivo)
 
 .public-profile-stat span
-    color: rgba(245, 247, 255, .66)
+    color: con-alfa(var(--rol-texto-vivo), .66)
 
 @media (max-width: 720px)
     .public-profile-layout

@@ -5,6 +5,7 @@
 // permiso, el icono y el texto al 38 % (con el tooltip de permisos de siempre); el foco de teclado, anillo rosa.
 @mixin menu-opcion
     button.menu-opcion
+        --mat-button-text-label-text-color: var(--rol-menu-texto)
         height: 36px
         padding: 0 12px
         justify-content: flex-start
@@ -47,6 +48,7 @@
             transition: .3s
 
             &[disabled]
+                @include zona-oscura
                 background-color: $contrast-dark
                 opacity: 1
 
@@ -68,6 +70,7 @@
             margin-bottom: 1px
 
             mat-expansion-panel-header
+                @include zona-oscura
                 max-height: 48px
 
                 mat-icon
@@ -75,7 +78,10 @@
                     width: auto
                     height: auto
 
+            // Las cabeceras son pizarra también en el claro, con su gris azulado de siempre.
             mat-expansion-panel-header button
+                @include zona-oscura
+                --mat-button-outlined-label-text-color: var(--rol-menu-cabecera-texto)
                 justify-content: left
 
                 position: absolute
@@ -159,6 +165,7 @@
         // «Dados», debajo de las de catálogo (lienzo «Dados: Companion y web»): una fila suelta de 48 px como las
         // cabeceras de los acordeones, con el d20 dorado a 22 px.
         .menu-dados
+            @include zona-oscura
             display: flex
             align-items: center
             gap: 10px
@@ -241,7 +248,7 @@
                 min-height: 44px
 
                 border-radius: 8px
-                border: 1px solid rgba(255,255,255,.12)
+                border: 1px solid con-alfa(var(--rol-tinta), .12)
                 background-color: #495058
 
                 font-weight: 700
@@ -275,7 +282,7 @@
             .user-panel-link--primary
                 background: linear-gradient(180deg, #d41e72, #b61760)
                 color: #fff7fb
-                border-color: rgba(255,255,255,.14)
+                border-color: con-alfa(var(--rol-tinta), .14)
 
                 &:hover
                     background: linear-gradient(180deg, #de2d7d, #c11b67)
@@ -283,7 +290,7 @@
             .user-panel-link--login
                 background: linear-gradient(180deg, #d41e72, #b61760)
                 color: #fff7fb
-                border-color: rgba(255,255,255,.14)
+                border-color: con-alfa(var(--rol-tinta), .14)
 
                 &:hover
                     background: linear-gradient(180deg, #de2d7d, #c11b67)
@@ -363,12 +370,14 @@
     app-icono-rol.icono-rol--oscuro
         background: transparent
         --icono-rol-color: #{$primary}
+        --icono-rol-color-claro: #{$primary}
 
 :host-context(html[data-iconos])
     +menu-leyenda-un-tono
 
     .menu-dados app-icono-rol
         --icono-rol-color: currentColor
+        --icono-rol-color-claro: currentColor
 
 ::ng-deep html[data-iconos] .menu-otros-panel
     +menu-leyenda-un-tono

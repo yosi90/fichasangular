@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 .fichas-toast-host
     position: fixed
     top: 1rem
@@ -10,15 +11,17 @@
     pointer-events: none
 
 .fichas-toast
+    // Oscuro en los dos modos, como los demás avisos.
+    @include zona-oscura
     display: flex
     align-items: center
     gap: .65rem
     border-radius: .6rem
     padding: .7rem .85rem
-    color: #f5f7ff
+    color: var(--rol-texto-vivo)
     box-shadow: 0 6px 16px rgba(0, 0, 0, .35)
     backdrop-filter: blur(2px)
-    border: 1px solid rgba(255, 255, 255, .12)
+    border: 1px solid con-alfa(var(--rol-tinta), .12)
     background: rgba(27, 31, 41, .92)
 
 .fichas-toast--error
@@ -39,7 +42,7 @@
     width: 1rem
     height: 1rem
     border-radius: 50%
-    border: 2px solid rgba(255, 255, 255, .35)
+    border: 2px solid con-alfa(var(--rol-tinta), .35)
     border-top-color: #9fc0ff
     animation: fichas-toast-spin .8s linear infinite
     flex: 0 0 auto

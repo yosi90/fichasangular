@@ -1,6 +1,5 @@
-/* You can add global styles to this file, and also import other style files */
-// @import '~@angular/material/prebuilt-themes/deeppurple-amber.css'
-
+// Angular Material con los valores del tema (antes, el tema compilado `pink-bluegrey.css`), el primero, como iba él.
+@use 'assets/css/material'
 @use 'assets/css/variables' as *
 @use 'assets/css/marco' as marco
 // Los valores de cada tema y modo como propiedades CSS en la raíz (`data-tema` y `data-modo` en `<html>`).
@@ -36,18 +35,27 @@ body.swal2-shown
 
 .profile-swal
     background: linear-gradient(180deg, #2f3137 0%, #272a30 100%) !important
-    border: 1px solid rgba(173, 189, 196, .28) !important
+    border: 1px solid con-alfa($accent, .28) !important
     border-radius: 14px !important
     color: #f3f6ff !important
     box-shadow: 0 24px 60px rgba(0, 0, 0, .45) !important
+
+    // En claro, una tarjeta clara con los valores del tema.
+    @include en-claro($global: true)
+        background: var(--rol-panel) !important
+        color: var(--rol-texto) !important
+        box-shadow: 0 24px 60px rgba(0, 0, 0, .22) !important
 
 .profile-swal__title
     color: #f3f6ff !important
     font-size: 1.75rem !important
     font-weight: 700 !important
 
+    @include en-claro($global: true)
+        color: var(--rol-texto-fuerte) !important
+
 .swal2-html-container--policy
-    color: rgba(245, 247, 255, .88) !important
+    color: con-alfa(var(--rol-texto-vivo), .88) !important
     margin-top: 0.75rem !important
     padding: 0 1.25rem 0.5rem !important
 
@@ -58,13 +66,20 @@ body.swal2-shown
     padding: .7rem 1.2rem !important
     box-shadow: none !important
 
+    // Con los temas, un punto más oscuro: el blanco sobre `#6d6fe6` se queda en 4,1:1 (AA pide 4,5).
+    html[data-iconos] &
+        background: #5b5dd6 !important
+
 .profile-swal__cancel.swal2-cancel
-    background: rgba(255, 255, 255, .12) !important
+    background: con-alfa(var(--rol-tinta), .12) !important
     color: #f3f6ff !important
-    border: 1px solid rgba(255, 255, 255, .14) !important
+    border: 1px solid con-alfa(var(--rol-tinta), .14) !important
     border-radius: 8px !important
     padding: .7rem 1.2rem !important
     box-shadow: none !important
+
+    @include en-claro($global: true)
+        color: var(--rol-texto) !important
 
 // Regla global: chips con contenido interno deben envolver lineas sin overflow.
 .mat-mdc-chip
@@ -106,7 +121,7 @@ body.swal2-shown
     transition: background-color .16s ease-in-out
 
 .nuevo-personaje-shell .tabla-ventajas tbody tr:hover
-    background: rgba(255, 255, 255, 0.06)
+    background: con-alfa(var(--rol-tinta), .06)
 
 // Mientras una ventana modal de Rol necesita toda la pantalla, el chat de la plataforma se oculta.
 body.rol-ocultar-chat yosi-chat,
@@ -147,24 +162,34 @@ body.rol-ocultar-chat app-chat-floating-host
 // las variables --yosi-* desde fuera (ecosistema-kit/ESTILOS.md, «Las variables»). Las ventanas de la plataforma
 // no las heredan: las toman de src/assets/yosiftware.css, con los mismos valores.
 :root
-    --yosi-color-principal: #c2185b
-    --yosi-color-principal-texto: #ffffff
-    --yosi-color-principal-suave: rgba(194, 24, 91, 0.18)
-    --yosi-color-fondo: #2d2d30
-    --yosi-color-fondo-suave: #373c41
+    --yosi-color-principal: var(--rol-activo)
+    --yosi-color-principal-texto: var(--rol-activo-texto)
+    --yosi-color-principal-suave: #{con-alfa($active, .18)}
+    --yosi-color-fondo: var(--rol-zona-oscura)
+    --yosi-color-fondo-suave: var(--rol-primario)
     --yosi-color-fondo-pagina: #26272b
-    --yosi-color-texto: #f5f7ff
-    --yosi-color-texto-suave: #adbdc4
-    --yosi-color-borde: rgba(255, 255, 255, 0.08)
-    --yosi-color-borde-fuerte: rgba(255, 255, 255, 0.16)
-    --yosi-color-acento: #c2185b
-    --yosi-color-acento-suave: rgba(194, 24, 91, 0.18)
+    --yosi-color-texto: var(--rol-texto-vivo)
+    --yosi-color-texto-suave: var(--rol-acento)
+    --yosi-color-borde: #{con-alfa(var(--rol-tinta), .08)}
+    --yosi-color-borde-fuerte: #{con-alfa(var(--rol-tinta), .16)}
+    --yosi-color-acento: var(--rol-activo)
+    --yosi-color-acento-suave: #{con-alfa($active, .18)}
     --yosi-color-exito: #66bb6a
     --yosi-color-error: #ef5350
     --yosi-color-error-suave: rgba(239, 83, 80, 0.14)
-    --yosi-fuente: "Roboto", "Segoe UI", system-ui, sans-serif
+    --yosi-fuente: var(--rol-fuente-ui)
     --yosi-radio: 6px
     --yosi-radio-ventana: 10px
+
+// En claro, los paneles del SDK de la página en blanco sobre la zona clara (los mismos que `assets/yosiftware.css`
+// pone a sus ventanas con `data-tema="claro"`).
+:root[data-modo="claro"]
+    --yosi-color-fondo: var(--rol-panel)
+    --yosi-color-fondo-suave: var(--rol-fila-alterna)
+    --yosi-color-fondo-pagina: var(--rol-zona)
+    --yosi-color-exito: #2e7d32
+    --yosi-color-error: #c62828
+    --yosi-color-error-suave: rgba(198, 40, 40, .1)
 
 // El botón del chat y las conversaciones minimizadas, con el aspecto de las burbujas flotantes de Rol
 // (ventana-detalle-flotante, .ventana-burbuja). El tamaño del icono va en src/assets/yosiftware.css.

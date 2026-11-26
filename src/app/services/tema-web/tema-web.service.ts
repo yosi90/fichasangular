@@ -137,6 +137,11 @@ export class TemaWebService implements OnDestroy {
         this.pintar();
     }
 
+    /** El modo con el que se pintaría [tema] con el modo elegido ahora (las vistas previas de la ventana de los temas). */
+    modoEfectivoDe(tema: TemaWeb): ModoEfectivo {
+        return this.efectivo(tema, this.estado.modo);
+    }
+
     /** El modo, solo en este navegador; «sistema» quita la preferencia. */
     elegirModo(modo: ModoWeb): void {
         guardarPreferenciaLocal(CLAVE_MODO, modo === MODO_POR_DEFECTO ? null : modo);

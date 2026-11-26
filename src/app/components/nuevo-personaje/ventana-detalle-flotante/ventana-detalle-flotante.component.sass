@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 :host
     display: contents
 
@@ -6,7 +7,10 @@
     display: flex
     flex-direction: column
     background: #2f3135
-    border: 1px solid rgba(255, 255, 255, 0.18)
+    border: 1px solid con-alfa(var(--rol-tinta), .18)
+
+    @include en-claro
+        background: $contrast
     border-radius: 6px
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.48)
     overflow: hidden
@@ -25,6 +29,8 @@
     min-height: 0
 
 .ventana-burbuja
+    // La burbuja, la cabecera y sus botones son oscuros en los dos modos, como las burbujas del chat.
+    @include zona-oscura
     width: 100%
     height: 100%
     padding: 0
@@ -62,8 +68,9 @@
     justify-content: space-between
     gap: 10px
     padding: 0 10px 0 14px
+    @include zona-oscura
     background: linear-gradient(180deg, #3b3f45 0%, #34383d 100%)
-    border-bottom: 1px solid rgba(255, 255, 255, 0.16)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .16)
     user-select: none
     cursor: move
 
@@ -117,7 +124,7 @@
         overflow: visible
 
 .ventana-accion--minmax
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08)
+    box-shadow: inset 0 0 0 1px con-alfa(var(--rol-tinta), .08)
 
 .ventana-accion--close
     background: rgba(244, 67, 54, 0.82)
@@ -133,6 +140,9 @@
     min-height: 0
     overflow: auto
     background: #2f3135
+
+    @include en-claro
+        background: $contrast
 
 .ventana-bloqueada
     display: none

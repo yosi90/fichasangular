@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 .prerrequisitos-conservados
     margin: 0.45rem 0
     display: flex
@@ -11,5 +12,5 @@
 
 // Con la misma especificidad que tenía en la dote (`.nueva-dote-form .mod-chip`), frente a los estilos del chip.
 .prerrequisitos-conservados .con-borde
-    border: 1px solid rgba(255, 255, 255, 0.2)
-    background: rgba(255, 255, 255, 0.08)
+    border: 1px solid con-alfa(var(--rol-tinta), .2)
+    background: con-alfa(var(--rol-tinta), .08)

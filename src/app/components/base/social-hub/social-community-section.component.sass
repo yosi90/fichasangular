@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 :host
     display: block
 
@@ -20,8 +21,8 @@
 .social-v3-empty
     padding: 1rem
     border-radius: 1rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .04)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .social-v3-panel
     display: flex
@@ -39,7 +40,7 @@
 
     p
         margin: .25rem 0 0
-        color: rgba(245, 247, 255, .68)
+        color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-v3-stats
     display: grid
@@ -52,7 +53,7 @@
     gap: .3rem
 
     span
-        color: rgba(245, 247, 255, .68)
+        color: con-alfa(var(--rol-texto-vivo), .68)
 
     strong
         font-size: 1.45rem
@@ -69,14 +70,14 @@
     align-items: center
     padding: .8rem .9rem
     border-radius: .85rem
-    border: 1px solid rgba(255, 255, 255, .08)
-    background: rgba(255, 255, 255, .03)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
+    background: con-alfa(var(--rol-tinta), .03)
     color: inherit
     text-align: left
     cursor: pointer
 
 .social-v3-ranking-item__position
-    color: rgba(245, 247, 255, .68)
+    color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-v3-ranking-item__label
     overflow: hidden
@@ -95,8 +96,8 @@
     align-items: center
     padding: .9rem
     border-radius: .9rem
-    border: 1px solid rgba(255, 255, 255, .08)
-    background: rgba(255, 255, 255, .03)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
+    background: con-alfa(var(--rol-tinta), .03)
 
 .social-v3-user-card__identity
     display: flex
@@ -111,13 +112,13 @@
         gap: .2rem
 
     span
-        color: rgba(245, 247, 255, .66)
+        color: con-alfa(var(--rol-texto-vivo), .66)
 
 .social-v3-user-card__stats
     display: flex
     flex-direction: column
     gap: .2rem
-    color: rgba(245, 247, 255, .72)
+    color: con-alfa(var(--rol-texto-vivo), .72)
 
 .social-v3-user-card__actions
     display: flex
@@ -129,8 +130,8 @@
     border-radius: 999px
     overflow: hidden
     padding: 0
-    border: 1px solid rgba(255, 255, 255, .12)
-    background: rgba(255, 255, 255, .05)
+    border: 1px solid con-alfa(var(--rol-tinta), .12)
+    background: con-alfa(var(--rol-tinta), .05)
     cursor: pointer
 
     img
@@ -156,11 +157,13 @@
 
 .social-v3-hint
     margin: 0
-    color: rgba(245, 247, 255, .68)
+    color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-v3-error
     margin: 0
     color: rgba(255, 144, 144, .92)
+    @include en-claro
+        color: var(--rol-mat-error)
 
 @media (max-width: 960px)
     .social-v3-toolbar

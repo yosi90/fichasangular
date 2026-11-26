@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 .prereq-row-grid
     display: grid
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr))
@@ -9,6 +10,8 @@
     display: inline-flex
     align-items: center
     color: #e5e7eb
+    @include en-claro
+        color: var(--rol-texto)
 
 .prereq-hint
     min-height: 56px
@@ -16,6 +19,8 @@
     align-items: center
     padding: 0 0.35rem
     color: #d1d5db
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 0.88rem
 
 mat-form-field

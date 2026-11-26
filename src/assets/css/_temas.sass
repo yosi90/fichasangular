@@ -83,6 +83,7 @@
     --rol-menu-fila-alterna: #cccccc
     --rol-menu-fila-abierta: #bdbdbd
     --rol-menu-texto: var(--rol-activo)
+    --rol-menu-cabecera-texto: #b0bec5
     --rol-menu-titulo: #5f6368
     --rol-menu-apagado: #b0bec5
 
@@ -99,24 +100,94 @@
     --rol-error-fondo: rgba(198, 40, 40, .18)
     --rol-error-borde: rgba(239, 83, 80, .45)
 
-// ───── A · Clásico, claro (fase 2: lo completa con Angular Material y los literales de las hojas) ─────
+    // Lo que va encima de las superficies, con `con-alfa`: la tinta de las capas, los realces y los bordes suaves
+    // (`con-alfa(var(--rol-tinta), .08)`; blanca en oscuro y negra en claro), el texto de las vistas que siguen a la
+    // plataforma (perfil, social, avisos; `--rol-texto-vivo`) y el rosa como texto de un enlace o de lo elegido.
+    --rol-tinta: #ffffff
+    --rol-texto-vivo: #f5f7ff
+    // Lo que se lee menos (marcadores de posición, «Cargando…»), y el azul de la información (lo de otra versión).
+    --rol-texto-apagado: #9aa5ab
+    --rol-info: #8fa8ff
+    --rol-enlace: #f48fb1
+    // Los textos de aviso de la creación (lo que bloquea, lo que avisa, el estado de una opción), lo apagado de lo que
+    // aún no toca y la línea entre filas de una lista.
+    --rol-aviso-suave: #ffccbc
+    --rol-ambar-texto: #ffe39a
+    --rol-naranja: #ffab91
+    --rol-texto-tenue: #8a949b
+    --rol-linea-tenue: #4b5157
+    // Los datos pequeños con color funcional (`good`, `bad`, `neutral`: un bonificador, un penalizador, un dato).
+    --rol-bien-fondo: rgb(78, 87, 66)
+    --rol-mal-fondo: rgb(87, 66, 66)
+    --rol-neutro-fondo: rgb(68, 73, 82)
+
+    // Lo que es oscuro también en el claro (la cinta, la barra de pestañas, las cabeceras, las de las tablas, los
+    // conmutadores, las cabeceras del menú): `zona-oscura` (`_variables.sass`) les devuelve estos textos. En un modo
+    // oscuro son los de arriba; cada claro con zonas oscuras pone los suyos.
+    --rol-zo-texto: var(--rol-texto)
+    --rol-zo-texto-suave: var(--rol-texto-suave)
+    --rol-zo-texto-fuerte: var(--rol-texto-fuerte)
+    --rol-zo-texto-vivo: var(--rol-texto-vivo)
+    --rol-zo-acento: var(--rol-acento)
+    --rol-zo-texto-base: var(--rol-texto-base)
+    --rol-zo-separador: var(--rol-separador)
+    --rol-zo-tinta: var(--rol-tinta)
+    --rol-zo-enlace: var(--rol-enlace)
+    --rol-zo-aviso: var(--rol-aviso)
+    --rol-zo-error-texto: var(--rol-error-texto)
+    --rol-zo-campo: var(--rol-zona-oscura)
+
+    // Angular Material (`_material.scss`): sus colores del sistema salen de estos y de `--rol-activo`. En A oscuro, los
+    // del tema compilado de siempre (`pink-bluegrey`): superficies de menús, diálogos y desplegables, el relleno de los
+    // campos, el texto, las líneas, el tooltip (`inversa`), las casillas, radios e interruptores (`control`) y el error.
+    --rol-mat-fondo: #303030
+    --rol-mat-superficie: var(--rol-tarjeta)
+    --rol-mat-superficie-variante: var(--rol-fila-alterna)
+    --rol-mat-texto: var(--rol-texto-fuerte)
+    --rol-mat-texto-suave: rgba(255, 255, 255, .7)
+    --rol-mat-linea: rgba(255, 255, 255, .12)
+    --rol-mat-linea-fuerte: rgba(255, 255, 255, .38)
+    --rol-mat-inversa: #ffffff
+    --rol-mat-inversa-texto: rgba(0, 0, 0, .87)
+    --rol-mat-control: #b0bec5
+    --rol-mat-control-texto: rgba(0, 0, 0, .87)
+    --rol-mat-control-pista: #546e7a
+    --rol-mat-activo-pista: #d81b60
+    --rol-mat-error: #f44336
+    --rol-mat-error-texto: #ffffff
+    --rol-mat-error-pista: #e53935
+
+// ───── A con los temas encendidos (`data-iconos`), en sus dos modos: el contraste (fase 2). Con los temas apagados, la
+// web de siempre. ─────
+:root[data-tema="a"][data-iconos]
+    // Las opciones del menú sobre su gris claro: el rosa de siempre se queda en 3,7:1; este llega a 5:1 (AA).
+    --rol-menu-texto: #9c1350
+
+// ───── A · Clásico, claro: el marco sigue en pizarra (la cinta, las pestañas, las cabeceras y el menú) y lo de dentro
+// pasa a claro (lienzo «Rol: temas e iconos»). Lo pizarra lleva `zona-oscura`, con los textos de A en oscuro. ─────
 :root[data-tema="a"][data-modo="claro"], [data-tema-previa="a"][data-modo-previa="claro"]
     color-scheme: light
     --rol-sombra: 3px 3px 10px rgba(0, 0, 0, .45)
+    --rol-sombra-sm: 1px 1px 3.5px rgba(0, 0, 0, .4)
     --rol-sombra-pozo: inset 3px 3px 10px rgba(0, 0, 0, .5)
+    --rol-sombra-pozo-sm: inset 1px 1px 3.5px rgba(0, 0, 0, .4)
     --rol-pagina: #c3cad0
     --rol-cinta-fondo: #373c41
     --rol-pozo: #aeb7be
     --rol-zona: #dde2e6
-    --rol-zona-oscura: #373c41
-    --rol-acento: #586771
-    --rol-texto-base: #586771
+    // Lo hundido dentro de lo claro (campos, recuadros, el botón apagado de un conmutador). La barra de pestañas y los
+    // campos de las cabeceras siguen oscuros con `zona-oscura`.
+    --rol-zona-oscura: #e4e9ec
+    --rol-acento: #52606a
+    --rol-texto-base: #52606a
+    --rol-exito: #2e7d32
     --rol-tarjeta: #f8f9fa
     --rol-fila-alterna: #edf0f2
     --rol-texto: #1f2428
     --rol-texto-suave: #45525c
     --rol-texto-fuerte: #1f2428
-    --rol-separador: #dfe4e8
+    --rol-separador: #d3d9de
+    --rol-aviso: #8a5a00
     --rol-elegida: #f6dbe6
     --rol-panel: #ffffff
     --rol-panel-texto: #45525c
@@ -125,6 +196,48 @@
     --rol-panel-hover: rgba(0, 0, 0, .06)
     --rol-panel-linea: rgba(0, 0, 0, .12)
     --rol-error-texto: #8e1c1c
+    --rol-error-fondo: rgba(198, 40, 40, .1)
+    --rol-tinta: #000000
+    --rol-texto-vivo: #1f2428
+    --rol-enlace: #c2185b
+    --rol-texto-apagado: #5f6b74
+    --rol-info: #3949ab
+    --rol-aviso-suave: #a1360f
+    --rol-ambar-texto: #7a5200
+    --rol-naranja: #a63b12
+    --rol-texto-tenue: #545f68
+    --rol-linea-tenue: #d3d9de
+    --rol-bien-fondo: #d5ead2
+    --rol-mal-fondo: #f1d5d5
+    --rol-neutro-fondo: #dde3ec
+    // Lo pizarra (`zona-oscura`): los textos de A en oscuro.
+    --rol-zo-texto: #e6e9eb
+    --rol-zo-texto-suave: #cfd8dc
+    --rol-zo-texto-fuerte: #ffffff
+    --rol-zo-texto-vivo: #f5f7ff
+    --rol-zo-acento: #adbdc4
+    --rol-zo-texto-base: #90a4ae
+    --rol-zo-separador: #555555
+    --rol-zo-tinta: #ffffff
+    --rol-zo-enlace: #f48fb1
+    --rol-zo-aviso: #f0b45a
+    --rol-zo-error-texto: #ffd6d6
+    --rol-zo-campo: #2d2d30
+    // Angular Material en claro (el M2 claro, con el gris azulado oscuro en las casillas para el contraste 3:1).
+    --rol-mat-fondo: #ffffff
+    --rol-mat-superficie: #ffffff
+    --rol-mat-texto-suave: #45525c
+    --rol-mat-linea: rgba(0, 0, 0, .12)
+    --rol-mat-linea-fuerte: rgba(0, 0, 0, .5)
+    --rol-mat-inversa: #373c41
+    --rol-mat-inversa-texto: #ffffff
+    --rol-mat-control: #546e7a
+    --rol-mat-control-texto: #ffffff
+    --rol-mat-control-pista: #90a4ae
+    --rol-mat-activo-pista: #f06292
+    --rol-mat-error: #b71c1c
+    --rol-mat-error-texto: #ffffff
+    --rol-mat-error-pista: #ef9a9a
 
 // ───── B · Tinta: plana, líneas finas, Literata en nombres y prosa y Source Sans 3 en lo demás (fase 4) ─────
 :root[data-tema="b"], [data-tema-previa="b"]
@@ -167,6 +280,14 @@
     --rol-panel-texto: #bfb9cb
     --rol-panel-texto-fuerte: #efecf4
     --rol-panel-texto-suave: #958ea4
+    --rol-enlace: var(--rol-activo)
+    // Angular Material: los valores básicos del tema (sus componentes, en su fase).
+    --rol-mat-fondo: var(--rol-pagina)
+    --rol-mat-control: var(--rol-activo)
+    --rol-mat-control-texto: var(--rol-activo-texto)
+    --rol-mat-control-pista: color-mix(in srgb, var(--rol-activo) 45%, var(--rol-tarjeta))
+    --rol-mat-activo-pista: color-mix(in srgb, var(--rol-activo) 45%, var(--rol-tarjeta))
+    --rol-mat-texto-suave: var(--rol-texto-suave)
 
 :root[data-tema="b"][data-modo="claro"], [data-tema-previa="b"][data-modo-previa="claro"]
     color-scheme: light
@@ -194,6 +315,7 @@
     --rol-menu-fila-alterna: #ffffff
     --rol-menu-fila-abierta: #f1eef6
     --rol-menu-texto: #4d4859
+    --rol-menu-cabecera-texto: var(--rol-texto-suave)
     --rol-menu-titulo: #6a6477
     --rol-panel: #ffffff
     --rol-panel-texto: #4d4859
@@ -202,6 +324,35 @@
     --rol-panel-hover: rgba(0, 0, 0, .05)
     --rol-panel-linea: #e1dce9
     --rol-error-texto: #8e1c1c
+    --rol-exito: #2e7d32
+    --rol-aviso: #8a5a00
+    --rol-tinta: #000000
+    --rol-texto-vivo: var(--rol-texto-fuerte)
+    --rol-enlace: var(--rol-activo)
+    --rol-texto-apagado: var(--rol-texto-base)
+    --rol-info: #3949ab
+    --rol-aviso-suave: #a1360f
+    --rol-ambar-texto: #7a5200
+    --rol-naranja: #a63b12
+    --rol-texto-tenue: #545f68
+    --rol-linea-tenue: #d3d9de
+    --rol-bien-fondo: #d5ead2
+    --rol-mal-fondo: #f1d5d5
+    --rol-neutro-fondo: #dde3ec
+    // Angular Material: los valores básicos del tema (sus componentes, en su fase).
+    --rol-mat-fondo: var(--rol-tarjeta)
+    --rol-mat-superficie: var(--rol-panel)
+    --rol-mat-texto-suave: var(--rol-texto-suave)
+    --rol-mat-linea: rgba(0, 0, 0, .12)
+    --rol-mat-linea-fuerte: rgba(0, 0, 0, .5)
+    --rol-mat-inversa: var(--rol-texto-fuerte)
+    --rol-mat-inversa-texto: var(--rol-tarjeta)
+    --rol-mat-control: var(--rol-activo)
+    --rol-mat-control-texto: var(--rol-activo-texto)
+    --rol-mat-control-pista: color-mix(in srgb, var(--rol-activo) 40%, var(--rol-tarjeta))
+    --rol-mat-activo-pista: color-mix(in srgb, var(--rol-activo) 40%, var(--rol-tarjeta))
+    --rol-mat-error: #b71c1c
+    --rol-mat-error-pista: #ef9a9a
 
 // ───── C · Manual: el marco de A con papel, tinta y granate; Literata en nombres y prosa (fase 3) ─────
 :root[data-tema="c"], [data-tema-previa="c"]
@@ -242,6 +393,14 @@
     --rol-panel-texto-fuerte: #ecdfc6
     --rol-panel-texto-suave: #a99878
     --rol-panel-linea: rgba(240, 220, 180, .18)
+    --rol-enlace: var(--rol-activo)
+    // Angular Material: los valores básicos del tema (sus componentes, en su fase).
+    --rol-mat-fondo: var(--rol-pagina)
+    --rol-mat-control: var(--rol-activo)
+    --rol-mat-control-texto: var(--rol-activo-texto)
+    --rol-mat-control-pista: color-mix(in srgb, var(--rol-activo) 45%, var(--rol-tarjeta))
+    --rol-mat-activo-pista: color-mix(in srgb, var(--rol-activo) 45%, var(--rol-tarjeta))
+    --rol-mat-texto-suave: var(--rol-texto-suave)
 
 :root[data-tema="c"][data-modo="claro"], [data-tema-previa="c"][data-modo-previa="claro"]
     color-scheme: light
@@ -275,3 +434,45 @@
     --rol-panel-hover: rgba(60, 40, 20, .06)
     --rol-panel-linea: rgba(60, 40, 20, .28)
     --rol-error-texto: #8e1c1c
+    --rol-exito: #2e7d32
+    --rol-aviso: #8a5a00
+    --rol-tinta: #000000
+    --rol-texto-vivo: var(--rol-texto-fuerte)
+    --rol-enlace: var(--rol-activo)
+    --rol-texto-apagado: var(--rol-texto-base)
+    --rol-info: #3949ab
+    --rol-aviso-suave: #a1360f
+    --rol-ambar-texto: #7a5200
+    --rol-naranja: #a63b12
+    --rol-texto-tenue: #545f68
+    --rol-linea-tenue: #d3d9de
+    --rol-bien-fondo: #d5ead2
+    --rol-mal-fondo: #f1d5d5
+    --rol-neutro-fondo: #dde3ec
+    // Angular Material: los valores básicos del tema (sus componentes, en su fase).
+    --rol-mat-fondo: var(--rol-tarjeta)
+    --rol-mat-superficie: var(--rol-panel)
+    --rol-mat-texto-suave: var(--rol-texto-suave)
+    --rol-mat-linea: rgba(0, 0, 0, .12)
+    --rol-mat-linea-fuerte: rgba(0, 0, 0, .5)
+    --rol-mat-inversa: var(--rol-texto-fuerte)
+    --rol-mat-inversa-texto: var(--rol-tarjeta)
+    --rol-mat-control: var(--rol-activo)
+    --rol-mat-control-texto: var(--rol-activo-texto)
+    --rol-mat-control-pista: color-mix(in srgb, var(--rol-activo) 40%, var(--rol-tarjeta))
+    --rol-mat-activo-pista: color-mix(in srgb, var(--rol-activo) 40%, var(--rol-tarjeta))
+    --rol-mat-error: #b71c1c
+    --rol-mat-error-pista: #ef9a9a
+    // Lo oscuro dentro del claro (`zona-oscura`: la cinta, las cabeceras granate): los textos de C en oscuro.
+    --rol-zo-texto: #ecdfc6
+    --rol-zo-texto-suave: #cdbd9f
+    --rol-zo-texto-fuerte: #fbf3df
+    --rol-zo-texto-vivo: #fbf3df
+    --rol-zo-acento: #a99878
+    --rol-zo-texto-base: #a99878
+    --rol-zo-separador: #3b2e22
+    --rol-zo-tinta: #ffffff
+    --rol-zo-enlace: #e27c86
+    --rol-zo-aviso: #f0b45a
+    --rol-zo-error-texto: #ffd6d6
+    --rol-zo-campo: #1a1410

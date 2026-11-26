@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 
 :host
@@ -108,6 +109,8 @@
             font-size: 0.82rem
             font-weight: 700
             color: #d1d5db
+            @include en-claro
+                color: var(--rol-texto)
             opacity: 1
             margin-bottom: 0.25rem
             padding: 0 4px
@@ -115,7 +118,7 @@
         &.row
             margin-bottom: 0.25rem
             padding: 0.3rem 0.35rem
-            border: 1px solid rgba(255, 255, 255, 0.08)
+            border: 1px solid con-alfa(var(--rol-tinta), .08)
             border-radius: 6px
             background: rgba(0, 0, 0, 0.1)
 

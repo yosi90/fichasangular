@@ -68,7 +68,7 @@
         min-height: 44px
         box-sizing: border-box
         padding: 0 12px
-        border: 1px solid rgba(255, 255, 255, .25)
+        border: 1px solid con-alfa(var(--rol-tinta), .25)
         border-radius: 4px
         background: $contrast-dark
         color: $ficha-blanco
@@ -114,9 +114,9 @@
 .sesion__aviso
     margin: 0
     padding: 10px 14px
-    border: 1px solid #8fa8ff
+    border: 1px solid var(--rol-info)
     border-radius: $ficha-radio
-    background: rgba(143, 168, 255, .12)
+    background: #{con-alfa(var(--rol-info), .12)}
     font-size: 14px
     color: $ficha-texto
 

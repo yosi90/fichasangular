@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 
 // La racial dentro del marco común de las inserciones (pasos Base y Rasgos, tarjetas). Aquí solo van las rejillas de
@@ -55,6 +56,8 @@
 
     mat-checkbox
         color: #e5e7eb
+        @include en-claro
+            color: var(--rol-texto)
 
     // Los pasos «Progresión» y «Condicionales»: subpaneles con las piezas comunes de las listas.
     .racial-nota
