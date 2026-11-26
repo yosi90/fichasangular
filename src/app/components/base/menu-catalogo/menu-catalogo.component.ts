@@ -32,7 +32,7 @@ import { ACCIONES_DEL_MENU, AccionesDelMenu } from './acciones-del-menu';
     styleUrls: ['./menu-catalogo.component.sass'],
 })
 export class MenuCatalogoComponent implements OnDestroy {
-    readonly principales = CATALOGOS_PRINCIPALES;
+    readonly principales = CATALOGOS_PRINCIPALES.map((catalogo) => catalogo.lista);
     readonly grupos = GRUPOS_DE_CATALOGOS;
     readonly pestanaPersonajes = CLAVE_PESTANA_PERSONAJES;
     readonly pestanaDados = CLAVE_PESTANA_DADOS;

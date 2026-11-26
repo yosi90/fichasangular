@@ -5,7 +5,7 @@ import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.s
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { TabControlComponent } from './tab-control.component';
 
-function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; userProfileNavSvc?: any; }): TabControlComponent {
+function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; userProfileNavSvc?: any; tema?: any; }): TabControlComponent {
     const isLoggedIn$ = new BehaviorSubject<boolean>(false);
     const permisos$ = new BehaviorSubject<number>(0);
     const banStatus$ = new BehaviorSubject<any>({
@@ -71,6 +71,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; userProfi
         incarnumSvc,
         overrides?.novedadesSvc,
         puertaSubida,
+        overrides?.tema,
     );
 
     const buildTabs = () => {
@@ -1005,26 +1006,27 @@ describe('TabControlComponent navegación por origen', () => {
     });
 
     it('«Modificar» en el detalle de especiales, raciales e idiomas: solo con el menú por catálogo y con permiso', () => {
-        const component = crearComponente();
+        const menuLateral$ = new BehaviorSubject<'accion' | 'catalogo'>('accion');
+        const component = crearComponente({ tema: { menuLateral$ } });
         const usuario = (component as any).__userSvc;
-        const raiz = document.documentElement;
-        const antes = raiz.dataset['menu'];
         usuario.can = jasmine.createSpy('can').and.returnValue(true);
-        try {
-            delete raiz.dataset['menu'];
-            expect(component.modificableSoloEnElDetalle('idiomas')).toBeFalse();
-            raiz.dataset['menu'] = 'accion';
-            expect(component.modificableSoloEnElDetalle('raciales')).toBeFalse();
-            raiz.dataset['menu'] = 'catalogo';
-            expect(component.modificableSoloEnElDetalle('especiales')).toBeTrue();
-            expect(usuario.can).toHaveBeenCalledWith('clases', 'create');
-            usuario.can.and.returnValue(false);
-            expect(component.modificableSoloEnElDetalle('especiales')).toBeFalse();
-        } finally {
-            if (antes === undefined)
-                delete raiz.dataset['menu'];
-            else
-                raiz.dataset['menu'] = antes;
-        }
+        component.ngOnInit();
+
+        expect(component.modificableSoloEnElDetalle('raciales')).toBeFalse();
+        menuLateral$.next('catalogo');
+        expect(component.modificableSoloEnElDetalle('especiales')).toBeTrue();
+        expect(usuario.can).toHaveBeenCalledWith('clases', 'create');
+        usuario.can.and.returnValue(false);
+        expect(component.modificableSoloEnElDetalle('especiales')).toBeFalse();
+        usuario.can.and.returnValue(true);
+        menuLateral$.next('accion');
+        expect(component.modificableSoloEnElDetalle('idiomas')).toBeFalse();
+        component.ngOnDestroy();
+    });
+
+    it('sin el servicio del tema, el menú de siempre: «Modificar» no sale en esos detalles', () => {
+        const component = crearComponente();
+        (component as any).__userSvc.can = () => true;
+        expect(component.modificableSoloEnElDetalle('idiomas')).toBeFalse();
     });
 });

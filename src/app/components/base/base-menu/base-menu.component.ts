@@ -12,7 +12,7 @@ import { puedeGestionarListado } from 'src/app/services/utils/permisos-catalogo'
 import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
 import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
 import { MisCampanasService } from 'src/app/services/mis-campanas.service';
-import { GRUPOS_DE_CATALOGOS, GrupoCatalogos } from 'src/app/services/utils/catalogos-del-menu';
+import { CATALOGOS_PRINCIPALES, GRUPOS_DE_CATALOGOS, GrupoCatalogos } from 'src/app/services/utils/catalogos-del-menu';
 import { avisoNuevoPersonaje, nuevoPersonajeDeshabilitado, pedirNuevoPersonaje } from 'src/app/services/utils/nuevo-personaje';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
@@ -47,6 +47,15 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     @ViewChildren(CdkMenuTrigger) triggersOtros?: QueryList<CdkMenuTrigger>;
 
     usr: string = 'Invitado';
+    /**
+     * Los seis principales en cada sección (`CATALOGOS_PRINCIPALES`, los mismos del menú por catálogo), con su nombre en
+     * singular («Raza»); su icono, su permiso y lo que abren, como las opciones de los grupos.
+     */
+    readonly principales: Readonly<Record<SeccionOtros, readonly OpcionOtros[]>> = {
+        insertar: CATALOGOS_PRINCIPALES.map((c) => ({ ...this.opcion(c.lista, 'insertar'), etiqueta: c.singular })),
+        modificar: CATALOGOS_PRINCIPALES.map((c) => ({ ...this.opcion(c.lista, 'modificar'), etiqueta: c.singular })),
+        detalles: CATALOGOS_PRINCIPALES.map((c) => ({ ...this.detalle(c.lista), etiqueta: c.singular })),
+    };
     /**
      * Los mismos grupos en los tres menús (`GRUPOS_DE_CATALOGOS`, los mismos del menú por catálogo de B): todo lo que tiene
      * detalle tendrá también inserción y modificación.
@@ -149,6 +158,10 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     get tooltipNuevoPersonaje(): string {
         return avisoNuevoPersonaje(this.usrService);
+    }
+
+    principalesDe(seccion: SeccionOtros): readonly OpcionOtros[] {
+        return this.principales[seccion];
     }
 
     gruposDe(seccion: SeccionOtros): readonly GrupoMenuOtros[] {
