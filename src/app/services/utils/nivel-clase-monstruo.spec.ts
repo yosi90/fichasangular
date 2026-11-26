@@ -1,5 +1,5 @@
 import { MonstruoNivelClase } from 'src/app/interfaces/monstruo';
-import { razonesAlineamientoMascota } from './nivel-clase-monstruo';
+import { razonesAlineamientoMascota, textoDelAjuste } from './nivel-clase-monstruo';
 
 // El alineamiento que pide la mascota (contrato: personajes.md, «La mascota y el alineamiento»): los de su criatura o, sin
 // ellos, las preferencias estrictas de su fila, por su dato, como la API (`utils/mascota_alineamiento.incumple`).
@@ -33,5 +33,16 @@ describe('razonesAlineamientoMascota', () => {
         const requeridos = [{ Id: 5, Nombre: 'Neutral autentico' }];
         expect(razonesAlineamientoMascota(requeridos, [fila(NO_BUENO)], 'Neutral autentico', 'familiar')).toEqual([]);
         expect(razonesAlineamientoMascota(requeridos, [fila(NO_BUENO)], 'Caotico maligno', 'familiar').length).toBe(1);
+    });
+});
+
+// El ajuste de una fila (o de su lista), como lo enseñan el detalle del monstruo, el selector del compañero y el formulario.
+describe('textoDelAjuste', () => {
+    it('con signo, el menos tipográfico, y vacío si no ajusta o no hay número', () => {
+        expect(textoDelAjuste(-3)).toBe('−3');
+        expect(textoDelAjuste(3)).toBe('+3');
+        expect(textoDelAjuste(0)).toBe('');
+        expect(textoDelAjuste(undefined)).toBe('');
+        expect(textoDelAjuste('x')).toBe('');
     });
 });

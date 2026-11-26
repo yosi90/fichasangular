@@ -1,7 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { claveCompanero } from 'src/app/services/utils/companero-reglas';
-import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { textoDelAjuste } from 'src/app/services/utils/nivel-clase-monstruo';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -153,8 +153,7 @@ export class SelectorCompaneroModalComponent {
 
     /** El ajuste de su lista («−3»; el de una fila de aptitud puede sumar: «+3», el tejón del explorador gnomo); vacío si no ajusta. */
     getEtiquetaAjuste(companero: CompaneroMonstruoDetalle): string {
-        const ajuste = Math.trunc(Number(this.ajustes?.[claveCompanero(companero)] ?? 0));
-        return ajuste !== 0 ? textoConSigno(ajuste, '−') : '';
+        return textoDelAjuste(this.ajustes?.[claveCompanero(companero)]);
     }
 
     esCompaneroElegible(companero: CompaneroMonstruoDetalle): boolean {

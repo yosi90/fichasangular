@@ -26,6 +26,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { textoEjesAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
+import { textoDelAjuste } from 'src/app/services/utils/nivel-clase-monstruo';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDeDieta } from 'src/app/services/utils/monstruo-formulario';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -479,7 +480,7 @@ export class DetallesMonstruoComponent {
                 dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
                 alineamiento: textoEjesAlineamiento(item?.Preferencia_legal?.Nombre, item?.Preferencia_moral?.Nombre),
                 especial: `${item?.Especial?.Nombre ?? ''}`.trim(),
-                ajuste: toNumber(item?.Ajuste) !== 0 ? textoConSigno(toNumber(item?.Ajuste), '−') : '',
+                ajuste: textoDelAjuste(item?.Ajuste),
             }));
     }
 

@@ -1,6 +1,7 @@
 import { MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, incumplePreferenciaAlineamiento, nombreDeAlineamientoBasico, reglaDePreferenciaAlineamiento, ReglaPreferenciaAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { textoConSigno } from './equipo-texto';
 import { origenDeNivelDeClase } from './niveles-creacion';
 
 // Lo común de las reglas de compañeros animales (companero-reglas.ts) y familiares (familiar-reglas.ts): leer lo que
@@ -40,6 +41,15 @@ export function doteDeNivelClase(nivelClase: MonstruoNivelClase | null | undefin
 /** La plantilla de una fila de `Niveles_clase` (la pseudoplantilla del familiar o la del compañero); sin ella, 0. */
 export function idPlantillaDeNivel(nivelClase: MonstruoNivelClase | null | undefined): number {
     return Math.max(0, toInt(nivelClase?.Plantilla?.Id));
+}
+
+/**
+ * El ajuste de una fila de `Niveles_clase` (o de su lista) dicho con signo: «−3»; el de una fila con `Especial` puede sumar
+ * («+3», el tejón del explorador gnomo). Vacío si no ajusta.
+ */
+export function textoDelAjuste(ajuste: unknown): string {
+    const valor = toInt(ajuste);
+    return valor !== 0 ? textoConSigno(valor, '−') : '';
 }
 
 function resolveAlineamientoBasicoIdFromRaw(item: any): number {

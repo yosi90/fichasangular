@@ -11,8 +11,8 @@ import {
     MonstruoEscalaresRequest,
 } from 'src/app/interfaces/monstruo';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
-import { textoConSigno } from './equipo-texto';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
+import { textoDelAjuste } from './nivel-clase-monstruo';
 import { textoVisible } from './texto-visible';
 import { idsUnicosOrdenados, toInt, toIntOrNull, toNumber, toNumberOrNull, toPositiveInt, toText } from './normalizacion';
 
@@ -348,8 +348,8 @@ export function filasDeAptitudDelMonstruo(monstruo: Pick<MonstruoDetalle, 'Nivel
         .filter((item) => !!item?.Especial)
         .map((item) => {
             const plantilla = textoVisible(item?.Plantilla?.Nombre);
-            const ajuste = toInt(item?.Ajuste) !== 0 ? `, ajuste ${textoConSigno(toInt(item.Ajuste), '−')}` : '';
-            return `${toText(item?.Clase?.Nombre)} ${toInt(item?.Nivel)}${plantilla ? ` (${plantilla})` : ''}${ajuste}, con «${toText(item.Especial?.Nombre)}»`;
+            const ajuste = textoDelAjuste(item?.Ajuste);
+            return `${toText(item?.Clase?.Nombre)} ${toInt(item?.Nivel)}${plantilla ? ` (${plantilla})` : ''}${ajuste ? `, ajuste ${ajuste}` : ''}, con «${toText(item.Especial?.Nombre)}»`;
         });
 }
 
