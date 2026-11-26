@@ -60,11 +60,12 @@
             font-weight: 500
 
 // B (marco plano): la tarjeta de las pestañas sin esquinas y la barra sin fondo, con la línea fina debajo.
-:host-context(html[data-marco="plano"])
-    mat-tab-group, ::ng-deep mat-tab-header
+mat-tab-group, ::ng-deep mat-tab-header
+    @include marco-plano
         border-radius: 0
 
-    ::ng-deep mat-tab-header
+::ng-deep mat-tab-header
+    @include marco-plano
         border-bottom: 1px solid var(--rol-separador)
 
 // La etiqueta de cada pestaña (lienzo, vista 3): el icono de su catálogo (18 px, sin recuadro), el nombre con elipsis a
