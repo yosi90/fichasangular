@@ -11,6 +11,8 @@
 // - Los claros (y B y C enteros) están aquí con los valores básicos del lienzo; se completan en sus fases. Hasta que un
 //   tema tenga su claro listo (`claroListo` en `services/tema-web/temas-web.ts`), su modo efectivo es el oscuro.
 // - Un valor nuevo: se añade a `:root` con el de hoy y a cada bloque con el suyo; nunca solo en un tema.
+// - `data-tema-previa` (y `data-modo-previa`) en un elemento le da los valores de otro tema solo a él y a lo de dentro:
+//   las vistas previas de la ventana de los temas.
 
 // Las fuentes de B y C, servidas por la propia web (variables y recortadas al latín, como la Literata de 3.5 Companion;
 // licencia OFL en `assets/fuentes/*-OFL.txt`). El navegador solo las pide si un tema las usa: A sigue con Roboto.
@@ -28,7 +30,7 @@
     font-style: normal
     font-display: swap
 
-:root
+:root, [data-tema-previa]
     // Tipografías
     --rol-fuente-ui: Roboto, "Segoe UI", system-ui, sans-serif
     --rol-fuente-nombres: var(--rol-fuente-ui)
@@ -98,7 +100,7 @@
     --rol-error-borde: rgba(239, 83, 80, .45)
 
 // ───── A · Clásico, claro (fase 2: lo completa con Angular Material y los literales de las hojas) ─────
-:root[data-tema="a"][data-modo="claro"]
+:root[data-tema="a"][data-modo="claro"], [data-tema-previa="a"][data-modo-previa="claro"]
     color-scheme: light
     --rol-sombra: 3px 3px 10px rgba(0, 0, 0, .45)
     --rol-sombra-pozo: inset 3px 3px 10px rgba(0, 0, 0, .5)
@@ -125,7 +127,7 @@
     --rol-error-texto: #8e1c1c
 
 // ───── B · Tinta: plana, líneas finas, Literata en nombres y prosa y Source Sans 3 en lo demás (fase 4) ─────
-:root[data-tema="b"]
+:root[data-tema="b"], [data-tema-previa="b"]
     color-scheme: dark
     --rol-fuente-ui: "Source Sans 3", system-ui, "Segoe UI", sans-serif
     --rol-fuente-nombres: Literata, Georgia, "Times New Roman", serif
@@ -166,7 +168,7 @@
     --rol-panel-texto-fuerte: #efecf4
     --rol-panel-texto-suave: #958ea4
 
-:root[data-tema="b"][data-modo="claro"]
+:root[data-tema="b"][data-modo="claro"], [data-tema-previa="b"][data-modo-previa="claro"]
     color-scheme: light
     --rol-pagina: #f5f3f7
     --rol-cinta-texto: #1c1922
@@ -202,7 +204,7 @@
     --rol-error-texto: #8e1c1c
 
 // ───── C · Manual: el marco de A con papel, tinta y granate; Literata en nombres y prosa (fase 3) ─────
-:root[data-tema="c"]
+:root[data-tema="c"], [data-tema-previa="c"]
     color-scheme: dark
     --rol-fuente-nombres: Literata, Georgia, "Times New Roman", serif
     --rol-fuente-prosa: Literata, Georgia, "Times New Roman", serif
@@ -241,7 +243,7 @@
     --rol-panel-texto-suave: #a99878
     --rol-panel-linea: rgba(240, 220, 180, .18)
 
-:root[data-tema="c"][data-modo="claro"]
+:root[data-tema="c"][data-modo="claro"], [data-tema-previa="c"][data-modo-previa="claro"]
     color-scheme: light
     --rol-pagina: #4a3a2d
     --rol-cinta-fondo: #2e231a

@@ -9,6 +9,7 @@ import { PlatformSessionService } from './services/platform-session.service';
 import { toUserFacingErrorMessage } from './services/utils/user-facing-error.util';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { BuscadorGlobalVentanaService } from './components/shared/buscador-global/buscador-global.component';
+import { BienvenidaTemaService } from './services/tema-web/bienvenida-tema.service';
 
 @Component({
     selector: 'app-root',
@@ -30,6 +31,8 @@ export class AppComponent implements OnInit, OnDestroy {
         private chatFloatingSvc: ChatFloatingService,
         private campaignSpacesBridgeSvc: CampaignSpacesBridgeService,
         private buscadorGlobal: BuscadorGlobalVentanaService,
+        // Al construirse pinta el tema (`TemaWebService`, `data-tema` en `<html>`) antes de la primera vista.
+        private bienvenidaTema: BienvenidaTemaService,
     ) { }
 
     /** La búsqueda global, desde cualquier pantalla: Ctrl+K (⌘K en Mac) la abre y la cierra. */
@@ -45,6 +48,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.configurarSwalGlobal();
         this.firebaseSessionBridgeSvc.iniciar();
         this.platformSessionSvc.iniciar();
+        this.bienvenidaTema.iniciar();
         this.campaignRealtimeSyncSvc.init();
         this.chatFloatingSvc.init();
         this.campaignSpacesBridgeSvc.init();

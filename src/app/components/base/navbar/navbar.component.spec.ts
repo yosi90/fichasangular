@@ -14,6 +14,7 @@ import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { VentanaTemaService } from 'src/app/services/tema-web/ventana-tema.service';
 
 beforeAll(() => {
     jasmine.getEnv().configure({ random: false });
@@ -293,6 +294,7 @@ describe('NavbarComponent template', () => {
                     ),
                 },
                 { provide: PlatformSessionService, useValue: jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad']) },
+                { provide: VentanaTemaService, useValue: jasmine.createSpyObj<VentanaTemaService>('VentanaTemaService', { abrir: Promise.resolve() }) },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -377,6 +379,21 @@ describe('NavbarComponent template', () => {
         fixture.detectChanges();
 
         expect(navegacion.abrir).toHaveBeenCalledWith({ clase: 'novedades' });
+        expect(panelAbierto()).toBeNull();
+    });
+
+    it('«Opciones → Tema y modo» abre la ventana de los temas, también sin sesión', () => {
+        const ventanaTema = TestBed.inject(VentanaTemaService) as jasmine.SpyObj<VentanaTemaService>;
+
+        activadores()[2].click();
+        fixture.detectChanges();
+        const tema = Array.from(document.querySelectorAll<HTMLButtonElement>('.cdk-overlay-container .ribbon-panel__item'))
+            .find((boton) => boton.textContent?.includes('Tema y modo'))!;
+        expect(tema.getAttribute('aria-disabled')).not.toBe('true');
+        tema.click();
+        fixture.detectChanges();
+
+        expect(ventanaTema.abrir).toHaveBeenCalled();
         expect(panelAbierto()).toBeNull();
     });
 

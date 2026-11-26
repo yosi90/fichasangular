@@ -14,6 +14,8 @@ import { UserProfileApiService } from 'src/app/services/user-profile-api.service
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { TemaWebService } from 'src/app/services/tema-web/tema-web.service';
+import { VentanaTemaService } from 'src/app/services/tema-web/ventana-tema.service';
 import { PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
@@ -217,6 +219,8 @@ describe('UserProfileComponent', () => {
                     useValue: jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo']),
                 },
                 { provide: ApiActionGuardService, useValue: apiActionGuardSvc },
+                { provide: TemaWebService, useValue: { estado: { tema: 'a', modo: 'sistema', modoEfectivo: 'oscuro', bienvenida: 'no' } } },
+                { provide: VentanaTemaService, useValue: jasmine.createSpyObj<VentanaTemaService>('VentanaTemaService', { abrir: Promise.resolve() }) },
                 {
                     provide: PlatformSpacesService,
                     useValue: jasmine.createSpyObj<PlatformSpacesService>('PlatformSpacesService', [

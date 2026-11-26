@@ -14,6 +14,9 @@ import { UserService } from 'src/app/services/user.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { TemaWebService } from 'src/app/services/tema-web/tema-web.service';
+import { definicionTema, MODOS_WEB } from 'src/app/services/tema-web/temas-web';
+import { VentanaTemaService } from 'src/app/services/tema-web/ventana-tema.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { CampanasGestionEstado } from '../campanas-gestion/campanas-gestion.estado';
@@ -101,7 +104,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         private platformSessionSvc: PlatformSessionService,
         private chatFloatingSvc: ChatFloatingService,
         readonly gestion: CampanasGestionEstado,
+        private temaWeb: TemaWebService,
+        private ventanaTema: VentanaTemaService,
     ) { }
+
+    /** «A · Clásico, como el sistema»: el tema de la cuenta y el modo de este navegador. */
+    get resumenTema(): string {
+        const { tema, modo } = this.temaWeb.estado;
+        const etiquetaModo = MODOS_WEB.find((m) => m.id === modo)?.etiqueta ?? '';
+        return `${definicionTema(tema).etiqueta} · ${etiquetaModo.toLowerCase()}`;
+    }
+
+    abrirTema(): void {
+        void this.ventanaTema.abrir().catch(() => undefined);
+    }
 
     ngOnInit(): void {
         this.userSvc.currentPrivateProfile$

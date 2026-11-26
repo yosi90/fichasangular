@@ -140,6 +140,14 @@
             </button>
         </div>
 
+        <div class="options-section">
+            <span class="options-section__eyebrow">Apariencia</span>
+            <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirTema()">
+                <mat-icon>palette</mat-icon>
+                <span>Tema y modo</span>
+            </button>
+        </div>
+
         <div class="options-section" *ngIf="!isLoggedIn">
             <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="openSesionDialog()">
                 <mat-icon>login</mat-icon>

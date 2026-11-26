@@ -2,6 +2,7 @@ import { NgZone } from '@angular/core';
 import { ProfileApiError } from '../interfaces/user-account';
 import { cabeceraApiConFirebase, EstadoPlataforma, PlatformSessionService, recargandoPorCambioDeIdentidad } from './platform-session.service';
 import { simularTokenApi } from 'src/testing/simular-token-api';
+import { TurnoDeVentanasService } from './turno-de-ventanas.service';
 
 class PlatformSessionServicePrueba extends PlatformSessionService {
     recargas = 0;
@@ -292,11 +293,11 @@ describe('PlatformSessionService, el correo sin confirmar (SDK 1.32, kit 1.80)',
         (window as any).yosiftware = anterior;
     });
 
-    async function servicioConSdk(confirmar: jasmine.Spy): Promise<PlatformSessionServicePrueba> {
+    async function servicioConSdk(confirmar: jasmine.Spy, turno?: TurnoDeVentanasService): Promise<PlatformSessionServicePrueba> {
         const sdk = new SdkFalso() as SdkFalso & { confirmarCorreo: jasmine.Spy };
         sdk.confirmarCorreo = confirmar;
         (window as any).yosiftware = sdk;
-        const servicio = new PlatformSessionServicePrueba(new NgZone({ enableLongStackTrace: false }));
+        const servicio = new PlatformSessionServicePrueba(new NgZone({ enableLongStackTrace: false }), turno);
         servicio.iniciar();
         await esperar();
         sdk.cambiar(conSesion('a'));
@@ -327,6 +328,25 @@ describe('PlatformSessionService, el correo sin confirmar (SDK 1.32, kit 1.80)',
         expect(confirmar).toHaveBeenCalledTimes(1);
 
         expect(await servicio.ofrecerConfirmarCorreo(true)).toBeFalse();
+        expect(confirmar).toHaveBeenCalledTimes(2);
+    });
+
+    it('la que abre una carga espera su turno (la bienvenida de los temas va antes); la de una acción, no', async () => {
+        const confirmar = jasmine.createSpy('confirmarCorreo').and.resolveTo(true);
+        const turno = new TurnoDeVentanasService();
+        turno.retener('bienvenida-tema');
+        const servicio = await servicioConSdk(confirmar, turno);
+
+        const deUnaCarga = servicio.ofrecerConfirmarCorreo(false);
+        await esperar();
+        expect(confirmar).not.toHaveBeenCalled();
+
+        turno.soltar('bienvenida-tema');
+        expect(await deUnaCarga).toBeTrue();
+        expect(confirmar).toHaveBeenCalledTimes(1);
+
+        turno.retener('bienvenida-tema');
+        expect(await servicio.ofrecerConfirmarCorreo(true)).toBeTrue();
         expect(confirmar).toHaveBeenCalledTimes(2);
     });
 });
