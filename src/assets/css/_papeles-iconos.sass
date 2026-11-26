@@ -1,0 +1,23 @@
+// El papel de cada icono (roadmap de los temas, fase 1; lienzo «Rol: temas e iconos», «Revisión»). Cada icono de las
+// plantillas lleva `data-icono` con su papel, y la política del tema (`data-iconos` en `<html>`, que pone
+// `TemaWebService`) decide aquí qué papeles se pintan:
+//
+// - `accion`: cerrar, borrar, añadir, filtrar, plegar, buscar… Se pinta siempre.
+// - `estado`: el candado, el ✓, el error, la consecuencia de una acción (salir de Rol, cerrar sesión). Siempre.
+// - `tipo`: el tipo de rol donde el texto no lo dice (las pestañas, la búsqueda global). Siempre.
+// - `leyenda`: el tipo al lado de un texto que ya lo dice, para enseñar el dibujo que luego sale en las pestañas (las
+//   opciones del menú). «Con criterio» (A y C) lo pinta; «mínimos» (B), no.
+// - `adorno`: repite lo que dice su texto, su padre o sus hermanos (las filas y la cabecera de un listado, la cabecera
+//   de un detalle, las entradas de los paneles de la cinta). Ni «con criterio» ni «mínimos» lo pintan.
+//
+// Sin `data-iconos` (los temas apagados: producción mientras no estén los tres) no se oculta nada: la web se ve como
+// antes. Un icono sin `data-icono` se pinta siempre. Lo que solo cambia la forma (la cinta en palabras, el menú sin
+// recuadro, «Filtros») lo hace cada componente con `:host-context(html[data-iconos])`.
+//
+// Va con `!important` porque es la política del tema: gana a cualquier `display` de un componente.
+
+html[data-iconos] [data-icono='adorno']
+    display: none !important
+
+html[data-iconos='minimos'] [data-icono='leyenda']
+    display: none !important

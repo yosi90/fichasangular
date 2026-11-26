@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, Type } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, Type, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,8 @@ import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.s
 import { cambiosSesion, fechaSesion, tituloSesion } from 'src/app/services/utils/sesiones-texto';
 import { claseDeLaRaza } from 'src/app/services/utils/clases-de-monstruo';
 import { toNumber } from 'src/app/services/utils/normalizacion';
+import { TEMAS_WEB_ACTIVOS } from 'src/app/services/tema-web/tema-web.service';
+import { iconoSegunTemas } from 'src/app/services/tema-web/temas-web';
 
 /** Lo que recibe el panel de la sesión abierta (con carga diferida): ver `SesionPanelComponent`. */
 type EntradasPanel = {
@@ -87,6 +89,8 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
     panelEntradas: EntradasPanel | null = null;
 
     private subidasSub?: Subscription;
+    /** El icono de «Adquirir una raza mutada» (`auto_awesome` es solo de la IA: con los temas apagados, el de antes). */
+    readonly iconoRazaMutada = iconoSegunTemas('change_circle', inject(TEMAS_WEB_ACTIVOS));
 
     constructor(
         private sesionesSvc: SesionesService,

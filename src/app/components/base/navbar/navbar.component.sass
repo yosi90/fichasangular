@@ -33,6 +33,29 @@
         width: 18px
         height: 18px
 
+// El nombre de cada menú: sin política de iconos (los temas apagados), solo para el lector de pantalla, como antes.
+.ribbon-trigger__texto
+    @include solo-lectores
+
+// Con los temas (lienzo «Rol: temas e iconos», «Revisión»): la cinta en palabras, como un programa de escritorio. El
+// icono se queda en el móvil, donde las palabras no caben (abajo). La cinta conserva su altura.
+:host-context(html[data-iconos])
+    .ribbon-trigger__icono
+        display: none
+
+    .ribbon-trigger__texto
+        position: static
+        width: auto
+        height: auto
+        margin: 0
+        overflow: visible
+        clip: auto
+        font-size: 13px
+        line-height: 18px
+
+    .ribbon-trigger--icon
+        padding: 2px 12px
+
 .ribbon-spacer
     flex: 1 1 auto
 
@@ -121,6 +144,17 @@
     .ribbon-buscar__texto, .ribbon-buscar__atajo
         display: none
 
+    // Con los temas, en el móvil vuelve el icono y el nombre queda para el lector de pantalla.
+    :host-context(html[data-iconos])
+        .ribbon-trigger__icono
+            display: inline-block
+
+        .ribbon-trigger__texto
+            @include solo-lectores
+
+        .ribbon-trigger--icon
+            padding: 0 8px
+
 .ribbon-notificaciones
     display: inline-flex
     align-items: center
@@ -197,6 +231,16 @@
 
     .menu-entry-danger
         color: #ffb3b3
+
+// Con los temas, los paneles van solo con texto: los iconos que se quedan (lo que sale de Rol, entrar y cerrar sesión)
+// pasan al final de la fila, para que los textos sigan alineados.
+::ng-deep html[data-iconos] .cdk-overlay-pane:has(.menuSuperficieOscura) .ribbon-panel__item .mat-icon
+    order: 1
+    margin-left: auto
+    width: 18px
+    height: 18px
+    font-size: 18px
+    opacity: .7
 
 ::ng-deep .cdk-overlay-pane:has(.menuSuperficieOscura--wide)
     width: min(620px, calc(100vw - 16px)) !important

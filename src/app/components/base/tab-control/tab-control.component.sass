@@ -55,6 +55,12 @@
 .pestana-icono
     flex-shrink: 0
 
+// Con los temas (lienzo «Rol: temas e iconos», «Revisión»): el icono de la pestaña se queda (es lo único que dice de
+// qué tipo es «Bola de fuego» y, en el móvil, lo único que se ve), pero en un solo tono, el del texto de la pestaña.
+:host-context(html[data-iconos])
+    app-icono-rol.pestana-icono
+        --icono-rol-color: currentColor
+
 mat-icon.pestana-icono
     width: 18px
     height: 18px

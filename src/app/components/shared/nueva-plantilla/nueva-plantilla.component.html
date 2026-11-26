@@ -311,10 +311,10 @@
             <section class="insercion-tarjeta plantilla-rasgo" [class.plantilla-rasgo--plegada]="plegada(clave)"
                 [class.insercion-tarjeta--cambiada]="cambiado(clave)">
                 <button type="button" class="plantilla-rasgo__cabeza" [attr.aria-expanded]="!plegada(clave)" (click)="alternarPlegada(clave)">
-                    <app-icono-rol *ngIf="icono; else iconoHabilidad" [tipo]="icono" [tamano]="20"></app-icono-rol>
-                    <ng-template #iconoHabilidad><mat-icon class="plantilla-rasgo__icono" aria-hidden="true">school</mat-icon></ng-template>
+                    <app-icono-rol *ngIf="icono; else iconoHabilidad" [tipo]="icono" [tamano]="20" data-icono="adorno"></app-icono-rol>
+                    <ng-template #iconoHabilidad><mat-icon class="plantilla-rasgo__icono" aria-hidden="true" data-icono="adorno">school</mat-icon></ng-template>
                     <h3 class="insercion-tarjeta__titulo">{{etiqueta(clave)}} <span class="plantilla-rasgo__cuenta">· {{contar(clave)}}</span></h3>
-                    <mat-icon class="plantilla-rasgo__plegar" aria-hidden="true">expand_more</mat-icon>
+                    <mat-icon class="plantilla-rasgo__plegar" aria-hidden="true" data-icono="accion">expand_more</mat-icon>
                 </button>
                 <div class="plantilla-rasgo__cuerpo">
                     <p class="plantilla-error" role="alert" *ngIf="errorCampo?.campo === clave">{{errorCampo?.mensaje}}</p>

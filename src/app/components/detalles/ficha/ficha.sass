@@ -578,3 +578,13 @@ app-ficha-detalle
 
         .ficha-dato
             grid-column: auto !important
+
+// Con los temas, el icono de la cabecera no se pinta (repite el tipo, que va en versalitas encima del nombre; lienzo
+// «Rol: temas e iconos», «Revisión»): la cabecera se coloca como una sin icono, también en estrecho.
+html[data-iconos] .ficha .ficha-cabecera--con-icono
+    align-items: flex-end
+
+@container ficha (max-width: 640px)
+    html[data-iconos] .ficha .ficha-cabecera--con-icono
+        display: flex
+        align-items: flex-start

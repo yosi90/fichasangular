@@ -53,4 +53,31 @@ describe('ListadoNombreComponent y manualListado', () => {
     it('el manual se escribe «Libro · p. N»', () => {
         expect(raiz().querySelector('.manual')?.textContent?.trim()).toBe('Naufragio en la tormenta · p. 137');
     });
+
+    // El icono de cada fila repite el de la pestaña (lienzo «Rol: temas e iconos»): es un adorno, que los temas no pintan.
+    describe('el icono de la fila es un adorno', () => {
+        const html = document.documentElement;
+        let antes: string | undefined;
+        beforeEach(() => antes = html.dataset['iconos']);
+        afterEach(() => {
+            if (antes === undefined)
+                delete html.dataset['iconos'];
+            else
+                html.dataset['iconos'] = antes;
+        });
+        const visible = () => getComputedStyle(raiz().querySelector('app-icono-rol')!).display !== 'none';
+
+        it('se pinta sin política de iconos (los temas apagados), como antes', () => {
+            delete html.dataset['iconos'];
+            expect(raiz().querySelector('app-icono-rol')?.getAttribute('data-icono')).toBe('adorno');
+            expect(visible()).toBeTrue();
+        });
+
+        it('no se pinta «con criterio» ni en «mínimos»', () => {
+            html.dataset['iconos'] = 'criterio';
+            expect(visible()).toBeFalse();
+            html.dataset['iconos'] = 'minimos';
+            expect(visible()).toBeFalse();
+        });
+    });
 });

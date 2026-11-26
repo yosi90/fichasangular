@@ -1,7 +1,7 @@
 <div class="ribbon-nav">
     <button type="button" class="ribbon-trigger ribbon-trigger--icon ribbon-menu" *ngIf="esMovil" (click)="alternarMenu()"
         aria-label="Abrir el menú" [attr.aria-expanded]="menuAbierto">
-        <mat-icon aria-hidden="true">menu</mat-icon>
+        <mat-icon aria-hidden="true" data-icono="accion">menu</mat-icon>
     </button>
     <!--
         Archivo, Manuales, Opciones y Ayuda son una barra de menús (menú de la CDK): con uno abierto, pasar por encima de
@@ -10,29 +10,29 @@
     <div class="ribbon-barra" cdkMenuBar aria-label="Menús de Rol">
         <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuArchivo"
             matTooltip="Archivo" aria-label="Archivo">
-            <mat-icon>folder</mat-icon>
-            <span class="solo-lectores">Archivo</span>
+            <mat-icon class="ribbon-trigger__icono" data-icono="accion">folder</mat-icon>
+            <span class="ribbon-trigger__texto">Archivo</span>
         </button>
         <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuManuales"
             matTooltip="Manuales" aria-label="Manuales">
-            <mat-icon>menu_book</mat-icon>
-            <span class="solo-lectores">Manuales</span>
+            <mat-icon class="ribbon-trigger__icono" data-icono="accion">menu_book</mat-icon>
+            <span class="ribbon-trigger__texto">Manuales</span>
         </button>
         <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuOpciones"
             matTooltip="Opciones" aria-label="Opciones">
-            <mat-icon>tune</mat-icon>
-            <span class="solo-lectores">Opciones</span>
+            <mat-icon class="ribbon-trigger__icono" data-icono="accion">tune</mat-icon>
+            <span class="ribbon-trigger__texto">Opciones</span>
         </button>
         <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuAyuda"
             matTooltip="Ayuda" aria-label="Ayuda">
-            <mat-icon>help_center</mat-icon>
-            <span class="solo-lectores">Ayuda</span>
+            <mat-icon class="ribbon-trigger__icono" data-icono="accion">help_center</mat-icon>
+            <span class="ribbon-trigger__texto">Ayuda</span>
         </button>
     </div>
     <!-- La búsqueda global (lienzo, vista 5): también con Ctrl+K o ⌘K desde cualquier pantalla. -->
     <button type="button" class="ribbon-buscar" (click)="abrirBuscador()" [attr.aria-keyshortcuts]="atajoBuscar === '⌘K' ? 'Meta+K' : 'Control+K'"
         [matTooltip]="'Buscar en Rol (' + atajoBuscar + ')'">
-        <mat-icon aria-hidden="true">search</mat-icon>
+        <mat-icon aria-hidden="true" data-icono="accion">search</mat-icon>
         <span class="ribbon-buscar__texto">Buscar</span>
         <kbd class="ribbon-buscar__atajo">{{atajoBuscar}}</kbd>
     </button>
@@ -53,24 +53,24 @@
         </div>
 
         <button type="button" class="ribbon-panel__item" cdkMenuItem *ngIf="isLoggedIn" (cdkMenuItemTriggered)="abrirMiPerfil()">
-            <mat-icon>account_circle</mat-icon>
+            <mat-icon data-icono="adorno">account_circle</mat-icon>
             <span>Mi perfil</span>
         </button>
 
         <button type="button" class="ribbon-panel__item" cdkMenuItem *ngIf="isLoggedIn" (cdkMenuItemTriggered)="abrirSocial()">
-            <mat-icon>hub</mat-icon>
+            <mat-icon data-icono="adorno">hub</mat-icon>
             <span>Social</span>
         </button>
 
         <div class="menu-separator" *ngIf="isLoggedIn" role="separator"></div>
 
         <button type="button" class="ribbon-panel__item menu-entry-danger" cdkMenuItem *ngIf="isLoggedIn" (cdkMenuItemTriggered)="logOut()">
-            <mat-icon>logout</mat-icon>
+            <mat-icon data-icono="estado">logout</mat-icon>
             <span>Cerrar sesión</span>
         </button>
 
         <button type="button" class="ribbon-panel__item" cdkMenuItem *ngIf="!isLoggedIn" (cdkMenuItemTriggered)="openSesionDialog()">
-            <mat-icon>login</mat-icon>
+            <mat-icon data-icono="estado">login</mat-icon>
             <span>Entrar</span>
         </button>
     </div>
@@ -108,7 +108,7 @@
                 </span>
                 <span class="manual-chips">
                     <span class="chip chip-categoria" *ngFor="let categoria of getCategorias(manual)">
-                        <mat-icon class="chip-categoria-icon">{{categoria.icono}}</mat-icon>
+                        <mat-icon class="chip-categoria-icon" data-icono="adorno">{{categoria.icono}}</mat-icon>
                         {{categoria.label}}
                     </span>
                 </span>
@@ -122,36 +122,36 @@
         <div class="options-section">
             <span class="options-section__eyebrow">Cuenta</span>
             <button type="button" class="ribbon-panel__item" cdkMenuItem [cdkMenuItemDisabled]="!isLoggedIn" (cdkMenuItemTriggered)="abrirSeccionPerfil('resumen')">
-                <mat-icon>badge</mat-icon>
-                <span>Mi cuenta</span>
+                <mat-icon data-icono="adorno">badge</mat-icon>
+            <span>Mi cuenta</span>
             </button>
             <button type="button" class="ribbon-panel__item" cdkMenuItem [cdkMenuItemDisabled]="!isLoggedIn" (cdkMenuItemTriggered)="abrirSeccionPerfil('preferencias')">
-                <mat-icon>tune</mat-icon>
-                <span>Preferencias de Rol</span>
+                <mat-icon data-icono="adorno">tune</mat-icon>
+            <span>Preferencias de Rol</span>
             </button>
             <button type="button" class="ribbon-panel__item" cdkMenuItem [cdkMenuItemDisabled]="!isLoggedIn" (cdkMenuItemTriggered)="editarPerfilPlataforma()">
-                <mat-icon>account_circle</mat-icon>
-                <span>Perfil de Yosiftware</span>
+                <mat-icon data-icono="estado">account_circle</mat-icon>
+            <span>Perfil de Yosiftware</span>
             </button>
             <!-- Sin sesión, el SDK explica qué sabe Yosiftware de quien usa Rol sin cuenta. -->
             <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirPrivacidad()">
-                <mat-icon>lock</mat-icon>
-                <span>Privacidad</span>
+                <mat-icon data-icono="estado">lock</mat-icon>
+            <span>Privacidad</span>
             </button>
         </div>
 
         <div class="options-section" *ngIf="temasWeb">
             <span class="options-section__eyebrow">Apariencia</span>
             <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirTema()">
-                <mat-icon>palette</mat-icon>
-                <span>Tema y modo</span>
+                <mat-icon data-icono="adorno">palette</mat-icon>
+            <span>Tema y modo</span>
             </button>
         </div>
 
         <div class="options-section" *ngIf="!isLoggedIn">
             <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="openSesionDialog()">
-                <mat-icon>login</mat-icon>
-                <span>Entrar</span>
+                <mat-icon data-icono="estado">login</mat-icon>
+            <span>Entrar</span>
             </button>
         </div>
     </div>
@@ -160,27 +160,27 @@
 <ng-template #menuAyuda>
     <div class="menuSuperficieOscura ribbon-panel ribbon-menu-shell" cdkMenu aria-label="Ayuda">
         <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirAyuda('primeros-pasos')">
-            <mat-icon>help_center</mat-icon>
+            <mat-icon data-icono="adorno">help_center</mat-icon>
             <span>Primeros pasos</span>
         </button>
         <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirNovedades()">
-            <mat-icon>new_releases</mat-icon>
+            <mat-icon data-icono="adorno">new_releases</mat-icon>
             <span>Novedades</span>
         </button>
         <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirAyuda('legal')">
-            <mat-icon>gavel</mat-icon>
+            <mat-icon data-icono="adorno">gavel</mat-icon>
             <span>Legal y privacidad</span>
         </button>
         <a class="ribbon-panel__item" cdkMenuItem [href]="urlCompanion" target="_blank" rel="noopener">
-            <mat-icon>phone_android</mat-icon>
+            <mat-icon data-icono="estado">phone_android</mat-icon>
             <span>Descargar 3.5 Companion</span>
         </a>
         <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirReportarBug()">
-            <mat-icon>bug_report</mat-icon>
+            <mat-icon data-icono="estado">bug_report</mat-icon>
             <span>Reportar bug</span>
         </button>
         <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirSolicitarFuncionalidad()">
-            <mat-icon>lightbulb</mat-icon>
+            <mat-icon data-icono="estado">lightbulb</mat-icon>
             <span>Solicitar funcionalidad</span>
         </button>
     </div>

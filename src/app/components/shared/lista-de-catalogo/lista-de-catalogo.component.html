@@ -1,6 +1,6 @@
 <section class="insercion-tarjeta lista-catalogo">
     <div class="lista-catalogo__cabeza">
-        <app-icono-rol *ngIf="icono" [tipo]="icono" [tamano]="20"></app-icono-rol>
+        <app-icono-rol *ngIf="icono" [tipo]="icono" [tamano]="20" data-icono="adorno"></app-icono-rol>
         <h3 class="insercion-tarjeta__titulo">{{titulo}} <span class="lista-catalogo__cuenta">· {{filas.length}}</span></h3>
     </div>
     <p class="lista-catalogo__error" role="alert" *ngIf="error">{{error}}</p>
@@ -12,7 +12,7 @@
         </div>
         <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + nombreDe(fila)"
             [disabled]="deshabilitado" (click)="quitar.emit(fila)">
-            <mat-icon>delete</mat-icon>
+            <mat-icon data-icono="accion">delete</mat-icon>
         </button>
     </div>
     <app-catalogo-buscador [etiqueta]="textoAnadir" [anadir]="true" [opciones]="opciones" [excluir]="excluir"

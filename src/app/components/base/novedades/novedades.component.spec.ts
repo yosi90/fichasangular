@@ -4,6 +4,7 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { Subject, of, throwError } from 'rxjs';
 import { Novedad, PaginaNovedades } from 'src/app/interfaces/novedad';
 import { NovedadesService } from 'src/app/services/novedades.service';
+import { TEMAS_WEB_ACTIVOS } from 'src/app/services/tema-web/tema-web.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { NovedadesComponent, agruparPorDia, destinoNovedad, vistaDeTipoNovedad } from './novedades.component';
 
@@ -59,6 +60,21 @@ describe('NovedadesComponent', () => {
         expect(enlaces[0].querySelector('.simbolo-yosiftware')).toBeNull();
         expect(enlaces[1].querySelector('.simbolo-yosiftware')).not.toBeNull();
         expect(elemento().querySelector('.novedades__mas')).toBeNull();
+    });
+
+    // auto_awesome es solo de la IA (temas, fase 1); con los temas apagados, la web no cambia.
+    const paginaActualizacion = (): PaginaNovedades => ({ novedades: [novedad('a', '2026-10-31T17:10:59Z')], total: 1, hayMas: false });
+    const iconoActualizacion = () => elemento().querySelector('.novedad__tipo mat-icon')?.textContent?.trim();
+
+    it('«Actualización», con los temas apagados, conserva su icono de antes', () => {
+        crear(paginaActualizacion());
+        expect(iconoActualizacion()).toBe('auto_awesome');
+    });
+
+    it('«Actualización», con los temas, lleva upgrade', () => {
+        TestBed.overrideProvider(TEMAS_WEB_ACTIVOS, { useValue: true });
+        crear(paginaActualizacion());
+        expect(iconoActualizacion()).toBe('upgrade');
     });
 
     it('«Ver más» trae la siguiente página sin repetir', () => {

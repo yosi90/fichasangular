@@ -1,4 +1,5 @@
 @use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
 
 // Sin encapsular: el panel del menú se pinta en el overlay de Material, fuera del componente. Todo va bajo
 // `app-menu-filtros` (el botón) o `.menu-filtros-estandar` (el panel), así que no toca nada más.
@@ -23,6 +24,58 @@ app-menu-filtros
         &:focus-visible
             outline: 2px solid $active
             outline-offset: 2px
+
+    // Sin los temas, solo el icono, como antes.
+    .filtros__texto, .filtros__puestos
+        display: none
+
+// Con los temas (lienzo «Rol: temas e iconos», «Revisión»: con sitio, mejor la palabra), un botón con borde que dice
+// «Filtros» y, con alguno puesto, un punto rosa. En el móvil se queda el icono, con el mismo borde.
+html[data-iconos] app-menu-filtros .filtros
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 8px
+    width: auto
+    height: 40px
+    padding: 0 14px
+    border: 1px solid $accent
+    border-radius: var(--rol-radio-boton)
+    background-color: transparent
+    box-shadow: none
+    color: var(--rol-texto-fuerte)
+    font-size: 14px
+    font-weight: 500
+
+    &:hover, &:active, &[aria-expanded="true"]
+        box-shadow: none
+        background-color: con-alfa($accent, .12)
+
+    .mat-mdc-button-persistent-ripple, .mat-ripple
+        border-radius: inherit
+
+    .filtros__icono
+        display: none
+
+    .filtros__texto
+        display: inline
+
+    .filtros__puestos
+        display: inline-block
+        width: 8px
+        height: 8px
+        border-radius: 50%
+        background-color: $active
+
+    @include movil
+        width: 40px
+        padding: 0
+
+        .filtros__icono
+            display: inline-block
+
+        .filtros__texto
+            display: none
 
 .mat-mdc-menu-panel.menu-filtros-estandar
     width: 340px

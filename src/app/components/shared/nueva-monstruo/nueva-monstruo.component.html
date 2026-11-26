@@ -320,10 +320,10 @@
             <section class="insercion-tarjeta monstruo-rasgo" [class.monstruo-rasgo--plegada]="plegada(clave)"
                 [class.insercion-tarjeta--cambiada]="cambiado(clave)">
                 <button type="button" class="monstruo-rasgo__cabeza" [attr.aria-expanded]="!plegada(clave)" (click)="alternarPlegada(clave)">
-                    <app-icono-rol *ngIf="icono; else iconoHabilidad" [tipo]="icono" [tamano]="20"></app-icono-rol>
-                    <ng-template #iconoHabilidad><mat-icon class="monstruo-rasgo__icono" aria-hidden="true">school</mat-icon></ng-template>
+                    <app-icono-rol *ngIf="icono; else iconoHabilidad" [tipo]="icono" [tamano]="20" data-icono="adorno"></app-icono-rol>
+                    <ng-template #iconoHabilidad><mat-icon class="monstruo-rasgo__icono" aria-hidden="true" data-icono="adorno">school</mat-icon></ng-template>
                     <h3 class="insercion-tarjeta__titulo">{{etiqueta(clave)}} <span class="monstruo-rasgo__cuenta">· {{contar(clave)}}</span></h3>
-                    <mat-icon class="monstruo-rasgo__plegar" aria-hidden="true">expand_more</mat-icon>
+                    <mat-icon class="monstruo-rasgo__plegar" aria-hidden="true" data-icono="accion">expand_more</mat-icon>
                 </button>
                 <div class="monstruo-rasgo__cuerpo">
                     <p class="monstruo-error" role="alert" *ngIf="errorCampo?.campo === clave">{{errorCampo?.mensaje}}</p>

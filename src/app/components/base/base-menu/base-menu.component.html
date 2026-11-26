@@ -18,124 +18,124 @@
             <mat-expansion-panel #primero>
                 <mat-expansion-panel-header class="tw-rounded-none tw-rounded-t-md">
                     <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                        <mat-icon>add_box</mat-icon>Insertar
+                        <mat-icon data-icono="adorno">add_box</mat-icon>Insertar
                     </button>
                 </mat-expansion-panel-header>
                 <span
                     [matTooltip]="puedeGestionar('razas') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('razas')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('razas')"
-                        (click)="abrirOperacion('razas', 'insertar')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Raza</span></button>
+                        (click)="abrirOperacion('razas', 'insertar')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Raza</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('clases') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('clases')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('clases')"
-                        (click)="abrirOperacion('clases', 'insertar')"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Clase</span></button>
+                        (click)="abrirOperacion('clases', 'insertar')"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Clase</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('dotes') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('dotes')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('dotes')"
-                        (click)="abrirOperacion('dotes', 'insertar')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Dote</span></button>
+                        (click)="abrirOperacion('dotes', 'insertar')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Dote</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('conjuros') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('conjuros')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('conjuros')"
-                        (click)="abrirOperacion('conjuros', 'insertar')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Conjuro</span></button>
+                        (click)="abrirOperacion('conjuros', 'insertar')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Conjuro</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('monstruos') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('monstruos')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"
-                        (click)="abrirOperacion('monstruos', 'insertar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
+                        (click)="abrirOperacion('monstruos', 'insertar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Monstruo</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('plantillas') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('plantillas')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('plantillas')"
-                        (click)="abrirOperacion('plantillas', 'insertar')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
+                        (click)="abrirOperacion('plantillas', 'insertar')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Plantilla</span></button>
                 </span>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'insertar' }"></ng-container>
             </mat-expansion-panel>
             <mat-expansion-panel #segundo>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent" class="tw-rounded-none">
-                        <mat-icon>edit_square</mat-icon>Modificar
+                        <mat-icon data-icono="adorno">edit_square</mat-icon>Modificar
                     </button>
                 </mat-expansion-panel-header>
                 <span
                     [matTooltip]="puedeGestionar('razas') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('razas')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('razas')"
-                        (click)="abrirOperacion('razas', 'modificar')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Raza</span></button>
+                        (click)="abrirOperacion('razas', 'modificar')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Raza</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('clases') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('clases')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('clases')"
-                        (click)="abrirOperacion('clases', 'modificar')"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Clase</span></button>
+                        (click)="abrirOperacion('clases', 'modificar')"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Clase</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('dotes') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('dotes')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('dotes')"
-                        (click)="abrirOperacion('dotes', 'modificar')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Dote</span></button>
+                        (click)="abrirOperacion('dotes', 'modificar')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Dote</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('conjuros') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('conjuros')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('conjuros')"
-                        (click)="abrirOperacion('conjuros', 'modificar')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Conjuro</span></button>
+                        (click)="abrirOperacion('conjuros', 'modificar')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Conjuro</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('monstruos') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('monstruos')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"
-                        (click)="abrirOperacion('monstruos', 'modificar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
+                        (click)="abrirOperacion('monstruos', 'modificar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Monstruo</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('plantillas') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('plantillas')">
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('plantillas')"
-                        (click)="abrirOperacion('plantillas', 'modificar')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
+                        (click)="abrirOperacion('plantillas', 'modificar')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Plantilla</span></button>
                 </span>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'modificar' }"></ng-container>
             </mat-expansion-panel>
             <mat-expansion-panel class="tw-rounded-none tw-rounded-b-md" #tercero>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
-                        <mat-icon>search</mat-icon>Detalles
+                        <mat-icon data-icono="adorno">search</mat-icon>Detalles
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('razas', 'detalles'); closeAcordion();"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Raza</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('clases', 'detalles'); closeAcordion();"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Clase</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('dotes', 'detalles'); closeAcordion();"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Dote</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('conjuros', 'detalles'); closeAcordion();"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Conjuro</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('monstruos', 'detalles'); closeAcordion();"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
-                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
+                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('razas', 'detalles'); closeAcordion();"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Raza</span></button>
+                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('clases', 'detalles'); closeAcordion();"><app-icono-rol tipo="clase" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Clase</span></button>
+                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('dotes', 'detalles'); closeAcordion();"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Dote</span></button>
+                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('conjuros', 'detalles'); closeAcordion();"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Conjuro</span></button>
+                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('monstruos', 'detalles'); closeAcordion();"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Monstruo</span></button>
+                <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>Plantilla</span></button>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'detalles' }"></ng-container>
             </mat-expansion-panel>
             <!-- «Mis campañas» (ronda de noviembre, decisión 3): con sesión, para quien puede tener campañas o ya está en una. -->
             <button type="button" class="menu-dados menu-campanas" *ngIf="misCampanasVisible$ | async" (click)="abrirMisCampanas()">
-                <app-icono-rol tipo="campana" [tamano]="22"></app-icono-rol><span>Mis campañas</span>
+                <app-icono-rol tipo="campana" [tamano]="22" data-icono="leyenda"></app-icono-rol><span>Mis campañas</span>
             </button>
             <!-- Debajo de las de catálogo (lienzo «Dados: Companion y web»): abre la pestaña «Dados». -->
             <button type="button" class="menu-dados" (click)="abrirDados()">
-                <app-icono-rol tipo="dado-d20" [tamano]="22"></app-icono-rol><span>Dados</span>
+                <app-icono-rol tipo="dado-d20" [tamano]="22" data-icono="leyenda"></app-icono-rol><span>Dados</span>
             </button>
             <mat-expansion-panel hideToggle="true" #cuarto>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent">
-                        <mat-icon>account_circle</mat-icon>{{usr}}
+                        <mat-icon data-icono="adorno">account_circle</mat-icon>{{usr}}
                     </button>
                 </mat-expansion-panel-header>
 
                 <div class="user-panel-card" *ngIf="usr == 'Invitado'; else sinRegistrar">
                     <button mat-button class="user-panel-link user-panel-link--login" (click)="openSesionDialog()">
                         <span class="user-panel-link__lead">
-                            <mat-icon>login</mat-icon>
+                            <mat-icon data-icono="estado">login</mat-icon>
                             <span>Identifícate</span>
                         </span>
                     </button>
@@ -145,13 +145,13 @@
                         <div class="user-panel-links">
                             <button mat-button class="user-panel-link user-panel-link--primary" (click)="abrirMiPerfil()">
                                 <span class="user-panel-link__lead">
-                                    <mat-icon>account_circle</mat-icon>
+                                    <mat-icon data-icono="adorno">account_circle</mat-icon>
                                     <span>Mi perfil</span>
                                 </span>
                             </button>
                             <button mat-button class="user-panel-link" (click)="abrirSocial()">
                                 <span class="user-panel-link__lead">
-                                    <mat-icon>hub</mat-icon>
+                                    <mat-icon data-icono="adorno">hub</mat-icon>
                                     <span>Social</span>
                                 </span>
                             </button>
@@ -159,7 +159,7 @@
                         <div class="user-panel-footer">
                             <button mat-button class="user-panel-link user-panel-link--danger" (click)="logOut()">
                                 <span class="user-panel-link__lead">
-                                    <mat-icon>logout</mat-icon>
+                                    <mat-icon data-icono="estado">logout</mat-icon>
                                     <span>Cerrar sesión</span>
                                 </span>
                             </button>
@@ -181,7 +181,7 @@
                 [cdkMenuPosition]="posicionesOtros" #grupoOtros="cdkMenuTriggerFor"
                 [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesGrupo(grupo)">
                 {{ grupo.titulo }} ({{ grupo.opciones.length }})
-                <mat-icon iconPositionEnd>arrow_right</mat-icon>
+                <mat-icon iconPositionEnd data-icono="accion">arrow_right</mat-icon>
             </button>
         </div>
     </ng-template>
@@ -194,7 +194,7 @@
                 [matTooltip]="opcion.habilitada() ? '' : mensajePermisosInsuficientes"
                 [matTooltipDisabled]="opcion.habilitada()">
                 <button mat-button color="primary" class="menu-opcion" cdkMenuItem [disabled]="!opcion.habilitada()"
-                    [cdkMenuItemDisabled]="!opcion.habilitada()" (cdkMenuItemTriggered)="opcion.abrir()"><app-icono-rol [tipo]="opcion.tipo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>{{ opcion.etiqueta }}</span></button>
+                    [cdkMenuItemDisabled]="!opcion.habilitada()" (cdkMenuItemTriggered)="opcion.abrir()"><app-icono-rol [tipo]="opcion.tipo" [tamano]="16" recuadro="oscuro" data-icono="leyenda"></app-icono-rol><span>{{ opcion.etiqueta }}</span></button>
             </span>
         </div>
     </ng-template>
