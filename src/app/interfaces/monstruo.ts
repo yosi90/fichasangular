@@ -6,6 +6,7 @@ import { Conjuro } from "./conjuro";
 import { ManualReferencia } from "./manual";
 import { DoteContextual } from "./dote-contextual";
 import { EspecialClaseDetalle } from "./especial";
+import { Id_nombre } from "./genericas";
 import { IdiomaDetalle } from "./idioma";
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { Movimientos } from "./movimientos";
@@ -234,6 +235,23 @@ export interface MonstruoDetalle {
     Familiares: FamiliarMonstruoDetalle[];
     Companeros: CompaneroMonstruoDetalle[];
     Personajes_relacionados: MonstruoPersonajesRelacionados;
+}
+
+/**
+ * Una entrada del índice ligero de los monstruos (`MonstruosIndice/<id>` de la RTDB; contrato, `catalogos.md`, «El índice
+ * ligero de los monstruos»): solo lo que pintan el listado, sus filtros y la búsqueda global, con los mismos valores que en
+ * `Monstruos/<id>`. No es un `MonstruoDetalle`: el detalle se lee por su id (`MonstruoService.getMonstruo`).
+ */
+export interface MonstruoIndice {
+    Id: number;
+    Nombre: string;
+    Manual: ManualReferencia;
+    Tipo: Id_nombre;
+    Tamano: Id_nombre;
+    Valor_desafio: string;
+    Familiar: boolean;
+    Companero: boolean;
+    Oficial: boolean;
 }
 
 export interface FamiliarMonstruoDetalle extends MonstruoDetalle {

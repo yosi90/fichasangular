@@ -61,7 +61,7 @@ describe('NuevoObjetoComponent', () => {
                 { provide: ManualService, useValue: { getManuales: () => of([{ Id: 54, Nombre: 'Manual del jugador 1' }]) } },
                 { provide: ArmaService, useValue: { getArmas: () => of([{ Id: 3, Nombre: 'Hacha de batalla' }]) } },
                 { provide: ArmaduraService, useValue: { getArmaduras: () => of([{ Id: 4, Nombre: 'Coraza' }]) } },
-                { provide: MonstruoService, useValue: { getMonstruos: () => of([{ Id: 9, Nombre: 'Caballo de guerra' }]) } },
+                { provide: MonstruoService, useValue: { getMonstruosIndice: () => of([{ Id: 9, Nombre: 'Caballo de guerra' }]) } },
                 { provide: ConjuroService, useValue: { getConjuros: () => of([{ Id: 30, Nombre: 'Escudo' }]) } },
                 {
                     provide: UserService, useValue: {
@@ -126,6 +126,12 @@ describe('NuevoObjetoComponent', () => {
             bonificaciones: [{ piezas: 2, descripcion: '+1 a la CA.' }],
         }));
         expect(component.form.controls.id_tipo_objeto.hasError('required')).toBeFalse();
+    });
+
+    it('la montura se elige del índice ligero de los monstruos (solo el id y el nombre)', async () => {
+        await montar('objeto');
+
+        expect(component.monstruos).toEqual([{ id: 9, nombre: 'Caballo de guerra' }]);
     });
 
     it('un genérico de un conjuro sin su fórmula avisa y lleva a su paso', async () => {

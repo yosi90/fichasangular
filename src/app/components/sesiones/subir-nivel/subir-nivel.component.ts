@@ -509,7 +509,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         if (!conCompanero && !conFamiliar)
             return { companeros: null, familiares: null };
         try {
-            const monstruos = (await this.motor.primero(this.monstruoSvc.getMonstruos())) ?? [];
+            const monstruos = (await this.motor.primero(this.monstruoSvc.getMonstruosMascota(conCompanero && conFamiliar ? undefined : conCompanero ? 'companero' : 'familiar'))) ?? [];
             return {
                 companeros: conCompanero ? construirCatalogoCompanerosDesdeMonstruos(monstruos) : null,
                 familiares: conFamiliar ? construirCatalogoFamiliaresDesdeMonstruos(monstruos) : null,

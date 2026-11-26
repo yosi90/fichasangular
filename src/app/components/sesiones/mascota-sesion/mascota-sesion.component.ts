@@ -3,7 +3,7 @@ import { Component, Input, OnDestroy, OnInit, ViewChild, ViewContainerRef } from
 import { Auth } from '@angular/fire/auth';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { firstValueFrom, take } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
 import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
@@ -374,7 +374,7 @@ export class MascotaSesionComponent implements OnInit, OnDestroy {
         this.eligiendo = true;
         this.error = '';
         try {
-            const monstruos = await firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1)));
+            const monstruos = await firstValueFrom(this.monstruoSvc.getMonstruosMascota(this.mascota));
             const registrada = this.mascota === 'companero'
                 ? await this.elegirCompanero(construirCatalogoCompanerosDesdeMonstruos(monstruos ?? []))
                 : await this.elegirFamiliar(construirCatalogoFamiliaresDesdeMonstruos(monstruos ?? []));

@@ -22,7 +22,7 @@ import { SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { ListadoVentajasComponent } from '../listado-ventajas/listado-ventajas.component';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ListadoMonstruosComponent } from '../listado-monstruos/listado-monstruos.component';
-import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MonstruoIndice } from 'src/app/interfaces/monstruo';
 import { ListadoArmasComponent } from '../listado-armas/listado-armas.component';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
 import { ListadoArmadurasComponent } from '../listado-armaduras/listado-armaduras.component';
@@ -187,10 +187,10 @@ export class ListadoComponent {
                 this.handleItemSeleccionado(item);
             });
         } else if (componentRef.instance instanceof ListadoMonstruosComponent) {
-            componentRef.instance.monstruoDetalles.subscribe((item: MonstruoDetalle) => {
+            componentRef.instance.monstruoDetalles.subscribe((item: MonstruoIndice) => {
                 this.handleItemDetalles(item);
             });
-            componentRef.instance.monstruoSeleccionado.subscribe((item: MonstruoDetalle) => {
+            componentRef.instance.monstruoSeleccionado.subscribe((item: MonstruoIndice) => {
                 this.handleItemSeleccionado(item);
             });
         } else if (componentRef.instance instanceof ListadoArmasComponent) {

@@ -28,6 +28,7 @@ import {
     MonstruoDetalle,
     MonstruoDieta,
     MonstruoHabilidad,
+    MonstruoIndice,
     MonstruoNivelClase,
     MonstruoPersonajesRelacionados,
     MonstruoSalvaciones,
@@ -40,6 +41,7 @@ import {
     TrucoDeMascota,
 } from "src/app/interfaces/monstruo";
 import { CARACTERISTICAS } from "src/app/interfaces/caracteristica";
+import { Id_nombre } from "src/app/interfaces/genericas";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import { Tamano } from "src/app/interfaces/tamaño";
 import { normalizeEspecial } from "../especial.service";
@@ -373,6 +375,29 @@ export function esMonstruoDerivado(monstruo: MonstruoDetalle | null | undefined)
 
 export function normalizeMonstruoDetalle(raw: any, depth = 1): MonstruoDetalle {
     return normalizeMonstruoBase(raw, depth);
+}
+
+/** Una referencia `{ Id, Nombre }` del índice; sin ella, `{ Id: 0, Nombre: '' }`, como en `Monstruos/<id>`. */
+function referenciaDelIndice(raw: unknown): Id_nombre {
+    return idNombre(raw, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' };
+}
+
+/**
+ * Una entrada de la caché `MonstruosIndice/<id>` (contrato, `catalogos.md`, «El índice ligero de los monstruos»), con
+ * la misma lectura de cada campo que `normalizeMonstruoDetalle`.
+ */
+export function normalizeMonstruoIndice(raw: any): MonstruoIndice {
+    return {
+        Id: toNumber(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Manual: normalizeManualLegacy(raw?.Manual),
+        Tipo: referenciaDelIndice(raw?.Tipo),
+        Tamano: referenciaDelIndice(raw?.Tamano),
+        Valor_desafio: toText(raw?.Valor_desafio),
+        Familiar: toBoolean(raw?.Familiar),
+        Companero: toBoolean(raw?.Companero),
+        Oficial: toBoolean(raw?.Oficial),
+    };
 }
 
 export function normalizeFamiliarMonstruoDetalle(raw: any, depth = 1): FamiliarMonstruoDetalle {

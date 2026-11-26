@@ -1,5 +1,6 @@
 export type CacheEntityKey =
     | "monstruos"
+    | "monstruos_indice"
     | "familiares"
     | "companeros"
     | "razas"
@@ -60,7 +61,10 @@ export interface CacheContractEntry {
 }
 
 export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
-    { key: "monstruos", label: "Monstruos", schemaVersion: 11 },
+    { key: "monstruos", label: "Monstruos", schemaVersion: 20 },
+    // El índice ligero de los monstruos (`MonstruosIndice/<id>`; catalogos.md, «El índice ligero de los monstruos»):
+    // lo que leen el listado, la búsqueda global y los selectores; el detalle, de `Monstruos/<id>` (2026-11-26).
+    { key: "monstruos_indice", label: "Índice de los monstruos", schemaVersion: 1 },
     { key: "familiares", label: "Familiares", schemaVersion: 10 },
     { key: "companeros", label: "Compañeros animales", schemaVersion: 10 },
     // 27 desde la `Progresion` de cada racial (lo que crece con los DG o llega por nivel, 2026-11-12) y 28 desde sus

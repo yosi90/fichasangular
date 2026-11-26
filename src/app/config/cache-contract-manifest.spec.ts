@@ -23,4 +23,9 @@ describe('CACHE_CONTRACT_MANIFEST', () => {
             jasmine.objectContaining({ key: 'descriptores_conjuros' }),
         ]));
     });
+
+    it('incluye el índice ligero de los monstruos y la versión de la caché de su detalle (la del backend)', () => {
+        expect(CACHE_CONTRACT_MANIFEST.find((item) => item.key === 'monstruos_indice')).toEqual({ key: 'monstruos_indice', label: 'Índice de los monstruos', schemaVersion: 1 });
+        expect(CACHE_CONTRACT_MANIFEST.find((item) => item.key === 'monstruos')?.schemaVersion).toBe(20);
+    });
 });

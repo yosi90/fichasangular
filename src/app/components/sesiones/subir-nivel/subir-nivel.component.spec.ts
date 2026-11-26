@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { firstValueFrom, of } from 'rxjs';
+import { construirCatalogoCompanerosDesdeMonstruos } from 'src/app/services/utils/companero-reglas';
 import { Auth } from '@angular/fire/auth';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ArmaService } from 'src/app/services/arma.service';
@@ -321,5 +323,25 @@ describe('SubirNivelComponent (la subida de nivel, fase 4)', () => {
                 tipo: 'rasgo', hueco: { idClase: 5, mascota: 'companero' }, quita: { mascota: { idMonstruo: 48, idPlantilla: 0 } }, pone: { mascota: { idMonstruo: 55, idPlantilla: 0 } },
             });
         });
+    });
+
+    it('el catálogo de las mascotas que tiene, con el detalle solo de los monstruos que pueden serlo (getMonstruosMascota)', async () => {
+        const componente: any = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+        const fila = { Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 1, Ajuste: 0, Ataque_base_minimo: null, Plantilla: { Id: 0, Nombre: '' }, Mascota: 'companero' };
+        const lobo = { Id: 48, Nombre: 'Lobo', Familiar: false, Companero: true, Niveles_clase: [fila], Oficial: true } as any;
+        const getMonstruosMascota = jasmine.createSpy('getMonstruosMascota').and.returnValue(of([lobo]));
+        componente.monstruoSvc = { getMonstruosMascota };
+        componente.motor = { primero: (origen: any) => firstValueFrom(origen) };
+
+        componente.entrada = { companero: { idMonstruo: 48 } };
+        const soloCompanero = await componente.catalogosDeMascotas();
+        expect(getMonstruosMascota).toHaveBeenCalledWith('companero');
+        expect(soloCompanero.familiares).toBeNull();
+        expect(soloCompanero.companeros).toEqual(construirCatalogoCompanerosDesdeMonstruos([lobo]));
+        expect(soloCompanero.companeros.map((companero: any) => companero.Id)).toEqual([48]);
+
+        componente.entrada = { companero: { idMonstruo: 48 }, familiar: { idMonstruo: 11 } };
+        await componente.catalogosDeMascotas();
+        expect(getMonstruosMascota.calls.mostRecent().args).toEqual([undefined]);
     });
 });

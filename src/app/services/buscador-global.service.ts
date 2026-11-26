@@ -199,7 +199,7 @@ export class BuscadorGlobalService {
             fuente('clases', 'clases', true, () => this.catalogo(this.clases.getClases(), (c) => this.elemento('clases', tipoRolDeClase(c), c))),
             fuente('dotes', 'dotes', true, () => this.catalogo(this.dotes.getDotes(), (d) => this.elemento('dotes', 'dote', d))),
             fuente('conjuros', 'conjuros', false, () => this.catalogo(this.conjuros.getConjuros(), (c) => this.elemento('conjuros', tipoRolDeConjuro(c), c)), 'Conjuros y poderes'),
-            fuente('monstruos', 'monstruos', false, () => this.catalogo(this.monstruos.getMonstruos(), (m) => this.elemento('monstruos', 'monstruo', m))),
+            fuente('monstruos', 'monstruos', false, () => this.catalogo(this.monstruos.getMonstruosIndice(), (m) => this.elemento('monstruos', 'monstruo', m))),
             fuente('plantillas', 'plantillas', true, () => this.catalogo(this.plantillas.getPlantillas(), (p) => this.elemento('plantillas', 'plantilla', p))),
             fuente('especiales', 'especiales', false, () => this.catalogo(this.especiales.getEspeciales(), (e) => this.elemento('especiales', 'especial', e))),
             fuente('raciales', 'raciales', false, () => this.catalogo(this.raciales.getRaciales(), (r) => this.elemento('raciales', 'racial', r))),

@@ -3,7 +3,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Subject, Subscription, takeUntil } from 'rxjs';
-import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MonstruoIndice } from 'src/app/interfaces/monstruo';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
@@ -18,10 +18,10 @@ import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component'
     standalone: false
 })
 export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
-    monstruos: MonstruoDetalle[] = [];
+    monstruos: MonstruoIndice[] = [];
     Manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
-    monstruosDS = new MatTableDataSource<MonstruoDetalle>([]);
+    monstruosDS = new MatTableDataSource<MonstruoIndice>([]);
     monstruoColumns = ['Nombre', 'Manual', 'Valor_desafio', 'Familiar', 'Companero'];
     /** El buscador rápido de la cabecera. */
     textoBusqueda = '';
@@ -53,7 +53,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
         this.cargado = false;
         this.errorCarga = false;
         this.catalogoSub?.unsubscribe();
-        this.catalogoSub = this.monstruoSvc.getMonstruos()
+        this.catalogoSub = this.monstruoSvc.getMonstruosIndice()
             .pipe(takeUntil(this.destroy$))
             .subscribe({
                 next: (monstruos) => {
@@ -113,7 +113,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
             return visiblePorTexto && visiblePorManual && visiblePorHomebrew;
         });
 
-        this.monstruosDS = new MatTableDataSource<MonstruoDetalle>(monstruosFiltrados);
+        this.monstruosDS = new MatTableDataSource<MonstruoIndice>(monstruosFiltrados);
         setTimeout(() => {
             this.monstruosDS.sort = this.monstruoSort;
             ordenarEnEspanol(this.monstruosDS);
@@ -138,14 +138,14 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
         this.filtroMonstruos();
     }
 
-    @Output() monstruoDetalles: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
+    @Output() monstruoDetalles: EventEmitter<MonstruoIndice> = new EventEmitter<MonstruoIndice>();
     verDetallesMonstruo(idMonstruo: number) {
         const monstruo = this.monstruos.find(m => Number(m.Id) === Number(idMonstruo));
         if (monstruo)
             this.monstruoDetalles.emit(monstruo);
     }
 
-    @Output() monstruoSeleccionado: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
+    @Output() monstruoSeleccionado: EventEmitter<MonstruoIndice> = new EventEmitter<MonstruoIndice>();
     seleccionarMonstruo(idMonstruo: number) {
         const monstruo = this.monstruos.find(m => Number(m.Id) === Number(idMonstruo));
         if (monstruo)
@@ -160,7 +160,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
         this.monstruoColumns = conColumnaOpcional(this.monstruoColumns, 'Homebrew', this.mostrarHomebrew);
     }
 
-    private sortingAccessor(item: MonstruoDetalle, property: string): string | number {
+    private sortingAccessor(item: MonstruoIndice, property: string): string | number {
         if (property === 'Manual')
             return this.getManualNombre(item);
         if (property === 'Valor_desafio')
@@ -172,7 +172,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
         return `${(item as any)?.[property] ?? ''}`;
     }
 
-    private getManualNombre(monstruo: MonstruoDetalle): string {
+    private getManualNombre(monstruo: MonstruoIndice): string {
         return `${monstruo?.Manual?.Nombre ?? ''}`.trim();
     }
 
