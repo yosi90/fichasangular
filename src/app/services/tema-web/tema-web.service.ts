@@ -40,8 +40,13 @@ export interface EstadoTemaWeb {
     bienvenida: BienvenidaTema;
 }
 
+/** `environment.temasWeb`: lo que da `TEMAS_WEB_ACTIVOS` si nadie lo cambia (las piezas que se crean sin inyector). */
+export function temasWebDelEntorno(): boolean {
+    return !!(environment as { temasWeb?: boolean }).temasWeb;
+}
+
 /** Si los temas están encendidos en este entorno (`environment.temasWeb`). Apagados: A en oscuro, sin bienvenida ni selector. */
-export const TEMAS_WEB_ACTIVOS = new InjectionToken<boolean>('TEMAS_WEB_ACTIVOS', { factory: () => !!(environment as { temasWeb?: boolean }).temasWeb });
+export const TEMAS_WEB_ACTIVOS = new InjectionToken<boolean>('TEMAS_WEB_ACTIVOS', { factory: temasWebDelEntorno });
 
 /**
  * El tema de la web (A, B o C) y su modo. El tema viaja con la cuenta, en el bloque de ajustes de Rol en la plataforma
@@ -72,7 +77,7 @@ export class TemaWebService implements OnDestroy {
         @Inject(DOCUMENT) private document: Document,
         @Optional() @Inject(TEMAS_WEB_ACTIVOS) activos: boolean | null = null,
     ) {
-        this.activos = activos ?? !!(environment as { temasWeb?: boolean }).temasWeb;
+        this.activos = activos ?? temasWebDelEntorno();
         if (!this.activos) {
             // Apagados: la web de siempre (A en oscuro), sin leer ni guardar nada y sin bienvenida.
             this.consultaOscuro = null;
@@ -216,7 +221,11 @@ export class TemaWebService implements OnDestroy {
         const modo = this.efectivo(tema, this.estado.modo);
         raiz.dataset['tema'] = tema;
         raiz.dataset['modo'] = modo;
-        raiz.dataset['iconos'] = definicionTema(tema).iconos;
+        // Con los temas apagados, sin política de iconos: la web los pinta todos, como antes (`_papeles-iconos.sass`).
+        if (this.activos)
+            raiz.dataset['iconos'] = definicionTema(tema).iconos;
+        else
+            delete raiz.dataset['iconos'];
         raiz.dataset['theme'] = modo === 'claro' ? 'light' : 'dark';
         if (tema === this.estado.tema)
             guardarPreferenciaLocal(CLAVE_TEMA_ULTIMO, tema);

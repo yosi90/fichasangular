@@ -2,7 +2,7 @@ import { NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { BloqueAjustes, EstadoPlataforma, PlatformSessionService } from '../platform-session.service';
 import { CLAVE_MODO, CLAVE_TEMA_SIN_CUENTA, CLAVE_TEMA_ULTIMO, TemaWebService } from './tema-web.service';
-import { TEMAS_WEB, modoEfectivo } from './temas-web';
+import { TEMAS_WEB, iconoSegunTemas, modoEfectivo } from './temas-web';
 
 /** Una promesa que la prueba resuelve cuando quiere (la respuesta de la plataforma que llega tarde). */
 function diferida<T>() {
@@ -53,11 +53,14 @@ describe('TemaWebService', () => {
 
     it('apagados en el entorno (producción hasta terminar los tres): A en oscuro, sin leer nada ni bienvenida', () => {
         localStorage.setItem('rol.tema.ultimo', 'b');
+        raiz.dataset['iconos'] = 'criterio';
         servicio = new TemaWebService(sesion, new NgZone({ enableLongStackTrace: false }), document, false);
         estado$.next({ tipo: 'con_sesion', cuenta: { id: 'cuenta-1' } } as unknown as EstadoPlataforma);
         expect(servicio.activos).toBeFalse();
         expect(raiz.dataset['tema']).toBe('a');
         expect(raiz.dataset['modo']).toBe('oscuro');
+        // Sin política de iconos: se pintan todos, como antes de los temas.
+        expect(raiz.dataset['iconos']).toBeUndefined();
         expect(servicio.estado.bienvenida).toBe('no');
         expect(sesion.leerAjustes).not.toHaveBeenCalled();
     });
@@ -242,6 +245,16 @@ describe('TemaWebService', () => {
         expect(localStorage.getItem(CLAVE_TEMA_ULTIMO)).toBe('a');
         servicio.deshacerVistaPrevia();
         expect(raiz.dataset['tema']).toBe('a');
+    });
+});
+
+describe('iconoSegunTemas', () => {
+    it('auto_awesome es solo de la IA: con los temas, otros dibujos; apagados, el de antes', () => {
+        expect(iconoSegunTemas('upgrade', true)).toBe('upgrade');
+        expect(iconoSegunTemas('change_circle', true)).toBe('change_circle');
+        expect(iconoSegunTemas('upgrade', false)).toBe('auto_awesome');
+        expect(iconoSegunTemas('change_circle', false)).toBe('auto_awesome');
+        expect(iconoSegunTemas('build', false)).toBe('build');
     });
 });
 

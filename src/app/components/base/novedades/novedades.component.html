@@ -19,14 +19,14 @@
             <ul class="novedades-dia__lista">
                 <li class="novedad" *ngFor="let novedad of dia.novedades; trackBy: trackNovedad">
                     <span class="novedad__tipo" [attr.data-tipo]="novedad.tipo">
-                        <mat-icon aria-hidden="true">{{tipo(novedad).icono}}</mat-icon>
+                        <mat-icon aria-hidden="true" data-icono="tipo">{{iconoTipo(novedad)}}</mat-icon>
                         {{tipo(novedad).etiqueta}}
                     </span>
                     <p class="novedad__texto">{{novedad.texto}}</p>
                     <a class="novedad__enlace" *ngIf="destino(novedad) as destino" [href]="novedad.enlace" target="_blank" rel="noopener">
                         <span class="simbolo-yosiftware" *ngIf="destino.social" aria-hidden="true"></span>
                         {{destino.texto}}<span class="solo-lectores"> (se abre en otra pestaña)</span>
-                        <mat-icon aria-hidden="true">open_in_new</mat-icon>
+                        <mat-icon aria-hidden="true" data-icono="estado">open_in_new</mat-icon>
                     </a>
                 </li>
             </ul>

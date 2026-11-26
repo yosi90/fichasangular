@@ -28,9 +28,9 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
     selector: 'app-listado-cabecera',
     template: `
         <header class="listado-cabecera" [class.listado-cabecera--sin-buscador]="!buscador">
-            <app-icono-rol *ngIf="icono; else material" [tipo]="icono" [tamano]="28" [recuadro]="true"></app-icono-rol>
+            <app-icono-rol *ngIf="icono; else material" [tipo]="icono" [tamano]="28" [recuadro]="true" data-icono="adorno"></app-icono-rol>
             <ng-template #material>
-                <mat-icon class="listado-cabecera__icono-material" aria-hidden="true" *ngIf="iconoMaterial">{{iconoMaterial}}</mat-icon>
+                <mat-icon class="listado-cabecera__icono-material" aria-hidden="true" data-icono="adorno" *ngIf="iconoMaterial">{{iconoMaterial}}</mat-icon>
             </ng-template>
             <h2 class="listado-cabecera__titulo">{{titulo}}</h2>
             <span class="listado-cabecera__total" *ngIf="total !== null">
@@ -38,7 +38,7 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
             </span>
             <span class="listado-cabecera__subtitulo" *ngIf="subtitulo">{{subtitulo}}</span>
             <div class="listado-cabecera__buscar" role="search" *ngIf="buscador">
-                <mat-icon aria-hidden="true">search</mat-icon>
+                <mat-icon aria-hidden="true" data-icono="accion">search</mat-icon>
                 <label class="solo-lectores" [attr.for]="idCampo">{{etiquetaBuscar}}</label>
                 <input type="search" [id]="idCampo" [placeholder]="placeholder" [value]="texto" autocomplete="off"
                     (input)="alEscribir($any($event.target).value)">

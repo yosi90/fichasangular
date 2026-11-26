@@ -59,7 +59,7 @@
         <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Personaje</th>
         <td mat-cell *matCellDef="let pj">
           <div class="pj-celda">
-            <app-icono-rol tipo="personaje" [tamano]="28" [recuadro]="true"></app-icono-rol>
+            <app-icono-rol tipo="personaje" [tamano]="28" [recuadro]="true" data-icono="adorno"></app-icono-rol>
             <div class="pj-celda__texto">
               <button type="button" class="pj-nombre" (click)="CrearDetallesDe(pj.Id); $event.stopPropagation()">{{ pj.Nombre }}</button>
               <span class="pj-linea">
@@ -98,7 +98,7 @@
         <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por visibilidad">Visibilidad</th>
         <td mat-cell *matCellDef="let pj">
           <span class="pj-visibilidad">
-            <mat-icon aria-hidden="true">{{ esPublicoPersonaje(pj) ? 'public' : 'lock' }}</mat-icon>
+            <mat-icon aria-hidden="true" data-icono="estado">{{ esPublicoPersonaje(pj) ? 'public' : 'lock' }}</mat-icon>
             {{ esPublicoPersonaje(pj) ? 'Público' : 'Privado' }}
           </span>
         </td>
@@ -121,7 +121,7 @@
         <td mat-cell *matCellDef="let pj">
           <button mat-icon-button type="button" [attr.aria-label]="'Más datos de ' + pj.Nombre" [attr.aria-expanded]="expandedElement === pj"
             (click)="expandedElement = expandedElement === pj ? null : pj; $event.stopPropagation()">
-            <mat-icon>{{ expandedElement === pj ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
+            <mat-icon data-icono="accion">{{ expandedElement === pj ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
           </button>
         </td>
       </ng-container>

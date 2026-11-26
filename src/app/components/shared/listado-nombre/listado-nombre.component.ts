@@ -9,7 +9,7 @@ import { TipoRol } from 'src/app/services/utils/iconos-rol';
 @Component({
     selector: 'app-listado-nombre',
     template: `
-        <app-icono-rol [tipo]="tipo" [tamano]="20"></app-icono-rol>
+        <app-icono-rol [tipo]="tipo" [tamano]="20" data-icono="adorno"></app-icono-rol>
         <span class="listado-nombre__texto">
             <button type="button" class="listado-nombre__boton" [attr.aria-expanded]="expandido" [attr.aria-controls]="controla"
                 (click)="$event.stopPropagation(); abrir.emit()">{{nombre}}</button>

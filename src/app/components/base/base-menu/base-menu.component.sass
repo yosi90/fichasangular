@@ -355,6 +355,28 @@
 ::ng-deep .menu-otros-tooltip
     pointer-events: none
 
+// Con los temas (lienzo «Rol: temas e iconos», «Revisión»): los iconos de las opciones quedan como leyenda de los
+// dibujos que luego salen en las pestañas, sin recuadro y en un solo tono (el de la cinta sobre el gris de las filas);
+// los de «Mis campañas» y «Dados», del color del texto. En «mínimos» (B) se van (`_papeles-iconos.sass`) y los grupos
+// «Otros» se alinean a la izquierda, con las opciones.
+=menu-leyenda-un-tono
+    app-icono-rol.icono-rol--oscuro
+        background: transparent
+        --icono-rol-color: #{$primary}
+
+:host-context(html[data-iconos])
+    +menu-leyenda-un-tono
+
+    .menu-dados app-icono-rol
+        --icono-rol-color: currentColor
+
+::ng-deep html[data-iconos] .menu-otros-panel
+    +menu-leyenda-un-tono
+
+:host-context(html[data-iconos='minimos'])
+    #menu aside mat-expansion-panel ::ng-deep .mat-expansion-panel-body button.menu-otros-trigger
+        padding-left: 12px
+
 // En el cajón del móvil (vista 10): el menú ocupa el cajón, sin su margen ni su sombra, con filas táctiles de 44 px.
 :host-context(.marco--movil)
     #menu

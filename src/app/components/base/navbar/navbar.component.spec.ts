@@ -331,6 +331,41 @@ describe('NavbarComponent template', () => {
         expect(fixture.debugElement.query(By.css('.ribbon-barra')).nativeElement.getAttribute('role')).toBe('menubar');
     });
 
+    it('cada menú lleva su palabra (con los temas, la cinta en palabras); sin ellos, solo para el lector de pantalla', () => {
+        const html = document.documentElement;
+        const antes = html.dataset['iconos'];
+        const textos = () => fixture.debugElement.queryAll(By.css('.ribbon-barra .ribbon-trigger__texto')).map((t) => t.nativeElement as HTMLElement);
+        try {
+            expect(textos().map((t) => t.textContent?.trim())).toEqual(['Archivo', 'Manuales', 'Opciones', 'Ayuda']);
+            delete html.dataset['iconos'];
+            expect(getComputedStyle(textos()[0]).position).toBe('absolute');
+            html.dataset['iconos'] = 'criterio';
+            // En el móvil (< 700 px) se queda el icono; en lo demás, la palabra.
+            const movil = matchMedia('(max-width: 699.98px)').matches;
+            expect(getComputedStyle(textos()[0]).position).toBe(movil ? 'absolute' : 'static');
+        } finally {
+            if (antes === undefined)
+                delete html.dataset['iconos'];
+            else
+                html.dataset['iconos'] = antes;
+        }
+    });
+
+    it('los paneles marcan el papel de sus iconos: solo se quedan lo que sale de Rol, entrar y cerrar sesión', () => {
+        const [, , opciones, ayuda] = activadores();
+        const papeles = () => Array.from(document.querySelectorAll('.cdk-overlay-container .ribbon-panel__item'))
+            .map((item) => `${item.querySelector('span')?.textContent?.trim()}:${item.querySelector('.mat-icon')?.getAttribute('data-icono')}`);
+        opciones.click();
+        fixture.detectChanges();
+        expect(papeles()).toEqual(jasmine.arrayContaining(['Mi cuenta:adorno', 'Preferencias de Rol:adorno', 'Perfil de Yosiftware:estado', 'Privacidad:estado']));
+        opciones.click();
+        fixture.detectChanges();
+        ayuda.click();
+        fixture.detectChanges();
+        expect(papeles()).toEqual(['Primeros pasos:adorno', 'Novedades:adorno', 'Legal y privacidad:adorno', 'Descargar 3.5 Companion:estado',
+            'Reportar bug:estado', 'Solicitar funcionalidad:estado']);
+    });
+
     it('es una barra de menús: con uno abierto, pasar por encima de otro botón lo cambia; Esc y pulsar fuera cierran', () => {
         const [archivo, manuales, opciones] = activadores();
         expect(panelAbierto()).toBeNull();

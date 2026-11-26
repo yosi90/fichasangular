@@ -38,18 +38,18 @@
                 <button type="button" class="personaje-vista__boton" [class.personaje-vista__boton--activa]="vista === 'pagina'"
                     [attr.aria-pressed]="vista === 'pagina'" matTooltip="Toda la ficha en una página" matTooltipClass="tt-accent"
                     (click)="cambiarVista('pagina')">
-                    <mat-icon aria-hidden="true">view_agenda</mat-icon>
+                    <mat-icon aria-hidden="true" data-icono="adorno">view_agenda</mat-icon>
                     <span>Página</span>
                 </button>
                 <button type="button" class="personaje-vista__boton" [class.personaje-vista__boton--activa]="vista === 'pestanas'"
                     [attr.aria-pressed]="vista === 'pestanas'" matTooltip="La ficha repartida en pestañas" matTooltipClass="tt-accent"
                     (click)="cambiarVista('pestanas')">
-                    <mat-icon aria-hidden="true">tab</mat-icon>
+                    <mat-icon aria-hidden="true" data-icono="adorno">tab</mat-icon>
                     <span>Pestañas</span>
                 </button>
             </div>
             <button type="button" class="personaje-boton" *ngIf="mostrarBotonGenerarPdf && !version" (click)="generarFicha()">
-                <mat-icon aria-hidden="true">download</mat-icon>
+                <mat-icon aria-hidden="true" data-icono="adorno">download</mat-icon>
                 <span>Generar PDF</span>
             </button>
             <ng-container *ngIf="mostrarControlVisibilidad">

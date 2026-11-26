@@ -1,4 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, QueryList, SimpleChanges, Type, ViewChild, ViewChildren } from '@angular/core';
+import { temasWebDelEntorno } from 'src/app/services/tema-web/tema-web.service';
+import { iconoSegunTemas } from 'src/app/services/tema-web/temas-web';
 import { ModoPestanaSesion, SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
@@ -87,7 +89,7 @@ export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; cor
         cargar: async () => (await import('src/app/components/sesiones/adquirir-plantilla/adquirir-plantilla.component')).AdquirirPlantillaComponent,
     },
     mutacion: {
-        titulo: 'Adquirir una raza mutada', corta: 'Raza mutada', icono: 'auto_awesome',
+        titulo: 'Adquirir una raza mutada', corta: 'Raza mutada', icono: 'change_circle',
         cargar: async () => (await import('src/app/components/sesiones/adquirir-raza-mutada/adquirir-raza-mutada.component')).AdquirirRazaMutadaComponent,
     },
     perdida: {
@@ -175,6 +177,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public subidasNivelAbiertas: SesionAbierta[] = [];
     /** Lo que enseña la pestaña de cada modo. */
     public readonly PESTANAS_DE_SESION = PESTANAS_DE_SESION;
+    private readonly temasActivos = temasWebDelEntorno();
     /** El componente de cada modo, con carga diferida la primera vez que se abre (`SubirNivelComponent`…). */
     public componentesDeSesion: Partial<Record<ModoPestanaSesion, Type<unknown>>> = {};
     public detallesRazaAbiertos: Raza[] = [];
@@ -1170,6 +1173,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.subidasNivelAbiertas.push(abierta);
         this.registerOpenContext(clave, this.getSafeOpenerKey());
         this.focusOpenedTab(clave);
+    }
+
+    /** El icono de la pestaña de un modo (`auto_awesome` es solo de la IA: con los temas apagados, el de antes). */
+    iconoDeSesion(modo: ModoPestanaSesion): string {
+        return iconoSegunTemas(PESTANAS_DE_SESION[modo].icono, this.temasActivos);
     }
 
     /** El título de una pestaña de sesión («Subir de nivel: Aldric»), con el que le ponga su componente si la renombra. */

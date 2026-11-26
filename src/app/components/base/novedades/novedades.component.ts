@@ -1,10 +1,12 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { Novedad, TipoNovedad } from 'src/app/interfaces/novedad';
 import { NovedadesService } from 'src/app/services/novedades.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { textoFecha } from 'src/app/services/utils/fecha-texto';
+import { TEMAS_WEB_ACTIVOS } from 'src/app/services/tema-web/tema-web.service';
+import { iconoSegunTemas } from 'src/app/services/tema-web/temas-web';
 
 /** Cómo se enseña cada tipo: su nombre y su icono (Material). */
 export interface TipoNovedadVista {
@@ -13,7 +15,7 @@ export interface TipoNovedadVista {
 }
 
 export const TIPOS_NOVEDAD: Readonly<Record<TipoNovedad, TipoNovedadVista>> = {
-    actualizacion: { etiqueta: 'Actualización', icono: 'auto_awesome' },
+    actualizacion: { etiqueta: 'Actualización', icono: 'upgrade' },
     peticion: { etiqueta: 'Lo pedisteis', icono: 'forum' },
     arreglo: { etiqueta: 'Arreglo', icono: 'build' },
     web_nueva: { etiqueta: 'Web nueva', icono: 'public' },
@@ -90,6 +92,7 @@ export class NovedadesComponent implements OnInit, OnDestroy {
 
     private lectura?: Subscription;
     private readonly hostSocial: string;
+    private readonly temasActivos = inject(TEMAS_WEB_ACTIVOS);
 
     constructor(private novedadesSvc: NovedadesService, platformSessionSvc: PlatformSessionService) {
         this.hostSocial = new URL(platformSessionSvc.urlSocial()).hostname;
@@ -160,6 +163,11 @@ export class NovedadesComponent implements OnInit, OnDestroy {
 
     tipo(novedad: Novedad): TipoNovedadVista {
         return vistaDeTipoNovedad(novedad.tipo);
+    }
+
+    /** El icono del tipo (`auto_awesome` es solo de la IA: con los temas apagados, el de antes). */
+    iconoTipo(novedad: Novedad): string {
+        return iconoSegunTemas(this.tipo(novedad).icono, this.temasActivos);
     }
 
     trackDia(_: number, dia: DiaNovedades): string {

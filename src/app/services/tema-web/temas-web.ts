@@ -50,6 +50,21 @@ export function definicionTema(tema: TemaWeb): DefinicionTemaWeb {
     return TEMAS_WEB.find((t) => t.id === tema) ?? TEMAS_WEB[0];
 }
 
+/**
+ * Un dibujo, un significado (fase 1): `auto_awesome` es solo de la IA, así que «Actualización» (Novedades) lleva
+ * `upgrade` y «Raza mutada» (su pestaña y el historial), `change_circle`. Con los temas apagados (producción hasta tener
+ * los tres) se pinta el de antes, para que la web no cambie; al encenderlos en todas partes se quita esta tabla.
+ */
+const ICONOS_ANTES_DE_LOS_TEMAS: Readonly<Record<string, string>> = {
+    upgrade: 'auto_awesome',
+    change_circle: 'auto_awesome',
+};
+
+/** El icono de Material [icono], o el de antes de los temas si están apagados (`TEMAS_WEB_ACTIVOS`). */
+export function iconoSegunTemas(icono: string, temasActivos: boolean): string {
+    return temasActivos ? icono : (ICONOS_ANTES_DE_LOS_TEMAS[icono] ?? icono);
+}
+
 /** El modo con el que se pinta [tema]: el oscuro mientras su claro no esté listo; «sistema», el del dispositivo. */
 export function modoEfectivo(tema: TemaWeb, modo: ModoWeb, sistemaOscuro: boolean): ModoEfectivo {
     if (!definicionTema(tema).claroListo)

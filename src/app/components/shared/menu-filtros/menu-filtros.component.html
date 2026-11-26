@@ -1,6 +1,9 @@
 <button type="button" mat-icon-button class="filtros" [matMenuTriggerFor]="menu" [matTooltip]="titulo"
     [attr.aria-label]="titulo">
-    <mat-icon>filter_alt</mat-icon>
+    <mat-icon class="filtros__icono" data-icono="accion">filter_alt</mat-icon>
+    <!-- Con los temas, en la pantalla ancha, la palabra y si hay filtros puestos (menu-filtros.component.sass). -->
+    <span class="filtros__texto" aria-hidden="true">Filtros</span>
+    <span class="filtros__puestos" aria-hidden="true" *ngIf="hayFiltros"></span>
 </button>
 <mat-menu #menu="matMenu" class="menu-filtros-estandar" xPosition="before" [overlapTrigger]="false">
     <!-- Un clic dentro no cierra el menú: mat-menu cierra con cualquier clic en su panel. -->
@@ -9,7 +12,7 @@
             <h2 class="menu-filtros__titulo">{{titulo}}</h2>
             <button type="button" mat-button class="menu-filtros__limpiar" *ngIf="conLimpiar" [disabled]="!hayFiltros"
                 (click)="limpiar.emit()">
-                <mat-icon>filter_alt_off</mat-icon>
+                <mat-icon data-icono="adorno">filter_alt_off</mat-icon>
                 Limpiar filtros
             </button>
         </header>
