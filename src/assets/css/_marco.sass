@@ -8,6 +8,11 @@
     @media (max-width: 699.98px)
         @content
 
+// Lo contrario: de 700 px para arriba.
+@mixin fuera-del-movil
+    @media not all and (max-width: 699.98px)
+        @content
+
 // Lo que no se ve pero lee el lector de pantalla («(hecho)», «en total», la etiqueta de un campo con solo icono…).
 @mixin solo-lectores
     position: absolute

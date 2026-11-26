@@ -8,6 +8,8 @@
 // casillas, los pares, las listas y las tablas. Guía: «La creación de personaje» en `GUIA_ESTILO_WEB_GENERAL.md`.
 
 $creacion-tarea-relleno-vertical: 14px
+$creacion-relleno-lateral: 18px
+$creacion-relleno-inferior: 12px
 
 app-creacion-marco
     display: flex
@@ -28,7 +30,7 @@ app-ficha-detalle.creacion > .ficha
     height: 100%
     min-height: 0
     box-sizing: border-box
-    padding: 14px 18px 12px
+    padding: 14px $creacion-relleno-lateral $creacion-relleno-inferior
     overflow: auto
 
     // La franja de cifras del paso: un poco más baja que la de una ficha. (Sin `>`: la de la tienda va dentro de su
@@ -267,6 +269,22 @@ app-ficha-detalle.creacion > .ficha
 
     .creacion-personaje__pares
         grid-template-columns: minmax(0, 1fr)
+
+    // Con una vista previa abierta (fuera del móvil, donde es una hoja), el cuerpo no se encoge por debajo de lo que
+    // lleva: encogido, la vista previa desbordaba su caja y el pie, que va detrás, se pintaba encima de sus datos. El
+    // pie se queda pegado abajo, con su fondo, para tener a mano la acción mientras se lee; al final, va detrás.
+    @include fuera-del-movil
+        .creacion-cuerpo:has(> .creacion-cuerpo__lateral app-creacion-vista-previa)
+            flex-shrink: 0
+
+        app-ficha-detalle.creacion:has(.creacion-cuerpo__lateral app-creacion-vista-previa) .creacion-pie
+            position: sticky
+            bottom: -$creacion-relleno-inferior
+            z-index: 2
+            margin: 0 (-$creacion-relleno-lateral) (-$creacion-relleno-inferior)
+            padding: 10px $creacion-relleno-lateral $creacion-relleno-inferior
+            background: $ficha-tarjeta
+            border-top: 1px solid con-alfa(var(--rol-tinta), .08)
 
 // Móvil (< 700 px; vista 10 del lienzo): la cabecera en columna con «Paso 1 de 7 · Raza» y una barra en lugar de la
 // fila de pasos; la vista previa, como hoja sobre la lista, con su × y el pie fijo con la acción para seguir.
