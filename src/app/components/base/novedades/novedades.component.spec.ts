@@ -67,6 +67,7 @@ describe('NovedadesComponent', () => {
     const iconoActualizacion = () => elemento().querySelector('.novedad__tipo mat-icon')?.textContent?.trim();
 
     it('«Actualización», con los temas apagados, conserva su icono de antes', () => {
+        TestBed.overrideProvider(TEMAS_WEB_ACTIVOS, { useValue: false });
         crear(paginaActualizacion());
         expect(iconoActualizacion()).toBe('auto_awesome');
     });
