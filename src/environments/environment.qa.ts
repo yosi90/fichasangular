@@ -1,5 +1,7 @@
 export const environment = {
     production: false,
+    // Los temas de la web (roadmap ACTIVO_temas-web), encendidos en QA para revisarlos.
+    temasWeb: true,
     firestoreDatabaseId: 'fichas-rol',
     // Proyecto de Firebase solo para QA (kit 1.72, ecosistema-kit/ENTORNOS.md): QA no toca nada de producción.
     firebase: {

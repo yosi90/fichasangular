@@ -36,6 +36,10 @@ type GenderIdentityPreset = 'male' | 'female' | 'hidden' | 'custom';
     standalone: false
 })
 export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
+    /** Si los temas están encendidos en este entorno: si no, no hay panel «Tema» en las preferencias. */
+    get temasWeb(): boolean {
+        return this.temaWeb.activos;
+    }
     @Input() openRequest: UserPrivateProfileOpenRequest | null = null;
 
     settings: UserSettingsV1 | null = null;

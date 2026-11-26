@@ -24,7 +24,7 @@ describe('TemaWebService', () => {
     let antes: Record<string, string | undefined>;
 
     function crear(): TemaWebService {
-        servicio = new TemaWebService(sesion, new NgZone({ enableLongStackTrace: false }), document);
+        servicio = new TemaWebService(sesion, new NgZone({ enableLongStackTrace: false }), document, true);
         return servicio;
     }
 
@@ -49,6 +49,17 @@ describe('TemaWebService', () => {
             else
                 raiz.dataset[a] = antes[a]!;
         });
+    });
+
+    it('apagados en el entorno (producción hasta terminar los tres): A en oscuro, sin leer nada ni bienvenida', () => {
+        localStorage.setItem('rol.tema.ultimo', 'b');
+        servicio = new TemaWebService(sesion, new NgZone({ enableLongStackTrace: false }), document, false);
+        estado$.next({ tipo: 'con_sesion', cuenta: { id: 'cuenta-1' } } as unknown as EstadoPlataforma);
+        expect(servicio.activos).toBeFalse();
+        expect(raiz.dataset['tema']).toBe('a');
+        expect(raiz.dataset['modo']).toBe('oscuro');
+        expect(servicio.estado.bienvenida).toBe('no');
+        expect(sesion.leerAjustes).not.toHaveBeenCalled();
     });
 
     it('sin nada guardado pinta A en oscuro y avisa al SDK con data-theme="dark"', () => {

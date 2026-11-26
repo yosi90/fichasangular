@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
-import { Inject, Injectable, NgZone, OnDestroy } from '@angular/core';
+import { Inject, Injectable, InjectionToken, NgZone, OnDestroy, Optional } from '@angular/core';
+import { environment } from 'src/environments/environment';
 import { BehaviorSubject, Subscription, distinctUntilChanged, map } from 'rxjs';
 import { EstadoPlataforma, PlatformSessionService } from '../platform-session.service';
 import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from '../utils/preferencia-local';
@@ -39,6 +40,9 @@ export interface EstadoTemaWeb {
     bienvenida: BienvenidaTema;
 }
 
+/** Si los temas están encendidos en este entorno (`environment.temasWeb`). Apagados: A en oscuro, sin bienvenida ni selector. */
+export const TEMAS_WEB_ACTIVOS = new InjectionToken<boolean>('TEMAS_WEB_ACTIVOS', { factory: () => !!(environment as { temasWeb?: boolean }).temasWeb });
+
 /**
  * El tema de la web (A, B o C) y su modo. El tema viaja con la cuenta, en el bloque de ajustes de Rol en la plataforma
  * (clave `tema`), con una copia en este navegador por cuenta para pintar sin esperar; el modo se queda en el navegador.
@@ -66,7 +70,19 @@ export class TemaWebService implements OnDestroy {
         private sesion: PlatformSessionService,
         private zone: NgZone,
         @Inject(DOCUMENT) private document: Document,
+        @Optional() @Inject(TEMAS_WEB_ACTIVOS) activos: boolean | null = null,
     ) {
+        this.activos = activos ?? !!(environment as { temasWeb?: boolean }).temasWeb;
+        if (!this.activos) {
+            // Apagados: la web de siempre (A en oscuro), sin leer ni guardar nada y sin bienvenida.
+            this.consultaOscuro = null;
+            this.estadoSubject = new BehaviorSubject<EstadoTemaWeb>({ tema: TEMA_POR_DEFECTO, modo: MODO_POR_DEFECTO, modoEfectivo: this.efectivo(TEMA_POR_DEFECTO, MODO_POR_DEFECTO), bienvenida: 'no' });
+            this.estado$ = this.estadoSubject.asObservable();
+            this.bienvenida$ = this.estado$.pipe(map((estado) => estado.bienvenida), distinctUntilChanged());
+            this.suscripcion = new Subscription();
+            this.pintar();
+            return;
+        }
         const modo = leerModo();
         const ultimo = leerPreferenciaLocal(CLAVE_TEMA_ULTIMO);
         this.consultaOscuro = this.document.defaultView?.matchMedia?.('(prefers-color-scheme: dark)') ?? null;
@@ -80,6 +96,9 @@ export class TemaWebService implements OnDestroy {
         this.document.defaultView?.addEventListener('storage', this.alCambiarOtraPestana);
         this.suscripcion = this.sesion.estado$.subscribe((estado) => this.alCambiarSesion(estado));
     }
+
+    /** Si los temas están encendidos: si no, no se ofrecen el selector ni la bienvenida. */
+    readonly activos: boolean;
 
     get estado(): EstadoTemaWeb {
         return this.estadoSubject.value;

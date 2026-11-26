@@ -15,6 +15,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { VentanaTemaService } from 'src/app/services/tema-web/ventana-tema.service';
+import { TEMAS_WEB_ACTIVOS } from 'src/app/services/tema-web/tema-web.service';
 
 beforeAll(() => {
     jasmine.getEnv().configure({ random: false });
@@ -295,6 +296,7 @@ describe('NavbarComponent template', () => {
                 },
                 { provide: PlatformSessionService, useValue: jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad']) },
                 { provide: VentanaTemaService, useValue: jasmine.createSpyObj<VentanaTemaService>('VentanaTemaService', { abrir: Promise.resolve() }) },
+                { provide: TEMAS_WEB_ACTIVOS, useValue: true },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();

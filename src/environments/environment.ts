@@ -1,5 +1,8 @@
 export const environment = {
     production: false,
+    // Los temas de la web (roadmap ACTIVO_temas-web): apagados en producción hasta que los tres estén terminados; sin
+    // ellos, A en oscuro (la web de siempre), sin bienvenida ni selector.
+    temasWeb: false,
     firestoreDatabaseId: 'fichas-rol',
     firebase: {
         projectId: 'yosiftware-fichas',

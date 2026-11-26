@@ -140,7 +140,7 @@
             </button>
         </div>
 
-        <div class="options-section">
+        <div class="options-section" *ngIf="temasWeb">
             <span class="options-section__eyebrow">Apariencia</span>
             <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirTema()">
                 <mat-icon>palette</mat-icon>
