@@ -5,8 +5,7 @@ import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { CdkMenuTrigger } from '@angular/cdk/menu';
 import { Observable, of } from 'rxjs';
-import { TipoRol, tipoRolDeListado, tituloListado } from 'src/app/services/utils/iconos-rol';
-import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
+import { TipoRol, etiquetaListado, tipoRolDeListado } from 'src/app/services/utils/iconos-rol';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { puedeGestionarListado } from 'src/app/services/utils/permisos-catalogo';
@@ -14,7 +13,7 @@ import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/cat
 import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
 import { MisCampanasService } from 'src/app/services/mis-campanas.service';
 import { GRUPOS_DE_CATALOGOS, GrupoCatalogos } from 'src/app/services/utils/catalogos-del-menu';
-import { nuevoPersonajeDeshabilitado, pedirNuevoPersonaje } from 'src/app/services/utils/nuevo-personaje';
+import { avisoNuevoPersonaje, nuevoPersonajeDeshabilitado, pedirNuevoPersonaje } from 'src/app/services/utils/nuevo-personaje';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type OperacionCatalogo = 'insertar' | 'modificar';
@@ -149,7 +148,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     get tooltipNuevoPersonaje(): string {
-        return this.nuevoPersonajeDeshabilitado ? this.mensajePermisosInsuficientes : '';
+        return avisoNuevoPersonaje(this.usrService);
     }
 
     gruposDe(seccion: SeccionOtros): readonly GrupoMenuOtros[] {
@@ -188,7 +187,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     private entrada(lista: string, habilitada: () => boolean, abrir: () => void): OpcionOtros {
-        return { etiqueta: mayusculaInicial(tituloListado(lista)), tipo: tipoRolDeListado(lista)!, habilitada, abrir };
+        return { etiqueta: etiquetaListado(lista), tipo: tipoRolDeListado(lista)!, habilitada, abrir };
     }
 
     /** Entrar es de la plataforma: abre el acceso de Yosiftware sobre la web. */

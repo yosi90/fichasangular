@@ -1,5 +1,6 @@
 import { TipoCatalogoEquipo } from 'src/app/interfaces/equipo';
 import { TipoVentaja } from 'src/app/interfaces/ventaja';
+import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 
 /**
  * Los iconos de los elementos de rol (lienzo «Rol: las vistas que faltan», vista 1, aprobado de antemano por el
@@ -191,4 +192,9 @@ export const ICONOS_PROPIOS_ROL: readonly string[] = ['dado-d4'];
 /** El título de un listado para el menú y las pestañas («Armaduras y escudos»); sin registro, la clave tal cual. */
 export function tituloListado(lista: string): string {
     return LISTADOS_ROL[`${lista ?? ''}`.trim()]?.titulo ?? `${lista ?? ''}`.trim();
+}
+
+/** El título de un listado como entrada o grupo, con mayúscula inicial («Armaduras y escudos»): los dos menús y la búsqueda global. */
+export function etiquetaListado(lista: string): string {
+    return mayusculaInicial(tituloListado(lista));
 }

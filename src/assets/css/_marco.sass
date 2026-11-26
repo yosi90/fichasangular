@@ -1,5 +1,6 @@
-// Lo común del marco de la web (lienzo «Rol: las vistas que faltan»): el corte del móvil y el texto solo para lectores
-// de pantalla. Se usa con `@use '…/assets/css/marco' as *`.
+// Lo común del marco de la web (lienzo «Rol: las vistas que faltan»): el corte del móvil, el texto solo para lectores
+// de pantalla y el botón de la acción. Se usa con `@use '…/assets/css/marco' as *`.
+@use 'variables' as *
 
 // El móvil (vista 10): por debajo de 700 px. Es la misma consulta que `CONSULTA_MOVIL` de
 // `src/app/services/marco-movil.service.ts` (el cajón del menú); si cambia una, cambia la otra.
@@ -18,3 +19,25 @@
     clip: rect(0 0 0 0)
     white-space: nowrap
     border: 0
+
+// El botón de la acción en el rosa del tema, sin borde y con sus estados: «Nuevo personaje» del menú por catálogo y
+// «Nueva …» de la cabecera de un listado (B). Cada uno pone antes su tamaño y el color de su texto.
+@mixin boton-de-accion
+    border: 0
+    border-radius: var(--rol-radio-boton)
+    background: $active
+    font: inherit
+    font-size: 14px
+    font-weight: 600
+    cursor: pointer
+
+    &:hover:not([disabled])
+        background: color-mix(in srgb, #{$active} 88%, var(--rol-tinta))
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+    &[disabled]
+        opacity: .45
+        cursor: not-allowed

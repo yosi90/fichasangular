@@ -105,27 +105,10 @@
 .listado-cabecera__nueva-boton
     height: 40px
     padding: 0 16px
-    border: 0
-    border-radius: var(--rol-radio-boton)
-    background: $active
     // El texto sobre el rosa de la acción dentro de la cabecera (`zona-oscura`).
     color: $ficha-sobre-activo
-    font: inherit
-    font-size: 14px
-    font-weight: 600
     white-space: nowrap
-    cursor: pointer
-
-    &:hover:not([disabled])
-        background: color-mix(in srgb, #{$active} 88%, var(--rol-tinta))
-
-    &:focus-visible
-        outline: 2px solid $active
-        outline-offset: 2px
-
-    &[disabled]
-        opacity: .45
-        cursor: not-allowed
+    @include boton-de-accion
 
 // Sin buscador, lo proyectado (la preferencia de Novedades) va a la derecha, donde iría el buscador.
 .listado-cabecera--sin-buscador .listado-cabecera__acciones
