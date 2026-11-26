@@ -188,6 +188,10 @@
       ".read": "true",
       ".write": "false"
     },
+    "MonstruosIndice": {
+      ".read": "true",
+      ".write": "false"
+    },
     "Municiones": {
       ".read": "true",
       ".write": "false"
