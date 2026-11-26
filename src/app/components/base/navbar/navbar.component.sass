@@ -13,16 +13,16 @@
     justify-content: center
     border: 0
     background: transparent
-    color: white
+    color: var(--rol-cinta-texto)
     text-align: center
     padding: 2px 15px
     margin: 2px 0
     font: inherit
 
     &:hover
-        background-color: white
-        color: black
-        border-radius: 4px
+        background-color: var(--rol-cinta-texto)
+        color: var(--rol-cinta-activo-texto)
+        border-radius: var(--rol-radio-boton)
         cursor: pointer
 
 .ribbon-trigger--icon
@@ -44,13 +44,13 @@
 
     .ribbon-trigger
         &:focus-visible
-            outline: 2px solid white
+            outline: 2px solid var(--rol-cinta-texto)
             outline-offset: -2px
 
         &[aria-expanded='true']
-            background-color: white
-            color: black
-            border-radius: 4px
+            background-color: var(--rol-cinta-texto)
+            color: var(--rol-cinta-activo-texto)
+            border-radius: var(--rol-radio-boton)
 
 // El botón de la búsqueda global: una pastilla fina con borde rosa, la lupa y el atajo (la cinta no cambia de alto).
 .ribbon-buscar
@@ -62,7 +62,7 @@
     border: 1px solid $active
     border-radius: 3px
     background: transparent
-    color: white
+    color: var(--rol-cinta-texto)
     font: inherit
     font-size: 12px
     cursor: pointer
@@ -73,15 +73,15 @@
         font-size: 14px
 
     &:hover
-        background: rgba(194, 24, 91, .25)
+        background: con-alfa($active, .25)
 
     &:focus-visible
-        outline: 2px solid white
+        outline: 2px solid var(--rol-cinta-texto)
         outline-offset: 1px
 
 .ribbon-buscar__atajo
     font-family: inherit
-    color: $accent
+    color: var(--rol-cinta-texto-suave)
 
 // Móvil (vista 10): la cinta sube a 44 px para que todo se pueda pulsar; el botón «Menú» va primero y «Buscar» se
 // queda en la lupa.
@@ -151,11 +151,11 @@
         overflow-y: auto
         padding: 8px 0
         box-sizing: border-box
-        border-radius: 4px
-        background-color: #2a3036
-        color: #d7dde2
-        box-shadow: 0 5px 5px -3px rgba(0, 0, 0, .2), 0 8px 10px 1px rgba(0, 0, 0, .14), 0 3px 14px 2px rgba(0, 0, 0, .12)
-        font-family: Roboto, "Helvetica Neue", sans-serif
+        border-radius: var(--rol-radio-boton)
+        background-color: var(--rol-panel)
+        color: var(--rol-panel-texto)
+        box-shadow: var(--rol-sombra-panel)
+        font-family: var(--rol-fuente-ui)
 
         &:focus
             outline: none
@@ -173,7 +173,7 @@
         padding: 0 16px
         border: 0
         background: transparent
-        color: #d7dde2
+        color: var(--rol-panel-texto)
         font: inherit
         font-size: 14px
         text-align: left
@@ -185,7 +185,7 @@
 
         &:hover, &:focus
             outline: none
-            background-color: rgba(255, 255, 255, .08)
+            background-color: var(--rol-panel-hover)
 
         &:focus-visible
             box-shadow: inset 0 0 0 2px $active
@@ -220,11 +220,11 @@
     font-size: 11px
     text-transform: uppercase
     letter-spacing: 0.08em
-    color: #9fb1bf
+    color: var(--rol-panel-texto-suave)
 
 .menu-user-state__title
     font-size: 14px
-    color: #f0f3f6
+    color: var(--rol-panel-texto-fuerte)
 
 .menu-user-state__subtitle
     font-size: 12px
@@ -256,7 +256,7 @@
     font-size: 11px
     text-transform: uppercase
     letter-spacing: 0.08em
-    color: #9fb1bf
+    color: var(--rol-panel-texto-suave)
 
 .manuales-menu
     width: 100%
@@ -266,7 +266,7 @@
 .menu-estado
     margin: 0
     padding: 4px 0
-    color: #d7dde2
+    color: var(--rol-panel-texto)
 
 .manuales-lista
     max-height: min(62vh, 430px)
@@ -277,7 +277,7 @@
     width: 100%
     padding: 10px 0
     border: 0
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12)
+    border-bottom: 1px solid var(--rol-panel-linea)
     background: transparent
     color: inherit
     font: inherit
@@ -312,7 +312,7 @@
 
 .manual-nombre
     font-weight: 500
-    color: #f0f3f6
+    color: var(--rol-panel-texto-fuerte)
     padding-right: 8px
 
 .manual-chips
@@ -344,7 +344,7 @@
     align-items: center
     gap: 4px
     background: #4f575f
-    color: #f0f3f6
+    color: var(--rol-panel-texto-fuerte)
 
 .chip-categoria-icon
     width: 14px

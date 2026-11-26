@@ -109,11 +109,11 @@ app-insercion-marco
         outline-offset: 2px
 
 .insercion-paso-boton--actual
-    background: rgba($active, .18)
+    background: con-alfa($active, .18)
     color: $ficha-blanco
 
     &:hover
-        background: rgba($active, .24)
+        background: con-alfa($active, .24)
 
     .insercion-paso-boton__numero
         background: $active
@@ -188,13 +188,13 @@ app-insercion-marco
 
 .insercion-aviso
     color: $ficha-aviso
-    background: rgba($ficha-aviso, .12)
-    border: 1px solid rgba($ficha-aviso, .45)
+    background: con-alfa($ficha-aviso, .12)
+    border: 1px solid con-alfa($ficha-aviso, .45)
 
 .insercion-cargando
     color: $ficha-texto-suave
-    background: rgba($accent, .1)
-    border: 1px solid rgba($accent, .35)
+    background: con-alfa($accent, .1)
+    border: 1px solid con-alfa($accent, .35)
 
 // Cuerpo, pasos y tarjetas
 .insercion-cuerpo

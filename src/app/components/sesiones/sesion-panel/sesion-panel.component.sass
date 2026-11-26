@@ -162,7 +162,7 @@
 
     &[aria-pressed="true"]
         border-color: $active
-        background: rgba($active, .22)
+        background: con-alfa($active, .22)
 
     &:focus-visible
         outline: 2px solid $active
@@ -307,7 +307,7 @@
     gap: 12px
     padding: 14px 16px
     border-radius: $ficha-radio
-    background: rgba($active, .14)
+    background: con-alfa($active, .14)
     font-size: 14px
     color: $ficha-blanco
 
@@ -319,7 +319,7 @@
 
 // «Completar el compañero»: como el aviso de la subida, sin su rosa (no es un aviso, es una opción).
 .sesion__companero
-    background: rgba($ficha-blanco, .06)
+    background: con-alfa($ficha-blanco, .06)
 
 @include movil
     .sesion__cabecera

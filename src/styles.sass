@@ -3,12 +3,14 @@
 
 @use 'assets/css/variables' as *
 @use 'assets/css/marco' as marco
+// Los valores de cada tema y modo como propiedades CSS en la raíz (`data-tema` y `data-modo` en `<html>`).
+@use 'assets/css/temas'
 
 *, *::before, *::after
     box-sizing: border-box
 
 .bg-dark
-    background-color: #212529 !important
+    background-color: var(--rol-pagina) !important
 
 .bg-light
     background-color: #f8f9fa !important
@@ -123,10 +125,10 @@ body.rol-ocultar-chat app-chat-floating-host
 
 // Un error en un bloque rojo sobrio (guía de estilo general); cada vista pone su margen y su relleno.
 .bloque-error
-    color: #ffd6d6
-    background: rgba(198, 40, 40, .18)
-    border: 1px solid rgba(239, 83, 80, .45)
-    border-radius: 8px
+    color: var(--rol-error-texto)
+    background: var(--rol-error-fondo)
+    border: 1px solid var(--rol-error-borde)
+    border-radius: var(--rol-radio-grande)
 
 // El símbolo de Yosiftware delante de todo enlace a la web social (ecosistema-kit/MARCA.md), en el color del enlace.
 .simbolo-yosiftware

@@ -1,0 +1,275 @@
+// Los valores de la web como propiedades CSS (roadmap «Los temas de la web y los iconos», fase 0; lienzo «Rol: temas e
+// iconos»). Un tema es solo una hoja de valores: `data-tema` (a, b, c) y `data-modo` (claro, oscuro: el efectivo) en
+// `<html>` los eligen, y los pone `TemaWebService`. Lo carga una sola vez `src/styles.sass`; las hojas de los componentes
+// no usan este archivo, sino las variables de `_variables.sass` y `ficha-tonos`, que apuntan a estas propiedades.
+//
+// - Sin atributos, `:root` es el tema A en oscuro: la web de siempre, valor por valor. Por eso A en oscuro no declara
+//   `color-scheme` (la web nunca lo ha declarado: las barras de desplazamiento y los controles nativos se ven igual).
+// - Cada tema y modo es un bloque con sus valores, sin `light-dark()`: así A en oscuro no depende de `color-scheme` y no
+//   hace falta el respaldo para los navegadores sin `light-dark()`. B y C, y el claro de los tres, declaran su
+//   `color-scheme` para que los controles nativos casen.
+// - Los claros (y B y C enteros) están aquí con los valores básicos del lienzo; se completan en sus fases. Hasta que un
+//   tema tenga su claro listo (`claroListo` en `services/tema-web/temas-web.ts`), su modo efectivo es el oscuro.
+// - Un valor nuevo: se añade a `:root` con el de hoy y a cada bloque con el suyo; nunca solo en un tema.
+
+// Las fuentes de B y C, servidas por la propia web (variables y recortadas al latín, como la Literata de 3.5 Companion;
+// licencia OFL en `assets/fuentes/*-OFL.txt`). El navegador solo las pide si un tema las usa: A sigue con Roboto.
+@font-face
+    font-family: 'Literata'
+    src: url('/assets/fuentes/literata-latino.woff2') format('woff2')
+    font-weight: 200 900
+    font-style: normal
+    font-display: swap
+
+@font-face
+    font-family: 'Source Sans 3'
+    src: url('/assets/fuentes/source-sans-3-latino.woff2') format('woff2')
+    font-weight: 200 900
+    font-style: normal
+    font-display: swap
+
+:root
+    // Tipografías
+    --rol-fuente-ui: Roboto, "Segoe UI", system-ui, sans-serif
+    --rol-fuente-nombres: var(--rol-fuente-ui)
+    --rol-fuente-prosa: var(--rol-fuente-ui)
+
+    // Radios
+    --rol-radio: 6px
+    --rol-radio-boton: 4px
+    --rol-radio-grande: 8px
+
+    // Sombras: lo que flota sobre el fondo y lo hundido (el borde 3D del marco).
+    --rol-sombra: 3px 3px 10px black
+    --rol-sombra-sm: 1px 1px 3.5px black
+    --rol-sombra-pozo: 3px 3px 10px inset black
+    --rol-sombra-pozo-sm: 1px 1px 3.5px inset black
+    --rol-sombra-panel: 0 5px 5px -3px rgba(0, 0, 0, .2), 0 8px 10px 1px rgba(0, 0, 0, .14), 0 3px 14px 2px rgba(0, 0, 0, .12)
+
+    // El marco: la página, la cinta, el pozo del menú y de las pestañas, la barra de pestañas y la zona de dentro.
+    --rol-pagina: #212529
+    --rol-cinta-fondo: var(--rol-pagina)
+    --rol-cinta-texto: #ffffff
+    --rol-cinta-texto-suave: #adbdc4
+    --rol-cinta-activo-texto: black
+    --rol-pozo: #424242
+    --rol-zona: #505050
+    --rol-zona-oscura: #2d2d30
+
+    // La paleta (antes, las variables de `_variables.sass`).
+    --rol-primario: rgb(55, 60, 65)
+    --rol-primario-hover: rgb(68, 73, 78)
+    --rol-activo: #c2185b
+    --rol-activo-texto: #ffffff
+    --rol-acento: #adbdc4
+    --rol-texto-base: #90a4ae
+    --rol-exito: rgb(62, 228, 98)
+
+    // Las superficies y los textos de lo de dentro (antes, `ficha-tonos`).
+    --rol-tarjeta: #424242
+    --rol-fila-alterna: #4a4a4a
+    --rol-texto: #e6e9eb
+    --rol-texto-suave: #cfd8dc
+    --rol-texto-fuerte: #ffffff
+    --rol-separador: #555555
+    --rol-aviso: #f0b45a
+    --rol-elegida: #4a3a42
+    --rol-pnj: #7b2d4f
+
+    // Las filas del menú lateral (gris claro sobre el marco oscuro) y sus desplegables.
+    --rol-menu-fila: #d3d3d3
+    --rol-menu-fila-alterna: #cccccc
+    --rol-menu-fila-abierta: #bdbdbd
+    --rol-menu-texto: var(--rol-activo)
+    --rol-menu-titulo: #5f6368
+    --rol-menu-apagado: #b0bec5
+
+    // Los paneles de la cinta (Archivo, Manuales, Opciones y Ayuda).
+    --rol-panel: #2a3036
+    --rol-panel-texto: #d7dde2
+    --rol-panel-texto-fuerte: #f0f3f6
+    --rol-panel-texto-suave: #9fb1bf
+    --rol-panel-hover: rgba(255, 255, 255, .08)
+    --rol-panel-linea: rgba(255, 255, 255, .12)
+
+    // Los errores dentro de una vista (`.bloque-error`).
+    --rol-error-texto: #ffd6d6
+    --rol-error-fondo: rgba(198, 40, 40, .18)
+    --rol-error-borde: rgba(239, 83, 80, .45)
+
+// ───── A · Clásico, claro (fase 2: lo completa con Angular Material y los literales de las hojas) ─────
+:root[data-tema="a"][data-modo="claro"]
+    color-scheme: light
+    --rol-sombra: 3px 3px 10px rgba(0, 0, 0, .45)
+    --rol-sombra-pozo: inset 3px 3px 10px rgba(0, 0, 0, .5)
+    --rol-pagina: #c3cad0
+    --rol-cinta-fondo: #373c41
+    --rol-pozo: #aeb7be
+    --rol-zona: #dde2e6
+    --rol-zona-oscura: #373c41
+    --rol-acento: #586771
+    --rol-texto-base: #586771
+    --rol-tarjeta: #f8f9fa
+    --rol-fila-alterna: #edf0f2
+    --rol-texto: #1f2428
+    --rol-texto-suave: #45525c
+    --rol-texto-fuerte: #1f2428
+    --rol-separador: #dfe4e8
+    --rol-elegida: #f6dbe6
+    --rol-panel: #ffffff
+    --rol-panel-texto: #45525c
+    --rol-panel-texto-fuerte: #1f2428
+    --rol-panel-texto-suave: #586771
+    --rol-panel-hover: rgba(0, 0, 0, .06)
+    --rol-panel-linea: rgba(0, 0, 0, .12)
+    --rol-error-texto: #8e1c1c
+
+// ───── B · Tinta: plana, líneas finas, Literata en nombres y prosa y Source Sans 3 en lo demás (fase 4) ─────
+:root[data-tema="b"]
+    color-scheme: dark
+    --rol-fuente-ui: "Source Sans 3", system-ui, "Segoe UI", sans-serif
+    --rol-fuente-nombres: Literata, Georgia, "Times New Roman", serif
+    --rol-fuente-prosa: Literata, Georgia, "Times New Roman", serif
+    --rol-radio: 12px
+    --rol-radio-boton: 10px
+    --rol-radio-grande: 14px
+    --rol-sombra: none
+    --rol-sombra-sm: none
+    --rol-sombra-pozo: none
+    --rol-sombra-pozo-sm: none
+    --rol-pagina: #15131a
+    --rol-cinta-texto: #efecf4
+    --rol-cinta-texto-suave: #958ea4
+    --rol-pozo: #15131a
+    --rol-zona: #15131a
+    --rol-zona-oscura: #1c1a22
+    --rol-primario: #2a2632
+    --rol-primario-hover: #34303d
+    --rol-activo: #ff5c9a
+    --rol-activo-texto: #1a0a12
+    --rol-acento: #958ea4
+    --rol-texto-base: #958ea4
+    --rol-tarjeta: #1c1a22
+    --rol-fila-alterna: #1c1a22
+    --rol-texto: #efecf4
+    --rol-texto-suave: #bfb9cb
+    --rol-texto-fuerte: #efecf4
+    --rol-separador: #2e2a37
+    --rol-elegida: #34202b
+    --rol-menu-fila: #1c1a22
+    --rol-menu-fila-alterna: #1c1a22
+    --rol-menu-fila-abierta: #25222d
+    --rol-menu-texto: #bfb9cb
+    --rol-menu-titulo: #958ea4
+    --rol-panel: #24212b
+    --rol-panel-texto: #bfb9cb
+    --rol-panel-texto-fuerte: #efecf4
+    --rol-panel-texto-suave: #958ea4
+
+:root[data-tema="b"][data-modo="claro"]
+    color-scheme: light
+    --rol-pagina: #f5f3f7
+    --rol-cinta-texto: #1c1922
+    --rol-cinta-activo-texto: #ffffff
+    --rol-cinta-texto-suave: #6a6477
+    --rol-pozo: #f5f3f7
+    --rol-zona: #f5f3f7
+    --rol-zona-oscura: #ffffff
+    --rol-primario: #ebe7f1
+    --rol-primario-hover: #e1dce9
+    --rol-activo: #b3124f
+    --rol-activo-texto: #ffffff
+    --rol-acento: #6a6477
+    --rol-texto-base: #6a6477
+    --rol-tarjeta: #ffffff
+    --rol-fila-alterna: #ffffff
+    --rol-texto: #1c1922
+    --rol-texto-suave: #4d4859
+    --rol-texto-fuerte: #1c1922
+    --rol-separador: #e1dce9
+    --rol-elegida: #f9e3ec
+    --rol-menu-fila: #ffffff
+    --rol-menu-fila-alterna: #ffffff
+    --rol-menu-fila-abierta: #f1eef6
+    --rol-menu-texto: #4d4859
+    --rol-menu-titulo: #6a6477
+    --rol-panel: #ffffff
+    --rol-panel-texto: #4d4859
+    --rol-panel-texto-fuerte: #1c1922
+    --rol-panel-texto-suave: #6a6477
+    --rol-panel-hover: rgba(0, 0, 0, .05)
+    --rol-panel-linea: #e1dce9
+    --rol-error-texto: #8e1c1c
+
+// ───── C · Manual: el marco de A con papel, tinta y granate; Literata en nombres y prosa (fase 3) ─────
+:root[data-tema="c"]
+    color-scheme: dark
+    --rol-fuente-nombres: Literata, Georgia, "Times New Roman", serif
+    --rol-fuente-prosa: Literata, Georgia, "Times New Roman", serif
+    --rol-radio: 3px
+    --rol-radio-boton: 3px
+    --rol-radio-grande: 4px
+    --rol-sombra: 2px 3px 8px rgba(0, 0, 0, .45)
+    --rol-sombra-pozo: inset 2px 2px 8px rgba(0, 0, 0, .6)
+    --rol-pagina: #120e0b
+    --rol-cinta-texto: #f3e9d2
+    --rol-cinta-texto-suave: #bfae8e
+    --rol-pozo: #1c1612
+    --rol-zona: #231b15
+    --rol-zona-oscura: #1a1410
+    --rol-primario: #4a121f
+    --rol-primario-hover: #5a1a29
+    --rol-activo: #e27c86
+    --rol-activo-texto: #240b0f
+    --rol-acento: #a99878
+    --rol-texto-base: #a99878
+    --rol-tarjeta: #2b2119
+    --rol-fila-alterna: #32271d
+    --rol-texto: #ecdfc6
+    --rol-texto-suave: #cdbd9f
+    --rol-texto-fuerte: #fbf3df
+    --rol-separador: #3b2e22
+    --rol-elegida: #44232a
+    --rol-menu-fila: #2b2119
+    --rol-menu-fila-alterna: #32271d
+    --rol-menu-fila-abierta: #3b2e22
+    --rol-menu-texto: #e27c86
+    --rol-menu-titulo: #a99878
+    --rol-panel: #32271d
+    --rol-panel-texto: #cdbd9f
+    --rol-panel-texto-fuerte: #ecdfc6
+    --rol-panel-texto-suave: #a99878
+    --rol-panel-linea: rgba(240, 220, 180, .18)
+
+:root[data-tema="c"][data-modo="claro"]
+    color-scheme: light
+    --rol-pagina: #4a3a2d
+    --rol-cinta-fondo: #2e231a
+    --rol-pozo: #3a2c21
+    --rol-zona: #cdbf9f
+    --rol-zona-oscura: #2e231a
+    --rol-primario: #6b1525
+    --rol-primario-hover: #7d1d30
+    --rol-activo: #8c1c2e
+    --rol-activo-texto: #fff6e3
+    --rol-acento: #6c5943
+    --rol-texto-base: #6c5943
+    --rol-tarjeta: #f3ead6
+    --rol-fila-alterna: #e8dcc0
+    --rol-texto: #2a1f16
+    --rol-texto-suave: #55432f
+    --rol-texto-fuerte: #2a1f16
+    --rol-separador: #d9caa6
+    --rol-elegida: #ecd2c4
+    --rol-menu-fila: #efe5cd
+    --rol-menu-fila-alterna: #e6dabd
+    --rol-menu-fila-abierta: #d9caa6
+    --rol-menu-texto: #8c1c2e
+    --rol-menu-titulo: #6c5943
+    --rol-panel: #fbf5e6
+    --rol-panel-texto: #55432f
+    --rol-panel-texto-fuerte: #2a1f16
+    --rol-panel-texto-suave: #6c5943
+    --rol-panel-hover: rgba(60, 40, 20, .06)
+    --rol-panel-linea: rgba(60, 40, 20, .28)
+    --rol-error-texto: #8e1c1c

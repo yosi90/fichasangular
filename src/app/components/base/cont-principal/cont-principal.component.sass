@@ -30,7 +30,9 @@
     width: calc(100% - 22px)
     height: calc(100% - 12px)
 
-    box-shadow: 3px 3px 10px inset black
+    // El pozo de las pestañas: la tarjeta de Material con el color y la sombra hundida del tema.
+    --mat-card-elevated-container-color: var(--rol-pozo)
+    box-shadow: var(--rol-sombra-pozo)
 
     padding: 10px 10px
     margin: 5px 10px 0 12px
@@ -67,4 +69,4 @@
     width: 44px
     height: 44px
     padding: 10px
-    color: #ffffff
+    color: var(--rol-texto-fuerte)

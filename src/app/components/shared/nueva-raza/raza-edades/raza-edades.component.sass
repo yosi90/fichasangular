@@ -75,7 +75,7 @@
     display: grid
     gap: 0.6rem
     padding: 0.75rem
-    border: 1px solid rgba($active, 0.45)
+    border: 1px solid con-alfa($active, 0.45)
     border-radius: $ficha-radio
 
 .edades-categoria
@@ -142,12 +142,12 @@
     justify-self: start
     padding: 0.15rem 0.6rem
     border-radius: 9999px
-    background: rgba($active, 0.22)
+    background: con-alfa($active, 0.22)
     color: $ficha-blanco
     font-size: 13px
 
     &--pnj
-        background: rgba($ficha-pnj, 0.6)
+        background: con-alfa($ficha-pnj, 0.6)
 
 @container insercion (max-width: 900px)
     .edades-seis
