@@ -48,12 +48,9 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
     background: transparent
 
     th.mat-mdc-header-cell
-        @include zona-oscura($material: false)
-        // La flecha de ordenar, la de la pizarra también en el claro.
-        --mat-sort-arrow-color: var(--rol-texto-fuerte)
         height: 44px
-        background: $primary
         @include ficha-versalitas($interlineado: null, $margen: null)
+        @include ficha-tabla-cabecera
         white-space: nowrap
         border-bottom: 0
 

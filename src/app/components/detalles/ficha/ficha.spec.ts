@@ -167,7 +167,7 @@ describe('Ficha de detalle: reglas', () => {
                 </app-ficha-lateral>
             </app-ficha-cuerpo>
             <app-ficha-bloque titulo="Progresión" *ngIf="conBloque">
-                <table class="ficha-tabla"><tbody><tr><td>1.º</td></tr></tbody></table>
+                <table class="ficha-tabla"><thead><tr><th>Nivel</th></tr></thead><tbody><tr><td>1.º</td></tr></tbody></table>
             </app-ficha-bloque>
         </app-ficha-detalle>`,
     standalone: false,
@@ -397,6 +397,65 @@ describe('Ficha de detalle: componentes', () => {
         expect(bloque.closest('.ficha-cuerpo')).toBeNull();
         expect(bloque.querySelector('.ficha-titulo')?.textContent?.trim()).toBe('Progresión');
         expect(bloque.querySelector('table.ficha-tabla')).not.toBeNull();
+    });
+
+    // El tema C (roadmap de los temas, fase 3): la cabecera granate con el filete doble dorado, el nombre y la prosa en
+    // Literata, y la cabecera de las tablas en cuero (en papel en su claro). A, como siempre.
+    describe('con el tema C', () => {
+        const html = document.documentElement;
+        let antes: { tema?: string; modo?: string };
+        const poner = (tema: string, modo: string) => {
+            html.dataset['tema'] = tema;
+            html.dataset['modo'] = modo;
+        };
+        beforeEach(() => antes = { tema: html.dataset['tema'], modo: html.dataset['modo'] });
+        afterEach(() => {
+            (['tema', 'modo'] as const).forEach((clave) => {
+                if (antes[clave] === undefined)
+                    delete html.dataset[clave];
+                else
+                    html.dataset[clave] = antes[clave];
+            });
+        });
+        const estilo = (selector: string) => getComputedStyle(elemento().querySelector(selector) as HTMLElement);
+
+        it('la cabecera va en granate con el filete doble dorado; en A, en pizarra con la raya rosa', () => {
+            poner('c', 'oscuro');
+            expect(estilo('.ficha-cabecera').backgroundColor).toBe('rgb(74, 18, 31)');
+            expect(estilo('.ficha-cabecera').borderBottomStyle).toBe('double');
+            expect(estilo('.ficha-cabecera').borderBottomColor).toBe('rgb(168, 132, 63)');
+            poner('c', 'claro');
+            expect(estilo('.ficha-cabecera').backgroundColor).toBe('rgb(107, 21, 37)');
+            expect(estilo('.ficha-cabecera').borderBottomColor).toBe('rgb(201, 164, 92)');
+            poner('a', 'oscuro');
+            expect(estilo('.ficha-cabecera').backgroundColor).toBe('rgb(55, 60, 65)');
+            expect(estilo('.ficha-cabecera').borderBottomStyle).toBe('solid');
+            expect(estilo('.ficha-cabecera').borderBottomColor).toBe('rgb(194, 24, 91)');
+        });
+
+        it('el nombre y la prosa van en Literata (el nombre, a 600); en A, en Roboto a 500', () => {
+            poner('c', 'oscuro');
+            expect(estilo('.ficha-cabecera__nombre').fontFamily).toContain('Literata');
+            expect(estilo('.ficha-cabecera__nombre').fontWeight).toBe('600');
+            expect(estilo('.ficha-texto').fontFamily).toContain('Literata');
+            expect(estilo('.ficha-cabecera__tipo').fontFamily).toContain('Roboto');
+            poner('a', 'oscuro');
+            expect(estilo('.ficha-cabecera__nombre').fontFamily).toContain('Roboto');
+            expect(estilo('.ficha-cabecera__nombre').fontWeight).toBe('500');
+        });
+
+        it('la cabecera de las tablas va en cuero; en su claro, en papel con el texto oscuro (A sigue en pizarra)', () => {
+            host.conBloque = true;
+            fixture.detectChanges();
+            poner('c', 'oscuro');
+            expect(estilo('.ficha-tabla thead tr').backgroundColor).toBe('rgb(59, 46, 34)');
+            poner('c', 'claro');
+            expect(estilo('.ficha-tabla thead tr').backgroundColor).toBe('rgb(217, 202, 166)');
+            expect(estilo('.ficha-tabla thead tr').color).toBe('rgb(77, 59, 40)');
+            poner('a', 'claro');
+            expect(estilo('.ficha-tabla thead tr').backgroundColor).toBe('rgb(55, 60, 65)');
+            expect(estilo('.ficha-tabla thead tr').color).toBe('rgb(173, 189, 196)');
+        });
     });
 });
 

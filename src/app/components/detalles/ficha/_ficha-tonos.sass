@@ -10,6 +10,9 @@ $ficha-texto-suave: var(--rol-texto-suave)
 $ficha-separador: var(--rol-separador)
 $ficha-aviso: var(--rol-aviso)
 $ficha-blanco: var(--rol-texto-fuerte)
+// El texto sobre el rosa de la acción: el de cada pieza ($ficha-blanco, también dentro de una `zona-oscura`) salvo que el
+// tema diga otro (`--rol-sobre-activo`: en C, el de su acción, que en su oscuro es un rosa claro).
+$ficha-sobre-activo: var(--rol-sobre-activo, var(--rol-texto-fuerte))
 // El fondo rosado de lo elegido (una opción, una fila, una tarjeta), con el rosa $active en el borde o la raya.
 $ficha-elegida: var(--rol-elegida)
 // El rosa oscuro de la etiqueta «PNJ» (la creación y el listado de personajes).
@@ -38,15 +41,35 @@ $ficha-sombra: var(--rol-sombra)
     border-radius: $ficha-radio
     box-shadow: $ficha-sombra
 
-// La cabecera de la ficha y de los marcos que la copian (creación, inserciones, campañas, ayuda): tarjeta $primary con la
-// raya inferior rosa de 3px. Cada una pone su disposición, su relleno y el tamaño del nombre. Es pizarra también en el
-// claro (`zona-oscura`).
+// La cabecera de la ficha y de los marcos que la copian (creación, inserciones, campañas, ayuda): la tarjeta de las
+// cabeceras (`--rol-cabecera`: $primary en A, granate en C) con su raya inferior de 3px (rosa en A; el filete doble
+// dorado en C). Cada una pone su disposición, su relleno y el tamaño del nombre. Es oscura también en el claro
+// (`zona-oscura`).
 @mixin ficha-cabecera
     @include zona-oscura
-    background: $primary
+    background: var(--rol-cabecera)
     border-radius: $ficha-radio
-    border-bottom: 3px solid $active
+    @include cabecera-raya
     box-shadow: $ficha-sombra
+
+// La raya inferior de las cabeceras: 3px del color y el estilo del tema (`solid` en A; `double`, el filete, en C).
+@mixin cabecera-raya
+    border-bottom: 3px var(--rol-cabecera-raya-estilo) var(--rol-cabecera-raya)
+
+// El nombre de lo que enseña una cabecera (la ficha, la creación, una inserción, un listado): la letra y el peso de los
+// nombres del tema (Roboto 500 en A; Literata 600 en C). Cada uno pone su tamaño.
+@mixin nombre-del-tema
+    font-family: var(--rol-fuente-nombres)
+    font-weight: var(--rol-peso-nombres)
+
+// Las cabeceras de las tablas (la ficha, los listados, la creación, los personajes, la ayuda): el fondo del tema
+// (`--rol-tabla-cabecera`: $primary; papel en el claro de C), su texto y la flecha de ordenar. Oscura también en el
+// claro de A (`zona-oscura`). Va después de las versalitas, que ponen su propio color.
+@mixin ficha-tabla-cabecera
+    @include zona-oscura($material: false)
+    --mat-sort-arrow-color: var(--rol-tabla-cabecera-flecha)
+    background: var(--rol-tabla-cabecera)
+    color: var(--rol-tabla-cabecera-texto)
 
 // La etiqueta con borde fino de la creación y de las inserciones (Oficial, Homebrew, Prestigio…); con `ficha-etiqueta-aviso`,
 // en ámbar. La creación la usa a 22px y la cabecera de las inserciones, a 24px.
@@ -65,7 +88,8 @@ $ficha-sombra: var(--rol-sombra)
     border-color: $ficha-aviso
     color: $ficha-aviso
 
-// Un conmutador de pocas opciones: botones pegados sobre $primary y el elegido en rosa (`aria-pressed` o `aria-checked`).
+// Un conmutador de pocas opciones: botones pegados sobre `--rol-conmutador` ($primary en A; granate oscuro en C) y el
+// elegido en rosa (`aria-pressed` o `aria-checked`).
 // Lo usan la creación (`.creacion-conmutador`: «Oficiales / También homebrew», «Sin, +1…+5») y el listado de personajes
 // («Todos · Personajes jugadores · PNJ», un punto más grande).
 @mixin ficha-conmutador($tamano: 13px, $relleno: 12px)
@@ -80,7 +104,7 @@ $ficha-sombra: var(--rol-sombra)
         height: 36px
         padding: 0 $relleno
         border: 0
-        background: $primary
+        background: var(--rol-conmutador)
         color: $ficha-blanco
         font: inherit
         font-size: $tamano
@@ -88,6 +112,7 @@ $ficha-sombra: var(--rol-sombra)
 
         &[aria-pressed="true"], &[aria-checked="true"]
             background: $active
+            color: $ficha-sobre-activo
 
         &:disabled
             opacity: .45

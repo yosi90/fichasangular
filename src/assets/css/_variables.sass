@@ -20,8 +20,9 @@ $accent: var(--rol-acento)
     @return color-mix(in srgb, #{$color} math.percentage($alfa), transparent)
 
 // Lo que es oscuro también en el claro (la cinta, la barra de pestañas, las cabeceras de la ficha y de los listados, las
-// cabeceras de las tablas, los conmutadores, las cabeceras del menú): sus textos, su tinta y sus campos vuelven a los del
-// oscuro del tema (`--rol-zo-*` en `_temas.sass`), para él y lo de dentro. En un modo oscuro no cambia nada. Se pone en
+// cabeceras de las tablas, los conmutadores, las cabeceras del menú): sus textos, su tinta, sus campos y el rosa de la
+// acción con su texto vuelven a los del oscuro del tema (`--rol-zo-*` en `_temas.sass`), para él y lo de dentro (el rosa
+// de los tokens de Material, no: se resuelven en `<html>`). En un modo oscuro no cambia nada. Se pone en
 // el elemento con el fondo oscuro, no en uno sin fondo. Sin Material dentro (una cabecera de tabla, un botón),
 // `$material: false`: la hoja pesa menos.
 @mixin zona-oscura($material: true)
@@ -37,6 +38,8 @@ $accent: var(--rol-acento)
     --rol-aviso: var(--rol-zo-aviso)
     --rol-error-texto: var(--rol-zo-error-texto)
     --rol-zona-oscura: var(--rol-zo-campo)
+    --rol-activo: var(--rol-zo-activo)
+    --rol-sobre-activo: var(--rol-zo-sobre-activo)
     @if $material
         @include _zona-oscura-material
 

@@ -1,5 +1,6 @@
 @use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/marco' as *
+@use '../../detalles/ficha/ficha-tonos' as *
 
 // La tienda de una sesión, a pantalla completa (lienzo de sesiones, pantallas 2 y 5). Lo de dentro es la tienda de la
 // creación con su marco (`<app-creacion-marco>`); aquí solo la capa, la cabecera con la ✕ y el desplazamiento.
@@ -21,8 +22,8 @@
     gap: 12px
     min-height: 56px
     padding: 0 12px 0 24px
-    background: $primary
-    border-bottom: 3px solid $active
+    background: var(--rol-cabecera)
+    @include cabecera-raya
 
 .tienda-sesion__titulo
     flex-grow: 1
