@@ -7,6 +7,14 @@
     gap: 2px
     width: 100%
 
+    // B (marco plano): la cinta de 44 px, con la línea fina que la separa de lo de debajo. Los botones de la derecha
+    // (los del SDK y la campana) no cambian.
+    @include marco-plano
+        box-sizing: border-box
+        min-height: 44px
+        padding-left: 6px
+        border-bottom: 1px solid var(--rol-separador)
+
 .ribbon-trigger
     display: inline-flex
     align-items: center
@@ -20,7 +28,7 @@
     font: inherit
 
     &:hover
-        background-color: var(--rol-cinta-texto)
+        background-color: var(--rol-cinta-realce)
         color: var(--rol-cinta-activo-texto)
         border-radius: var(--rol-radio-boton)
         cursor: pointer
@@ -71,7 +79,7 @@
             outline-offset: -2px
 
         &[aria-expanded='true']
-            background-color: var(--rol-cinta-texto)
+            background-color: var(--rol-cinta-realce)
             color: var(--rol-cinta-activo-texto)
             border-radius: var(--rol-radio-boton)
 
@@ -106,6 +114,21 @@
 .ribbon-buscar__atajo
     font-family: inherit
     color: var(--rol-cinta-texto-suave)
+
+// B, fuera del móvil: el buscador ancho (340 px, menos en el plegable), con el atajo al final.
+@media (min-width: 700px)
+    .ribbon-buscar
+        @include marco-plano
+            width: clamp(180px, 26vw, 340px)
+            height: 30px
+            margin-left: 14px
+            padding: 0 10px
+            border-radius: var(--rol-radio-boton)
+            font-size: 13px
+
+    .ribbon-buscar__atajo
+        @include marco-plano
+            margin-left: auto
 
 // Móvil (vista 10): la cinta sube a 44 px para que todo se pueda pulsar; el botón «Menú» va primero y «Buscar» se
 // queda en la lupa.
@@ -160,7 +183,7 @@
     display: inline-flex
     align-items: center
     padding: 0 10px
-    --yosi-color-campana: white
+    --yosi-color-campana: var(--rol-cinta-sdk)
 
 // En bloque, no en flex: el SDK pinta su panel como hijo absoluto del elemento, y en un flex centrado el panel se
 // centraba en vertical sobre la cinta y salía cortado por arriba. La cinta (flex) ya los centra.

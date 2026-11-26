@@ -674,6 +674,7 @@
         </ng-template>
         <app-detalles-especial
             [especial]="detallesEspecialAbiertos[index]"
+            [modificable]="modificableSoloEnElDetalle('especiales')" (modificar)="abrirEdicion('especial', $event)"
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)">
         </app-detalles-especial>
     </mat-tab>
@@ -685,6 +686,7 @@
         </ng-template>
         <app-detalles-racial
             [racial]="detallesRacialAbiertos[index]"
+            [modificable]="modificableSoloEnElDetalle('raciales')" (modificar)="abrirEdicion('racial', $event)"
             (razaDetallesId)="abrirDetallesRazaPorId($event)"
             (doteDetallesId)="abrirDetallesDotePorId($event)"
             (conjuroDetallesId)="abrirDetallesConjuroPorId($event)">
@@ -815,7 +817,8 @@
             <span class="pestana-etiqueta" [matTooltip]="getEtiquetaIdioma(idioma)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{idioma.Nombre}}</span>
             <button (click)="quitarDetallesIdioma(idioma)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon data-icono="accion">close</mat-icon></button>
         </ng-template>
-        <app-detalles-idioma [idioma]="detallesIdiomaAbiertos[index]"></app-detalles-idioma>
+        <app-detalles-idioma [idioma]="detallesIdiomaAbiertos[index]"
+            [modificable]="modificableSoloEnElDetalle('idiomas')" (modificar)="abrirEdicion('idioma', $event)"></app-detalles-idioma>
     </mat-tab>
     <mat-tab *ngFor="let fusion of detallesFusionAbiertos; let index = index" [label]="getEtiquetaFusion(fusion)">
         <ng-template mat-tab-label>

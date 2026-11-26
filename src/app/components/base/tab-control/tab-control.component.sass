@@ -27,7 +27,7 @@
         background-color: $contrast
         border-radius: var(--rol-radio-boton)
 
-        box-shadow: var(--rol-sombra)
+        box-shadow: var(--rol-sombra-pestanas)
 
         ::ng-deep .mat-mdc-tab-body-wrapper
             flex: 1 1 auto
@@ -58,6 +58,14 @@
             gap: 8px
             font-size: 15px
             font-weight: 500
+
+// B (marco plano): la tarjeta de las pestañas sin esquinas y la barra sin fondo, con la línea fina debajo.
+:host-context(html[data-marco="plano"])
+    mat-tab-group, ::ng-deep mat-tab-header
+        border-radius: 0
+
+    ::ng-deep mat-tab-header
+        border-bottom: 1px solid var(--rol-separador)
 
 // La etiqueta de cada pestaña (lienzo, vista 3): el icono de su catálogo (18 px, sin recuadro), el nombre con elipsis a
 // partir de 200 px (el entero, en el tooltip) y la × (36 px; 44 en el móvil).

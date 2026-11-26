@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SimpleChanges, ViewChild, ViewContainerRef } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SimpleChanges, ViewChild, ViewContainerRef, forwardRef } from '@angular/core';
 import { ListadoRazasComponent } from '../listado-razas/listado-razas.component';
 import { Raza } from 'src/app/interfaces/raza';
 import { ListadoConjurosComponent } from '../listado-conjuros/listado-conjuros.component';
@@ -38,7 +38,7 @@ import { tipoDeListaEquipo } from '../listado-equipo/listas-equipo';
 import { ListadoFusionesComponent } from '../listado-fusiones/listado-fusiones.component';
 import { ListadoChakrasComponent } from '../listado-chakras/listado-chakras.component';
 import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
-import { esListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
+import { CONTEXTO_DE_LISTADO, esListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 import { ListadoManualesComponent } from '../listado-manuales/listado-manuales.component';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 
@@ -46,6 +46,8 @@ import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
     selector: 'app-listado',
     templateUrl: './listado.component.html',
     styleUrls: ['./listado.component.sass'],
+    // Su lista, para la cabecera del listado que carga dentro («Nueva …» en B).
+    providers: [{ provide: CONTEXTO_DE_LISTADO, useExisting: forwardRef(() => ListadoComponent) }],
     standalone: false
 })
 export class ListadoComponent {

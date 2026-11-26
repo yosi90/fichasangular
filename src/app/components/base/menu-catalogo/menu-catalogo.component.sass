@@ -1,0 +1,144 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
+
+// El menú por catálogo de B (lienzo «Rol: temas e iconos», propuesta B): plano, con una línea a la derecha que lo separa
+// de las pestañas; las entradas son texto (iconos «mínimos») y el rosa solo marca la acción («Nuevo personaje») y lo que
+// se está viendo (su fondo rosado, `--rol-elegida`).
+:host
+    display: block
+    height: 100%
+
+.menu-catalogo
+    display: flex
+    flex-direction: column
+    height: 100%
+    box-sizing: border-box
+    padding: 14px 12px
+    overflow-y: auto
+    border-right: 1px solid var(--rol-separador)
+    font-family: var(--rol-fuente-ui)
+    color: var(--rol-texto-suave)
+
+.menu-catalogo__nuevo-envoltorio
+    display: block
+    margin-bottom: 6px
+
+.menu-catalogo__nuevo
+    width: 100%
+    height: 36px
+    border: 0
+    border-radius: var(--rol-radio-boton)
+    background: $active
+    color: var(--rol-activo-texto)
+    font: inherit
+    font-size: 14px
+    font-weight: 600
+    letter-spacing: .02em
+    cursor: pointer
+
+    &:hover:not([disabled])
+        background: color-mix(in srgb, #{$active} 88%, var(--rol-tinta))
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+    &[disabled]
+        opacity: .45
+        cursor: not-allowed
+
+.menu-catalogo__seccion
+    display: block
+    padding: 14px 10px 6px
+    font-size: 11px
+    font-weight: 700
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+.menu-catalogo__lista
+    display: flex
+    flex-direction: column
+    gap: 2px
+    margin: 0
+    padding: 0
+    list-style: none
+
+.menu-catalogo__sublista
+    margin: 2px 0 4px 10px
+    padding-left: 8px
+    border-left: 1px solid var(--rol-separador)
+
+    &[hidden]
+        display: none
+
+.menu-catalogo__entrada
+    display: flex
+    align-items: center
+    gap: 10px
+    width: 100%
+    min-height: 36px
+    box-sizing: border-box
+    padding: 0 10px
+    border: 0
+    border-radius: var(--rol-radio-boton)
+    background: transparent
+    color: inherit
+    font: inherit
+    font-size: 15px
+    line-height: 1.25
+    text-align: left
+    cursor: pointer
+
+    &:hover
+        background: con-alfa(var(--rol-tinta), .06)
+        color: var(--rol-texto)
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
+
+    &[aria-current='page']
+        background: var(--rol-elegida)
+        color: var(--rol-texto-fuerte)
+        font-weight: 600
+
+.menu-catalogo__grupo-titulo
+    flex: 1 1 auto
+    min-width: 0
+
+.menu-catalogo__cuenta
+    font-size: 12.5px
+    color: $accent
+
+.menu-catalogo__solo-lectores
+    @include solo-lectores
+
+// La flecha del grupo: hacia la derecha, plegado; hacia abajo, desplegado.
+.menu-catalogo__flecha
+    flex-shrink: 0
+    width: 6px
+    height: 6px
+    margin: 0 2px 0 4px
+    border-right: 1.5px solid currentColor
+    border-bottom: 1.5px solid currentColor
+    transform: rotate(-45deg)
+    transition: transform .15s ease
+
+    @media (prefers-reduced-motion: reduce)
+        transition: none
+
+.menu-catalogo__grupo[aria-expanded='true'] .menu-catalogo__flecha
+    transform: rotate(45deg)
+
+// En el cajón del móvil: a todo lo ancho, sin la línea, con entradas táctiles de 44 px.
+:host-context(.marco--movil)
+    .menu-catalogo
+        padding: 0
+        border-right: 0
+
+    .menu-catalogo__entrada
+        min-height: 44px
+
+    .menu-catalogo__nuevo
+        height: 44px

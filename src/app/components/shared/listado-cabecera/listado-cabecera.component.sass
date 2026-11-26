@@ -17,7 +17,13 @@
     padding: 12px 16px
     background: var(--rol-cabecera)
     border-radius: 6px
-    box-shadow: $ficha-sombra
+    box-shadow: var(--rol-cabecera-sombra)
+
+    // B: sin fondo ni esquinas, el título sobre la página y la línea fina debajo.
+    @include marco-plano
+        padding: 4px 0 14px
+        border-radius: 0
+        border-bottom: 1px solid var(--rol-separador)
 
 // Las pantallas que no son un elemento de rol (Novedades): su icono de Material, sin recuadro.
 .listado-cabecera__icono-material
@@ -29,7 +35,7 @@
 .listado-cabecera__titulo
     margin: 0
     @include nombre-del-tema
-    font-size: 20px
+    font-size: var(--rol-tamano-titulo-listado)
     line-height: 1.3
     color: var(--rol-texto-fuerte)
 
@@ -75,6 +81,15 @@
         border-bottom-color: $active
         box-shadow: inset 0 -1px 0 $active
 
+    // B: el campo con su línea alrededor y las esquinas del tema.
+    @include marco-plano
+        border: 1px solid var(--rol-separador)
+        border-radius: var(--rol-radio-boton)
+
+        &:focus-within
+            border-color: $active
+            box-shadow: 0 0 0 1px $active
+
 .listado-cabecera__acciones
     display: flex
     align-items: center
@@ -82,6 +97,35 @@
 
     &:empty
         display: none
+
+// «Nueva …» (solo con el menú por catálogo, B): la acción del listado, en el rosa, a la altura del buscador.
+.listado-cabecera__nueva
+    display: inline-flex
+
+.listado-cabecera__nueva-boton
+    height: 40px
+    padding: 0 16px
+    border: 0
+    border-radius: var(--rol-radio-boton)
+    background: $active
+    // El texto sobre el rosa de la acción dentro de la cabecera (`zona-oscura`).
+    color: $ficha-sobre-activo
+    font: inherit
+    font-size: 14px
+    font-weight: 600
+    white-space: nowrap
+    cursor: pointer
+
+    &:hover:not([disabled])
+        background: color-mix(in srgb, #{$active} 88%, var(--rol-tinta))
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+    &[disabled]
+        opacity: .45
+        cursor: not-allowed
 
 // Sin buscador, lo proyectado (la preferencia de Novedades) va a la derecha, donde iría el buscador.
 .listado-cabecera--sin-buscador .listado-cabecera__acciones
@@ -94,7 +138,7 @@
         padding: 8px 12px
 
     .listado-cabecera__titulo
-        font-size: 17px
+        font-size: calc(var(--rol-tamano-titulo-listado) - 3px)
 
     .listado-cabecera__buscar
         order: 5

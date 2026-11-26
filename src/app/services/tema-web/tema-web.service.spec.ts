@@ -32,7 +32,7 @@ describe('TemaWebService', () => {
     let sesion: jasmine.SpyObj<PlatformSessionService> & { estado$: BehaviorSubject<EstadoPlataforma> };
     let servicio: TemaWebService;
     const raiz = document.documentElement;
-    const atributos = ['tema', 'modo', 'iconos', 'theme'];
+    const atributos = ['tema', 'modo', 'iconos', 'marco', 'menu', 'theme'];
     let antes: Record<string, string | undefined>;
 
     function crear(): TemaWebService {
@@ -66,13 +66,21 @@ describe('TemaWebService', () => {
     it('apagados en el entorno (producción hasta terminar los tres): A en oscuro, sin leer nada ni bienvenida', () => {
         localStorage.setItem('rol.tema.ultimo', 'b');
         raiz.dataset['iconos'] = 'criterio';
+        raiz.dataset['marco'] = 'plano';
+        raiz.dataset['menu'] = 'catalogo';
         servicio = new TemaWebService(sesion, new NgZone({ enableLongStackTrace: false }), document, false);
+        const menus: string[] = [];
+        servicio.menuLateral$.subscribe((menu) => menus.push(menu));
         estado$.next({ tipo: 'con_sesion', cuenta: { id: 'cuenta-1' } } as unknown as EstadoPlataforma);
         expect(servicio.activos).toBeFalse();
         expect(raiz.dataset['tema']).toBe('a');
         expect(raiz.dataset['modo']).toBe('oscuro');
         // Sin política de iconos: se pintan todos, como antes de los temas.
         expect(raiz.dataset['iconos']).toBeUndefined();
+        // Ni marco ni menú de tema: el menú de siempre.
+        expect(raiz.dataset['marco']).toBeUndefined();
+        expect(raiz.dataset['menu']).toBeUndefined();
+        expect(menus).toEqual(['accion']);
         expect(servicio.estado.bienvenida).toBe('no');
         expect(sesion.leerAjustes).not.toHaveBeenCalled();
     });
@@ -275,6 +283,29 @@ describe('TemaWebService', () => {
         expect(localStorage.getItem(CLAVE_TEMA_ULTIMO)).toBe('a');
         servicio.deshacerVistaPrevia();
         expect(raiz.dataset['tema']).toBe('a');
+    });
+
+    it('B es plano y con el menú por catálogo; A y C, con relieve y el menú por acción (fase 4)', () => {
+        crear();
+        expect(raiz.dataset['marco']).toBe('relieve');
+        expect(raiz.dataset['menu']).toBe('accion');
+        servicio.previsualizar('b');
+        expect(raiz.dataset['marco']).toBe('plano');
+        expect(raiz.dataset['menu']).toBe('catalogo');
+        servicio.previsualizar('c');
+        expect(raiz.dataset['marco']).toBe('relieve');
+        expect(raiz.dataset['menu']).toBe('accion');
+    });
+
+    it('el menú lateral sigue al tema pintado, también en la vista previa, sin repetirse', async () => {
+        crear();
+        const menus: string[] = [];
+        servicio.menuLateral$.subscribe((menu) => menus.push(menu));
+        servicio.previsualizar('b');
+        servicio.previsualizar('b');
+        servicio.deshacerVistaPrevia();
+        await servicio.elegirTema('b');
+        expect(menus).toEqual(['accion', 'catalogo', 'accion', 'catalogo']);
     });
 });
 

@@ -13,11 +13,11 @@ import { puedeGestionarListado } from 'src/app/services/utils/permisos-catalogo'
 import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
 import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
 import { MisCampanasService } from 'src/app/services/mis-campanas.service';
+import { GRUPOS_DE_CATALOGOS, GrupoCatalogos } from 'src/app/services/utils/catalogos-del-menu';
+import { nuevoPersonajeDeshabilitado, pedirNuevoPersonaje } from 'src/app/services/utils/nuevo-personaje';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type OperacionCatalogo = 'insertar' | 'modificar';
-type GrupoOtros = 'equipo' | 'rasgos' | 'mundo';
-type PermissionAction = 'create' | 'update';
 
 interface OpcionOtros {
     readonly etiqueta: string;
@@ -28,7 +28,7 @@ interface OpcionOtros {
 }
 
 interface GrupoMenuOtros {
-    readonly id: GrupoOtros;
+    readonly id: GrupoCatalogos;
     readonly titulo: string;
     readonly opciones: readonly OpcionOtros[];
 }
@@ -48,86 +48,14 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     @ViewChildren(CdkMenuTrigger) triggersOtros?: QueryList<CdkMenuTrigger>;
 
     usr: string = 'Invitado';
-    /** Los mismos grupos en los tres menús: todo lo que tiene detalle tendrá también inserción y modificación. */
+    /**
+     * Los mismos grupos en los tres menús (`GRUPOS_DE_CATALOGOS`, los mismos del menú por catálogo de B): todo lo que tiene
+     * detalle tendrá también inserción y modificación.
+     */
     readonly gruposOtros: Readonly<Record<SeccionOtros, readonly GrupoMenuOtros[]>> = {
-        insertar: [
-            this.grupo('equipo', 'Equipo', [
-                this.opcion('armas', 'insertar'),
-                this.opcion('armaduras', 'insertar'),
-                this.opcion('munición', 'insertar'),
-                this.opcion('materiales especiales', 'insertar'),
-                this.opcion('aptitudes de armas y armaduras', 'insertar'),
-                this.opcion('objetos', 'insertar'),
-                this.opcion('conjuntos de objetos', 'insertar'),
-            ]),
-            this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.opcion('especiales', 'insertar'),
-                this.opcion('raciales', 'insertar'),
-                this.opcion('rasgos', 'insertar'),
-                this.opcion('idiomas', 'insertar'),
-                this.opcion('ventajas', 'insertar'),
-                this.opcion('fusiones del alma', 'insertar'),
-                this.opcion('chakras', 'insertar'),
-            ]),
-            this.grupo('mundo', 'Criaturas y mundo', [
-                this.opcion('tipos de criatura', 'insertar'),
-                this.opcion('subtipos', 'insertar'),
-                this.opcion('deidades', 'insertar'),
-                this.opcion('manuales', 'insertar'),
-            ]),
-        ],
-        modificar: [
-            this.grupo('equipo', 'Equipo', [
-                this.opcion('armas', 'modificar'),
-                this.opcion('armaduras', 'modificar'),
-                this.opcion('munición', 'modificar'),
-                this.opcion('materiales especiales', 'modificar'),
-                this.opcion('aptitudes de armas y armaduras', 'modificar'),
-                this.opcion('objetos', 'modificar'),
-                this.opcion('conjuntos de objetos', 'modificar'),
-            ]),
-            this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.opcion('especiales', 'modificar'),
-                this.opcion('raciales', 'modificar'),
-                this.opcion('rasgos', 'modificar'),
-                this.opcion('idiomas', 'modificar'),
-                this.opcion('ventajas', 'modificar'),
-                this.opcion('fusiones del alma', 'modificar'),
-                this.opcion('chakras', 'modificar'),
-            ]),
-            this.grupo('mundo', 'Criaturas y mundo', [
-                this.opcion('tipos de criatura', 'modificar'),
-                this.opcion('subtipos', 'modificar'),
-                this.opcion('deidades', 'modificar'),
-                this.opcion('manuales', 'modificar'),
-            ]),
-        ],
-        detalles: [
-            this.grupo('equipo', 'Equipo', [
-                this.detalle('armas'),
-                this.detalle('armaduras'),
-                this.detalle('munición'),
-                this.detalle('materiales especiales'),
-                this.detalle('aptitudes de armas y armaduras'),
-                this.detalle('objetos'),
-                this.detalle('conjuntos de objetos'),
-            ]),
-            this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.detalle('especiales'),
-                this.detalle('raciales'),
-                this.detalle('rasgos'),
-                this.detalle('idiomas'),
-                this.detalle('ventajas'),
-                this.detalle('fusiones del alma'),
-                this.detalle('chakras'),
-            ]),
-            this.grupo('mundo', 'Criaturas y mundo', [
-                this.detalle('tipos de criatura'),
-                this.detalle('subtipos'),
-                this.detalle('deidades'),
-                this.detalle('manuales'),
-            ]),
-        ],
+        insertar: GRUPOS_DE_CATALOGOS.map((g) => this.grupo(g.id, g.titulo, g.listas.map((lista) => this.opcion(lista, 'insertar')))),
+        modificar: GRUPOS_DE_CATALOGOS.map((g) => this.grupo(g.id, g.titulo, g.listas.map((lista) => this.opcion(lista, 'modificar')))),
+        detalles: GRUPOS_DE_CATALOGOS.map((g) => this.grupo(g.id, g.titulo, g.listas.map((lista) => this.detalle(lista)))),
     };
     readonly posicionesOtros: ConnectedPosition[] = [
         { originX: 'end', overlayX: 'start', originY: 'top', overlayY: 'top', offsetX: 4 },
@@ -180,13 +108,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
     AbrirNuevoPersonaje(): void {
-        if (this.esInvitado) {
-            this.openSesionDialog();
-            return;
-        }
-        if (!this.canCrearPersonajes)
-            return;
-        trasLasNormasDeCreacion(this.usrService, () => this.NuevoPersonajeTab.emit());
+        pedirNuevoPersonaje(this.usrService, () => this.NuevoPersonajeTab.emit());
     }
 
     @Output() ListadoTab: EventEmitter<{ tipo: string, operacion: string }> = new EventEmitter();
@@ -196,10 +118,6 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     get mensajePermisosInsuficientes(): string {
         return this.usrService.getPermissionDeniedMessage();
-    }
-
-    canGestionar(resource: string, action: PermissionAction): boolean {
-        return this.usrService.can(resource, action);
     }
 
     /**
@@ -226,12 +144,8 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return !this.usrService.IsLoggedIn;
     }
 
-    get canCrearPersonajes(): boolean {
-        return this.canGestionar('personajes', 'create');
-    }
-
     get nuevoPersonajeDeshabilitado(): boolean {
-        return !this.esInvitado && !this.canCrearPersonajes;
+        return nuevoPersonajeDeshabilitado(this.usrService);
     }
 
     get tooltipNuevoPersonaje(): string {
@@ -250,7 +164,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return grupo.opciones.some(opcion => opcion.habilitada());
     }
 
-    private grupo(id: GrupoOtros, titulo: string, opciones: OpcionOtros[]): GrupoMenuOtros {
+    private grupo(id: GrupoCatalogos, titulo: string, opciones: OpcionOtros[]): GrupoMenuOtros {
         return { id, titulo, opciones };
     }
 

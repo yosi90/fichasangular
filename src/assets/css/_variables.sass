@@ -25,23 +25,40 @@ $accent: var(--rol-acento)
 // de los tokens de Material, no: se resuelven en `<html>`). En un modo oscuro no cambia nada. Se pone en
 // el elemento con el fondo oscuro, no en uno sin fondo. Sin Material dentro (una cabecera de tabla, un botón),
 // `$material: false`: la hoja pesa menos.
-@mixin zona-oscura($material: true)
-    --rol-texto: var(--rol-zo-texto)
-    --rol-texto-suave: var(--rol-zo-texto-suave)
-    --rol-texto-fuerte: var(--rol-zo-texto-fuerte)
-    --rol-texto-vivo: var(--rol-zo-texto-vivo)
-    --rol-acento: var(--rol-zo-acento)
-    --rol-texto-base: var(--rol-zo-texto-base)
-    --rol-separador: var(--rol-zo-separador)
-    --rol-tinta: var(--rol-zo-tinta)
-    --rol-enlace: var(--rol-zo-enlace)
-    --rol-aviso: var(--rol-zo-aviso)
-    --rol-error-texto: var(--rol-zo-error-texto)
-    --rol-zona-oscura: var(--rol-zo-campo)
-    --rol-activo: var(--rol-zo-activo)
-    --rol-sobre-activo: var(--rol-zo-sobre-activo)
+@mixin zona-oscura($material: true, $prefijo: 'zo')
+    --rol-texto: var(--rol-#{$prefijo}-texto)
+    --rol-texto-suave: var(--rol-#{$prefijo}-texto-suave)
+    --rol-texto-fuerte: var(--rol-#{$prefijo}-texto-fuerte)
+    --rol-texto-vivo: var(--rol-#{$prefijo}-texto-vivo)
+    --rol-acento: var(--rol-#{$prefijo}-acento)
+    --rol-texto-base: var(--rol-#{$prefijo}-texto-base)
+    --rol-separador: var(--rol-#{$prefijo}-separador)
+    --rol-tinta: var(--rol-#{$prefijo}-tinta)
+    --rol-enlace: var(--rol-#{$prefijo}-enlace)
+    --rol-aviso: var(--rol-#{$prefijo}-aviso)
+    --rol-error-texto: var(--rol-#{$prefijo}-error-texto)
+    --rol-zona-oscura: var(--rol-#{$prefijo}-campo)
+    --rol-activo: var(--rol-#{$prefijo}-activo)
+    --rol-sobre-activo: var(--rol-#{$prefijo}-sobre-activo)
     @if $material
         @include _zona-oscura-material
+
+// Lo que es oscuro en todos los temas y modos, con su fondo propio (los avisos, las burbujas flotantes, el generador de
+// características): los textos del oscuro del tema (`--rol-so-*`). En A y C son los de `zona-oscura`; en B claro, que no
+// tiene zonas oscuras en el marco, los de B en oscuro.
+@mixin siempre-oscura($material: true)
+    @include zona-oscura($material, 'so')
+
+// Lo que un tema de marco plano (B, `data-marco="plano"` en `<html>`) cambia de forma y no se puede decir con un valor:
+// sin pozos ni márgenes, la cinta de 44 px con el buscador ancho, las cabeceras sin esquinas. Con los demás temas, o con
+// los temas apagados, no se aplica. En las hojas sin encapsular, `$global: true`.
+@mixin marco-plano($global: false)
+    @if $global
+        html[data-marco="plano"] &
+            @content
+    @else
+        :host-context(html[data-marco="plano"]) &
+            @content
 
 // Lo de Angular Material que más va en las zonas oscuras: sus textos, como en A oscuro (el blanco y el blanco al 70 %).
 @mixin _zona-oscura-material

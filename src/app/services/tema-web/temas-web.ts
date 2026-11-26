@@ -9,6 +9,10 @@ export type ModoWeb = 'sistema' | 'claro' | 'oscuro';
 export type ModoEfectivo = 'claro' | 'oscuro';
 /** Qué papeles de icono pinta el tema (fase 1 del roadmap): A y C, «con criterio»; B, «mínimos». */
 export type PoliticaIconos = 'criterio' | 'minimos';
+/** El marco (fase 4): A y C, con el borde 3D (pozos, sombras y márgenes); B, plano, con líneas que separan. */
+export type MarcoWeb = 'relieve' | 'plano';
+/** El menú lateral (fase 4): A y C, el de siempre, por acción (Insertar, Modificar, Detalles); B, por catálogo. */
+export type MenuLateral = 'accion' | 'catalogo';
 
 export interface DefinicionTemaWeb {
     id: TemaWeb;
@@ -16,10 +20,13 @@ export interface DefinicionTemaWeb {
     etiqueta: string;
     descripcion: string;
     iconos: PoliticaIconos;
+    /** `data-marco` en `<html>`: lo que cambia de forma, no de color (`marco-plano` en `_variables.sass`). */
+    marco: MarcoWeb;
+    /** `data-menu` en `<html>`, y qué menú lateral carga el marco (`TemaWebService.menuLateral$`). */
+    menu: MenuLateral;
     /**
      * Si su claro ya está hecho. Mientras no, el modo efectivo del tema es el oscuro aunque se elija claro o el sistema
-     * sea claro. Desde la fase 2, los tres: el de A, completo, y los de B y C, de sus valores básicos (sus piezas propias
-     * llegan en las fases 3 y 4).
+     * sea claro. Los tres, completos (A desde la fase 2, C desde la 3 y B desde la 4).
      */
     claroListo: boolean;
 }
@@ -28,9 +35,9 @@ export const TEMA_POR_DEFECTO: TemaWeb = 'a';
 export const MODO_POR_DEFECTO: ModoWeb = 'sistema';
 
 export const TEMAS_WEB: readonly DefinicionTemaWeb[] = [
-    { id: 'a', etiqueta: 'A · Clásico', descripcion: 'La web de siempre: pizarra, rosa y el borde 3D.', iconos: 'criterio', claroListo: true },
-    { id: 'b', etiqueta: 'B · Tinta', descripcion: 'Plana y tipográfica: líneas finas y el nombre manda.', iconos: 'minimos', claroListo: true },
-    { id: 'c', etiqueta: 'C · Manual', descripcion: 'El marco de siempre con papel, tinta y granate.', iconos: 'criterio', claroListo: true },
+    { id: 'a', etiqueta: 'A · Clásico', descripcion: 'La web de siempre: pizarra, rosa y el borde 3D.', iconos: 'criterio', marco: 'relieve', menu: 'accion', claroListo: true },
+    { id: 'b', etiqueta: 'B · Tinta', descripcion: 'Plana y tipográfica: líneas finas y el nombre manda.', iconos: 'minimos', marco: 'plano', menu: 'catalogo', claroListo: true },
+    { id: 'c', etiqueta: 'C · Manual', descripcion: 'El marco de siempre con papel, tinta y granate.', iconos: 'criterio', marco: 'relieve', menu: 'accion', claroListo: true },
 ];
 
 export const MODOS_WEB: readonly { id: ModoWeb; etiqueta: string }[] = [

@@ -50,6 +50,7 @@ import { UserProfileNavigationService } from 'src/app/services/user-profile-navi
 import { NuevaRazaComponent } from '../../shared/nueva-raza/nueva-raza.component';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../../shared/insercion-marco/editor-de-catalogo';
 import { EDICIONES_CATALOGO, EdicionCatalogoTab, INSERCIONES_CATALOGO, TIPOS_EDICION, TipoEdicion, claveEdicion, edicionesVacias, tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
@@ -59,7 +60,7 @@ import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEqui
 import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { AyudaSolicitud } from 'src/app/interfaces/ayuda';
-import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { AperturaRol, CLAVE_PESTANA_DADOS, CLAVE_PESTANA_PERSONAJES, NavegacionRolService, claveDePestanaListado } from 'src/app/services/navegacion-rol.service';
 import { NovedadesService } from 'src/app/services/novedades.service';
 import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
@@ -207,13 +208,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
     /** Las pestañas de «Modificar» abiertas, por catálogo (`catalogos-editables.ts`). */
     public ediciones: Record<TipoEdicion, EdicionCatalogoTab[]> = edicionesVacias();
     private readonly TAB_NOVEDADES = 'base:novedades';
-    private readonly TAB_PERSONAJES = 'base:personajes';
+    private readonly TAB_PERSONAJES = CLAVE_PESTANA_PERSONAJES;
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_SOCIAL = 'base:social';
     private readonly TAB_AYUDA = 'base:ayuda';
-    private readonly TAB_DADOS = 'base:dados';
+    private readonly TAB_DADOS = CLAVE_PESTANA_DADOS;
     private readonly TAB_NUEVO = 'base:nuevo';
-    private activeTabKey: string = this.TAB_PERSONAJES;
+    private claveActiva: string = this.TAB_PERSONAJES;
+    /** La pestaña que se está viendo; al cambiar, se anuncia (el menú por catálogo de B marca su entrada). */
+    private get activeTabKey(): string {
+        return this.claveActiva;
+    }
+    private set activeTabKey(clave: string) {
+        this.claveActiva = clave;
+        this.navegacionRolSvc?.anunciarPestanaActiva(clave);
+    }
     private openerByTab = new Map<string, string>();
     private readonly destroy$ = new Subject<void>();
 
@@ -1137,6 +1146,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
     /** Si la inserción de un listado ya tiene pantalla (si no, «Insertar» abre su listado). */
     readonly tieneInsercion = tieneInsercion;
 
+    /**
+     * «Modificar» en los detalles que no lo tenían (especiales, raciales e idiomas): solo con el menú por catálogo (B,
+     * `data-menu="catalogo"`), donde no está «Modificar» del menú de siempre, y con permiso para ese catálogo. En A y C
+     * se siguen modificando desde el menú, como antes.
+     */
+    modificableSoloEnElDetalle(lista: string): boolean {
+        return document.documentElement.dataset['menu'] === 'catalogo' && puedeGestionarCatalogo(this.usrSvc, lista);
+    }
+
     /** El nombre completo de una pestaña de «Modificar» («Editar racial: Alas»): su `label` y su tooltip. */
     etiquetaEdicion(tab: EdicionCatalogoTab): string {
         return EDICIONES_CATALOGO[tab.tipo].etiqueta(tab.nombre);
@@ -1297,9 +1315,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private getListadoTabKey(tipo: string, operacion: string): string {
-        const tipoKey = normalizarTexto(tipo).replace(/\s+/g, '-');
-        const operacionKey = normalizarTexto(operacion).replace(/\s+/g, '-');
-        return `listado:${operacionKey}:${tipoKey}`;
+        return claveDePestanaListado(tipo, operacion);
     }
 
     private getListadoTabByKey(key: string): ListadoTabAbierto | undefined {
@@ -2655,6 +2671,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDados();
         else if (apertura.clase === 'novedades')
             this.abrirNovedades();
+        else if (apertura.clase === 'personajes')
+            this.selectTabByKey(this.TAB_PERSONAJES);
+        else if (apertura.clase === 'insercion')
+            this.abrirListadoTab(apertura.lista, 'insertar');
         else
             this.abrirListadoTab(apertura.lista, 'detalles', apertura.texto);
     }

@@ -10,7 +10,9 @@
                 <mat-icon>close</mat-icon>
             </button>
         </div>
-        <app-base-menu #menu (NuevoPersonajeTab)="AbrirNuevoPersonaje()" (ListadoTab)="abrirListado($event)"></app-base-menu>
+        <!-- El menú del tema: por acción (A y C) o por catálogo (B, cargado bajo demanda). -->
+        <app-base-menu *ngIf="menuLateral === 'accion'" (NuevoPersonajeTab)="AbrirNuevoPersonaje()" (ListadoTab)="abrirListado($event)"></app-base-menu>
+        <ng-container *ngIf="menuLateral === 'catalogo' && menuCatalogo" [ngComponentOutlet]="menuCatalogo" [ngComponentOutletInjector]="injectorMenu"></ng-container>
     </mat-sidenav>
     <mat-sidenav-content class="marco__contenido">
         <mat-card id="base">
@@ -21,7 +23,7 @@
                 [ListadoTabTipo]="TipoListado"
                 [ListadoTabOperacion]="OperacionListado"
                 (CerrarListadoTab)="CerrarListado()"
-                (NuevoPersonajeSolicitado)="menu.AbrirNuevoPersonaje()">
+                (NuevoPersonajeSolicitado)="solicitarNuevoPersonaje()">
             </app-tab-control>
         </mat-card>
     </mat-sidenav-content>

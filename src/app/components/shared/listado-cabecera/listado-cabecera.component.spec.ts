@@ -1,8 +1,14 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { BehaviorSubject } from 'rxjs';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { TemaWebService } from 'src/app/services/tema-web/tema-web.service';
+import { MenuLateral } from 'src/app/services/tema-web/temas-web';
+import { UserService } from 'src/app/services/user.service';
 import { IconoRolComponent } from '../icono-rol/icono-rol.component';
-import { ListadoCabeceraComponent } from './listado-cabecera.component';
+import { CONTEXTO_DE_LISTADO, ListadoCabeceraComponent } from './listado-cabecera.component';
 
 @Component({
     template: `<app-listado-cabecera icono="personaje" titulo="Personajes" [total]="total" [texto]="texto" (textoChange)="escrito.push($event)"
@@ -116,5 +122,105 @@ describe('ListadoCabeceraComponent', () => {
             else
                 html.dataset['modo'] = antesModo;
         }
+    });
+
+    // B (fase 4): sin fondo ni sombra, el título más grande y la línea fina debajo.
+    it('en B va sin fondo, con la línea fina debajo y el título en Literata más grande', () => {
+        const html = document.documentElement;
+        const antes = { tema: html.dataset['tema'], modo: html.dataset['modo'], marco: html.dataset['marco'] };
+        const estilo = (selector: string) => getComputedStyle(elemento().querySelector(selector) as HTMLElement);
+        try {
+            html.dataset['tema'] = 'b';
+            html.dataset['modo'] = 'oscuro';
+            html.dataset['marco'] = 'plano';
+            expect(estilo('.listado-cabecera').backgroundColor).toBe('rgba(0, 0, 0, 0)');
+            expect(estilo('.listado-cabecera').boxShadow).toBe('none');
+            expect(estilo('.listado-cabecera').borderBottomWidth).toBe('1px');
+            expect(estilo('.listado-cabecera').borderBottomColor).toBe('rgb(46, 42, 55)');
+            expect(estilo('.listado-cabecera__titulo').fontFamily).toContain('Literata');
+            expect(estilo('.listado-cabecera__titulo').fontSize).toBe('26px');
+            html.dataset['tema'] = 'a';
+            delete html.dataset['marco'];
+            expect(estilo('.listado-cabecera').borderBottomWidth).toBe('0px');
+            expect(estilo('.listado-cabecera__titulo').fontSize).toBe('20px');
+        } finally {
+            (['tema', 'modo', 'marco'] as const).forEach((clave) => {
+                if (antes[clave] === undefined)
+                    delete html.dataset[clave];
+                else
+                    html.dataset[clave] = antes[clave]!;
+            });
+        }
+    });
+
+    it('fuera de un listado de catálogo no lleva «Nueva …» ni pide el tema', () => {
+        expect(elemento().querySelector('.listado-cabecera__nueva')).toBeNull();
+    });
+});
+
+describe('ListadoCabeceraComponent en un listado de catálogo («Nueva …» de B)', () => {
+    let fixture: ComponentFixture<ListadoDotesFalsoComponent>;
+    let menu: BehaviorSubject<MenuLateral>;
+    let usuario: { can: jasmine.Spy; getPermissionDeniedMessage: jasmine.Spy; normasDeCreacionPendientes: boolean; asegurarNormasDeCreacion: jasmine.Spy; };
+    let navegacion: jasmine.SpyObj<NavegacionRolService>;
+    const boton = (): HTMLButtonElement | null => fixture.nativeElement.querySelector('.listado-cabecera__nueva-boton');
+
+    @Component({
+        template: `<app-listado-cabecera icono="dote" titulo="Dotes"><button type="button" class="filtros">F</button></app-listado-cabecera>`,
+        providers: [{ provide: CONTEXTO_DE_LISTADO, useValue: { tipoLista: 'dotes' } }],
+        standalone: false
+    })
+    class ListadoDotesFalsoComponent { }
+
+    beforeEach(async () => {
+        menu = new BehaviorSubject<MenuLateral>('accion');
+        usuario = {
+            can: jasmine.createSpy('can').and.returnValue(true),
+            getPermissionDeniedMessage: jasmine.createSpy().and.returnValue('Sin permisos suficientes.'),
+            normasDeCreacionPendientes: false,
+            asegurarNormasDeCreacion: jasmine.createSpy('asegurarNormasDeCreacion').and.resolveTo(true),
+        };
+        navegacion = jasmine.createSpyObj<NavegacionRolService>('NavegacionRolService', ['abrir']);
+        await TestBed.configureTestingModule({
+            declarations: [ListadoDotesFalsoComponent, ListadoCabeceraComponent, IconoRolComponent],
+            imports: [MatIconModule, MatTooltipModule],
+            providers: [
+                { provide: TemaWebService, useValue: { menuLateral$: menu } },
+                { provide: UserService, useValue: usuario },
+                { provide: NavegacionRolService, useValue: navegacion },
+            ],
+        }).compileComponents();
+        fixture = TestBed.createComponent(ListadoDotesFalsoComponent);
+        fixture.detectChanges();
+    });
+
+    it('con el menú por acción (A y C) no lleva «Nueva …»: está en Insertar del menú', () => {
+        expect(boton()).toBeNull();
+    });
+
+    it('con el menú por catálogo (B), «Nueva dote» antes de los filtros, y abre su inserción', () => {
+        menu.next('catalogo');
+        fixture.detectChanges();
+        expect(boton()?.textContent?.trim()).toBe('Nueva dote');
+        const acciones = fixture.nativeElement.querySelector('.listado-cabecera__acciones') as HTMLElement;
+        expect(acciones.firstElementChild?.classList).toContain('listado-cabecera__nueva');
+        boton()!.click();
+        expect(navegacion.abrir).toHaveBeenCalledOnceWith({ clase: 'insercion', lista: 'dotes' });
+    });
+
+    it('sin permiso, desactivado y con el aviso de permisos; las normas pendientes se piden antes de abrir', async () => {
+        menu.next('catalogo');
+        usuario.can.and.returnValue(false);
+        fixture.detectChanges();
+        expect(boton()!.disabled).toBeTrue();
+        usuario.can.and.returnValue(true);
+        usuario.normasDeCreacionPendientes = true;
+        fixture.detectChanges();
+        boton()!.click();
+        expect(usuario.asegurarNormasDeCreacion).toHaveBeenCalled();
+        expect(navegacion.abrir).not.toHaveBeenCalled();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(navegacion.abrir).toHaveBeenCalledWith({ clase: 'insercion', lista: 'dotes' });
     });
 });

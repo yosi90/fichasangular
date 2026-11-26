@@ -1,7 +1,21 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, InjectionToken, Injector, Input, OnInit, Output, inject } from '@angular/core';
+import { Observable, map, of } from 'rxjs';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { TemaWebService } from 'src/app/services/tema-web/tema-web.service';
+import { UserService } from 'src/app/services/user.service';
+import { INSERCIONES_CATALOGO, tieneInsercion } from 'src/app/services/utils/catalogos-editables';
 import { TipoRol } from 'src/app/services/utils/iconos-rol';
+import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
+import { puedeGestionarListado } from 'src/app/services/utils/permisos-catalogo';
 
 let siguienteId = 0;
+
+/** El listado de catálogo en el que va la cabecera (lo da `ListadoComponent`): su lista («dotes», «munición»…). */
+export interface ContextoDeListado {
+    readonly tipoLista: string;
+}
+
+export const CONTEXTO_DE_LISTADO = new InjectionToken<ContextoDeListado>('CONTEXTO_DE_LISTADO');
 
 /**
  * Un listado cuyo buscador rápido se puede poner desde fuera (`ListadoComponent`, con el texto de «Ver los N en el
@@ -23,6 +37,10 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
  * propia línea. Una pantalla que no es un listado (los dados, las novedades) la usa con `subtitulo` y sin buscador; sin
  * buscador, lo proyectado va a la derecha. Si la pantalla no es un elemento de rol, lleva un icono de Material
  * (`iconoMaterial`) en vez del de `ICONOS_ROL`.
+ *
+ * Con el menú por catálogo (B), la cabecera de un listado de catálogo lleva también «Nueva …» (la inserción de esa
+ * lista, `INSERCIONES_CATALOGO`), antes de los filtros: es donde B pone «Insertar» del menú de siempre. Sin permiso,
+ * desactivado con el aviso de permisos; antes de abrir, las normas de Rol.
  */
 @Component({
     selector: 'app-listado-cabecera',
@@ -43,12 +61,17 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
                 <input type="search" [id]="idCampo" [placeholder]="placeholder" [value]="texto" autocomplete="off"
                     (input)="alEscribir($any($event.target).value)">
             </div>
-            <div class="listado-cabecera__acciones"><ng-content></ng-content></div>
+            <div class="listado-cabecera__acciones">
+                <span class="listado-cabecera__nueva" *ngIf="nueva$ | async" [matTooltip]="mensajePermisos" [matTooltipDisabled]="puedeInsertar">
+                    <button type="button" class="listado-cabecera__nueva-boton" [disabled]="!puedeInsertar" (click)="abrirNueva()">{{etiquetaNueva}}</button>
+                </span>
+                <ng-content></ng-content>
+            </div>
         </header>`,
     styleUrls: ['./listado-cabecera.component.sass'],
     standalone: false
 })
-export class ListadoCabeceraComponent {
+export class ListadoCabeceraComponent implements OnInit {
     /** El icono del catálogo; sin él, el de Material de `iconoMaterial` (Novedades). */
     @Input() icono: TipoRol | null = null;
     @Input() iconoMaterial = '';
@@ -66,6 +89,40 @@ export class ListadoCabeceraComponent {
     @Output() textoChange = new EventEmitter<string>();
 
     readonly idCampo = `listado-cabecera-buscar-${++siguienteId}`;
+
+    private readonly contexto = inject(CONTEXTO_DE_LISTADO, { optional: true });
+    private readonly injector = inject(Injector);
+    /** Si va «Nueva …»: en un listado de catálogo con inserción y con el menú por catálogo (B). */
+    nueva$: Observable<boolean> = of(false);
+    etiquetaNueva = '';
+
+    ngOnInit(): void {
+        const lista = this.contexto?.tipoLista ?? '';
+        if (!tieneInsercion(lista))
+            return;
+        // Solo en un listado de catálogo se piden el tema y la cuenta: las demás cabeceras (Dados, Novedades) no los usan.
+        this.etiquetaNueva = INSERCIONES_CATALOGO[lista];
+        this.nueva$ = this.injector.get(TemaWebService).menuLateral$.pipe(map((menu) => menu === 'catalogo'));
+    }
+
+    private get usuario(): UserService {
+        return this.injector.get(UserService);
+    }
+
+    get puedeInsertar(): boolean {
+        return puedeGestionarListado(this.usuario, this.contexto?.tipoLista ?? '');
+    }
+
+    get mensajePermisos(): string {
+        return this.puedeInsertar ? '' : this.usuario.getPermissionDeniedMessage();
+    }
+
+    abrirNueva(): void {
+        const lista = this.contexto?.tipoLista ?? '';
+        if (!this.puedeInsertar)
+            return;
+        trasLasNormasDeCreacion(this.usuario, () => this.injector.get(NavegacionRolService).abrir({ clase: 'insercion', lista }));
+    }
 
     alEscribir(texto: string): void {
         this.texto = texto;

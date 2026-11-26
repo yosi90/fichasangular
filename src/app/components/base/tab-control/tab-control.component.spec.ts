@@ -38,7 +38,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; userProfi
     } as any;
     const pSvc = overrides?.pSvc ?? {} as any;
     const puertaSubida = new SubidaNivelPuertaService();
-    const navegacionRolSvc = { aperturas$: new Subject<any>() } as any;
+    const navegacionRolSvc = { aperturas$: new Subject<any>(), anunciarPestanaActiva: jasmine.createSpy('anunciarPestanaActiva') } as any;
     const userProfileNavSvc = overrides?.userProfileNavSvc ?? {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
@@ -980,5 +980,51 @@ describe('TabControlComponent navegación por origen', () => {
         component.abrirListadoTab('dotes', 'detalles', 'toque');
         expect(component.listadoTabsAbiertos.length).toBe(1);
         expect(component.listadoTabsAbiertos[0].texto).toBe('toque');
+    });
+
+    it('el menú por catálogo (B) va a Personajes y «Nueva …» de un listado abre su inserción', () => {
+        const component = crearComponente();
+        const seleccionar = spyOn(component as any, 'selectTabByKey');
+        const listado = spyOn(component, 'abrirListadoTab');
+
+        component.abrirDesdeNavegacion({ clase: 'personajes' });
+        component.abrirDesdeNavegacion({ clase: 'insercion', lista: 'munición' });
+
+        expect(seleccionar).toHaveBeenCalledWith('base:personajes');
+        expect(listado).toHaveBeenCalledOnceWith('munición', 'insertar');
+    });
+
+    it('anuncia la pestaña que se ve, para que el menú por catálogo marque su entrada', () => {
+        const component = crearComponente();
+        const anunciar = (component as any).__navegacionRolSvc.anunciarPestanaActiva as jasmine.Spy;
+        anunciar.calls.reset();
+
+        component.onTabChange({ index: 0 });
+
+        expect(anunciar).toHaveBeenCalledWith('base:personajes');
+    });
+
+    it('«Modificar» en el detalle de especiales, raciales e idiomas: solo con el menú por catálogo y con permiso', () => {
+        const component = crearComponente();
+        const usuario = (component as any).__userSvc;
+        const raiz = document.documentElement;
+        const antes = raiz.dataset['menu'];
+        usuario.can = jasmine.createSpy('can').and.returnValue(true);
+        try {
+            delete raiz.dataset['menu'];
+            expect(component.modificableSoloEnElDetalle('idiomas')).toBeFalse();
+            raiz.dataset['menu'] = 'accion';
+            expect(component.modificableSoloEnElDetalle('raciales')).toBeFalse();
+            raiz.dataset['menu'] = 'catalogo';
+            expect(component.modificableSoloEnElDetalle('especiales')).toBeTrue();
+            expect(usuario.can).toHaveBeenCalledWith('clases', 'create');
+            usuario.can.and.returnValue(false);
+            expect(component.modificableSoloEnElDetalle('especiales')).toBeFalse();
+        } finally {
+            if (antes === undefined)
+                delete raiz.dataset['menu'];
+            else
+                raiz.dataset['menu'] = antes;
+        }
     });
 });
