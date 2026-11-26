@@ -1,6 +1,5 @@
 import { Component, Inject, OnDestroy, OnInit, Optional } from '@angular/core';
-import { environment } from 'src/environments/environment';
-import { TEMAS_WEB_ACTIVOS } from 'src/app/services/tema-web/tema-web.service';
+import { TEMAS_WEB_ACTIVOS, temasWebDelEntorno } from 'src/app/services/tema-web/tema-web.service';
 import { Subscription } from 'rxjs';
 import { getManualCategorias, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
 import { UserPrivateProfileSectionId } from 'src/app/interfaces/user-account';
@@ -52,7 +51,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         private ventanaTema?: VentanaTemaService,
         @Optional() @Inject(TEMAS_WEB_ACTIVOS) temasWeb: boolean | null = null,
     ) {
-        this.temasWeb = temasWeb ?? !!(environment as { temasWeb?: boolean }).temasWeb;
+        this.temasWeb = temasWeb ?? temasWebDelEntorno();
     }
 
     /** En el móvil, la cinta lleva el botón «Menú», que abre el menú lateral como cajón (vista 10 del lienzo). */
