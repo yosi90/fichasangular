@@ -41,6 +41,12 @@ interface SortilegaRacial {
     standalone: false
 })
 export class DetallesRacialComponent {
+    /**
+     * «Modificar» en la cabecera (desde las pestañas, con permiso): en B, que no tiene «Modificar» en el menú, es por
+     * donde se edita este catálogo.
+     */
+    @Input() modificable = false;
+    @Output() modificar = new EventEmitter<RacialDetalle>();
     private racialActual!: RacialDetalle;
     /** Los prerrequisitos (raza y característica) con la frase de la API, agrupados por `Opcional`. */
     prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];

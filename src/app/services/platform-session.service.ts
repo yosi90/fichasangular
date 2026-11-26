@@ -442,7 +442,7 @@ export class PlatformSessionService {
             script.src = environment.plataforma.sdkUrl;
             // El aspecto de Rol para lo que pinta el SDK, también en sus ventanas (ecosistema-kit/ESTILOS.md).
             // Se sirve con `no-cache` (firebase.json); la versión fuerza a pedirla de nuevo a quien la guardó antes.
-            script.dataset['estilos'] = '/assets/yosiftware.css?v=2';
+            script.dataset['estilos'] = '/assets/yosiftware.css?v=3';
             // Las normas de Rol solo cuentan para crear: el SDK no las enseña al entrar y la web las pide al pulsar crear
             // (`normasDeLaWeb`, SDK 1.31). El estado y el token siguen diciendo si faltan.
             script.dataset['normas'] = 'al-crear';

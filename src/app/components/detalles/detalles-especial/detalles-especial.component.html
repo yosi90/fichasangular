@@ -3,7 +3,8 @@
         tipo="Especial de clase"
         [nombre]="especial.Nombre"
         [oficial]="especial.Oficial"
-        [etiquetas]="etiquetas">
+        [etiquetas]="etiquetas"
+        [modificable]="modificable" (modificar)="modificar.emit(especial)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos del especial"></app-ficha-datos>

@@ -48,13 +48,14 @@ $ficha-sombra: var(--rol-sombra)
 @mixin ficha-cabecera
     @include zona-oscura
     background: var(--rol-cabecera)
-    border-radius: $ficha-radio
+    border-radius: var(--rol-radio-cabecera)
     @include cabecera-raya
-    box-shadow: $ficha-sombra
+    box-shadow: var(--rol-cabecera-sombra)
 
-// La raya inferior de las cabeceras: 3px del color y el estilo del tema (`solid` en A; `double`, el filete, en C).
+// La raya inferior de las cabeceras: el grosor, el color y el estilo del tema (3 px `solid` en A; `double`, el filete,
+// en C; en B, la línea fina que separa).
 @mixin cabecera-raya
-    border-bottom: 3px var(--rol-cabecera-raya-estilo) var(--rol-cabecera-raya)
+    border-bottom: var(--rol-cabecera-raya-grosor) var(--rol-cabecera-raya-estilo) var(--rol-cabecera-raya)
 
 // El nombre de lo que enseña una cabecera (la ficha, la creación, una inserción, un listado): la letra y el peso de los
 // nombres del tema (Roboto 500 en A; Literata 600 en C). Cada uno pone su tamaño.

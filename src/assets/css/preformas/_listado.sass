@@ -52,7 +52,8 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
         @include ficha-versalitas($interlineado: null, $margen: null)
         @include ficha-tabla-cabecera
         white-space: nowrap
-        border-bottom: 0
+        // En A, ninguna línea (las filas alternan); en B, la fina que separa (`--rol-fila-linea`).
+        border-bottom: var(--rol-fila-linea)
 
         // El texto de las cabeceras que ordenan, con las mismas versalitas que las demás.
         ::ng-deep .mat-sort-header-container, ::ng-deep .mat-sort-header-content
@@ -62,7 +63,7 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
     td.mat-mdc-cell
         padding-top: 6px
         padding-bottom: 6px
-        border-bottom: 0
+        border-bottom: var(--rol-fila-linea)
         color: $ficha-texto
         font-size: 14px
         vertical-align: middle
@@ -166,6 +167,10 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
                 border-radius: $ficha-radio
                 background: $ficha-tarjeta
 
+                // B: cada tarjeta con su línea alrededor (la de las filas no va dentro de la tarjeta).
+                @include marco-plano
+                    box-shadow: inset 0 0 0 1px var(--rol-separador)
+
             tr.mat-mdc-no-data-row
                 display: block
 
@@ -177,6 +182,7 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
                 font-size: 13px
                 color: $ficha-texto-suave
                 text-align: left
+                border-bottom: 0
 
                 &:empty
                     display: none

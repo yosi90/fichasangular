@@ -1,11 +1,12 @@
 import { DOCUMENT } from '@angular/common';
 import { Inject, Injectable, InjectionToken, NgZone, OnDestroy, Optional } from '@angular/core';
 import { environment } from 'src/environments/environment';
-import { BehaviorSubject, Subscription, distinctUntilChanged, map } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, distinctUntilChanged, map } from 'rxjs';
 import { EstadoPlataforma, PlatformSessionService } from '../platform-session.service';
 import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from '../utils/preferencia-local';
 import {
     MODO_POR_DEFECTO,
+    MenuLateral,
     ModoEfectivo,
     ModoWeb,
     TEMA_POR_DEFECTO,
@@ -67,9 +68,19 @@ export class TemaWebService implements OnDestroy {
     private readonly consultaOscuro: MediaQueryList | null;
     private cuenta: string | null = null;
     private generacion = 0;
+    /** El tema pintado ahora: el elegido o el de una vista previa (la bienvenida). */
+    private readonly pintadoSubject = new BehaviorSubject<TemaWeb>(TEMA_POR_DEFECTO);
 
     readonly estado$;
     readonly bienvenida$;
+    /**
+     * El menú lateral del tema pintado (también en una vista previa): por catálogo en B, por acción en A y C. Con los
+     * temas apagados, siempre el de siempre. Lo lee el marco para cargar el menú de B bajo demanda.
+     */
+    readonly menuLateral$: Observable<MenuLateral> = this.pintadoSubject.pipe(
+        map((tema) => this.activos ? definicionTema(tema).menu : 'accion'),
+        distinctUntilChanged(),
+    );
 
     constructor(
         private sesion: PlatformSessionService,
@@ -226,14 +237,21 @@ export class TemaWebService implements OnDestroy {
         const modo = this.efectivo(tema, this.estado.modo);
         raiz.dataset['tema'] = tema;
         raiz.dataset['modo'] = modo;
-        // Con los temas apagados, sin política de iconos: la web los pinta todos, como antes (`_papeles-iconos.sass`).
-        if (this.activos)
-            raiz.dataset['iconos'] = definicionTema(tema).iconos;
-        else
+        // Con los temas apagados, sin política de iconos, marco ni menú: la web de antes (`_papeles-iconos.sass`).
+        if (this.activos) {
+            const definicion = definicionTema(tema);
+            raiz.dataset['iconos'] = definicion.iconos;
+            raiz.dataset['marco'] = definicion.marco;
+            raiz.dataset['menu'] = definicion.menu;
+        } else {
             delete raiz.dataset['iconos'];
+            delete raiz.dataset['marco'];
+            delete raiz.dataset['menu'];
+        }
         raiz.dataset['theme'] = modo === 'claro' ? 'light' : 'dark';
         if (tema === this.estado.tema)
             guardarPreferenciaLocal(CLAVE_TEMA_ULTIMO, tema);
+        this.pintadoSubject.next(tema);
     }
 
     private claveLocal(cuenta: string | null): string | null {

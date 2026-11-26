@@ -1,0 +1,44 @@
+<nav class="menu-catalogo" aria-label="Menú de Rol">
+    <span class="menu-catalogo__nuevo-envoltorio" [matTooltip]="tooltipNuevoPersonaje" [matTooltipDisabled]="!nuevoPersonajeDeshabilitado">
+        <button type="button" class="menu-catalogo__nuevo" [disabled]="nuevoPersonajeDeshabilitado" (click)="nuevoPersonaje()">
+            Nuevo personaje
+        </button>
+    </span>
+
+    <span class="menu-catalogo__seccion" id="menu-catalogo-mesa">Tu mesa</span>
+    <ul class="menu-catalogo__lista" aria-labelledby="menu-catalogo-mesa">
+        <li>
+            <button type="button" class="menu-catalogo__entrada" [attr.aria-current]="pestanaActiva === pestanaPersonajes ? 'page' : null"
+                (click)="abrirPersonajes()">Personajes</button>
+        </li>
+        <li *ngIf="misCampanasVisible$ | async">
+            <button type="button" class="menu-catalogo__entrada" (click)="abrirMisCampanas()">Mis campañas</button>
+        </li>
+        <li>
+            <button type="button" class="menu-catalogo__entrada" [attr.aria-current]="pestanaActiva === pestanaDados ? 'page' : null"
+                (click)="abrirDados()">Dados</button>
+        </li>
+    </ul>
+
+    <span class="menu-catalogo__seccion" id="menu-catalogo-biblioteca">Biblioteca</span>
+    <ul class="menu-catalogo__lista" aria-labelledby="menu-catalogo-biblioteca">
+        <li *ngFor="let lista of principales">
+            <button type="button" class="menu-catalogo__entrada" [attr.aria-current]="esActual(lista) ? 'page' : null"
+                (click)="abrirListado(lista)">{{ etiqueta(lista) }}</button>
+        </li>
+        <li *ngFor="let grupo of grupos">
+            <button type="button" class="menu-catalogo__entrada menu-catalogo__grupo" [attr.aria-expanded]="abierto(grupo)"
+                [attr.aria-controls]="'menu-catalogo-' + grupo.id" (click)="alternar(grupo)">
+                <span class="menu-catalogo__grupo-titulo">{{ grupo.titulo }}</span>
+                <span class="menu-catalogo__cuenta"><span class="menu-catalogo__solo-lectores">, </span>{{ grupo.listas.length }}<span class="menu-catalogo__solo-lectores"> catálogos</span></span>
+                <span class="menu-catalogo__flecha" aria-hidden="true"></span>
+            </button>
+            <ul class="menu-catalogo__lista menu-catalogo__sublista" [id]="'menu-catalogo-' + grupo.id" [hidden]="!abierto(grupo)">
+                <li *ngFor="let lista of grupo.listas">
+                    <button type="button" class="menu-catalogo__entrada" [attr.aria-current]="esActual(lista) ? 'page' : null"
+                        (click)="abrirListado(lista)">{{ etiqueta(lista) }}</button>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</nav>

@@ -38,4 +38,19 @@ describe('DetallesIdiomaComponent', () => {
         expect(etiquetasCabecera()).toEqual(['Homebrew']);
         expect(elemento().querySelector('.ficha-titulo')).toBeNull();
     });
+
+    it('sin «Modificar» por defecto; con él (B), la cabecera lo enseña y devuelve el idioma', () => {
+        const idioma = { Id: 4, Nombre: 'Élfico', Descripcion: 'La lengua de los elfos.', Secreto: false, Oficial: true };
+        component.idioma = idioma;
+        fixture.detectChanges();
+        const botonModificar = () => Array.from(elemento().querySelectorAll('button')).find((b) => b.textContent?.includes('Modificar'));
+        expect(botonModificar()).toBeUndefined();
+
+        const emitido: unknown[] = [];
+        component.modificar.subscribe((valor) => emitido.push(valor));
+        component.modificable = true;
+        fixture.detectChanges();
+        botonModificar()!.click();
+        expect(emitido).toEqual([idioma]);
+    });
 });

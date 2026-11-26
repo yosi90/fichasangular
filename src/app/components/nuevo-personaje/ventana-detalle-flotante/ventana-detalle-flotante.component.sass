@@ -30,7 +30,7 @@
 
 .ventana-burbuja
     // La burbuja, la cabecera y sus botones son oscuros en los dos modos, como las burbujas del chat.
-    @include zona-oscura
+    @include siempre-oscura
     width: 100%
     height: 100%
     padding: 0
@@ -68,7 +68,7 @@
     justify-content: space-between
     gap: 10px
     padding: 0 10px 0 14px
-    @include zona-oscura
+    @include siempre-oscura
     background: linear-gradient(180deg, #3b3f45 0%, #34383d 100%)
     border-bottom: 1px solid con-alfa(var(--rol-tinta), .16)
     user-select: none
