@@ -8,9 +8,8 @@ import { CLAVE_PESTANA_DADOS, CLAVE_PESTANA_PERSONAJES, NavegacionRolService, cl
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { CATALOGOS_PRINCIPALES, GRUPOS_DE_CATALOGOS, GrupoCatalogos, GrupoDeCatalogos } from 'src/app/services/utils/catalogos-del-menu';
-import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
-import { tituloListado } from 'src/app/services/utils/iconos-rol';
-import { nuevoPersonajeDeshabilitado } from 'src/app/services/utils/nuevo-personaje';
+import { etiquetaListado } from 'src/app/services/utils/iconos-rol';
+import { avisoNuevoPersonaje, nuevoPersonajeDeshabilitado } from 'src/app/services/utils/nuevo-personaje';
 import { ACCIONES_DEL_MENU, AccionesDelMenu } from './acciones-del-menu';
 
 /**
@@ -73,11 +72,11 @@ export class MenuCatalogoComponent implements OnDestroy {
     }
 
     get tooltipNuevoPersonaje(): string {
-        return this.nuevoPersonajeDeshabilitado ? this.usrService.getPermissionDeniedMessage() : '';
+        return avisoNuevoPersonaje(this.usrService);
     }
 
     etiqueta(lista: string): string {
-        return mayusculaInicial(tituloListado(lista));
+        return etiquetaListado(lista);
     }
 
     /** Si el listado de [lista] es la pestaña que se está viendo. */

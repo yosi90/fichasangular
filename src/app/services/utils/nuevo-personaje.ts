@@ -9,6 +9,11 @@ export function nuevoPersonajeDeshabilitado(usuario: Pick<UserService, 'IsLogged
     return usuario.IsLoggedIn && !usuario.can('personajes', 'create');
 }
 
+/** El aviso del botón «Nuevo personaje» desactivado (el de permisos de la cuenta); activo, ninguno. */
+export function avisoNuevoPersonaje(usuario: Pick<UserService, 'IsLoggedIn' | 'can' | 'getPermissionDeniedMessage'>): string {
+    return nuevoPersonajeDeshabilitado(usuario) ? usuario.getPermissionDeniedMessage() : '';
+}
+
 /**
  * «Nuevo personaje», del menú lateral (los dos) o de la pestaña «Personajes»: sin sesión, el acceso de la plataforma;
  * sin permiso, nada; con él, después de las normas de Rol (`trasLasNormasDeCreacion`), [abrir].
