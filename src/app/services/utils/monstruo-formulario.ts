@@ -11,7 +11,9 @@ import {
     MonstruoEscalaresRequest,
 } from 'src/app/interfaces/monstruo';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
+import { textoConSigno } from './equipo-texto';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
+import { textoVisible } from './texto-visible';
 import { idsUnicosOrdenados, toInt, toIntOrNull, toNumber, toNumberOrNull, toPositiveInt, toText } from './normalizacion';
 
 // El formulario de los monstruos (hito 6 del roadmap de inserciones, 2026-10-31): los pasos, los campos con su etiqueta
@@ -318,7 +320,9 @@ export function listasDesdeMonstruo(monstruo: MonstruoDetalle, uid: () => string
             id_extra: toPositiveInt(item?.Id_extra) ?? ID_EXTRA_HABILIDAD_SIN_EXTRA,
             rangos: toInt(item?.Rangos),
         })).filter(conId),
-        niveles_clase: (monstruo.Niveles_clase ?? []).map((item) => ({
+        // Las filas que abre una aptitud (`Especial`, R8, tanda 1b) no se editan ni se mandan: son de esa aptitud y la API las
+        // conserva (`filasDeAptitudDelMonstruo`). Mandadas como filas normales, la del tejón saldría repetida (`400`).
+        niveles_clase: (monstruo.Niveles_clase ?? []).filter((item) => !item?.Especial).map((item) => ({
             uid: uid(),
             id_clase: toInt(item?.Clase?.Id),
             nivel: toInt(item?.Nivel),
@@ -332,6 +336,21 @@ export function listasDesdeMonstruo(monstruo: MonstruoDetalle, uid: () => string
         alineamientos_familiar: idsUnicosOrdenados((monstruo.Alineamientos_requeridos?.Familiar ?? []).map((item) => item?.Id)),
         alineamientos_companero: idsUnicosOrdenados((monstruo.Alineamientos_requeridos?.Companero ?? []).map((item) => item?.Id)),
     };
+}
+
+/**
+ * Las filas de `Niveles_clase` del monstruo que abre una aptitud (`Especial`; contrato: catalogos.md, «Las mascotas de los
+ * niveles de sustitución»), dichas para la tarjeta «No editable aquí»: «Druida 1, ajuste +3, con «Compañero animal
+ * excavador»». El formulario no las edita ni las manda (`listasDesdeMonstruo`) y la API las conserva al guardar.
+ */
+export function filasDeAptitudDelMonstruo(monstruo: Pick<MonstruoDetalle, 'Niveles_clase'> | null | undefined): string[] {
+    return (monstruo?.Niveles_clase ?? [])
+        .filter((item) => !!item?.Especial)
+        .map((item) => {
+            const plantilla = textoVisible(item?.Plantilla?.Nombre);
+            const ajuste = toInt(item?.Ajuste) !== 0 ? `, ajuste ${textoConSigno(toInt(item.Ajuste), '−')}` : '';
+            return `${toText(item?.Clase?.Nombre)} ${toInt(item?.Nivel)}${plantilla ? ` (${plantilla})` : ''}${ajuste}, con «${toText(item.Especial?.Nombre)}»`;
+        });
 }
 
 /** Una fila nueva de los niveles de clase: la clase elegida, nivel 1, sin ajuste ni ataque base mínimo y sin plantilla, dote ni preferencias. */

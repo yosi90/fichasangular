@@ -115,6 +115,7 @@ function fila(idClase: number, nombreClase: string, nivel: number, ajuste: numbe
         Preferencia_moral: { Id: 0, Nombre: '' },
         Dote: { Id: dote, Nombre: NOMBRES_DOTE[dote] ?? '' },
         Mascota: 'companero',
+        Especial: null,
     };
 }
 

@@ -211,8 +211,9 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
             Nombre: toText(raw?.Clase?.Nombre),
         },
         Nivel: toNumber(raw?.Nivel),
-        // Sin él (una caché de antes del 2026-11-21), 0: la fila no ajusta la tabla del compañero.
-        Ajuste: Math.min(0, toInt(raw?.Ajuste)),
+        // Sin él (una caché de antes del 2026-11-21), 0: la fila no ajusta la tabla del compañero. Puede ser positivo en
+        // una fila con `Especial` (el tejón del explorador gnomo, +3).
+        Ajuste: toInt(raw?.Ajuste),
         // Sin él, `null` o menos de 1 (una caché de antes del 2026-11-21), sin mínimo.
         Ataque_base_minimo: toPositiveInt(raw?.Ataque_base_minimo),
         Plantilla: {
@@ -239,6 +240,8 @@ function normalizeNivelClase(raw: any): MonstruoNivelClase {
         // su Inteligencia (`null`, la de su monstruo) y si sus DG adicionales no le dan habilidades ni dotes.
         Inteligencia: raw?.Inteligencia === null || raw?.Inteligencia === undefined ? null : toInt(raw.Inteligencia),
         Sin_habilidades_dotes: raw?.Sin_habilidades_dotes === true,
+        // La aptitud que abre la fila (R8, tanda 1b); `null`, ninguna.
+        Especial: toInt(raw?.Especial?.Id) > 0 ? { Id: toInt(raw.Especial.Id), Nombre: toText(raw?.Especial?.Nombre) } : null,
     };
 }
 
@@ -533,6 +536,7 @@ export function leerFamiliarProgresion(raw: any): FamiliarProgresion {
             Nombre: toText(plantilla?.Nombre).trim(),
             Tabla: idNombre(plantilla?.Tabla),
             Pg_ataque_mayores: toBoolean(plantilla?.Pg_ataque_mayores),
+            Pg_mayores: toBoolean(plantilla?.Pg_mayores),
             Sin_aptitudes: toArray(plantilla?.Sin_aptitudes).map((id: any) => toInt(id)).filter((id: number) => id > 0),
         }))
         .filter((plantilla) => plantilla.Id > 0)

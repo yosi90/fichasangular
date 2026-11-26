@@ -5991,7 +5991,7 @@ describe('NuevoPersonajeService (familiar)', () => {
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [],
-                Especiales: [crearEspecialNivel(29, 'Compañero animal', { Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' } })],
+                Especiales: [crearEspecialNivel(29, 'Compañero animal', { Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' }, Solo_lista_propia: false })],
             }],
         });
         svc.setCatalogoClases([druida, ranger]);

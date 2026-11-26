@@ -12,7 +12,7 @@ import {
 } from './familiar-reglas';
 import { doteDeNivelClase } from './nivel-clase-monstruo';
 import { nivelesDeClaseHasta } from './niveles-creacion';
-import { aportaAlDarLaMascota, EstadoMascota, filasDeSusListas, idDelMonstruo, OtorgaMascota, TextosMascota } from './mascota-cupos';
+import { aportaAlDarla, EstadoMascota, filasDeSusListas, idDelMonstruo, ListasDeLaMascota, TextosMascota } from './mascota-cupos';
 import { normalizarTexto, toInt } from './normalizacion';
 import { conLasAptitudesYDotesDelMotor, DerivadoDelRasgo } from './reciclaje-dominio-escuela';
 import { textoVisible } from './texto-visible';
@@ -79,10 +79,10 @@ export interface PlanMascota {
     aptitudesNuevas: Array<{ nombre: string; extra: string; }>;
 }
 
-/** Lo que pide el motor de cada mascota y sus frases (las de la creación, `TEXTOS_COMPANERO` y `TEXTOS_FAMILIAR`). */
-const DE_LA_MASCOTA: Record<TipoDeMascota, { otorga: OtorgaMascota; textos: TextosMascota; }> = {
-    companero: { otorga: 'Otorga_companero', textos: TEXTOS_COMPANERO },
-    familiar: { otorga: 'Otorga_familiar', textos: TEXTOS_FAMILIAR },
+/** Las frases de cada mascota (las de la creación, `TEXTOS_COMPANERO` y `TEXTOS_FAMILIAR`). */
+const DE_LA_MASCOTA: Record<TipoDeMascota, { textos: TextosMascota; }> = {
+    companero: { textos: TEXTOS_COMPANERO },
+    familiar: { textos: TEXTOS_FAMILIAR },
 };
 
 /** El nombre de la mascota para las frases («compañero animal», «familiar»). */
@@ -149,7 +149,7 @@ export function huecosDeMascota(motor: NuevoPersonajeService, entrada: Personaje
         const guardada = tipo === 'companero' ? entrada.companero : entrada.familiar;
         if (!guardada || toInt(guardada.idMonstruo) <= 0)
             return [];
-        const { otorga, textos } = DE_LA_MASCOTA[tipo];
+        const { textos } = DE_LA_MASCOTA[tipo];
         const estado = estadoDe(motor, tipo);
         const fuente = estado.fuentesMascota[0] ?? null;
         const catalogo: CriaturaDeMascota[] | null = tipo === 'companero' ? catalogos.companeros : catalogos.familiares;
@@ -178,7 +178,8 @@ export function huecosDeMascota(motor: NuevoPersonajeService, entrada: Personaje
             : null;
         // El mínimo de las filas con las que la tiene (su plantilla y, si las hay, las de una dote suya), como la API.
         const deSuFila = Math.max(0, toInt(resuelta?.nivelMinimo));
-        const nivelEleccion = Math.max(deSuFila, aportaAlDarLaMascota(motor.claseDelCatalogo(fuente.idClase), otorga));
+        // Con el nivel en que su clase se la da, con sus niveles de sustitución (la comadreja del explorador kóbold, a 4.º).
+        const nivelEleccion = Math.max(deSuFila, aportaAlDarla(fuente));
         const hueco: HuecoDeMascota = { ...base, nivelEleccion, nivelPorDote: nivelesPorDote(motor, tipo, catalogo, estado.nivelEfectivo), motivo: null };
         return [catalogoDelReciclaje(catalogo, hueco, estado).length > 0 ? hueco
             : { ...hueco, motivo: `No hay otro ${textos.mascota} en la lista de sus clases de nivel ${nivelEleccion} o menos.` }];
@@ -225,14 +226,14 @@ function nivelDeLaFila(hueco: HuecoDeMascota, fila: MonstruoNivelClase): number 
  * lista básica, no el bisonte; con Compañero elevado, también el lobo celestial.
  */
 export function catalogoDelReciclaje<T extends CriaturaDeMascota>(catalogo: readonly T[], hueco: HuecoDeMascota,
-    estado: Pick<EstadoMascota, 'listasIds'>): T[] {
-    const listas = new Set(estado.listasIds ?? []);
+    estado: ListasDeLaMascota): T[] {
     const tiene = claveDeLaCriatura(hueco.tiene);
     return (catalogo ?? [])
         .filter((c) => claveDe(hueco.mascota, c) !== tiene)
         .map((c) => ({
             ...c,
-            Niveles_clase: filasDeSusListas(c, listas).filter((f: MonstruoNivelClase) => toInt(f?.Nivel) >= 0 && toInt(f.Nivel) <= nivelDeLaFila(hueco, f)),
+            // Las de sus listas: con las que abren sus aptitudes y, de una lista propia, solo las suyas (R8, tanda 1b).
+            Niveles_clase: filasDeSusListas(c, estado).filter((f: MonstruoNivelClase) => toInt(f?.Nivel) >= 0 && toInt(f.Nivel) <= nivelDeLaFila(hueco, f)),
         }))
         .filter((c) => c.Niveles_clase.length > 0);
 }

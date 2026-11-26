@@ -100,7 +100,8 @@ export interface MonstruoNivelClase {
     Nivel: number;
     /**
      * Lo que la lista suma al nivel efectivo para la tabla del compañero (`GET /companeros/progresion`): 0 o menos (las
-     * alternativas de 4.º, −3; el animal celestial de Compañero elevado, −1). En el familiar, 0.
+     * alternativas de 4.º, −3; el animal celestial de Compañero elevado, −1), salvo en una fila con `Especial`, que puede
+     * sumar (los excavadores del explorador gnomo, +3). En el familiar, 0.
      */
     Ajuste: number;
     /**
@@ -137,6 +138,13 @@ export interface MonstruoNivelClase {
      */
     /** De qué mascota es la fila: la que da su clase (contrato, `MonstruoNivelClase.Mascota`). */
     Mascota: TipoDeMascota | null;
+    /**
+     * La aptitud que abre la fila (desde el 2026-11-26, cachés `Monstruos` 21, `Familiares` y `Compañeros animales` 18; R8,
+     * tanda 1b): solo vale si el personaje la tiene, de la tabla de su clase o de un nivel de sustitución suyo (el sabueso
+     * élfico del explorador elfo). Su `Ajuste` puede ser positivo (los excavadores del explorador gnomo, +3). `null`,
+     * ninguna. El alta y la edición del monstruo no la escriben ni la borran (`niveles_clase`).
+     */
+    Especial: { Id: number; Nombre: string; } | null;
 }
 
 export interface PersonajeRefMonstruo {
@@ -349,6 +357,12 @@ export interface FamiliarPlantillaProgresion {
     Tabla: { Id: number; Nombre: string; } | null;
     /** Sus PG y su ataque base, los mayores entre los del amo (la mitad de sus PG) y los suyos (el dracónico, el celestial). */
     Pg_ataque_mayores: boolean;
+    /**
+     * Solo sus PG son los mayores entre la mitad de los del amo y los suyos; su ataque base, el de su amo (desde el
+     * 2026-11-26, caché `familiares_progresion` 3: el familiar elemental del hechicero raptorán). Con `Pg_ataque_mayores`
+     * también, manda `Pg_ataque_mayores`.
+     */
+    Pg_mayores: boolean;
     /** Los `Id` de las `Aptitudes` de su tabla que no gana (el mejorado, comunicarse con animales de su mismo tipo). */
     Sin_aptitudes: number[];
 }

@@ -21,8 +21,10 @@ import {
     evaluarMascotasDelCatalogo,
     filaDelNivel,
     FilaMascotaResuelta,
+    esFilaDeSusListas,
     filasDeSusListas,
     filasQueLeValen,
+    ListasDeLaMascota,
     resolverEstadoMascota,
     RAZON_MASCOTA_HOMEBREW,
     resolverFilaMascota,
@@ -95,19 +97,20 @@ export function resolverEstadoCuposFamiliar(personaje: Personaje, catalogoClases
 }
 
 /**
- * Las pseudoplantillas que el catálogo da en las listas de familiar del personaje (todas, si no hay ninguna), una vez
- * cada una y por nombre: son las opciones del filtro de plantilla del selector.
+ * Las pseudoplantillas que el catálogo da en las listas de familiar del personaje (`de`, con las filas que abren sus
+ * aptitudes: «Familiar elemental» solo con la del hechicero raptorán; todas, si no tiene ninguna lista), una vez cada una
+ * y por nombre: son las opciones del filtro de plantilla del selector.
  */
 export function plantillasFamiliarDisponibles(
     familiares: FamiliarMonstruoDetalle[],
-    listasIds: number[] = []
+    de: ListasDeLaMascota | null = null,
 ): FamiliarPlantillaOpcion[] {
-    const listas = new Set(listasIds.map((id) => toInt(id)).filter((id) => id > 0));
+    const conListas = (de?.listasIds ?? []).some((id) => toInt(id) > 0);
     const plantillas = new Map<number, FamiliarPlantillaOpcion>();
     (Array.isArray(familiares) ? familiares : []).forEach((familiar) => {
         (familiar?.Niveles_clase ?? []).forEach((nivel) => {
             const id = idPlantillaDeNivel(nivel);
-            if (id < 1 || (listas.size > 0 && !listas.has(toInt(nivel?.Clase?.Id))))
+            if (id < 1 || (conListas && !esFilaDeSusListas(nivel, de)))
                 return;
             // El primer nombre que no esté vacío, como en el catálogo de familiares.
             if (!plantillas.get(id)?.Nombre)
@@ -158,7 +161,7 @@ export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput
  * su senda).
  */
 function filasParaElAlineamiento(familiar: FamiliarMonstruoDetalle, estado: EstadoCuposFamiliar, dotes: ReadonlySet<number>): MonstruoNivelClase[] {
-    const deSusListas = filasDeSusListas(familiar, new Set(estado?.listasIds ?? []));
+    const deSusListas = filasDeSusListas(familiar, estado);
     const { conDote, aSuNivel, conSuAtaque } = filasQueLeValen(deSusListas, estado, dotes);
     return [conSuAtaque, aSuNivel, conDote, deSusListas, familiar?.Niveles_clase ?? []].find((filas) => filas.length > 0) ?? [];
 }
@@ -212,7 +215,7 @@ export function entradasDelSelectorFamiliar(input: FiltroFamiliaresElegiblesInpu
             nivelesRequeridos[claveFamiliar(item.familiar)] = Math.trunc(nivel);
     });
     return {
-        plantillas: plantillasFamiliarDisponibles(input?.familiares ?? [], input?.estado?.listasIds ?? []),
+        plantillas: plantillasFamiliarDisponibles(input?.familiares ?? [], input?.estado ?? null),
         nivelesRequeridos,
         elegibles: evaluaciones.filter((item) => item.elegible).map((item) => item.familiar),
         bloqueados: evaluaciones.filter((item) => !item.elegible).map((item) => ({

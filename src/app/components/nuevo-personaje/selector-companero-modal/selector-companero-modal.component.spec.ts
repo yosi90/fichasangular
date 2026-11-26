@@ -75,6 +75,10 @@ describe('SelectorCompaneroModalComponent', () => {
         expect(component.getEtiquetaPlantilla(component.companerosElegibles[0])).toBe('');
         expect(component.getEtiquetaAjuste(component.companerosElegibles[1])).toBe('−1');
         expect(component.getEtiquetaAjuste(component.companerosElegibles[0])).toBe('');
+        // El de una fila de aptitud suma (el tejón del explorador gnomo, R8, tanda 1b).
+        component.ajustes = { ...component.ajustes, '1:0': 3 };
+        expect(component.getEtiquetaAjuste(component.companerosElegibles[0])).toBe('+3');
+        expect(component.getExplicacionNivel(component.companerosElegibles[0])).toContain('Su lista suma 3 a ese nivel');
         expect(component.getExplicacionNivel(component.companerosElegibles[1])).toContain('nivel efectivo de druida 2');
         expect(component.getExplicacionNivel(component.companerosElegibles[1])).toContain('resta 1');
     });

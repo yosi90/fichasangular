@@ -34,6 +34,7 @@ import {
     camposCambiadosMonstruo,
     construirMonstruoRequest,
     filaNivelClaseNueva,
+    filasDeAptitudDelMonstruo,
     listasDesdeMonstruo,
     listasMonstruoVacias,
     textoLicantropos,
@@ -267,6 +268,11 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
             ...(monstruo.Familiares ?? []).map((item) => `Familiar: ${toText(item?.Nombre)}`),
             ...(monstruo.Companeros ?? []).map((item) => `Compañero: ${toText(item?.Nombre)}`),
         ];
+    }
+
+    /** Las filas de su lista que abre una aptitud (`Especial`): no se editan aquí ni se mandan (la API las conserva). */
+    get filasDeAptitud(): string[] {
+        return this.esEdicion ? filasDeAptitudDelMonstruo(this.monstruoCargado) : [];
     }
 
     // Campos

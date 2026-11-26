@@ -26,6 +26,11 @@ describe('CACHE_CONTRACT_MANIFEST', () => {
 
     it('incluye el índice ligero de los monstruos y la versión de la caché de su detalle (la del backend)', () => {
         expect(CACHE_CONTRACT_MANIFEST.find((item) => item.key === 'monstruos_indice')).toEqual({ key: 'monstruos_indice', label: 'Índice de los monstruos', schemaVersion: 1 });
-        expect(CACHE_CONTRACT_MANIFEST.find((item) => item.key === 'monstruos')?.schemaVersion).toBe(20);
+        expect(CACHE_CONTRACT_MANIFEST.find((item) => item.key === 'monstruos')?.schemaVersion).toBe(21);
+    });
+
+    it('lleva las versiones de las mascotas de los niveles de sustitución (las del backend, tanda 1b)', () => {
+        const version = (key: string) => CACHE_CONTRACT_MANIFEST.find((item) => item.key === key)?.schemaVersion;
+        expect([version('familiares'), version('companeros'), version('familiares_progresion'), version('clases')]).toEqual([18, 18, 3, 27]);
     });
 });

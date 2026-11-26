@@ -265,6 +265,24 @@ describe('NuevaMonstruoComponent', () => {
             expect([cuerpo.niveles_clase[0].ajuste, cuerpo.niveles_clase[0].ataque_base_minimo]).toEqual([-3, null]);
         });
 
+        it('las filas que abre una aptitud (R8, tanda 1b) no se editan, se nombran y guardar no las manda (la API las conserva)', async () => {
+            const get = JSON.parse(JSON.stringify(entrada(13).get));
+            const filas = get.Niveles_clase.length;
+            get.Niveles_clase.push({ ...get.Niveles_clase[0], Nivel: 1, Ajuste: 3, Especial: { Id: 903, Nombre: 'Compañero animal excavador' } });
+            monstruoSvc.getMonstruoFresco.and.callFake(() => of(normalizeMonstruoDetalle(get, 1)));
+            component = crear('editar', 13);
+            expect(component.listas.niveles_clase.length).toBe(filas);
+            expect(component.filasDeAptitud.length).toBe(1);
+            expect(component.filasDeAptitud[0]).toContain('ajuste +3, con «Compañero animal excavador»');
+            expect(component.hayCambios).toBeFalse();
+
+            component.form.controls.nombre.setValue('Otro nombre');
+            await component.guardar();
+            const [, cuerpo] = monstruoSvc.actualizarMonstruo.calls.argsFor(0);
+            expect(cuerpo.niveles_clase.length).toBe(filas);
+            expect(cuerpo.niveles_clase.some((fila: any) => fila.ajuste > 0)).toBeFalse();
+        });
+
         it('«Descartar» vuelve a lo que llegó y cerrar con cambios pregunta', async () => {
             component = crear('editar', 48);
             component.form.controls.nombre.setValue('Lobo feroz');

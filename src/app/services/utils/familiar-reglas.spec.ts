@@ -70,6 +70,7 @@ function crearNivelClase(
         Preferencia_moral: conSuDato({ Id: prefMoral, Nombre: `${prefMoral}` }),
         Dote: dote,
         Mascota: 'familiar',
+        Especial: null,
     };
 }
 
@@ -89,8 +90,8 @@ function crearFamiliarMock(partial?: Partial<FamiliarMonstruoDetalle>): Familiar
 /** El estado de las clases con familiar de un personaje de nivel del amo `nivel` que elige de `listas` (las de la clase 10). */
 function estadoMock(nivel: number, listas: number[] = [10]): EstadoCuposFamiliar {
     const fuentes = nivel > 0 ? listas.map((id) => ({
-        idClase: id, nombreClase: `Clase ${id}`, nivelActual: nivel, idEspecial: 47, divisor: 1, ajuste: 0, aporta: nivel,
-        lista: { id, nombre: `Clase ${id}` },
+        idClase: id, nombreClase: `Clase ${id}`, nivelActual: nivel, idEspecial: 47, nivelInicio: 1, divisor: 1, ajuste: 0, aporta: nivel,
+        lista: { id, nombre: `Clase ${id}` }, soloListaPropia: false,
     })) : [];
     return {
         fuentes: fuentes.map((f) => ({ idClase: f.idClase, nombreClase: f.nombreClase, nivelActual: f.nivelActual })),
@@ -101,6 +102,7 @@ function estadoMock(nivel: number, listas: number[] = [10]): EstadoCuposFamiliar
         nivelEfectivo: nivel,
         fuentesMascota: fuentes,
         listasIds: fuentes.map((f) => f.lista.id),
+        aptitudesQueAbren: [],
         ataqueBase: 0,
     };
 }
@@ -478,8 +480,9 @@ describe('familiar-reglas con las respuestas reales de la API', () => {
     });
 
     it('el filtro de plantilla ofrece solo las pseudoplantillas de las clases con familiar del personaje', () => {
-        expect(plantillasFamiliarDisponibles(catalogo, [418]).map((item) => item.Nombre)).toEqual(['Familiar forjado']);
-        expect(plantillasFamiliarDisponibles(catalogo, [419]).map((item) => item.Nombre)).toEqual([
+        const de = (listasIds: number[]) => ({ listasIds });
+        expect(plantillasFamiliarDisponibles(catalogo, de([418])).map((item) => item.Nombre)).toEqual(['Familiar forjado']);
+        expect(plantillasFamiliarDisponibles(catalogo, de([419])).map((item) => item.Nombre)).toEqual([
             'Celestial',
             'Criatura elemental de agua',
             'Criatura elemental de aire',
@@ -487,8 +490,9 @@ describe('familiar-reglas con las respuestas reales de la API', () => {
             'Criatura elemental de tierra',
             'Infernal',
         ]);
-        expect(plantillasFamiliarDisponibles(catalogo, [8]).map((item) => item.Nombre)).toEqual(['Básica', 'Celestial', 'Remendado']);
-        expect(plantillasFamiliarDisponibles(catalogo, []).length).toBe(9);
+        expect(plantillasFamiliarDisponibles(catalogo, de([8])).map((item) => item.Nombre)).toEqual(['Básica', 'Celestial', 'Remendado']);
+        expect(plantillasFamiliarDisponibles(catalogo, de([])).length).toBe(9);
+        expect(plantillasFamiliarDisponibles(catalogo).length).toBe(9);
     });
 
     it('el magiingeniero recibe la serpiente como familiar forjado, sea cual sea su alineamiento', () => {

@@ -34,7 +34,7 @@ export class SelectorCompaneroModalComponent {
     @Input() companerosBloqueados: SelectorCompaneroBloqueadoItem[] = [];
     /** El nivel efectivo de druida que pide cada compañero (por `claveCompanero`). */
     @Input() nivelesRequeridos: Record<string, number> = {};
-    /** El ajuste de la lista de cada compañero (por `claveCompanero`): 0 o menos. */
+    /** El ajuste de la lista de cada compañero (por `claveCompanero`): 0 o menos, salvo en una fila de aptitud (R8, tanda 1b). */
     @Input() ajustes: Record<string, number> = {};
     @Input() companerosSeleccionados: CompaneroMonstruoDetalle[] = [];
     @Input() incluirHomebrew = false;
@@ -151,10 +151,10 @@ export class SelectorCompaneroModalComponent {
         return Number(companero?.Plantilla?.Id ?? 0) > 0 ? `${companero?.Plantilla?.Nombre ?? ''}`.trim() : '';
     }
 
-    /** El ajuste de su lista («−3»); vacío si no ajusta. */
+    /** El ajuste de su lista («−3»; el de una fila de aptitud puede sumar: «+3», el tejón del explorador gnomo); vacío si no ajusta. */
     getEtiquetaAjuste(companero: CompaneroMonstruoDetalle): string {
         const ajuste = Math.trunc(Number(this.ajustes?.[claveCompanero(companero)] ?? 0));
-        return ajuste < 0 ? textoConSigno(ajuste, '−') : '';
+        return ajuste !== 0 ? textoConSigno(ajuste, '−') : '';
     }
 
     esCompaneroElegible(companero: CompaneroMonstruoDetalle): boolean {
@@ -187,7 +187,7 @@ export class SelectorCompaneroModalComponent {
         if (nivel !== null)
             partes.push(`Pide un nivel efectivo de druida ${nivel}: se suman los niveles de tus clases que dan compañero animal, cada una como dice su tabla.`);
         if (ajuste.length > 0)
-            partes.push(`Su lista resta ${ajuste.replace('−', '')} a ese nivel para la tabla del compañero (sus DG, sus bonos y sus aptitudes).`);
+            partes.push(`Su lista ${ajuste.startsWith('+') ? 'suma' : 'resta'} ${ajuste.replace(/^[+−]/, '')} a ese nivel para la tabla del compañero (sus DG, sus bonos y sus aptitudes).`);
         return partes.join(' ');
     }
 
