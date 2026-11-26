@@ -34,6 +34,8 @@ table
     background: transparent
 
     th.mat-mdc-header-cell
+        @include zona-oscura($material: false)
+        --mat-sort-arrow-color: var(--rol-texto-fuerte)
         height: 44px
         background: $primary
         @include ficha-versalitas($interlineado: null, $margen: null)
@@ -55,7 +57,7 @@ table
         background: $ficha-fila-alterna
 
     tr.pj-fila:hover, tr.pj-fila--abierta
-        background: #505050
+        background: $contrast
 
     tr.pj-detalle
         height: 0
@@ -84,7 +86,7 @@ table
     font: inherit
     font-size: 15px
     font-weight: 500
-    color: #ffffff
+    color: var(--rol-texto-fuerte)
     text-align: left
     cursor: pointer
 
@@ -111,7 +113,7 @@ table
     cursor: pointer
 
     &:hover
-        color: #ffffff
+        color: var(--rol-texto-fuerte)
 
 .pj-nombre, .pj-enlace
     &:focus-visible
@@ -153,6 +155,9 @@ table
     margin: 4px 0 12px
     padding: 14px 18px
     background: #3d3d3d
+
+    @include en-claro
+        background: var(--rol-fila-alterna)
     border-radius: 6px
 
     dt

@@ -78,7 +78,7 @@ textarea
     cursor: pointer
 
     &:hover td
-        background: rgba(255, 255, 255, .05)
+        background: con-alfa(var(--rol-tinta), .05)
 
 .fila-elegida td
     background: $ficha-elegida
@@ -95,13 +95,15 @@ textarea
     color: $ficha-aviso
 
 .good
-    background-color: rgb(78, 87, 66)
+    background-color: var(--rol-bien-fondo)
 
 .bad
-    background-color: rgb(87, 66, 66)
+    background-color: var(--rol-mal-fondo)
 
 .aviso
     background-color: rgb(92, 80, 52)
+    @include en-claro
+        background-color: #f3e6c4
 
 // Raza: el listado de siempre, sobre la tarjeta de la tarea
 .paso-raza
@@ -220,7 +222,7 @@ textarea
     width: 100%
     padding: 10px 12px
     border-radius: $ficha-radio
-    border: 1px solid rgba(255, 255, 255, .12)
+    border: 1px solid con-alfa(var(--rol-tinta), .12)
     background: $primary
     color: $ficha-texto
 
@@ -281,12 +283,14 @@ textarea
     flex-direction: column
     gap: 3px
     padding-top: 6px
-    border-top: 1px solid rgba(255, 255, 255, .14)
+    border-top: 1px solid con-alfa(var(--rol-tinta), .14)
     font-size: 13px
     color: #ffd3c2
+    @include en-claro
+        color: var(--rol-aviso-suave)
 
 .plantilla-card__advertencia
-    color: #ffe39a
+    color: var(--rol-ambar-texto)
 
 // Tu selección de plantillas, arriba de la lista del paso.
 .plantillas-seleccion
@@ -294,7 +298,7 @@ textarea
     flex-direction: column
     gap: 8px
     padding-bottom: 12px
-    border-bottom: 1px solid rgba(255, 255, 255, .12)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .12)
 
 .plantillas-seleccion__limpiar
     margin-left: auto
@@ -366,7 +370,7 @@ textarea
     white-space: nowrap
 
 .clase-estado-chip--neutral:not(.good):not(.bad)
-    background-color: rgb(68, 73, 82)
+    background-color: var(--rol-neutro-fondo)
 
 .salvaciones-clase-chips, .beneficios-clase-chips
     display: flex
@@ -423,6 +427,8 @@ textarea
 
 .habilidad-rango--nuevo
     color: #9ee6a8
+    @include en-claro
+        color: var(--rol-exito)
     font-weight: 700
 
 .habilidad-varios
@@ -507,7 +513,7 @@ textarea
     box-shadow: inset 3px 0 0 $active
 
 .progresion-moldeado__futura td
-    color: #8a949b
+    color: var(--rol-texto-tenue)
 
 .incarnum-chakras
     display: flex
@@ -524,7 +530,7 @@ textarea
     border-color: $active
 
 .incarnum-chakra--futuro
-    color: #8a949b
+    color: var(--rol-texto-tenue)
 
 // El aviso del PNJ en la vista previa de la raza, encima de «Categoría de edad».
 .paso-raza__aviso

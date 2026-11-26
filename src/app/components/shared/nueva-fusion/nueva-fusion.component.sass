@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/preformas/inserciones' as inserciones
 
 // Crear y modificar fusiones del alma, dentro del marco común (guía de inserciones, «La fusión y el chakra»). Sin pasos:
@@ -34,7 +35,7 @@
     align-items: center
     padding-bottom: 8px
     margin-bottom: 8px
-    border-bottom: 1px solid rgba(255, 255, 255, .06)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .06)
 
 .fusion-chakra__efecto
     grid-column: 1 / -1

@@ -20,9 +20,11 @@ $iconos-grupos: (personaje: $icono-personaje, magia: $icono-magia, incarnum: $ic
         @return color.change($color, $alpha: .14)
     @return color.change($color, $alpha: .16)
 
-// Las variables `--icono-rol-color` y `--icono-rol-fondo` de cada grupo, en las clases `<prefijo>--<grupo>`.
+// Las variables `--icono-rol-color` y `--icono-rol-fondo` de cada grupo, en las clases `<prefijo>--<grupo>`, y
+// `--icono-rol-color-claro`, el mismo color al 70 % con negro, que en claro llega al 3:1 sobre el blanco.
 @mixin iconos-rol-grupos($prefijo)
     @each $grupo, $color in $iconos-grupos
         &#{$prefijo}--#{$grupo}
             --icono-rol-color: #{$color}
+            --icono-rol-color-claro: color-mix(in srgb, #{$color} 70%, black)
             --icono-rol-fondo: #{icono-fondo($grupo)}

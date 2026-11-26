@@ -20,6 +20,9 @@
 .icono-rol__dibujo
     display: block
     background-color: var(--icono-rol-color)
+
+    @include en-claro
+        background-color: var(--icono-rol-color-claro, var(--icono-rol-color))
     -webkit-mask-repeat: no-repeat
     mask-repeat: no-repeat
     -webkit-mask-position: center

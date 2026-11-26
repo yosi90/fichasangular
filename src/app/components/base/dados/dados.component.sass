@@ -41,6 +41,10 @@ $dados-rojo: var(--yosi-color-error)
     border-radius: $ficha-radio
     box-shadow: $ficha-sombra
 
+    // En claro, una tarjeta clara como las de la ficha.
+    @include en-claro
+        background: $ficha-tarjeta
+
 .dados-versalitas
     @include ficha-versalitas
 
@@ -87,7 +91,7 @@ $dados-rojo: var(--yosi-color-error)
     display: flex
     align-items: center
     height: 64px
-    border: 1px solid rgba(255, 255, 255, .3)
+    border: 1px solid con-alfa(var(--rol-tinta), .3)
     border-radius: 32px
     transition: background-color .15s ease, border-color .15s ease
 
@@ -115,7 +119,7 @@ $dados-rojo: var(--yosi-color-error)
         border-radius: 0 32px 32px 0
 
     &:hover:not(:disabled)
-        background: rgba(255, 255, 255, .08)
+        background: con-alfa(var(--rol-tinta), .08)
 
     &:focus-visible
         outline: 2px solid $active
@@ -141,7 +145,7 @@ $dados-rojo: var(--yosi-color-error)
     transition: background-color .15s ease
 
     &:hover
-        background: rgba(255, 255, 255, .06)
+        background: con-alfa(var(--rol-tinta), .06)
 
     &:focus-visible
         outline: 2px solid $active
@@ -190,7 +194,7 @@ $dados-rojo: var(--yosi-color-error)
     display: flex
     align-items: center
     height: 44px
-    border: 1px solid rgba(255, 255, 255, .3)
+    border: 1px solid con-alfa(var(--rol-tinta), .3)
     border-radius: 22px
     overflow: hidden
 
@@ -207,7 +211,7 @@ $dados-rojo: var(--yosi-color-error)
     cursor: pointer
 
     &:hover:not(:disabled)
-        background: rgba(255, 255, 255, .08)
+        background: con-alfa(var(--rol-tinta), .08)
 
     &:focus-visible
         outline: 2px solid $active
@@ -303,7 +307,7 @@ $dados-rojo: var(--yosi-color-error)
     min-height: 52px
     flex-shrink: 0
     padding: 0 10px 0 18px
-    border-bottom: 1px solid rgba(255, 255, 255, .08)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .dados-historial__titulo
     flex: 1 1 auto
@@ -329,7 +333,7 @@ $dados-rojo: var(--yosi-color-error)
     min-height: 60px
     padding: 8px 18px
     box-sizing: border-box
-    border-bottom: 1px solid rgba(255, 255, 255, .06)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .06)
 
 .dados-historial__texto
     display: flex

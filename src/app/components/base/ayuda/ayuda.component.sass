@@ -44,16 +44,16 @@ app-ayuda
     cursor: pointer
 
     &:hover
-        background: rgba(255, 255, 255, .05)
+        background: con-alfa(var(--rol-tinta), .05)
 
     &:focus-visible
         outline: 2px solid $active
         outline-offset: -2px
 
 .ayuda-nav__boton--actual
-    background: rgba(194, 24, 91, .18)
+    background: con-alfa($active, .18)
     box-shadow: inset 3px 0 0 $active
-    color: #ffffff
+    color: var(--rol-texto-fuerte)
 
 .ayuda-contenido
     display: flex
@@ -77,7 +77,7 @@ app-ayuda
     font-size: 28px
     font-weight: 500
     line-height: 1.25
-    color: #ffffff
+    color: var(--rol-texto-fuerte)
 
 .ayuda .ayuda-titulo
     display: block
@@ -112,11 +112,11 @@ app-ayuda
         margin-top: 4px
 
     a
-        color: #f48fb1
+        color: var(--rol-enlace)
         text-decoration-color: $active
 
         &:hover
-            color: #ffffff
+            color: var(--rol-texto-fuerte)
 
     code
         font-size: .9em
@@ -144,6 +144,7 @@ app-ayuda
         line-height: 1.5
 
     th
+        @include zona-oscura($material: false)
         padding: 8px 10px
         background: $primary
         color: $accent
@@ -168,7 +169,7 @@ app-ayuda
 
     dt
         font-weight: 500
-        color: #ffffff
+        color: var(--rol-texto-fuerte)
 
     dd
         margin: 0
@@ -232,7 +233,7 @@ app-ayuda
     cursor: pointer
 
     &:hover
-        color: #ffffff
+        color: var(--rol-texto-fuerte)
 
     &:focus-visible
         outline: 2px solid $active

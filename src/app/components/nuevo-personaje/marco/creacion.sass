@@ -140,7 +140,7 @@ app-ficha-detalle.creacion > .ficha
         background: $active
         color: $ficha-blanco
         font-weight: 700
-        box-shadow: 0 0 0 3px rgba(194, 24, 91, .25)
+        box-shadow: 0 0 0 3px con-alfa($active, .25)
 
     .creacion-paso__nombre
         font-weight: 700
@@ -149,16 +149,18 @@ app-ficha-detalle.creacion > .ficha
 .creacion-paso--falta
     .creacion-paso__circulo
         border: 1px solid #6b7279
-        color: #8a949b
+        color: var(--rol-texto-tenue)
 
     .creacion-paso__nombre
-        color: #8a949b
+        color: var(--rol-texto-tenue)
 
 .creacion-paso__linea
     flex: 1 1 auto
     min-width: 16px
     height: 1px
     background: #5d6368
+    @include en-claro($global: true)
+        background: #c3cad0
 
 .creacion-paso__linea--hecha
     background: $accent
@@ -248,7 +250,7 @@ app-ficha-detalle.creacion > .ficha
         font-size: 16px
 
 .creacion-pie__nota--aviso
-    color: #ffccbc
+    color: var(--rol-aviso-suave)
 
 .creacion-pie__acciones
     display: flex
@@ -313,6 +315,8 @@ app-ficha-detalle.creacion > .ficha
         height: 4px
         border-radius: 2px
         background: #616161
+        @include en-claro($global: true)
+            background: #c3cad0
 
     .creacion-progreso__tramo--hecho
         background: $accent
@@ -357,7 +361,7 @@ app-ficha-detalle.creacion > .ficha
         align-items: stretch
         padding: 10px 12px
         background: $ficha-tarjeta
-        border-top: 1px solid rgba(255, 255, 255, .08)
+        border-top: 1px solid con-alfa(var(--rol-tinta), .08)
 
         .creacion-pie__nota
             flex: 0 0 auto

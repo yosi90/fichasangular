@@ -56,7 +56,7 @@
         min-height: 44px
         box-sizing: border-box
         padding: 0 12px
-        border: 1px solid rgba(255, 255, 255, .25)
+        border: 1px solid con-alfa(var(--rol-tinta), .25)
         border-radius: 4px
         background: $contrast-dark
         color: $ficha-blanco
@@ -120,9 +120,11 @@
     font-size: 12px
     font-weight: 700
     color: #f48fb1
+    @include en-claro
+        color: var(--rol-enlace)
 
 .historial__estado--neutro
-    background: rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .08)
     color: $ficha-texto-suave
 
 .historial__hueco

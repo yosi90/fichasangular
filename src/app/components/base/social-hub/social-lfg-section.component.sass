@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 :host
     display: block
     width: 100%
@@ -52,8 +53,8 @@
 .social-lfg__empty
     padding: 1rem
     border-radius: 1rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .04)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .social-lfg__post-card
     display: flex
@@ -64,7 +65,7 @@
     cursor: pointer
 
     span
-        color: rgba(245, 247, 255, .68)
+        color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-lfg__post-card-head
     display: flex
@@ -73,8 +74,8 @@
     align-items: center
 
 .social-lfg__post-card--active
-    border-color: rgba(194, 24, 91, .72)
-    background: rgba(194, 24, 91, .14)
+    border-color: con-alfa($active, .72)
+    background: con-alfa($active, .14)
 
 .social-lfg__detail
     display: flex
@@ -93,7 +94,7 @@
     flex: 0 0 auto
 
 .social-lfg__panel--nested
-    background: rgba(255, 255, 255, .03)
+    background: con-alfa(var(--rol-tinta), .03)
 
 .social-lfg__panel--editor
     flex: 1 1 auto
@@ -112,7 +113,7 @@
 
     p
         margin: .25rem 0 0
-        color: rgba(245, 247, 255, .68)
+        color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-lfg__author
     display: flex
@@ -125,8 +126,8 @@
     border-radius: 999px
     overflow: hidden
     padding: 0
-    border: 1px solid rgba(255, 255, 255, .12)
-    background: rgba(255, 255, 255, .05)
+    border: 1px solid con-alfa(var(--rol-tinta), .12)
+    background: con-alfa(var(--rol-tinta), .05)
     cursor: pointer
 
     img
@@ -142,9 +143,9 @@
     span
         padding: .25rem .55rem
         border-radius: 999px
-        background: rgba(255, 255, 255, .04)
-        border: 1px solid rgba(255, 255, 255, .08)
-        color: rgba(245, 247, 255, .74)
+        background: con-alfa(var(--rol-tinta), .04)
+        border: 1px solid con-alfa(var(--rol-tinta), .08)
+        color: con-alfa(var(--rol-texto-vivo), .74)
 
 .social-lfg__summary
     margin: 0
@@ -201,8 +202,8 @@
         height: 1rem
 
 .social-lfg__schedule-chip--active
-    background: rgba(194, 24, 91, .16)
-    border-color: rgba(194, 24, 91, .52)
+    background: con-alfa($active, .16)
+    border-color: con-alfa($active, .52)
     color: #fff
 
 .social-lfg__time-field
@@ -224,8 +225,8 @@
     gap: .7rem
     padding: .9rem
     border-radius: .9rem
-    background: rgba(255, 255, 255, .03)
-    border: 1px solid rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .03)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
     p
         margin: 0
@@ -247,7 +248,7 @@
         height: 2.5rem
         border-radius: 999px
         object-fit: cover
-        border: 1px solid rgba(255, 255, 255, .12)
+        border: 1px solid con-alfa(var(--rol-tinta), .12)
 
     div
         display: flex
@@ -255,7 +256,7 @@
         gap: .2rem
 
     span
-        color: rgba(245, 247, 255, .66)
+        color: con-alfa(var(--rol-texto-vivo), .66)
 
 .social-lfg__application-actions
     display: flex
@@ -265,11 +266,13 @@
 
 .social-lfg__hint
     margin: 0
-    color: rgba(245, 247, 255, .68)
+    color: con-alfa(var(--rol-texto-vivo), .68)
 
 .social-lfg__error
     margin: 0
     color: rgba(255, 144, 144, .92)
+    @include en-claro
+        color: var(--rol-mat-error)
 
 .social-lfg__empty
     display: flex

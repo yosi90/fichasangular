@@ -18,7 +18,8 @@ export interface DefinicionTemaWeb {
     iconos: PoliticaIconos;
     /**
      * Si su claro ya está hecho. Mientras no, el modo efectivo del tema es el oscuro aunque se elija claro o el sistema
-     * sea claro: el claro de A llega en la fase 2, el de C en la 3 y el de B en la 4.
+     * sea claro. Desde la fase 2, los tres: el de A, completo, y los de B y C, de sus valores básicos (sus piezas propias
+     * llegan en las fases 3 y 4).
      */
     claroListo: boolean;
 }
@@ -27,9 +28,9 @@ export const TEMA_POR_DEFECTO: TemaWeb = 'a';
 export const MODO_POR_DEFECTO: ModoWeb = 'sistema';
 
 export const TEMAS_WEB: readonly DefinicionTemaWeb[] = [
-    { id: 'a', etiqueta: 'A · Clásico', descripcion: 'La web de siempre: pizarra, rosa y el borde 3D.', iconos: 'criterio', claroListo: false },
-    { id: 'b', etiqueta: 'B · Tinta', descripcion: 'Plana y tipográfica: líneas finas y el nombre manda.', iconos: 'minimos', claroListo: false },
-    { id: 'c', etiqueta: 'C · Manual', descripcion: 'El marco de siempre con papel, tinta y granate.', iconos: 'criterio', claroListo: false },
+    { id: 'a', etiqueta: 'A · Clásico', descripcion: 'La web de siempre: pizarra, rosa y el borde 3D.', iconos: 'criterio', claroListo: true },
+    { id: 'b', etiqueta: 'B · Tinta', descripcion: 'Plana y tipográfica: líneas finas y el nombre manda.', iconos: 'minimos', claroListo: true },
+    { id: 'c', etiqueta: 'C · Manual', descripcion: 'El marco de siempre con papel, tinta y granate.', iconos: 'criterio', claroListo: true },
 ];
 
 export const MODOS_WEB: readonly { id: ModoWeb; etiqueta: string }[] = [

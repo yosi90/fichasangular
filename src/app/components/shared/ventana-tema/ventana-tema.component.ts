@@ -2,7 +2,7 @@ import { NgFor, NgIf } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TemaWebService } from 'src/app/services/tema-web/tema-web.service';
-import { MODOS_WEB, ModoWeb, TEMAS_WEB, TemaWeb, definicionTema } from 'src/app/services/tema-web/temas-web';
+import { MODOS_WEB, ModoEfectivo, ModoWeb, TEMAS_WEB, TemaWeb, definicionTema } from 'src/app/services/tema-web/temas-web';
 
 export const AVISO_ELEGIR_TEMA = 'Elige un tema para seguir: puedes cambiarlo cuando quieras.';
 export const AVISO_TEMA_SIN_GUARDAR = 'No se ha podido guardar en tu cuenta: el tema se queda en este navegador y se guardará la próxima vez.';
@@ -37,6 +37,11 @@ export class VentanaTemaComponent implements AfterViewInit {
 
     get modo(): ModoWeb {
         return this.temaWeb.estado.modo;
+    }
+
+    /** Cada vista previa, en el modo con el que se vería ese tema (el oscuro si su claro aún no está). */
+    modoPrevia(tema: TemaWeb): ModoEfectivo {
+        return this.temaWeb.modoEfectivoDe(tema);
     }
 
     get claroListo(): boolean {

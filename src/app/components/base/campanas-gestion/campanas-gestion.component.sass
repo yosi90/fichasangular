@@ -76,7 +76,7 @@
     cursor: pointer
 
     &:hover
-        background: #4a4a4a
+        background: var(--rol-fila-alterna)
 
     &:focus-visible
         outline: 2px solid $active
@@ -109,7 +109,7 @@
 .campanas-vacia
     padding: 12px
     border-radius: $ficha-radio
-    background: rgba(255, 255, 255, .04)
+    background: con-alfa(var(--rol-tinta), .04)
 
 .campanas-error
     margin: 0
@@ -161,7 +161,7 @@
     display: flex
     flex-shrink: 0
     gap: 4px
-    border-bottom: 1px solid rgba(255, 255, 255, .12)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .12)
     overflow-x: auto
 
 .campanas-pestana
@@ -229,7 +229,7 @@
     align-items: center
     gap: 12px
     min-height: 40px
-    border-bottom: 1px solid rgba(255, 255, 255, .06)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .06)
 
     &:last-child
         border-bottom: 0
@@ -298,7 +298,7 @@
     align-items: center
     gap: 6px
     padding: 6px 12px
-    border: 1px solid rgba(255, 255, 255, .25)
+    border: 1px solid con-alfa(var(--rol-tinta), .25)
     border-radius: 999px
     font-size: 13px
     cursor: pointer
@@ -325,6 +325,8 @@
     z-index: 1
     padding: 10px 0 8px
     background: rgba(45, 45, 48, .96)
+    @include en-claro
+        background: var(--rol-tarjeta)
 
 .campanas-accion
     --mat-button-filled-container-color: #{$active}
@@ -380,7 +382,7 @@
     padding: 10px 12px
     border: 1px solid $ficha-separador
     border-radius: $ficha-radio
-    background: rgba(255, 255, 255, .03)
+    background: con-alfa(var(--rol-tinta), .03)
     color: $ficha-texto
     font: inherit
     text-align: left
@@ -391,7 +393,7 @@
         color: $accent
 
     &:hover
-        background: rgba(255, 255, 255, .07)
+        background: con-alfa(var(--rol-tinta), .07)
 
     &:disabled
         cursor: default
@@ -405,7 +407,7 @@
     gap: 8px 12px
     min-height: 48px
     padding: 6px 0
-    border-bottom: 1px solid rgba(255, 255, 255, .06)
+    border-bottom: 1px solid con-alfa(var(--rol-tinta), .06)
 
     &:last-child
         border-bottom: 0
@@ -437,7 +439,7 @@
     padding: 10px 12px
     border: 1px solid $ficha-separador
     border-radius: $ficha-radio
-    background: rgba(255, 255, 255, .03)
+    background: con-alfa(var(--rol-tinta), .03)
 
 .campanas-subtramas
     padding-left: 26px

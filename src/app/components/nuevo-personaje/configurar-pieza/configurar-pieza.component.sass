@@ -12,6 +12,8 @@
 
 .configurar__precio
     background: #33373b
+    @include en-claro
+        background: var(--rol-fila-alterna)
 
 .configurar__fila
     display: flex
@@ -38,7 +40,7 @@
     justify-content: space-between
     gap: 10px
     padding: 6px 0
-    border-bottom: 1px solid #4b5157
+    border-bottom: 1px solid var(--rol-linea-tenue)
     font-size: 14px
     color: $ficha-texto-suave
 

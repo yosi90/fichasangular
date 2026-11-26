@@ -248,6 +248,8 @@
     padding: 4px
 
 .previa__pestanas
+    // Pizarra también en el claro, como en la web.
+    @include zona-oscura($material: false)
     display: flex
     gap: 4px
     height: 10px
@@ -283,6 +285,8 @@
     background: var(--rol-zona)
 
 .previa__cabecera
+    // Pizarra también en el claro, como en la web.
+    @include zona-oscura($material: false)
     display: flex
     flex-direction: column
     gap: 1px

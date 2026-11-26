@@ -6,7 +6,12 @@
     height: 100%
     min-height: 0
 
+    // La barra de pestañas es pizarra también en el claro: sus textos, los del oscuro.
     ::ng-deep mat-tab-header
+        @include zona-oscura
+        --mat-tab-inactive-label-text-color: #{con-alfa(var(--rol-tinta), .7)}
+        --mat-tab-inactive-hover-label-text-color: #{con-alfa(var(--rol-tinta), .7)}
+        --mat-tab-inactive-focus-label-text-color: #{con-alfa(var(--rol-tinta), .7)}
         background-color: $contrast-dark
 
     mat-tab-group
@@ -55,11 +60,19 @@
 .pestana-icono
     flex-shrink: 0
 
+// Con los temas, la pestaña activa en blanco con su raya rosa: el rosa como texto sobre la barra oscura se queda en
+// 2,3:1 (lienzo «Rol: temas e iconos»; decisión del roadmap).
+:host-context(html[data-iconos]) ::ng-deep mat-tab-header
+    --mat-tab-active-label-text-color: var(--rol-texto-fuerte)
+    --mat-tab-active-hover-label-text-color: var(--rol-texto-fuerte)
+    --mat-tab-active-focus-label-text-color: var(--rol-texto-fuerte)
+
 // Con los temas (lienzo «Rol: temas e iconos», «Revisión»): el icono de la pestaña se queda (es lo único que dice de
 // qué tipo es «Bola de fuego» y, en el móvil, lo único que se ve), pero en un solo tono, el del texto de la pestaña.
 :host-context(html[data-iconos])
     app-icono-rol.pestana-icono
         --icono-rol-color: currentColor
+        --icono-rol-color-claro: currentColor
 
 mat-icon.pestana-icono
     width: 18px

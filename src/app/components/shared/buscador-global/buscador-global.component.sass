@@ -19,6 +19,10 @@
     box-shadow: $ficha-sombra
     overflow: hidden
     color: $ficha-texto
+
+    // En claro, la ventana del panel blanco, como los de la cinta.
+    @include en-claro
+        background: var(--rol-panel)
     font-family: Roboto, "Segoe UI", system-ui, sans-serif
 
 .buscador-global__oculto
@@ -43,16 +47,16 @@
         border: 0
         outline: none
         background: transparent
-        color: #ffffff
+        color: var(--rol-texto-fuerte)
         font: inherit
         font-size: 18px
 
         &::placeholder
-            color: #9aa5ab
+            color: var(--rol-texto-apagado)
 
 .buscador-global__esc
     padding: 2px 6px
-    border: 1px solid rgba(255, 255, 255, .25)
+    border: 1px solid con-alfa(var(--rol-tinta), .25)
     border-radius: 3px
     background: none
     font: inherit
@@ -92,6 +96,10 @@
         &.buscador-global__titulo--#{$grupo}
             color: $color
 
+            // En claro, el color del grupo al 60 % con negro: texto pequeño, AA sobre el blanco.
+            @include en-claro
+                color: color-mix(in srgb, #{$color} 60%, black)
+
 .buscador-global__total
     font-weight: 500
     letter-spacing: 0
@@ -101,7 +109,7 @@
     margin: 0
     padding: 0 18px 8px 58px
     font-size: 13px
-    color: #9aa5ab
+    color: var(--rol-texto-apagado)
 
 .buscador-global__opcion
     display: flex
@@ -112,7 +120,7 @@
     cursor: pointer
 
 .buscador-global__opcion--activa
-    background: rgba(194, 24, 91, .18)
+    background: con-alfa($active, .18)
     box-shadow: inset 3px 0 0 $active
 
 .buscador-global__icono-material
@@ -123,7 +131,7 @@
     height: 28px
     font-size: 18px
     border-radius: 6px
-    background: rgba(173, 189, 196, .14)
+    background: con-alfa($accent, .14)
     color: $accent
 
 .buscador-global__nombre
@@ -132,7 +140,7 @@
     text-overflow: ellipsis
     white-space: nowrap
     font-size: 15px
-    color: #ffffff
+    color: var(--rol-texto-fuerte)
 
 .buscador-global__subtitulo
     flex-shrink: 1
@@ -166,6 +174,9 @@
     background: $contrast-dark
     font-size: 12px
     color: $accent
+
+    @include en-claro
+        background: var(--rol-fila-alterna)
 
     kbd
         font-family: inherit

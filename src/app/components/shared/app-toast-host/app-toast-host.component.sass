@@ -14,6 +14,8 @@
     pointer-events: none
 
 .app-toast
+    // Los avisos son oscuros en los dos modos, como los de la plataforma.
+    @include zona-oscura
     position: relative
     overflow: hidden
     display: flex
@@ -21,9 +23,9 @@
     gap: .75rem
     padding: .8rem .95rem
     border-radius: .75rem
-    color: #f5f7ff
+    color: var(--rol-texto-vivo)
     box-shadow: 0 6px 16px rgba(0, 0, 0, .35)
-    border: 1px solid rgba(255, 255, 255, .12)
+    border: 1px solid con-alfa(var(--rol-tinta), .12)
     backdrop-filter: blur(2px)
     pointer-events: auto
     background: rgba(27, 31, 41, .94)
@@ -37,7 +39,7 @@
     background: rgba(54, 26, 28, .96)
 
 .app-toast--info
-    border-color: rgba(173, 189, 196, .45)
+    border-color: con-alfa($accent, .45)
     background: rgba(32, 39, 49, .96)
 
 .app-toast--system
@@ -80,8 +82,8 @@
     min-width: 2.1rem
     padding: .18rem .45rem
     border-radius: 999px
-    background: rgba(255, 255, 255, .12)
-    color: #f5f7ff
+    background: con-alfa(var(--rol-tinta), .12)
+    color: var(--rol-texto-vivo)
     font-size: .78rem
     font-weight: 700
     text-align: center
@@ -95,7 +97,7 @@
     padding: 0
     border: 0
     background: transparent
-    color: rgba(255, 255, 255, .72)
+    color: con-alfa(var(--rol-tinta), .72)
     cursor: pointer
 
     mat-icon
@@ -109,7 +111,7 @@
     right: 0
     bottom: 0
     height: 3px
-    background: rgba(255, 255, 255, .32)
+    background: con-alfa(var(--rol-tinta), .32)
     transform-origin: left center
     animation: app-toast-progress linear forwards
 
@@ -120,7 +122,7 @@
     background: rgba(255, 138, 128, .78)
 
 .app-toast--info .app-toast__progress
-    background: rgba(173, 189, 196, .68)
+    background: con-alfa($accent, .68)
 
 .app-toast--system .app-toast__progress
     background: rgba(255, 210, 92, .78)

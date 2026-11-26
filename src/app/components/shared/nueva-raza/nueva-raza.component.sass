@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 @use '../../detalles/ficha/ficha-tonos' as *
 
@@ -41,6 +42,8 @@
 
 .form-panel-note
     color: rgba(229, 231, 235, 0.62)
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 0.78rem
     font-weight: 500
 
@@ -172,10 +175,12 @@
     justify-content: center
     width: 34px
     height: 34px
-    border: 1px solid rgba(255, 255, 255, 0.28)
+    border: 1px solid con-alfa(var(--rol-tinta), .28)
     border-radius: 999px
     background: rgba(0, 0, 0, 0.16)
     color: #d1d5db
+    @include en-claro
+        color: var(--rol-texto)
     cursor: pointer
     padding: 0
 
@@ -187,6 +192,8 @@
     &:hover
         background: rgba(0, 0, 0, 0.24)
         color: #f3f4f6
+        @include en-claro
+            color: var(--rol-texto)
 
     &:disabled
         cursor: default
@@ -262,11 +269,15 @@
 .field-error
     margin: -0.25rem 0 0
     color: #ff8a80
+    @include en-claro
+        color: var(--rol-mat-error)
     font-size: 0.82rem
 
 .detalle
     margin: 0
     color: rgba(229, 231, 235, 0.68)
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 0.88rem
 
 .lookup-grid
@@ -287,6 +298,8 @@
 .lookup-action-btn
     margin-top: 0.45rem
     color: #e5e7eb
+    @include en-claro
+        color: var(--rol-texto)
 
     mat-icon
         width: 22px
@@ -309,10 +322,12 @@
     max-width: 100%
     min-height: 32px
     padding: 0.15rem 0.2rem 0.15rem 0.65rem
-    border: 1px solid rgba(255, 255, 255, 0.18)
+    border: 1px solid con-alfa(var(--rol-tinta), .18)
     border-radius: 999px
-    background: rgba(255, 255, 255, 0.07)
+    background: con-alfa(var(--rol-tinta), .07)
     color: #f3f4f6
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 0.88rem
 
     button
@@ -320,6 +335,8 @@
         height: 26px
         padding: 0
         color: #d1d5db
+        @include en-claro
+            color: var(--rol-texto)
 
     mat-icon
         width: 18px
@@ -341,6 +358,8 @@
 .subpanel-title
     margin: 0
     color: #f3f4f6
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 0.95rem
     font-weight: 700
 
@@ -350,8 +369,8 @@
     gap: 0.4rem
 
 .mod-chip
-    border: 1px solid rgba(255, 255, 255, 0.2)
-    background: rgba(255, 255, 255, 0.08)
+    border: 1px solid con-alfa(var(--rol-tinta), .2)
+    background: con-alfa(var(--rol-tinta), .08)
 
 .error-section
     padding-left: 0.75rem
@@ -378,7 +397,11 @@
     border: 1px solid #6f7683
     border-radius: 10px
     background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    @include en-claro
+        background: var(--rol-panel)
     color: #edf2ff
+    @include en-claro
+        color: var(--rol-texto)
 
 .selector-header
     display: flex
@@ -393,19 +416,25 @@
 
 .selector-title
     color: #f3f6ff
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 1.25rem
     font-weight: 700
 
 .selector-subtitle
     color: #d5dcef
+    @include en-claro
+        color: var(--rol-texto)
     font-size: 0.86rem
 
 .selector-icon-btn
     color: #e9eefc
-    background: rgba(255, 255, 255, 0.08)
+    @include en-claro
+        color: var(--rol-texto)
+    background: con-alfa(var(--rol-tinta), .08)
 
     &:hover
-        background: rgba(255, 255, 255, 0.16)
+        background: con-alfa(var(--rol-tinta), .16)
 
 .selector-tools
     display: flex
@@ -434,14 +463,14 @@
 
 .extra-row
     padding: 9px 10px
-    border: 1px solid rgba(255, 255, 255, 0.18)
+    border: 1px solid con-alfa(var(--rol-tinta), .18)
     border-radius: 8px
-    background: rgba(255, 255, 255, 0.05)
+    background: con-alfa(var(--rol-tinta), .05)
     cursor: pointer
     transition: border-color .15s ease, background .15s ease
 
     &:hover
-        background: rgba(255, 255, 255, 0.1)
+        background: con-alfa(var(--rol-tinta), .1)
 
 .selector-actions
     display: flex
@@ -467,21 +496,29 @@
     width: 100%
 
 ::ng-deep .selector-dialog .mat-mdc-form-field .mdc-text-field--filled
-    background: rgba(255, 255, 255, 0.09)
+    background: con-alfa(var(--rol-tinta), .09)
 
 ::ng-deep .selector-dialog .mat-mdc-form-field .mdc-floating-label
     color: #dbe5ff !important
+    @include en-claro
+        color: var(--rol-texto) !important
 
 ::ng-deep .selector-dialog .mat-mdc-input-element
     color: #f6f8ff !important
+    @include en-claro
+        color: var(--rol-texto) !important
 
 ::ng-deep .selector-dialog .mat-mdc-checkbox .mdc-form-field > label,
 ::ng-deep .selector-dialog .mdc-label
     color: #edf2ff
+    @include en-claro
+        color: var(--rol-texto)
 
 ::ng-deep .selector-dialog .mat-mdc-button.mat-mdc-outlined-button
     border-color: rgba(203, 216, 255, 0.45)
     color: #f1f5ff
+    @include en-claro
+        color: var(--rol-texto)
 
 ::ng-deep .selector-dialog .mat-mdc-raised-button.mat-primary
     background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)

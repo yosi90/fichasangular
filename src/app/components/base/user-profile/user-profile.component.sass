@@ -13,8 +13,10 @@
 
 .profile-state
     background: rgba(45, 45, 48, .96)
-    color: #f5f7ff
-    border: 1px solid rgba(255, 255, 255, .08)
+    @include en-claro
+        background: var(--rol-tarjeta)
+    color: var(--rol-texto-vivo)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .profile-state--error
     border-color: rgba(255, 105, 97, .35)
@@ -31,8 +33,10 @@
 .profile-nav,
 .profile-main
     background: rgba(45, 45, 48, .96)
-    color: #f5f7ff
-    border: 1px solid rgba(255, 255, 255, .08)
+    @include en-claro
+        background: var(--rol-tarjeta)
+    color: var(--rol-texto-vivo)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .profile-nav
     display: flex
@@ -57,23 +61,23 @@
     gap: .75rem
     width: 100%
     padding: .8rem .95rem
-    border: 1px solid rgba(255, 255, 255, .08)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
     border-radius: .85rem
-    background: rgba(255, 255, 255, .04)
-    color: #f5f7ff
+    background: con-alfa(var(--rol-tinta), .04)
+    color: var(--rol-texto-vivo)
     cursor: pointer
     transition: background-color .2s ease, border-color .2s ease, transform .2s ease
 
     &:hover
         transform: translateY(-1px)
-        background: rgba(255, 255, 255, .08)
+        background: con-alfa(var(--rol-tinta), .08)
 
     mat-icon
         color: $accent
 
 .profile-nav__item--active
-    border-color: rgba(194, 24, 91, .7)
-    background: rgba(194, 24, 91, .14)
+    border-color: con-alfa($active, .7)
+    background: con-alfa($active, .14)
 
     mat-icon
         color: $active
@@ -112,7 +116,7 @@
 
 .profile-section__subtitle
     margin: .45rem 0 0
-    color: rgba(245, 247, 255, .72)
+    color: con-alfa(var(--rol-texto-vivo), .72)
 
 .profile-summary
     display: flex
@@ -128,7 +132,9 @@
     padding: 1.25rem
     border-radius: 1.2rem
     background: linear-gradient(135deg, rgba(55, 60, 65, .98), rgba(45, 45, 48, .98))
-    border: 1px solid rgba(173, 189, 196, .16)
+    @include en-claro
+        background: var(--rol-tarjeta)
+    border: 1px solid con-alfa($accent, .16)
 
 .profile-summary__avatar
     display: flex
@@ -140,7 +146,7 @@
         height: 11rem
         object-fit: cover
         border-radius: 1.6rem
-        border: 2px solid rgba(173, 189, 196, .28)
+        border: 2px solid con-alfa($accent, .28)
         box-shadow: 0 18px 32px rgba(0, 0, 0, .28)
 
 .profile-summary__copy
@@ -158,7 +164,7 @@
 
 .profile-summary__lead
     margin: 0
-    color: rgba(245, 247, 255, .74)
+    color: con-alfa(var(--rol-texto-vivo), .74)
     max-width: 48rem
 
 .profile-summary__chips
@@ -171,14 +177,14 @@
     align-items: center
     padding: .35rem .75rem
     border-radius: 999px
-    background: rgba(255, 255, 255, .06)
-    border: 1px solid rgba(255, 255, 255, .1)
-    color: #f5f7ff
+    background: con-alfa(var(--rol-tinta), .06)
+    border: 1px solid con-alfa(var(--rol-tinta), .1)
+    color: var(--rol-texto-vivo)
     font-size: .92rem
 
 .profile-pill--active
-    border-color: rgba(194, 24, 91, .55)
-    background: rgba(194, 24, 91, .18)
+    border-color: con-alfa($active, .55)
+    background: con-alfa($active, .18)
 
 .profile-pill--warn
     border-color: rgba(255, 193, 7, .38)
@@ -197,8 +203,8 @@
 .profile-panel
     padding: 1rem
     border-radius: 1rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
+    background: con-alfa(var(--rol-tinta), .04)
+    border: 1px solid con-alfa(var(--rol-tinta), .08)
 
 .profile-stat-card
     display: flex
@@ -220,6 +226,8 @@
 
 .profile-action-button--ok
     color: #7bd88f !important
+    @include en-claro
+        color: var(--rol-exito) !important
     border-color: rgba(123, 216, 143, .45) !important
     background: rgba(123, 216, 143, .08) !important
 
@@ -227,7 +235,7 @@
     box-shadow: none !important
 
 .profile-stat-card__label
-    color: rgba(245, 247, 255, .66)
+    color: con-alfa(var(--rol-texto-vivo), .66)
     font-size: .86rem
     text-transform: uppercase
     letter-spacing: .05em
@@ -251,7 +259,7 @@
     padding: .95rem
     border-radius: .95rem
     background: rgba(0, 0, 0, .12)
-    border: 1px solid rgba(255, 255, 255, .06)
+    border: 1px solid con-alfa(var(--rol-tinta), .06)
 
 .profile-moderation-item__header
     display: flex
@@ -269,13 +277,13 @@
         word-break: break-word
 
 .profile-moderation-item__date
-    color: rgba(245, 247, 255, .6)
+    color: con-alfa(var(--rol-texto-vivo), .6)
     font-size: .86rem
     white-space: nowrap
 
 .profile-moderation-item__message
     margin: .7rem 0 0
-    color: rgba(245, 247, 255, .86)
+    color: con-alfa(var(--rol-texto-vivo), .86)
     white-space: pre-line
     line-height: 1.5
 
@@ -311,7 +319,7 @@
 
     p
         margin: .35rem 0 0
-        color: rgba(245, 247, 255, .66)
+        color: con-alfa(var(--rol-texto-vivo), .66)
 
 .profile-avatar-preview
     display: flex
@@ -321,14 +329,14 @@
     min-height: 18rem
     border-radius: 1rem
     background: rgba(0, 0, 0, .12)
-    border: 1px dashed rgba(173, 189, 196, .24)
+    border: 1px dashed con-alfa($accent, .24)
 
     img
         width: min(100%, 16rem)
         aspect-ratio: 1
         object-fit: cover
         border-radius: 1.4rem
-        border: 2px solid rgba(173, 189, 196, .28)
+        border: 2px solid con-alfa($accent, .28)
 
 .profile-panel__valor
     margin: 0
@@ -338,13 +346,15 @@
 
 .profile-panel__hint
     margin: 0
-    color: rgba(245, 247, 255, .68)
+    color: con-alfa(var(--rol-texto-vivo), .68)
 
 .profile-panel__hint--multiline
     white-space: pre-line
 
 .profile-panel__hint--error
     color: rgba(255, 144, 144, .92)
+    @include en-claro
+        color: var(--rol-mat-error)
 
 .profile-section--campanas
     display: flex
@@ -375,11 +385,13 @@
 .profile-field-error
     margin: 0
     color: rgba(255, 144, 144, .92)
+    @include en-claro
+        color: var(--rol-mat-error)
     font-size: .82rem
     line-height: 1.35
 
 ::ng-deep .profile-field .mdc-notched-outline > *
-    border-color: rgba(173, 189, 196, .2) !important
+    border-color: con-alfa($accent, .2) !important
 
 ::ng-deep .profile-field--invalid .mdc-notched-outline > *
     border-color: rgba(255, 105, 97, .62) !important
@@ -388,7 +400,7 @@
     min-height: 3.35rem
 
 ::ng-deep .profile-field .mdc-text-field--outlined
-    background: rgba(255, 255, 255, .03)
+    background: con-alfa(var(--rol-tinta), .03)
 
 ::ng-deep .profile-field .mat-mdc-form-field-subscript-wrapper,
 ::ng-deep .profile-field .mdc-floating-label,
@@ -396,10 +408,10 @@
 ::ng-deep .profile-field textarea,
 ::ng-deep .profile-field .mat-mdc-select-value-text,
 ::ng-deep .profile-field .mat-mdc-select-arrow
-    color: #f5f7ff !important
+    color: var(--rol-texto-vivo) !important
 
 ::ng-deep .profile-field .mat-mdc-form-field-hint
-    color: rgba(245, 247, 255, .66) !important
+    color: con-alfa(var(--rol-texto-vivo), .66) !important
 
 .profile-action-row
     display: flex
@@ -414,9 +426,9 @@
     min-height: 2.7rem
     padding: .7rem 1rem
     border-radius: .8rem
-    border: 1px dashed rgba(173, 189, 196, .28)
-    background: rgba(255, 255, 255, .04)
-    color: #f5f7ff
+    border: 1px dashed con-alfa($accent, .28)
+    background: con-alfa(var(--rol-tinta), .04)
+    color: var(--rol-texto-vivo)
     font-weight: 600
     cursor: pointer
 
@@ -429,7 +441,7 @@
     gap: 1rem
 
 ::ng-deep .profile-toggle-list .mdc-label
-    color: #f5f7ff
+    color: var(--rol-texto-vivo)
 
 @media (max-width: 960px)
     .profile-layout

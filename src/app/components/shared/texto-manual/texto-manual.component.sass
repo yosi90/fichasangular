@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 :host
     display: block
     width: 100%
@@ -27,14 +28,14 @@
         font-size: .9em
 
     th, td
-        border: 1px solid rgba(255, 255, 255, .12)
+        border: 1px solid con-alfa(var(--rol-tinta), .12)
         padding: 4px 8px
         text-align: left
         vertical-align: top
 
     th
-        background: rgba(255, 255, 255, .05)
+        background: con-alfa(var(--rol-tinta), .05)
         font-weight: 600
 
     tr:nth-child(even) td
-        background: rgba(255, 255, 255, .03)
+        background: con-alfa(var(--rol-tinta), .03)

@@ -78,6 +78,10 @@ app-listado-cabecera
     border-color: #81c784
     color: #a5d6a7
 
+    @include en-claro
+        border-color: var(--rol-exito)
+        color: var(--rol-exito)
+
 .novedad__tipo[data-tipo='contenido']
     border-color: $ficha-aviso
     color: $ficha-aviso
@@ -85,6 +89,10 @@ app-listado-cabecera
 .novedad__tipo[data-tipo='app_disponible'], .novedad__tipo[data-tipo='app_nueva']
     border-color: #f48fb1
     color: #f8bbd0
+
+    @include en-claro
+        border-color: var(--rol-enlace)
+        color: var(--rol-enlace)
 
 .novedad__texto
     margin: 0
@@ -97,7 +105,7 @@ app-listado-cabecera
     align-items: center
     gap: 4px
     font-size: 14px
-    color: #f48fb1
+    color: var(--rol-enlace)
     text-decoration-color: $active
     overflow-wrap: anywhere
 
@@ -108,7 +116,7 @@ app-listado-cabecera
         font-size: 16px
 
     &:hover
-        color: #ffffff
+        color: var(--rol-texto-fuerte)
 
     &:focus-visible
         outline: 2px solid $active

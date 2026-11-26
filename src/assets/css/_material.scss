@@ -1,0 +1,94 @@
+// Angular Material con los valores del tema (roadmap «Los temas de la web y los iconos», fase 2). Lo carga solo
+// `src/styles.sass`, el primero (donde antes iba el tema compilado `pink-bluegrey.css`).
+//
+// Es el mismo tema M2 oscuro rosa y gris azulado de siempre (`pink-bluegrey`), compilado aquí con una diferencia: los
+// colores del sistema de Material (`_mat-system`) no son literales, sino un valor de Rol cada uno (`$colores-del-sistema`,
+// abajo, y `--rol-mat-*` en `_temas.sass`). Así botones, campos, desplegables, menús,
+// diálogos, tablas, chips, casillas, interruptores y pestañas siguen al tema y al modo sin otra hoja por tema. Con el
+// tema A en oscuro, cada valor es el del tema compilado: la web se ve como siempre.
+//
+// Los tokens de los componentes se resuelven en `<html>`, así que un `data-tema-previa` no cambia Material dentro de
+// su vista previa (no lleva componentes de Material). Las sombras siguen en negro, como en el tema compilado.
+@use 'sass:map';
+@use 'sass:meta';
+@use '@angular/material' as mat;
+
+$primario: mat.m2-define-palette(mat.$m2-pink-palette, 700, 500, 900);
+$acento: mat.m2-define-palette(mat.$m2-blue-grey-palette, A200, A100, A400);
+$tema-base: mat.m2-define-dark-theme((
+    color: (primary: $primario, accent: $acento),
+    typography: mat.m2-define-typography-config($font-family: var(--rol-fuente-ui)),
+    density: 0,
+));
+
+// De qué valor de Rol sale cada color del sistema de Material. Lo que el tema compilado usa y aquí no está (sombra,
+// velo y los contenedores que ningún componente de la web lee) se queda como en el tema compilado.
+$colores-del-sistema: (
+    primary: var(--rol-activo),
+    on-primary: var(--rol-activo-texto),
+    inverse-primary: var(--rol-mat-activo-pista),
+    secondary: var(--rol-mat-control),
+    on-secondary: var(--rol-mat-control-texto),
+    inverse-secondary: var(--rol-mat-control-pista),
+    tertiary: var(--rol-mat-control),
+    on-tertiary: var(--rol-mat-control-texto),
+    error: var(--rol-mat-error),
+    on-error: var(--rol-mat-error-texto),
+    inverse-error: var(--rol-mat-error-pista),
+    background: var(--rol-mat-fondo),
+    on-background: var(--rol-mat-texto),
+    surface: var(--rol-mat-superficie),
+    surface-bright: var(--rol-mat-superficie),
+    surface-container: var(--rol-mat-superficie),
+    surface-container-high: var(--rol-mat-superficie),
+    surface-container-highest: var(--rol-mat-superficie),
+    surface-container-low: var(--rol-mat-superficie),
+    surface-container-lowest: var(--rol-mat-superficie),
+    surface-dim: var(--rol-mat-superficie),
+    surface-tint: var(--rol-mat-superficie),
+    on-surface: var(--rol-mat-texto),
+    surface-variant: var(--rol-mat-superficie-variante),
+    on-surface-variant: var(--rol-mat-texto-suave),
+    inverse-surface: var(--rol-mat-inversa),
+    inverse-on-surface: var(--rol-mat-inversa-texto),
+    outline: var(--rol-mat-linea),
+    outline-variant: var(--rol-mat-linea-fuerte),
+);
+
+@function _con-valores-de-rol($tema) {
+    $sistema: map.get($tema, _mat-system);
+    @each $clave, $valor in $colores-del-sistema {
+        @if map.has-key($sistema, $clave) {
+            $sistema: map.set($sistema, $clave, $valor);
+        }
+    }
+    @return map.set($tema, _mat-system, $sistema);
+}
+
+// Los valores van directos a los tokens de los componentes, sin declarar `--mat-sys-*`: los componentes usan esas
+// variables como respaldo cuando un token falta o vale `inherit` (el color del botón de icono hereda el del texto), y
+// declararlas cambiaría lo que hoy hereda.
+$tema: _con-valores-de-rol($tema-base);
+
+// Lo que el tema compilado ya trae distinto en claro (el velo del cajón).
+:root[data-modo="claro"] {
+    --mat-sidenav-scrim-color: rgba(0, 0, 0, .6);
+}
+
+@include mat.app-background();
+@include mat.elevation-classes();
+@include mat.all-component-themes($tema);
+@include mat.typography-hierarchy($tema);
+
+// La pista de la barra de progreso: el tema la calcula con una transparencia de Sass, que con variables no se puede.
+.mat-mdc-progress-bar {
+    --mat-progress-bar-track-color: color-mix(in srgb, var(--rol-activo) 25%, transparent);
+}
+
+.mat-mdc-progress-bar.mat-accent {
+    --mat-progress-bar-track-color: color-mix(in srgb, var(--rol-mat-control) 25%, transparent);
+}
+
+.mat-mdc-progress-bar.mat-warn {
+    --mat-progress-bar-track-color: color-mix(in srgb, var(--rol-mat-error) 25%, transparent);
+}

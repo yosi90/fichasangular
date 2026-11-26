@@ -204,6 +204,10 @@ app-ficha-detalle
         margin: 0
         background: $primary
 
+        // En claro, las rayas entre los datos, del separador.
+        @include en-claro($global: true)
+            background: $ficha-separador
+
     .ficha-franja__dato
         min-width: 0
         padding: 14px 18px
@@ -271,6 +275,10 @@ app-ficha-detalle
 
     .ficha-casilla--secundaria
         background: $primary
+
+        // En claro, el gris de las casillas secundarias del lienzo.
+        @include en-claro($global: true)
+            background: $contrast-dark
 
     .ficha-casilla__nombre
         font-size: 12px
@@ -463,6 +471,7 @@ app-ficha-detalle
         color: $ficha-blanco
 
         thead tr
+            @include zona-oscura($material: false)
             background: $primary
             color: $accent
 

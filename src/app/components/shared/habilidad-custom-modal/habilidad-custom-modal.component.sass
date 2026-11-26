@@ -1,3 +1,4 @@
+@use '../../../../assets/css/variables' as *
 .selector-dialog-backdrop
     position: fixed
     inset: 0
@@ -15,9 +16,9 @@
     flex-direction: column
     gap: 16px
     padding: 18px
-    border: 1px solid rgba(255, 255, 255, .14)
+    border: 1px solid con-alfa(var(--rol-tinta), .14)
     border-radius: 8px
-    background: #2D2D30
+    background: $contrast-dark
     box-shadow: 0 22px 48px rgba(0, 0, 0, .45)
 
 .selector-dialog__head

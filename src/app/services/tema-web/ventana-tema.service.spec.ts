@@ -9,7 +9,7 @@ describe('VentanaTemaService', () => {
         TestBed.configureTestingModule({
             providers: [{
                 provide: TemaWebService,
-                useValue: jasmine.createSpyObj<TemaWebService>('TemaWebService', ['elegirTema', 'previsualizar', 'elegirModo'], {
+                useValue: jasmine.createSpyObj<TemaWebService>('TemaWebService', ['elegirTema', 'previsualizar', 'elegirModo', 'modoEfectivoDe'], {
                     estado: { tema: 'a', modo: 'sistema', modoEfectivo: 'oscuro', bienvenida: 'no' },
                 }),
             }],
