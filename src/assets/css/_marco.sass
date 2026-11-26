@@ -2,15 +2,17 @@
 // de pantalla y el botón de la acción. Se usa con `@use '…/assets/css/marco' as *`.
 @use 'variables' as *
 
-// El móvil (vista 10): por debajo de 700 px. Es la misma consulta que `CONSULTA_MOVIL` de
-// `src/app/services/marco-movil.service.ts` (el cajón del menú); si cambia una, cambia la otra.
+// El móvil (vista 10): por debajo de 700 px. Tiene que ser igual a `CONSULTA_MOVIL` de
+// `src/app/services/marco-movil.service.ts`; si cambia uno, cambia el otro.
+$movil-hasta: 699.98px
+
 @mixin movil
-    @media (max-width: 699.98px)
+    @media (max-width: $movil-hasta)
         @content
 
 // Lo contrario: de 700 px para arriba.
 @mixin fuera-del-movil
-    @media not all and (max-width: 699.98px)
+    @media not all and (max-width: $movil-hasta)
         @content
 
 // Lo que no se ve pero lee el lector de pantalla («(hecho)», «en total», la etiqueta de un campo con solo icono…).

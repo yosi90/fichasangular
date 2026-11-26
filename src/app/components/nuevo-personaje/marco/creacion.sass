@@ -130,6 +130,8 @@ app-ficha-detalle.creacion > .ficha
 
 .creacion-paso--hecho
     .creacion-paso__circulo
+        // En el claro de A y C, `$primary` sigue oscuro: el ✓ toma el acento de lo oscuro.
+        @include zona-oscura($material: false)
         background: $primary
         color: $accent
         border: 1px solid var(--rol-borde-apagado)
@@ -270,13 +272,16 @@ app-ficha-detalle.creacion > .ficha
     .creacion-personaje__pares
         grid-template-columns: minmax(0, 1fr)
 
-    // Con una vista previa abierta (fuera del móvil, donde es una hoja), el cuerpo no se encoge por debajo de lo que
-    // lleva: encogido, la vista previa desbordaba su caja y el pie, que va detrás, se pintaba encima de sus datos. El
-    // pie se queda pegado abajo, con su fondo, para tener a mano la acción mientras se lee; al final, va detrás.
-    @include fuera-del-movil
-        .creacion-cuerpo:has(> .creacion-cuerpo__lateral app-creacion-vista-previa)
-            flex-shrink: 0
+    // Apilado, el cuerpo no se encoge por debajo de lo que lleva: encogido al alto que queda en la pestaña, la tarea y
+    // la lateral (sin recorte) desbordaban su caja, «Tu personaje» se pintaba encima de la tabla del paso y el pie,
+    // encima de los dos (el plegable y el móvil, en todos los pasos; la lista de razas se quedaba en una fila). Todo se
+    // desplaza junto, con el pie al final.
+    .creacion-cuerpo
+        flex-shrink: 0
 
+    // Con una vista previa abierta (fuera del móvil, donde es una hoja), el pie se queda pegado abajo, con su fondo,
+    // para tener a mano la acción mientras se lee; al final, va detrás.
+    @include fuera-del-movil
         app-ficha-detalle.creacion:has(.creacion-cuerpo__lateral app-creacion-vista-previa) .creacion-pie
             position: sticky
             bottom: -$creacion-relleno-inferior

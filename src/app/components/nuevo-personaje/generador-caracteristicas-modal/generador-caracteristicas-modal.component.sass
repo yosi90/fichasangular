@@ -24,6 +24,10 @@
         color-scheme: dark
         --mat-card-elevated-container-color: #424242
         --mat-card-subtitle-text-color: #{con-alfa(var(--rol-tinta), .7)}
+        // Los desplegables de la cabecera (tirada mínima, tablas): el relleno claro de Material dejaba el texto blanco
+        // sobre blanco.
+        --mat-form-field-filled-container-color: var(--rol-zona-oscura)
+        --mat-select-enabled-arrow-color: #{con-alfa(var(--rol-tinta), .7)}
 
     mat-card
         height: 100%
