@@ -8,8 +8,8 @@
 // - Cada tema y modo es un bloque con sus valores, sin `light-dark()`: así A en oscuro no depende de `color-scheme` y no
 //   hace falta el respaldo para los navegadores sin `light-dark()`. B y C, y el claro de los tres, declaran su
 //   `color-scheme` para que los controles nativos casen.
-// - Los claros (y B y C enteros) están aquí con los valores básicos del lienzo; se completan en sus fases. Hasta que un
-//   tema tenga su claro listo (`claroListo` en `services/tema-web/temas-web.ts`), su modo efectivo es el oscuro.
+// - A y C están completos en sus dos modos (C desde la fase 3); B, con los valores básicos del lienzo hasta su fase.
+//   Lo que un tema pinta distinto de A es un valor más, con el de A en `:root`. Hasta que un tema tenga su claro listo (`claroListo` en `services/tema-web/temas-web.ts`), su modo efectivo es el oscuro.
 // - Un valor nuevo: se añade a `:root` con el de hoy y a cada bloque con el suyo; nunca solo en un tema.
 // - `data-tema-previa` (y `data-modo-previa`) en un elemento le da los valores de otro tema solo a él y a lo de dentro:
 //   las vistas previas de la ventana de los temas.
@@ -35,6 +35,12 @@
     --rol-fuente-ui: Roboto, "Segoe UI", system-ui, sans-serif
     --rol-fuente-nombres: var(--rol-fuente-ui)
     --rol-fuente-prosa: var(--rol-fuente-ui)
+    // Los nombres de las filas de los listados, y el peso de los nombres (cabeceras y filas).
+    --rol-fuente-filas: var(--rol-fuente-ui)
+    --rol-peso-nombres: 500
+    // Dónde se puede partir el nombre de una fila: en A, en cualquier sitio (`anywhere`); con una letra más ancha
+    // (Literata), solo palabras que no quepan solas (`break-word`), para que la tabla no corte «Aarakocra» en dos.
+    --rol-corte-nombres: anywhere
 
     // Radios
     --rol-radio: 6px
@@ -54,18 +60,34 @@
     --rol-cinta-texto: #ffffff
     --rol-cinta-texto-suave: #adbdc4
     --rol-cinta-activo-texto: black
+    --rol-cinta-buscar-borde: var(--rol-activo)
     --rol-pozo: #424242
     --rol-zona: #505050
     --rol-zona-oscura: #2d2d30
+    // La barra de pestañas (oscura también en el claro).
+    --rol-pestanas: var(--rol-zo-campo)
 
     // La paleta (antes, las variables de `_variables.sass`).
     --rol-primario: rgb(55, 60, 65)
     --rol-primario-hover: rgb(68, 73, 78)
     --rol-activo: #c2185b
     --rol-activo-texto: #ffffff
+    // El texto de las piezas pintadas con el rosa de la acción (el paso actual, lo elegido de un conmutador): sin valor
+    // (`initial`), el texto de siempre de cada pieza (`$ficha-sobre-activo`); C usa el de su acción.
+    --rol-sobre-activo: initial
     --rol-acento: #adbdc4
     --rol-texto-base: #90a4ae
     --rol-exito: rgb(62, 228, 98)
+
+    // Las cabeceras (de la ficha, los listados, la creación, las inserciones…) y su raya inferior de 3px; las cabeceras
+    // de las tablas, con su texto y la flecha de ordenar (oscuras también en el claro de A); los conmutadores.
+    --rol-cabecera: var(--rol-primario)
+    --rol-cabecera-raya: var(--rol-activo)
+    --rol-cabecera-raya-estilo: solid
+    --rol-tabla-cabecera: var(--rol-primario)
+    --rol-tabla-cabecera-texto: var(--rol-zo-acento)
+    --rol-tabla-cabecera-flecha: var(--rol-zo-texto-fuerte)
+    --rol-conmutador: var(--rol-primario)
 
     // Las superficies y los textos de lo de dentro (antes, `ficha-tonos`).
     --rol-tarjeta: #424242
@@ -86,6 +108,8 @@
     --rol-menu-cabecera-texto: #b0bec5
     --rol-menu-titulo: #5f6368
     --rol-menu-apagado: #b0bec5
+    // El icono (leyenda) de las opciones con los temas: el gris de la cinta.
+    --rol-menu-icono: var(--rol-primario)
 
     // Los paneles de la cinta (Archivo, Manuales, Opciones y Ayuda).
     --rol-panel: #2a3036
@@ -116,6 +140,11 @@
     --rol-naranja: #ffab91
     --rol-texto-tenue: #8a949b
     --rol-linea-tenue: #4b5157
+    // La creación: el borde de lo que aún no toca o no se ha hecho (los pasos, los botones pequeños), la línea entre
+    // los pasos y el tramo que falta de su barra de progreso (el móvil).
+    --rol-borde-apagado: #6b7279
+    --rol-linea-pasos: #5d6368
+    --rol-tramo-pendiente: #616161
     // Los datos pequeños con color funcional (`good`, `bad`, `neutral`: un bonificador, un penalizador, un dato).
     --rol-bien-fondo: rgb(78, 87, 66)
     --rol-mal-fondo: rgb(87, 66, 66)
@@ -136,6 +165,10 @@
     --rol-zo-aviso: var(--rol-aviso)
     --rol-zo-error-texto: var(--rol-error-texto)
     --rol-zo-campo: var(--rol-zona-oscura)
+    // El rosa de la acción sobre lo oscuro (la raya de la pestaña activa, los subrayados y los focos de las cabeceras) y
+    // su texto (sin valor, el de cada pieza): en C claro, los de su oscuro.
+    --rol-zo-activo: var(--rol-activo)
+    --rol-zo-sobre-activo: initial
 
     // Angular Material (`_material.scss`): sus colores del sistema salen de estos y de `--rol-activo`. En A oscuro, los
     // del tema compilado de siempre (`pink-bluegrey`): superficies de menús, diálogos y desplegables, el relleno de los
@@ -207,6 +240,8 @@
     --rol-naranja: #a63b12
     --rol-texto-tenue: #545f68
     --rol-linea-tenue: #d3d9de
+    --rol-linea-pasos: #c3cad0
+    --rol-tramo-pendiente: #c3cad0
     --rol-bien-fondo: #d5ead2
     --rol-mal-fondo: #f1d5d5
     --rol-neutro-fondo: #dde3ec
@@ -336,6 +371,8 @@
     --rol-naranja: #a63b12
     --rol-texto-tenue: #545f68
     --rol-linea-tenue: #d3d9de
+    --rol-linea-pasos: #c3cad0
+    --rol-tramo-pendiente: #c3cad0
     --rol-bien-fondo: #d5ead2
     --rol-mal-fondo: #f1d5d5
     --rol-neutro-fondo: #dde3ec
@@ -354,28 +391,48 @@
     --rol-mat-error: #b71c1c
     --rol-mat-error-pista: #ef9a9a
 
-// ───── C · Manual: el marco de A con papel, tinta y granate; Literata en nombres y prosa (fase 3) ─────
+// ───── C · Manual (fase 3; lienzo «Rol: temas e iconos», propuesta C): el marco de A con la piel de un manual. Papel,
+// tinta y granate; Literata en nombres, filas y prosa, y Roboto en la interfaz; esquinas de 3 px; las cabeceras en
+// granate con un filete doble dorado debajo; el menú y las cabeceras de las tablas en cuero. Su oscuro es el mismo libro
+// a la luz de una vela. ─────
 :root[data-tema="c"], [data-tema-previa="c"]
     color-scheme: dark
     --rol-fuente-nombres: Literata, Georgia, "Times New Roman", serif
     --rol-fuente-prosa: Literata, Georgia, "Times New Roman", serif
+    --rol-fuente-filas: Literata, Georgia, "Times New Roman", serif
+    --rol-peso-nombres: 600
+    --rol-corte-nombres: break-word
     --rol-radio: 3px
     --rol-radio-boton: 3px
     --rol-radio-grande: 4px
     --rol-sombra: 2px 3px 8px rgba(0, 0, 0, .45)
+    --rol-sombra-sm: 1px 1px 3px rgba(0, 0, 0, .45)
     --rol-sombra-pozo: inset 2px 2px 8px rgba(0, 0, 0, .6)
+    --rol-sombra-pozo-sm: inset 1px 1px 3px rgba(0, 0, 0, .5)
+    // El marco: la noche alrededor del libro.
     --rol-pagina: #120e0b
     --rol-cinta-texto: #f3e9d2
     --rol-cinta-texto-suave: #bfae8e
+    --rol-cinta-activo-texto: #2e231a
+    --rol-cinta-buscar-borde: #c9a45c
     --rol-pozo: #1c1612
     --rol-zona: #231b15
     --rol-zona-oscura: #1a1410
-    --rol-primario: #4a121f
-    --rol-primario-hover: #5a1a29
+    --rol-pestanas: #1a1410
+    // El cuero (el menú, las cabeceras de las tablas, los botones) y el granate de las cabeceras, con su filete.
+    --rol-primario: #3b2e22
+    --rol-primario-hover: #46372a
+    --rol-cabecera: #4a121f
+    --rol-cabecera-raya: #a8843f
+    --rol-cabecera-raya-estilo: double
+    --rol-conmutador: #2e0b13
     --rol-activo: #e27c86
     --rol-activo-texto: #240b0f
+    --rol-sobre-activo: var(--rol-activo-texto)
+    --rol-zo-sobre-activo: #240b0f
     --rol-acento: #a99878
     --rol-texto-base: #a99878
+    // El papel a la luz de una vela: dos tonos que se alternan en las tablas.
     --rol-tarjeta: #2b2119
     --rol-fila-alterna: #32271d
     --rol-texto: #ecdfc6
@@ -383,96 +440,146 @@
     --rol-texto-fuerte: #fbf3df
     --rol-separador: #3b2e22
     --rol-elegida: #44232a
+    --rol-pnj: #6b1525
+    --rol-tabla-cabecera-texto: #d9c9a8
+    --rol-tabla-cabecera-flecha: #d9c9a8
     --rol-menu-fila: #2b2119
     --rol-menu-fila-alterna: #32271d
     --rol-menu-fila-abierta: #3b2e22
     --rol-menu-texto: #e27c86
+    --rol-menu-cabecera-texto: #e6d3b8
     --rol-menu-titulo: #a99878
+    --rol-menu-apagado: #a99878
+    --rol-menu-icono: #cdbd9f
     --rol-panel: #32271d
     --rol-panel-texto: #cdbd9f
     --rol-panel-texto-fuerte: #ecdfc6
     --rol-panel-texto-suave: #a99878
+    --rol-panel-hover: rgba(240, 220, 180, .08)
     --rol-panel-linea: rgba(240, 220, 180, .18)
+    --rol-tinta: #fbf3df
+    --rol-texto-vivo: #fbf3df
+    --rol-texto-apagado: #a99878
     --rol-enlace: var(--rol-activo)
-    // Angular Material: los valores básicos del tema (sus componentes, en su fase).
-    --rol-mat-fondo: var(--rol-pagina)
-    --rol-mat-control: var(--rol-activo)
-    --rol-mat-control-texto: var(--rol-activo-texto)
-    --rol-mat-control-pista: color-mix(in srgb, var(--rol-activo) 45%, var(--rol-tarjeta))
-    --rol-mat-activo-pista: color-mix(in srgb, var(--rol-activo) 45%, var(--rol-tarjeta))
-    --rol-mat-texto-suave: var(--rol-texto-suave)
+    --rol-texto-tenue: #9a8a6e
+    --rol-linea-tenue: #3b2e22
+    --rol-borde-apagado: #7d6c55
+    --rol-linea-pasos: #4a3b2d
+    --rol-tramo-pendiente: #4a3b2d
+    --rol-bien-fondo: #3a4a2c
+    --rol-mal-fondo: #5a2a2a
+    --rol-neutro-fondo: #403a30
+    // Los campos dentro de las cabeceras granate (`zona-oscura`), en granate oscuro.
+    --rol-zo-campo: #2e0b13
+    // Angular Material: el papel de los menús y los desplegables, el dorado de las casillas y el error que se lee.
+    --rol-mat-fondo: #231b15
+    --rol-mat-superficie: #32271d
+    --rol-mat-superficie-variante: #3b2e22
+    --rol-mat-texto-suave: #cdbd9f
+    --rol-mat-linea: rgba(240, 220, 180, .18)
+    --rol-mat-linea-fuerte: rgba(240, 220, 180, .42)
+    --rol-mat-inversa: #ecdfc6
+    --rol-mat-inversa-texto: #2a1f16
+    --rol-mat-control: #c9a45c
+    --rol-mat-control-texto: #2a1f16
+    --rol-mat-control-pista: color-mix(in srgb, #c9a45c 45%, #2b2119)
+    --rol-mat-activo-pista: color-mix(in srgb, #e27c86 45%, #2b2119)
+    --rol-mat-error: #f07a72
+    --rol-mat-error-texto: #240b0f
+    --rol-mat-error-pista: #8c3a35
 
+// C en claro: el papel. El marco sigue en cuero (la cinta, las pestañas, el menú) y las cabeceras en granate, con
+// `zona-oscura`; lo de dentro y las cabeceras de las tablas, en papel.
 :root[data-tema="c"][data-modo="claro"], [data-tema-previa="c"][data-modo-previa="claro"]
     color-scheme: light
+    --rol-sombra: 2px 3px 8px rgba(40, 25, 10, .45)
+    --rol-sombra-sm: 1px 1px 3px rgba(40, 25, 10, .4)
     --rol-pagina: #4a3a2d
     --rol-cinta-fondo: #2e231a
     --rol-pozo: #3a2c21
     --rol-zona: #cdbf9f
-    --rol-zona-oscura: #2e231a
-    --rol-primario: #6b1525
-    --rol-primario-hover: #7d1d30
+    // Lo hundido dentro del papel (campos, recuadros, las casillas secundarias de la ficha).
+    --rol-zona-oscura: #e4d6b6
+    --rol-pestanas: #2e231a
+    --rol-primario: #2e231a
+    --rol-primario-hover: #3b2e22
+    --rol-cabecera: #6b1525
+    --rol-cabecera-raya: #c9a45c
+    --rol-conmutador: #4d0e1a
     --rol-activo: #8c1c2e
     --rol-activo-texto: #fff6e3
-    --rol-acento: #6c5943
-    --rol-texto-base: #6c5943
+    --rol-acento: #5a4734
+    --rol-texto-base: #5a4734
+    --rol-exito: #2e7d32
     --rol-tarjeta: #f3ead6
     --rol-fila-alterna: #e8dcc0
     --rol-texto: #2a1f16
     --rol-texto-suave: #55432f
     --rol-texto-fuerte: #2a1f16
     --rol-separador: #d9caa6
+    --rol-aviso: #8a5a00
     --rol-elegida: #ecd2c4
+    --rol-tabla-cabecera: #d9caa6
+    --rol-tabla-cabecera-texto: #4d3b28
+    --rol-tabla-cabecera-flecha: #4d3b28
     --rol-menu-fila: #efe5cd
     --rol-menu-fila-alterna: #e6dabd
     --rol-menu-fila-abierta: #d9caa6
     --rol-menu-texto: #8c1c2e
-    --rol-menu-titulo: #6c5943
+    --rol-menu-titulo: #5a4734
+    --rol-menu-apagado: #a99878
+    --rol-menu-icono: #55432f
     --rol-panel: #fbf5e6
     --rol-panel-texto: #55432f
     --rol-panel-texto-fuerte: #2a1f16
-    --rol-panel-texto-suave: #6c5943
+    --rol-panel-texto-suave: #5a4734
     --rol-panel-hover: rgba(60, 40, 20, .06)
     --rol-panel-linea: rgba(60, 40, 20, .28)
     --rol-error-texto: #8e1c1c
-    --rol-exito: #2e7d32
-    --rol-aviso: #8a5a00
-    --rol-tinta: #000000
-    --rol-texto-vivo: var(--rol-texto-fuerte)
+    --rol-error-fondo: rgba(198, 40, 40, .1)
+    --rol-tinta: #3c2814
+    --rol-texto-vivo: #2a1f16
     --rol-enlace: var(--rol-activo)
-    --rol-texto-apagado: var(--rol-texto-base)
+    --rol-texto-apagado: #5a4734
     --rol-info: #3949ab
     --rol-aviso-suave: #a1360f
     --rol-ambar-texto: #7a5200
     --rol-naranja: #a63b12
-    --rol-texto-tenue: #545f68
-    --rol-linea-tenue: #d3d9de
-    --rol-bien-fondo: #d5ead2
-    --rol-mal-fondo: #f1d5d5
-    --rol-neutro-fondo: #dde3ec
-    // Angular Material: los valores básicos del tema (sus componentes, en su fase).
-    --rol-mat-fondo: var(--rol-tarjeta)
-    --rol-mat-superficie: var(--rol-panel)
-    --rol-mat-texto-suave: var(--rol-texto-suave)
-    --rol-mat-linea: rgba(0, 0, 0, .12)
-    --rol-mat-linea-fuerte: rgba(0, 0, 0, .5)
-    --rol-mat-inversa: var(--rol-texto-fuerte)
-    --rol-mat-inversa-texto: var(--rol-tarjeta)
-    --rol-mat-control: var(--rol-activo)
-    --rol-mat-control-texto: var(--rol-activo-texto)
-    --rol-mat-control-pista: color-mix(in srgb, var(--rol-activo) 40%, var(--rol-tarjeta))
-    --rol-mat-activo-pista: color-mix(in srgb, var(--rol-activo) 40%, var(--rol-tarjeta))
-    --rol-mat-error: #b71c1c
-    --rol-mat-error-pista: #ef9a9a
-    // Lo oscuro dentro del claro (`zona-oscura`: la cinta, las cabeceras granate): los textos de C en oscuro.
+    --rol-texto-tenue: #5e4c38
+    --rol-linea-tenue: #d9caa6
+    --rol-borde-apagado: #8a7658
+    --rol-linea-pasos: #d9caa6
+    --rol-tramo-pendiente: #d9caa6
+    --rol-bien-fondo: #d3dfc0
+    --rol-mal-fondo: #ecc9c2
+    --rol-neutro-fondo: #ddd3bf
+    // Lo de cuero y granate (`zona-oscura`): los textos de C en oscuro, y los campos de las cabeceras en granate oscuro.
     --rol-zo-texto: #ecdfc6
     --rol-zo-texto-suave: #cdbd9f
     --rol-zo-texto-fuerte: #fbf3df
     --rol-zo-texto-vivo: #fbf3df
-    --rol-zo-acento: #a99878
-    --rol-zo-texto-base: #a99878
+    --rol-zo-acento: #d9c9a8
+    --rol-zo-texto-base: #bfae8e
     --rol-zo-separador: #3b2e22
-    --rol-zo-tinta: #ffffff
-    --rol-zo-enlace: #e27c86
+    --rol-zo-tinta: #fbf3df
+    --rol-zo-enlace: #eba1a8
     --rol-zo-aviso: #f0b45a
     --rol-zo-error-texto: #ffd6d6
-    --rol-zo-campo: #1a1410
+    --rol-zo-campo: #4d0e1a
+    --rol-zo-activo: #e27c86
+    // Angular Material en claro: el papel claro de los menús, el bronce de las casillas (3:1 sobre el papel).
+    --rol-mat-fondo: #f3ead6
+    --rol-mat-superficie: #fbf5e6
+    --rol-mat-superficie-variante: #e8dcc0
+    --rol-mat-texto-suave: #55432f
+    --rol-mat-linea: rgba(60, 40, 20, .16)
+    --rol-mat-linea-fuerte: rgba(60, 40, 20, .5)
+    --rol-mat-inversa: #2a1f16
+    --rol-mat-inversa-texto: #f3ead6
+    --rol-mat-control: #7a5a1e
+    --rol-mat-control-texto: #fff6e3
+    --rol-mat-control-pista: color-mix(in srgb, #7a5a1e 40%, #f3ead6)
+    --rol-mat-activo-pista: color-mix(in srgb, #8c1c2e 40%, #f3ead6)
+    --rol-mat-error: #b71c1c
+    --rol-mat-error-texto: #ffffff
+    --rol-mat-error-pista: #ef9a9a

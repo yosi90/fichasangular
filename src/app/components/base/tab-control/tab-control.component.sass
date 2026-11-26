@@ -6,13 +6,17 @@
     height: 100%
     min-height: 0
 
-    // La barra de pestañas es pizarra también en el claro: sus textos, los del oscuro.
+    // La barra de pestañas es oscura también en el claro (`--rol-pestanas`): sus textos, los del oscuro.
     ::ng-deep mat-tab-header
         @include zona-oscura
         --mat-tab-inactive-label-text-color: #{con-alfa(var(--rol-tinta), .7)}
         --mat-tab-inactive-hover-label-text-color: #{con-alfa(var(--rol-tinta), .7)}
         --mat-tab-inactive-focus-label-text-color: #{con-alfa(var(--rol-tinta), .7)}
-        background-color: $contrast-dark
+        // La raya de la pestaña activa, con el rosa sobre lo oscuro (en C claro, el de su oscuro).
+        --mat-tab-active-indicator-color: var(--rol-zo-activo)
+        --mat-tab-active-hover-indicator-color: var(--rol-zo-activo)
+        --mat-tab-active-focus-indicator-color: var(--rol-zo-activo)
+        background-color: var(--rol-pestanas)
 
     mat-tab-group
         display: flex

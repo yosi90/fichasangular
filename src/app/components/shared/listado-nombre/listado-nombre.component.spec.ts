@@ -80,4 +80,29 @@ describe('ListadoNombreComponent y manualListado', () => {
             expect(visible()).toBeFalse();
         });
     });
+
+    // El tema C (fase 3): el nombre de la fila en Literata a 600, y la palabra entera (la tabla no la parte en dos).
+    describe('la letra de la fila sigue al tema', () => {
+        const html = document.documentElement;
+        let antes: string | undefined;
+        beforeEach(() => antes = html.dataset['tema']);
+        afterEach(() => {
+            if (antes === undefined)
+                delete html.dataset['tema'];
+            else
+                html.dataset['tema'] = antes;
+        });
+        const boton = () => getComputedStyle(raiz().querySelector('.listado-nombre__boton')!);
+
+        it('en C, Literata a 600 y sin partir las palabras; en A, Roboto a 500, como siempre', () => {
+            html.dataset['tema'] = 'c';
+            expect(boton().fontFamily).toContain('Literata');
+            expect(boton().fontWeight).toBe('600');
+            expect(boton().overflowWrap).toBe('break-word');
+            html.dataset['tema'] = 'a';
+            expect(boton().fontFamily).toContain('Roboto');
+            expect(boton().fontWeight).toBe('500');
+            expect(boton().overflowWrap).toBe('anywhere');
+        });
+    });
 });

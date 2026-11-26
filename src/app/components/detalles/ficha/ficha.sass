@@ -74,9 +74,8 @@ app-ficha-detalle
 
     .ficha-cabecera__nombre
         margin: 0
-        font-family: var(--rol-fuente-nombres)
+        @include nombre-del-tema
         font-size: 32px
-        font-weight: 500
         line-height: 1.2
         letter-spacing: .01em
         color: $ficha-blanco
@@ -463,7 +462,7 @@ app-ficha-detalle
         tr:last-child td
             border-bottom: 0
 
-    // Tablas a todo lo ancho, con cabecera $primary y filas alternas
+    // Tablas a todo lo ancho, con la cabecera de las tablas del tema y filas alternas
     .ficha-tabla
         width: 100%
         border-collapse: collapse
@@ -471,9 +470,7 @@ app-ficha-detalle
         color: $ficha-blanco
 
         thead tr
-            @include zona-oscura($material: false)
-            background: $primary
-            color: $accent
+            @include ficha-tabla-cabecera
 
         th
             padding: 9px 12px

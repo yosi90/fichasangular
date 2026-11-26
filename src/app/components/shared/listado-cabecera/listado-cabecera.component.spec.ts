@@ -90,4 +90,31 @@ describe('ListadoCabeceraComponent', () => {
         expect(raiz.querySelector('mat-icon.listado-cabecera__icono-material')?.textContent?.trim()).toBe('new_releases');
         expect(raiz.querySelector('.listado-cabecera--sin-buscador .listado-cabecera__acciones .extra')).not.toBeNull();
     });
+
+    // El tema C (fase 3): la cabecera en granate, con su campo en granate oscuro, y el título en Literata.
+    it('en el tema C va en granate con el título en Literata; en A, en pizarra y Roboto', () => {
+        const html = document.documentElement;
+        const antes = html.dataset['tema'];
+        const antesModo = html.dataset['modo'];
+        const estilo = (selector: string) => getComputedStyle(elemento().querySelector(selector) as HTMLElement);
+        try {
+            html.dataset['tema'] = 'c';
+            html.dataset['modo'] = 'oscuro';
+            expect(estilo('.listado-cabecera').backgroundColor).toBe('rgb(74, 18, 31)');
+            expect(estilo('.listado-cabecera__buscar').backgroundColor).toBe('rgb(46, 11, 19)');
+            expect(estilo('.listado-cabecera__titulo').fontFamily).toContain('Literata');
+            html.dataset['tema'] = 'a';
+            expect(estilo('.listado-cabecera').backgroundColor).toBe('rgb(55, 60, 65)');
+            expect(estilo('.listado-cabecera__titulo').fontFamily).toContain('Roboto');
+        } finally {
+            if (antes === undefined)
+                delete html.dataset['tema'];
+            else
+                html.dataset['tema'] = antes;
+            if (antesModo === undefined)
+                delete html.dataset['modo'];
+            else
+                html.dataset['modo'] = antesModo;
+        }
+    });
 });
