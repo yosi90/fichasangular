@@ -245,3 +245,61 @@ describe('La vista previa de la creación', () => {
         expect(el().querySelector('.creacion-cuerpo')?.classList).toContain('creacion-cuerpo--sin-lateral');
     }));
 });
+
+@Component({
+    template: `
+        <div class="caja" style="display: flex; width: 800px; height: 420px">
+            <app-creacion-marco>
+                <app-creacion-cuerpo [lateral]="true">
+                    <div creacionTarea class="tarea">La lista</div>
+                    <div creacionLateral>
+                        <app-creacion-vista-previa titulo="La raza que miras" clave="elfo">
+                            <div class="datos" style="height: 1200px">Los datos de la ficha</div>
+                        </app-creacion-vista-previa>
+                    </div>
+                </app-creacion-cuerpo>
+                <app-creacion-pie nota="Elígela con «Elegir y continuar».">
+                    <button type="button">Abrir su ficha completa</button>
+                    <button type="button">Elegir Elfo y continuar</button>
+                </app-creacion-pie>
+            </app-creacion-marco>
+        </div>`,
+    standalone: false
+})
+class VistaPreviaApiladaDePruebaComponent { }
+
+describe('La vista previa con la creación apilada', () => {
+    let fixture: ComponentFixture<VistaPreviaApiladaDePruebaComponent>;
+    const el = (): HTMLElement => fixture.nativeElement;
+    const caja = (selector: string): DOMRect => (el().querySelector(selector) as HTMLElement).getBoundingClientRect();
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            declarations: [VistaPreviaApiladaDePruebaComponent, ...CREACION_MARCO_COMPONENTES, ...FICHA_DETALLE_COMPONENTES, TextoManualComponent],
+            imports: [MatIconModule, MatTooltipModule],
+        }).compileComponents();
+        fixture = TestBed.createComponent(VistaPreviaApiladaDePruebaComponent);
+        document.body.appendChild(fixture.nativeElement);
+        fixture.detectChanges();
+    });
+
+    afterEach(() => fixture.nativeElement.remove());
+
+    it('el pie no tapa los datos: va pegado abajo mientras se lee y, al final, detrás de la vista previa', () => {
+        // En el móvil la vista previa es una hoja con el pie fijo: esto es la creación apilada de 700 px para arriba.
+        if (window.matchMedia('(max-width: 699.98px)').matches) {
+            pending('La ventana de las pruebas mide menos de 700 px.');
+            return;
+        }
+        const desplazable = el().querySelector('app-ficha-detalle.creacion > .ficha') as HTMLElement;
+        const pie = el().querySelector('.creacion-pie') as HTMLElement;
+
+        expect(getComputedStyle(el().querySelector('.creacion-cuerpo') as HTMLElement).gridTemplateColumns.split(' ').length).toBe(1);
+        expect(caja('.creacion-cuerpo').bottom).toBeGreaterThanOrEqual(caja('app-creacion-vista-previa').bottom - 1);
+        expect(getComputedStyle(pie).position).toBe('sticky');
+        expect(Math.abs(caja('.creacion-pie').bottom - desplazable.getBoundingClientRect().bottom)).toBeLessThan(1);
+
+        desplazable.scrollTop = desplazable.scrollHeight;
+        expect(caja('.creacion-pie').top).toBeGreaterThanOrEqual(caja('app-creacion-vista-previa').bottom);
+    });
+});
