@@ -1,4 +1,4 @@
-import { Clase, ClaseEspecialMascota } from 'src/app/interfaces/clase';
+import { Clase, ClaseEspecialMascota, ClaseEspecialNivel } from 'src/app/interfaces/clase';
 import { Id_nombre } from 'src/app/interfaces/genericas';
 import {
     EspecialContextualMonstruo,
@@ -13,6 +13,7 @@ import { TipoDeMascota } from 'src/app/interfaces/sesiones';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { doteDeNivelClase, idPlantillaDeNivel } from 'src/app/services/utils/nivel-clase-monstruo';
+import { detalleConSustituciones, NivelSustitucionTomado, sustitucionesDeLaClase } from 'src/app/services/utils/niveles-sustitucion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 /*
@@ -21,11 +22,14 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
  * API lo comprueba al guardar con las mismas reglas, `utils/mascotas.py`). Sin ids ni nombres fijos:
  * - **las fuentes**: las clases del personaje cuya tabla da una aptitud con `Otorga_companero` u `Otorga_familiar`, desde
  *   el nivel en que la da y, en un grupo opcional, solo si la eligió; cada una aporta máx(0, ⌊nivel / `Divisor`⌋ +
- *   `Ajuste`) de su `Mascota` y elige de la lista de `Mascota.Lista`. **El nivel efectivo** es la suma;
+ *   `Ajuste`) de su `Mascota` y elige de la lista de `Mascota.Lista`. **El nivel efectivo** es la suma. La tabla va con
+ *   sus niveles de sustitución (R8, tanda 1b; catalogos.md, «Las mascotas de los niveles de sustitución»): sin lo que
+ *   quitan (el explorador kóbold no gana el compañero animal de 4.º) y con lo que dan (su comadreja terrible);
  * - **el cupo**: una mascota de cada clase por personaje, aunque la den varias clases;
  * - **la lista**: las filas de `Niveles_clase` de esas listas con la plantilla de la mascota, la dote que la abre, el
  *   nivel mínimo y, si la fila lo pide, el ataque base del personaje (`resolverFilaMascota`), y el catálogo de la creación, una entrada por monstruo y plantilla con las filas
- *   de esa mascota (`Mascota` de cada fila: `filasPorPlantilla`);
+ *   de esa mascota (`Mascota` de cada fila: `filasPorPlantilla`). Una fila con `Especial` solo vale si el personaje tiene
+ *   esa aptitud, y la fuente con `Mascota.Solo_lista_propia` solo elige de las de su aptitud (`esFilaDeSusListas`);
  * - **lo que da cada nivel** (`mascota_aptitudes`): al amo, a la mascota o a los dos (`aptitudesMascotaDelNivel`), y la
  *   fila de una tabla por nivel (`filaDelNivel`).
  */
@@ -61,13 +65,17 @@ export interface FuenteMascota {
     idClase: number;
     nombreClase: string;
     nivelActual: number;
-    /** La aptitud de su tabla que da la mascota. */
+    /** La aptitud de su tabla (o de un nivel de sustitución suyo) que da la mascota. */
     idEspecial: number;
+    /** El nivel de la clase en que la da (el explorador, 4): de él sale lo menos que aporta al darla (`aportaAlDarla`). */
+    nivelInicio: number;
     divisor: number;
     ajuste: number;
     /** máx(0, ⌊nivel / divisor⌋ + ajuste). */
     aporta: number;
     lista: { id: number; nombre: string; };
+    /** Solo elige entre las filas de su lista con su aptitud (`Mascota.Solo_lista_propia`: el explorador kóbold). */
+    soloListaPropia: boolean;
 }
 
 /** Las fuentes de la mascota, su cupo, su nivel efectivo (la suma de lo que aportan) y las listas de las que elige. */
@@ -77,6 +85,11 @@ export interface EstadoMascota extends CupoMascota {
     fuentesMascota: FuenteMascota[];
     /** Las clases de cuyas filas de `Niveles_clase` elige (las `Mascota.Lista` de sus fuentes). */
     listasIds: number[];
+    /**
+     * Las aptitudes que tiene de las tablas de sus clases y de sus niveles de sustitución (a su nivel y, si son de un grupo
+     * opcional, elegidas): las que abren las filas de la lista con `Especial` (el sabueso élfico del explorador elfo).
+     */
+    aptitudesQueAbren: number[];
     /**
      * El ataque base del personaje, el primero de su `Ataque_base` («+7/+2» → 7; sin número, 0), como la API: el que mira
      * una fila de la lista con `Ataque_base_minimo`.
@@ -205,32 +218,64 @@ export function resolverCupoMascota(
     return { fuentes, fuentesClaseIds, fuentesTotales, cuposConsumidos, cuposDisponibles };
 }
 
+/** Una aptitud de la tabla de una clase, con el nivel de la clase en que se gana. */
+interface AptitudDeLaTabla {
+    especialNivel: ClaseEspecialNivel;
+    nivel: number;
+}
+
+/**
+ * Las aptitudes de la tabla de una clase, cada una con el nivel de la clase en que se gana: con sus niveles de sustitución
+ * (`tomados`), la tabla sin lo que quitan y con lo que dan, al nivel en que se toman (`detalleConSustituciones`, el mismo
+ * motor que la subida); sin ellos, la tabla tal cual.
+ */
+function aptitudesDeLaTabla(clase: Clase | null | undefined, tomados: readonly NivelSustitucionTomado[]): AptitudDeLaTabla[] {
+    return (clase?.Desglose_niveles ?? []).flatMap((detalle) => {
+        const nivelFila = toInt(detalle?.Nivel);
+        const fila = clase && tomados.length > 0 ? detalleConSustituciones(clase, nivelFila, tomados) ?? detalle : detalle;
+        return (fila?.Especiales ?? []).map((especialNivel) => ({
+            especialNivel, nivel: Math.max(1, toInt(especialNivel?.Nivel ?? nivelFila)),
+        }));
+    });
+}
+
 /**
  * Las aptitudes de la tabla de una clase que dan la mascota (`otorga`), cada una con el nivel en que la da (el primero),
- * si es de un grupo opcional y cómo cuenta (`Mascota`; sin él, divisor 1, ajuste 0 y la lista de la clase).
+ * si es de un grupo opcional y cómo cuenta (`Mascota`; sin él, divisor 1, ajuste 0 y la lista de la clase). Con sus
+ * niveles de sustitución (`tomados`): sin la que quiten y con la que den (el explorador kóbold de 4.º, «Compañero
+ * comadreja terrible» en lugar de «Compañero animal»).
  */
-export function aptitudesMascotaDeLaClase(clase: Clase | null | undefined, otorga: OtorgaMascota): AptitudMascotaDeClase[] {
+export function aptitudesMascotaDeLaClase(clase: Clase | null | undefined, otorga: OtorgaMascota,
+    tomados: readonly NivelSustitucionTomado[] = []): AptitudMascotaDeClase[] {
     const porEspecial = new Map<number, AptitudMascotaDeClase>();
-    (clase?.Desglose_niveles ?? []).forEach((detalle) => {
-        (detalle?.Especiales ?? []).forEach((especialNivel) => {
-            if (!toBoolean(especialNivel?.Especial?.[otorga]))
-                return;
-            const idEspecial = toInt(especialNivel?.Especial?.['Id']);
-            const nivel = Math.max(1, toInt(especialNivel?.Nivel ?? detalle?.Nivel));
-            const opcional = toInt(especialNivel?.Opcional) > 0;
-            const mascota: ClaseEspecialMascota = especialNivel?.Mascota ?? {
-                Divisor: 1, Ajuste: 0, Lista: { Id: toInt(clase?.Id), Nombre: `${clase?.Nombre ?? ''}` },
-            };
-            const previa = porEspecial.get(idEspecial);
-            if (!previa) {
-                porEspecial.set(idEspecial, { idEspecial, nivel, opcional, mascota });
-                return;
-            }
-            previa.nivel = Math.min(previa.nivel, nivel);
-            previa.opcional = previa.opcional || opcional;
-        });
+    aptitudesDeLaTabla(clase, tomados).forEach(({ especialNivel, nivel }) => {
+        if (!toBoolean(especialNivel?.Especial?.[otorga]))
+            return;
+        const idEspecial = toInt(especialNivel?.Especial?.['Id']);
+        const opcional = toInt(especialNivel?.Opcional) > 0;
+        const mascota: ClaseEspecialMascota = especialNivel?.Mascota ?? {
+            Divisor: 1, Ajuste: 0, Lista: { Id: toInt(clase?.Id), Nombre: `${clase?.Nombre ?? ''}` }, Solo_lista_propia: false,
+        };
+        const previa = porEspecial.get(idEspecial);
+        if (!previa) {
+            porEspecial.set(idEspecial, { idEspecial, nivel, opcional, mascota });
+            return;
+        }
+        previa.nivel = Math.min(previa.nivel, nivel);
+        previa.opcional = previa.opcional || opcional;
     });
     return Array.from(porEspecial.values());
+}
+
+/**
+ * Los niveles de sustitución que tomó de esa clase: los de su entrada del desglose (`Niveles_sustitucion`, en la ficha y en
+ * la creación) o, sin ellos, los de su orden de niveles (`Orden_niveles`).
+ */
+function tomadosDeLaClase(personaje: Personaje, entrada: Personaje['desgloseClases'][number], clase: Clase): NivelSustitucionTomado[] {
+    const delDesglose = (entrada?.Niveles_sustitucion ?? [])
+        .map((n) => ({ nivelClase: toInt(n?.nivelClase), idNivelSustitucion: toInt(n?.id) }))
+        .filter((t) => t.nivelClase > 0 && t.idNivelSustitucion > 0);
+    return delDesglose.length > 0 ? delDesglose : sustitucionesDeLaClase(personaje?.Orden_niveles, toInt(clase?.Id));
 }
 
 /** Lo que aporta una clase a su nivel al nivel efectivo de la mascota: máx(0, ⌊nivel / `Divisor`⌋ + `Ajuste`) de su `Mascota`. */
@@ -239,31 +284,75 @@ export function aportaDeLaClase(nivelClase: number, mascota: Pick<ClaseEspecialM
 }
 
 /**
- * Lo que aporta la clase al nivel efectivo de la mascota en el nivel en que su tabla se la da (el druida 1, 1; el explorador
- * 4, 2; el filo aojador 4, 1); sin ninguna aptitud que la dé, 0. El reciclaje no baja de él (`reciclaje-mascota.ts`).
+ * Lo que aporta la fuente al nivel efectivo de la mascota en el nivel de su clase en que se la da (`nivelInicio`: el druida
+ * 1, 1; el explorador 4, 2; el filo aojador 4, 1; el explorador kóbold con su comadreja de 4.º, 2), como la API
+ * (`Fuente.aporta_al_darla`). El reciclaje no baja de él (`reciclaje-mascota.ts`).
  */
-export function aportaAlDarLaMascota(clase: Clase | null | undefined, otorga: OtorgaMascota): number {
-    const aptitudes = aptitudesMascotaDeLaClase(clase, otorga);
-    return aptitudes.length > 0 ? Math.min(...aptitudes.map((aptitud) => aportaDeLaClase(aptitud.nivel, aptitud.mascota))) : 0;
+export function aportaAlDarla(fuente: Pick<FuenteMascota, 'nivelInicio' | 'divisor' | 'ajuste'>): number {
+    return aportaDeLaClase(fuente.nivelInicio, { Divisor: fuente.divisor, Ajuste: fuente.ajuste });
 }
 
 /**
- * Las clases del personaje que le dan la mascota: las de su tabla con la aptitud a su nivel o antes y, si es de un grupo
- * opcional, elegida (está entre sus aptitudes, `Claseas`), con lo que aporta cada una.
+ * Las aptitudes que ha perdido por una ex clase (el ex druida pierde «Compañero animal», MJ pág. 37), con los nombres de
+ * esas ex clases (`Perdida_por` de sus `Claseas`).
  */
-export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], otorga: OtorgaMascota): FuenteMascota[] {
-    const clases = Array.isArray(catalogoClases) ? catalogoClases : [];
-    const elegidas = new Set((personaje?.Claseas ?? []).map((especial) => toInt(especial?.Id)).filter((id) => id > 0));
-    // Las aptitudes que ha perdido por una ex clase (el ex druida pierde «Compañero animal», MJ pág. 37): los niveles de esa
-    // clase no suman al nivel efectivo de la mascota, y los de otra que da la misma aptitud (el explorador), sí (contrato:
-    // personajes.md, «La mascota y el alineamiento»). Con los ids de su ex clase (`Ex.Especiales`, aunque otra clase siga
-    // dándola); sin ellos (una ficha de antes), con `Perdida_por` (solo si todas las clases que la dan son ex).
+function perdidasPorEx(personaje: Personaje): Map<number, Set<string>> {
     const perdidaPor = new Map<number, Set<string>>();
     (personaje?.Claseas ?? []).forEach((especial) => {
         const nombres = (especial?.Perdida_por ?? []).map((n) => normalizarTexto(n ?? '')).filter((n) => n.length > 0);
         if (nombres.length > 0 && toInt(especial?.Id) > 0)
             perdidaPor.set(toInt(especial.Id), new Set([...(perdidaPor.get(toInt(especial.Id)) ?? []), ...nombres]));
     });
+    return perdidaPor;
+}
+
+/**
+ * Si perdió la aptitud de la clase de esa entrada por su ex clase: con los ids de su ex clase (`Ex.Especiales`, aunque otra
+ * clase siga dándola); sin ellos (una ficha de antes), con `Perdida_por` (solo si todas las clases que la dan son ex).
+ */
+function laPerdioPorEx(entrada: Personaje['desgloseClases'][number], idEspecial: number, perdidaPor: ReadonlyMap<number, ReadonlySet<string>>): boolean {
+    const ex = normalizarTexto(`${entrada?.Ex?.Nombre ?? ''}`);
+    return Array.isArray(entrada?.Ex?.Especiales)
+        ? entrada.Ex.Especiales.some((id) => toInt(id) === idEspecial)
+        : ex.length > 0 && !!perdidaPor.get(idEspecial)?.has(ex);
+}
+
+/**
+ * Las aptitudes que tiene el personaje de las tablas de sus clases, con sus niveles de sustitución (a su nivel de clase y,
+ * si son de un grupo opcional, elegidas; sin las que perdió por una ex clase): las que abren las filas de las listas con
+ * `Especial` (el sabueso élfico del explorador elfo, los excavadores del explorador gnomo), como la API
+ * (`utils/mascotas.aptitudes_que_abren`).
+ */
+export function aptitudesQueAbrenFilas(personaje: Personaje, catalogoClases: Clase[]): number[] {
+    const clases = Array.isArray(catalogoClases) ? catalogoClases : [];
+    const elegidas = new Set((personaje?.Claseas ?? []).map((especial) => toInt(especial?.Id)).filter((id) => id > 0));
+    const perdidaPor = perdidasPorEx(personaje);
+    const ids = new Set<number>();
+    (personaje?.desgloseClases ?? []).forEach((entrada) => {
+        const nivelActual = Math.max(0, toInt(entrada?.Nivel));
+        const clase = claseDelDesglose(clases, `${entrada?.Nombre ?? ''}`.trim());
+        if (!clase || nivelActual < 1)
+            return;
+        aptitudesDeLaTabla(clase, tomadosDeLaClase(personaje, entrada, clase)).forEach(({ especialNivel, nivel }) => {
+            const idEspecial = toInt(especialNivel?.Especial?.['Id']);
+            if (idEspecial > 0 && nivelActual >= nivel && (toInt(especialNivel?.Opcional) <= 0 || elegidas.has(idEspecial))
+                && !laPerdioPorEx(entrada, idEspecial, perdidaPor))
+                ids.add(idEspecial);
+        });
+    });
+    return Array.from(ids).sort((a, b) => a - b);
+}
+
+/**
+ * Las clases del personaje que le dan la mascota: las de su tabla (con sus niveles de sustitución) con la aptitud a su
+ * nivel o antes y, si es de un grupo opcional, elegida (está entre sus aptitudes, `Claseas`), con lo que aporta cada una.
+ */
+export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], otorga: OtorgaMascota): FuenteMascota[] {
+    const clases = Array.isArray(catalogoClases) ? catalogoClases : [];
+    const elegidas = new Set((personaje?.Claseas ?? []).map((especial) => toInt(especial?.Id)).filter((id) => id > 0));
+    // Las aptitudes perdidas por una ex clase: los niveles de esa clase no suman al nivel efectivo de la mascota, y los de
+    // otra que da la misma aptitud (el explorador), sí (contrato: personajes.md, «La mascota y el alineamiento»).
+    const perdidaPor = perdidasPorEx(personaje);
     const porClave = new Map<string, FuenteMascota>();
     (personaje?.desgloseClases ?? []).forEach((entrada) => {
         const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
@@ -271,20 +360,16 @@ export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], ot
         const clase = claseDelDesglose(clases, nombreClase);
         if (!clase || nivelActual < 1)
             return;
-        aptitudesMascotaDeLaClase(clase, otorga).forEach((aptitud) => {
-            if (nivelActual < aptitud.nivel || (aptitud.opcional && !elegidas.has(aptitud.idEspecial)))
-                return;
-            const ex = normalizarTexto(`${entrada?.Ex?.Nombre ?? ''}`);
-            const pierdeEsa = Array.isArray(entrada?.Ex?.Especiales)
-                ? entrada.Ex.Especiales.some((id) => toInt(id) === aptitud.idEspecial)
-                : ex.length > 0 && !!perdidaPor.get(aptitud.idEspecial)?.has(ex);
-            if (pierdeEsa)
+        aptitudesMascotaDeLaClase(clase, otorga, tomadosDeLaClase(personaje, entrada, clase)).forEach((aptitud) => {
+            if (nivelActual < aptitud.nivel || (aptitud.opcional && !elegidas.has(aptitud.idEspecial))
+                || laPerdioPorEx(entrada, aptitud.idEspecial, perdidaPor))
                 return;
             const fuente: FuenteMascota = {
                 idClase: toInt(clase.Id),
                 nombreClase: `${clase.Nombre ?? nombreClase}`.trim(),
                 nivelActual,
                 idEspecial: aptitud.idEspecial,
+                nivelInicio: aptitud.nivel,
                 divisor: Math.max(1, toInt(aptitud.mascota.Divisor, 1)),
                 ajuste: toInt(aptitud.mascota.Ajuste),
                 aporta: aportaDeLaClase(nivelActual, aptitud.mascota),
@@ -292,6 +377,7 @@ export function fuentesMascota(personaje: Personaje, catalogoClases: Clase[], ot
                     id: toInt(aptitud.mascota.Lista?.Id) || toInt(clase.Id),
                     nombre: `${aptitud.mascota.Lista?.Nombre || clase.Nombre || ''}`.trim(),
                 },
+                soloListaPropia: !!aptitud.mascota.Solo_lista_propia,
             };
             const clave = `${fuente.idClase}:${fuente.idEspecial}`;
             const previa = porClave.get(clave);
@@ -323,6 +409,7 @@ export function resolverEstadoMascota(
         nivelEfectivo: fuentes.length > 0 ? nivel : 0,
         fuentesMascota: fuentes,
         listasIds: Array.from(new Set(fuentes.map((fuente) => fuente.lista.id))).filter((id) => id > 0),
+        aptitudesQueAbren: fuentes.length > 0 ? aptitudesQueAbrenFilas(personaje, catalogoClases) : [],
         ataqueBase: primerEntero(personaje?.Ataque_base) ?? 0,
     };
 }
@@ -333,14 +420,39 @@ function nombreDeLista(nombre: string | null | undefined, porDefecto: string): s
     return (texto.length > 0 ? texto : porDefecto).toLocaleLowerCase('es');
 }
 
-/** Las filas de `Niveles_clase` de la mascota en esas listas (las de sus clases) y con su plantilla. */
+/** De qué listas elige el personaje su mascota (de `EstadoMascota`): sus listas, sus fuentes y las aptitudes que abren filas. */
+export type ListasDeLaMascota = Pick<EstadoMascota, 'listasIds'> & Partial<Pick<EstadoMascota, 'fuentesMascota' | 'aptitudesQueAbren'>>;
+
+/**
+ * Si una fila de `Niveles_clase` es de las listas de la mascota del personaje, como la API
+ * (`utils/mascotas.filas_de_las_fuentes`):
+ * - sin `Especial`, de la lista de una fuente sin `Solo_lista_propia`;
+ * - con `Especial`, de una de esas listas y con una aptitud que tiene (`aptitudesQueAbren`: el sabueso élfico del
+ *   explorador elfo), o de la lista de una fuente con `Solo_lista_propia` y con su aptitud (la comadreja del explorador
+ *   kóbold).
+ */
+export function esFilaDeSusListas(fila: MonstruoNivelClase, de: ListasDeLaMascota | null | undefined): boolean {
+    const lista = toInt(fila?.Clase?.Id);
+    const especial = toInt(fila?.Especial?.Id);
+    const fuentes = de?.fuentesMascota ?? [];
+    const propias = fuentes.filter((fuente) => fuente.soloListaPropia);
+    // Una lista vale entera si la da una fuente sin lista propia (el druida / explorador kóbold elige de toda la del druida).
+    const entera = (id: number) => !propias.some((fuente) => fuente.lista.id === id)
+        || fuentes.some((fuente) => !fuente.soloListaPropia && fuente.lista.id === id);
+    const enteras = new Set((de?.listasIds ?? []).filter(entera));
+    if (especial <= 0)
+        return enteras.has(lista);
+    return (enteras.has(lista) && (de?.aptitudesQueAbren ?? []).includes(especial))
+        || propias.some((fuente) => fuente.lista.id === lista && fuente.idEspecial === especial);
+}
+
+/** Las filas de `Niveles_clase` de la mascota en las listas del personaje (`esFilaDeSusListas`) y con su plantilla. */
 export function filasDeSusListas(
     mascota: Pick<MonstruoDetalle, 'Niveles_clase'> & { Plantilla?: { Id: number; } | null; },
-    listas: ReadonlySet<number>,
+    de: ListasDeLaMascota | null | undefined,
 ): MonstruoNivelClase[] {
     const idPlantilla = Math.max(0, toInt(mascota?.Plantilla?.Id));
-    return (mascota?.Niveles_clase ?? []).filter((fila) =>
-        listas.has(toInt(fila?.Clase?.Id)) && idPlantillaDeNivel(fila) === idPlantilla);
+    return (mascota?.Niveles_clase ?? []).filter((fila) => esFilaDeSusListas(fila, de) && idPlantillaDeNivel(fila) === idPlantilla);
 }
 
 /** Si el personaje tiene el ataque base que pide la fila (`Ataque_base_minimo`; sin mínimo, sí). */
@@ -396,14 +508,13 @@ export function criaturaDeLaMascota(mascota: { Nombre?: string; Monstruo_origen?
  */
 export function resolverFilaMascota(
     mascota: Pick<MonstruoDetalle, 'Nombre' | 'Niveles_clase'> & { Plantilla?: { Id: number; } | null; Monstruo_origen?: { Nombre?: string; } | null; },
-    estado: Pick<EstadoMascota, 'nivelEfectivo' | 'listasIds' | 'fuentesMascota' | 'ataqueBase'> | null | undefined,
+    estado: (Pick<EstadoMascota, 'nivelEfectivo' | 'listasIds' | 'fuentesMascota' | 'ataqueBase'> & ListasDeLaMascota) | null | undefined,
     dotesPersonaje: ReadonlySet<number>,
     textos: TextosMascota,
     sinPrerrequisitos: ReadonlySet<number> = new Set<number>(),
 ): FilaMascotaResuelta {
     const nivelEfectivo = Math.max(0, toInt(estado?.nivelEfectivo));
-    const listas = new Set(estado?.listasIds ?? []);
-    const filas = filasDeSusListas(mascota, listas).filter((fila) => toInt(fila?.Nivel) >= 0);
+    const filas = filasDeSusListas(mascota, estado).filter((fila) => toInt(fila?.Nivel) >= 0);
     const criatura = criaturaDeLaMascota(mascota);
     const la = `El ${textos.mascota} «${criatura}»`;
     const resultado = (razones: string[], motivo: string, filasMinimo: MonstruoNivelClase[]): FilaMascotaResuelta => {
@@ -418,7 +529,7 @@ export function resolverFilaMascota(
         const nombres = Array.from(new Set((estado?.fuentesMascota ?? []).map((fuente) => nombreDeLista(fuente.lista.nombre, textos.listaPorDefecto))));
         if (nombres.length < 1)
             return resultado([`Ninguna de tus clases da un ${textos.mascota}.`], `Ninguna clase del personaje le da ya un ${textos.mascota}`, []);
-        const conOtraPlantilla = (mascota?.Niveles_clase ?? []).some((fila) => listas.has(toInt(fila?.Clase?.Id)) && toInt(fila?.Nivel) >= 0);
+        const conOtraPlantilla = (mascota?.Niveles_clase ?? []).some((fila) => esFilaDeSusListas(fila, estado) && toInt(fila?.Nivel) >= 0);
         return resultado([`No está en la lista de ${textos.listaDe} de tus clases (${nombres.join(', ')}).`],
             conOtraPlantilla
                 ? `${la}, con su plantilla, no está en la lista de ${textos.listaDe} de sus clases`

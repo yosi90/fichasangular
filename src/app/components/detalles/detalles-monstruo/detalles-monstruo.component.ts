@@ -54,6 +54,13 @@ interface NivelClaseRequerido {
     dote: string;
     /** Las preferencias de ley y de moral que pide ese nivel de clase («Siempre bueno»), o vacío. */
     alineamiento: string;
+    /**
+     * La aptitud que abre la fila (`Niveles_clase[].Especial`, R8, tanda 1b: «Compañero sabueso élfico»), o vacío: solo vale
+     * con ella.
+     */
+    especial: string;
+    /** Lo que la fila suma al nivel efectivo del compañero, si no es 0 («−3», «+3»), o vacío. */
+    ajuste: string;
 }
 
 interface RequisitosRelacion {
@@ -455,6 +462,8 @@ export class DetallesMonstruoComponent {
                 plantilla: item.plantilla,
                 dote: item.dote,
                 alineamiento: item.alineamiento,
+                especial: item.especial,
+                ajuste: item.ajuste,
             }));
     }
 
@@ -469,6 +478,8 @@ export class DetallesMonstruoComponent {
                 plantilla: `${item?.Plantilla?.Nombre ?? ''}`.trim(),
                 dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
                 alineamiento: textoEjesAlineamiento(item?.Preferencia_legal?.Nombre, item?.Preferencia_moral?.Nombre),
+                especial: `${item?.Especial?.Nombre ?? ''}`.trim(),
+                ajuste: toNumber(item?.Ajuste) !== 0 ? textoConSigno(toNumber(item?.Ajuste), '−') : '',
             }));
     }
 

@@ -121,10 +121,25 @@ describe('ClaseService normalizeClase: el Mascota de la tabla (el compañero ani
         const [companero, rastrear] = clase.Desglose_niveles[0].Especiales;
         // Con lo que cuesta perderla u obtener otra (tanda (i)): sin dato, null.
         expect(companero.Mascota).toEqual({
-            Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' },
+            Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' }, Solo_lista_propia: false,
             Px_perdida_por_nivel: null, Cd_perdida: null, Po_obtener: 0, Horas_obtener: 24, Espera_reemplazo: null,
         });
         expect(rastrear.Mascota).toBeNull();
+    });
+
+    it('la aptitud de lista propia (R8, tanda 1b): Solo_lista_propia, también en la de un nivel de sustitución', () => {
+        const clase = normalizeClase({
+            Id: 6, Nombre: 'Explorador', Desglose_niveles: [],
+            Sustituciones: [{
+                Id: 30, Nombre: 'Explorador kóbold', Clase: { Id: 6, Nombre: 'Explorador' }, Niveles: [{
+                    Id: 50, Nivel: 4, Especiales: [{
+                        Especial: { Id: 900, Nombre: 'Compañero comadreja terrible', Otorga_companero: true },
+                        Mascota: { Divisor: 2, Ajuste: 0, Lista: { Id: 5, Nombre: 'Druida' }, Solo_lista_propia: true },
+                    }],
+                }],
+            }],
+        });
+        expect(clase.Sustituciones?.[0].Niveles[0].Especiales[0].Mascota?.Solo_lista_propia).toBeTrue();
     });
 });
 

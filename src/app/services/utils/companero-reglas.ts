@@ -198,7 +198,6 @@ export function filtrarCompanerosElegibles(input: FiltroCompanerosElegiblesInput
 export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesInput): CompaneroElegibilidadEvaluadaItem[] {
     const nivelSeleccionado = Math.max(0, toInt(input?.nivelSeleccionado));
     const dotes = input?.dotesPersonaje ?? new Set<number>();
-    const listas = new Set(input?.estado?.listasIds ?? []);
     return evaluarMascotasDelCatalogo(input?.companeros, {
         id: (companero) => toInt(companero?.Id_companero),
         clave: claveCompanero,
@@ -212,7 +211,7 @@ export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesIn
                 razones.push(`No cumple el filtro de nivel ${nivelSeleccionado}.`);
             razones.push(...razonesAlineamientoMascota(
                 companero?.Alineamientos_requeridos?.Companero ?? [],
-                filasDeSusListas(companero, listas),
+                filasDeSusListas(companero, input.estado),
                 input?.alineamientoPersonaje ?? '',
                 'compañero'
             ));

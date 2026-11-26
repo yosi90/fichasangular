@@ -155,6 +155,30 @@ describe("monstruo-mapper: el compañero animal, de los datos", () => {
         });
         expect(monstruo.Niveles_clase.map((f) => [f.Nivel, f.Ajuste])).toEqual([[4, -3], [1, 0]]);
     });
+
+    it("la aptitud que abre una fila (R8, tanda 1b): su `Especial`, con un ajuste que puede ser positivo; sin ella, null", () => {
+        const monstruo = normalizeMonstruoDetalle({
+            Id: 55, Nombre: "Tejón",
+            Niveles_clase: [
+                { Clase: { Id: 5, Nombre: "Druida" }, Nivel: 1, Ajuste: 0, Especial: null },
+                { Clase: { Id: 5, Nombre: "Druida" }, Nivel: 1, Ajuste: 3, Especial: { Id: 903, Nombre: "Compañero animal excavador" } },
+                { Clase: { Id: 5, Nombre: "Druida" }, Nivel: 1 },
+            ],
+        });
+        expect(monstruo.Niveles_clase.map((f) => [f.Ajuste, f.Especial])).toEqual([
+            [0, null], [3, { Id: 903, Nombre: "Compañero animal excavador" }], [0, null],
+        ]);
+    });
+
+    it("los PG mayores de una pseudoplantilla de familiar (`Pg_mayores`, el familiar elemental); sin él, false", () => {
+        const progresion = leerFamiliarProgresion({
+            Tablas: [], Plantillas: [
+                { Id: 6, Nombre: "Familiar elemental", Tabla: { Id: 1, Nombre: "Manual del jugador" }, Pg_ataque_mayores: false, Pg_mayores: true, Sin_aptitudes: [7] },
+                { Id: 1, Nombre: "Básica", Tabla: { Id: 1, Nombre: "Manual del jugador" }, Pg_ataque_mayores: false },
+            ],
+        });
+        expect(progresion.Plantillas.map((p) => [p.Id, p.Pg_mayores])).toEqual([[1, false], [6, true]]);
+    });
 });
 
 describe("monstruo-mapper", () => {
@@ -285,7 +309,7 @@ describe("monstruo-mapper: el familiar, de los datos", () => {
             Id: 1, Nivel: 1, Especial: null, Dote: { Id: 17, Nombre: "Alerta" }, Destinatario: "amo", Nota: NOTA_ALERTA,
         });
         expect(api.Plantillas.find((p) => p.Id === 5)).toEqual({
-            Id: 5, Nombre: "Mejorado", Tabla: { Id: 1, Nombre: "Manual del jugador" }, Pg_ataque_mayores: false, Sin_aptitudes: [7],
+            Id: 5, Nombre: "Mejorado", Tabla: { Id: 1, Nombre: "Manual del jugador" }, Pg_ataque_mayores: false, Pg_mayores: false, Sin_aptitudes: [7],
         });
         // La caché, con las listas como objetos y la de por defecto detrás.
         const cache = leerFamiliarProgresion({

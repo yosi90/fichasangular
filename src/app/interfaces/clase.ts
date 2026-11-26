@@ -163,6 +163,12 @@ export interface ClaseEspecialMascota {
     Ajuste: number;
     Lista: { Id: number; Nombre: string; };
     /**
+     * Solo elige entre las filas de su `Lista` que llevan esta aptitud en `Niveles_clase[].Especial` (desde el 2026-11-26,
+     * caché `clases` 27; R8, tanda 1b: la comadreja terrible del explorador kóbold, el elemental del hechicero raptorán).
+     * `false` en las demás, también en las de la tabla de la clase.
+     */
+    Solo_lista_propia: boolean;
+    /**
      * Lo que cuesta perderla u obtener otra (desde la tanda (i); contrato: catalogos.md, la `Mascota` del nivel de la clase):
      * los PX que pierde el amo por cada nivel de esta clase si muere o la abandona (el familiar, 200), su salvación de
      * Fortaleza, las po de obtener otra, las horas y la espera para reemplazarla («un año y un día»). `null` sin dato.

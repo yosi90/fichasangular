@@ -129,6 +129,7 @@ function fila(idClase: number, nivel: number, plantilla: number, dote = 0, ataqu
         Preferencia_moral: { Id: 0, Nombre: '' },
         Dote: { Id: dote, Nombre: NOMBRES_DOTE[dote] ?? '' },
         Mascota: 'familiar',
+        Especial: null,
     };
 }
 

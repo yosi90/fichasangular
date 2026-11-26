@@ -3,6 +3,7 @@ export type CacheEntityKey =
     | "monstruos_indice"
     | "familiares"
     | "companeros"
+    | "familiares_progresion"
     | "razas"
     | "manuales"
     | "manuales_asociados"
@@ -61,12 +62,16 @@ export interface CacheContractEntry {
 }
 
 export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
-    { key: "monstruos", label: "Monstruos", schemaVersion: 20 },
+    // 21 con la `Especial` de cada fila de `Niveles_clase` (la aptitud que la abre); `familiares` y `companeros` 18, igual;
+    // `familiares_progresion` 3, con `Pg_mayores` en cada pseudoplantilla; y `clases` 27, con `Solo_lista_propia` en la
+    // `Mascota` de cada aptitud (catalogos.md, «Las mascotas de los niveles de sustitución»; 2026-11-26).
+    { key: "monstruos", label: "Monstruos", schemaVersion: 21 },
     // El índice ligero de los monstruos (`MonstruosIndice/<id>`; catalogos.md, «El índice ligero de los monstruos»):
     // lo que leen el listado, la búsqueda global y los selectores; el detalle, de `Monstruos/<id>` (2026-11-26).
     { key: "monstruos_indice", label: "Índice de los monstruos", schemaVersion: 1 },
-    { key: "familiares", label: "Familiares", schemaVersion: 10 },
-    { key: "companeros", label: "Compañeros animales", schemaVersion: 10 },
+    { key: "familiares", label: "Familiares", schemaVersion: 18 },
+    { key: "companeros", label: "Compañeros animales", schemaVersion: 18 },
+    { key: "familiares_progresion", label: "Progresión del familiar", schemaVersion: 3 },
     // 27 desde la `Progresion` de cada racial (lo que crece con los DG o llega por nivel, 2026-11-12) y 28 desde sus
     // `Bonificadores_condicionales` (el +1 al ataque contra orcos, la esquiva contra gigantes; 2026-11-12); 29 desde
     // `Cd_dg_totales` de cada racial y `Elige_opcional` en su `Progresion` (rama `mutadas/creacion-resto`, 2026-11-12).
@@ -83,7 +88,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "conjuros", label: "Conjuros", schemaVersion: 6 },
     { key: "extras", label: "Extras", schemaVersion: 1 },
     { key: "dotes", label: "Dotes", schemaVersion: 13 },
-    { key: "clases", label: "Clases", schemaVersion: 19 },
+    { key: "clases", label: "Clases", schemaVersion: 27 },
     { key: "especiales", label: "Especiales", schemaVersion: 9 },
     { key: "escuelas_conjuros", label: "Escuelas de conjuros", schemaVersion: 1 },
     { key: "disciplinas_conjuros", label: "Disciplinas de conjuros", schemaVersion: 1 },

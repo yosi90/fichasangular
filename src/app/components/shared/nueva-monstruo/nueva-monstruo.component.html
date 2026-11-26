@@ -264,9 +264,10 @@
                     </app-catalogo-buscador>
                 </section>
 
-                <section class="insercion-tarjeta" *ngIf="derivados.length > 0">
+                <section class="insercion-tarjeta" *ngIf="derivados.length > 0 || filasDeAptitud.length > 0">
                     <h3 class="insercion-tarjeta__titulo">No editable aquí</h3>
-                    <p class="monstruo-nota">Los familiares y compañeros que ya salen de este monstruo (con sus propias cifras y los personajes que los tienen) se conservan tal cual al guardar: {{derivados.join(', ')}}.</p>
+                    <p class="monstruo-nota" *ngIf="derivados.length > 0">Los familiares y compañeros que ya salen de este monstruo (con sus propias cifras y los personajes que los tienen) se conservan tal cual al guardar: {{derivados.join(', ')}}.</p>
+                    <p class="monstruo-nota" *ngIf="filasDeAptitud.length > 0">Las filas de su lista que solo valen con una aptitud de clase son de esa aptitud y se conservan tal cual al guardar: {{filasDeAptitud.join('; ')}}.</p>
                 </section>
             </div>
 

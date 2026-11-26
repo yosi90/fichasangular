@@ -5,6 +5,7 @@ import {
     PASOS_MONSTRUO,
     camposCambiadosMonstruo,
     construirMonstruoRequest,
+    filasDeAptitudDelMonstruo,
     listasDesdeMonstruo,
     listasMonstruoVacias,
     nombreDeDieta,
@@ -96,5 +97,20 @@ describe('monstruo-formulario', () => {
         ahora.alineamientos_requeridos.companero = [1];
         ahora.niveles_clase = [];
         expect(camposCambiadosMonstruo(antes, ahora)).toEqual(['tesoro', 'alineamientos_requeridos', 'niveles_clase']);
+    });
+
+    it('las filas que abre una aptitud (R8, tanda 1b) no se editan ni se mandan: se nombran en «No editable aquí»', () => {
+        const tejon = normalizeMonstruoDetalle({
+            Id: 55, Nombre: 'Tejón',
+            Niveles_clase: [
+                { Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 1, Ajuste: 0, Plantilla: { Id: 0, Nombre: 'No aplica' } },
+                { Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 1, Ajuste: 3, Plantilla: { Id: 0, Nombre: 'No aplica' }, Especial: { Id: 903, Nombre: 'Compañero animal excavador' } },
+            ],
+        }, 1);
+        const listas = listasDesdeMonstruo(tejon, uid);
+        expect(listas.niveles_clase.map((f) => [f.id_clase, f.nivel, f.ajuste])).toEqual([[5, 1, 0]]);
+        expect(construirMonstruoRequest(valorDesdeMonstruo(tejon), listas).niveles_clase.length).toBe(1);
+        expect(filasDeAptitudDelMonstruo(tejon)).toEqual(['Druida 1, ajuste +3, con «Compañero animal excavador»']);
+        expect(filasDeAptitudDelMonstruo(normalizeMonstruoDetalle(IDA_Y_VUELTA_MONSTRUOS.find((item) => item.id === 48)!.get, 1))).toEqual([]);
     });
 });

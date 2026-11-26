@@ -38,7 +38,7 @@ import {
     fichaConElReciclaje, filaDelReciclaje, filasDelReciclaje, habilidadesConRangos, huecoDeLaDoteReciclada, idiomasParaReciclar, loQueDejariaDeCumplir,
     motivoDeLaEscuela, motivoDeLaMascota, PlanReciclaje, rasgosParaReciclar, reciclajeDelPlan,
 } from './utils/reciclaje';
-import { aportaAlDarLaMascota } from './utils/mascota-cupos';
+import { aportaAlDarla, fuentesMascota } from './utils/mascota-cupos';
 import {
     catalogoDelReciclaje, conLosRangosDelCompaneroNuevo, entradasDelCompaneroReciclado, entradasDelFamiliarReciclado, huecosDeMascota, nombreDeLaCriatura,
     planDeLaMascota,
@@ -2068,11 +2068,16 @@ describe('El reciclaje de la mascota (R3, tercera tanda; Manual del jugador II, 
     const HUMANO = crearRaza('Humano');
 
     it('el nivel de la elección no baja de lo que aporta la clase al dar la mascota: druida 1, explorador 2 (a 4, la mitad), filo aojador 1', () => {
-        const de = (clases: Clase[], id: number) => clases.find((c) => toInt(c.Id) === id);
-        expect(aportaAlDarLaMascota(de(CLASES_CON_COMPANERO, DRUIDA_API), 'Otorga_companero')).toBe(1);
-        expect(aportaAlDarLaMascota(de(CLASES_CON_COMPANERO, EXPLORADOR), 'Otorga_companero')).toBe(2);
-        expect(aportaAlDarLaMascota(de(CLASES_CON_COMPANERO, SENOR_DE_LAS_BESTIAS), 'Otorga_companero')).toBe(4);
-        expect(aportaAlDarLaMascota(de(CLASES_CON_FAMILIAR, FILO_AOJADOR), 'Otorga_familiar')).toBe(1);
+        // La fuente de la mascota de un personaje con 10 niveles de esa clase: lo que aporta en el nivel en que se la da.
+        const alDarla = (clases: Clase[], id: number, otorga: 'Otorga_companero' | 'Otorga_familiar') => {
+            const clase = clases.find((c) => toInt(c.Id) === id)!;
+            const pj = { desgloseClases: [{ Nombre: clase.Nombre, Nivel: 10 }], Claseas: [] } as unknown as Personaje;
+            return aportaAlDarla(fuentesMascota(pj, clases, otorga)[0]);
+        };
+        expect(alDarla(CLASES_CON_COMPANERO, DRUIDA_API, 'Otorga_companero')).toBe(1);
+        expect(alDarla(CLASES_CON_COMPANERO, EXPLORADOR, 'Otorga_companero')).toBe(2);
+        expect(alDarla(CLASES_CON_COMPANERO, SENOR_DE_LAS_BESTIAS, 'Otorga_companero')).toBe(4);
+        expect(alDarla(CLASES_CON_FAMILIAR, FILO_AOJADOR, 'Otorga_familiar')).toBe(1);
     });
 
     describe('el compañero animal del druida (MJ págs. 35-36)', () => {

@@ -363,6 +363,25 @@ describe('DetallesMonstruoComponent', () => {
         expect(claseSpy).toHaveBeenCalledWith(5);
     });
 
+    it('dice la aptitud que abre cada fila y su ajuste (R8, tanda 1b: los excavadores del explorador gnomo)', () => {
+        component.monstruo = crearMonstruoMock({
+            Niveles_clase: [
+                { Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 1, Ajuste: 0, Plantilla: null, Preferencia_legal: null, Preferencia_moral: null, Dote: null, Mascota: 'companero', Especial: null },
+                {
+                    Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 1, Ajuste: 3, Plantilla: null, Preferencia_legal: null, Preferencia_moral: null, Dote: null,
+                    Mascota: 'companero', Especial: { Id: 903, Nombre: 'Compañero animal excavador' },
+                },
+                { Clase: { Id: 5, Nombre: 'Druida' }, Nivel: 4, Ajuste: -3, Plantilla: null, Preferencia_legal: null, Preferencia_moral: null, Dote: null, Mascota: 'companero', Especial: null },
+            ] as any,
+        });
+        fixture.detectChanges();
+
+        const lateral = Array.from(elemento().querySelectorAll('.ficha-lateral-tarjeta'))
+            .find((l) => limpio(l.querySelector('.ficha-titulo')) === 'Requisitos como compañero animal')!;
+        expect(Array.from(lateral.querySelectorAll('.ficha-lista__item')).map((i) => limpio(i)))
+            .toEqual(['Druida 1', 'Druida 1 · ajuste +3 · solo con «Compañero animal excavador»', 'Druida 4 · ajuste −3']);
+    });
+
     it('en el detalle de un familiar enseña sus datos propios y no los requisitos ni «Puede ser…»', () => {
         component.monstruo = {
             ...crearMonstruoMock({ Familiar: true }),

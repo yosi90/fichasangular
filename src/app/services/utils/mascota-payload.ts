@@ -19,7 +19,8 @@ import { idDelMonstruo } from './mascota-cupos';
  *
  * Familiar (Manual del jugador, págs. 44-45; contrato: `docs/publica/endpoints/personajes.md`, «El familiar, comprobado
  * por la API»): la mitad de los puntos de golpe de su amo y el ataque base del amo (con `Pg_ataque_mayores` en su
- * pseudoplantilla, los mayores entre esos y los suyos: el dracónico, el celestial), en cada salvación la base mejor (la
+ * pseudoplantilla, los mayores entre esos y los suyos: el dracónico, el celestial; con `Pg_mayores`, solo los PG: el
+ * familiar elemental del hechicero raptorán), en cada salvación la base mejor (la
  * suya o la del amo) con sus modificadores, en cada habilidad los rangos mejores (los suyos o los del amo), y la fila de su
  * tabla al nivel de su amo (`tablaDelFamiliar`): armadura natural, Inteligencia y resistencia a conjuros. Lleva los
  * valores de su monstruo; lo de su nivel se le suma aquí.
@@ -151,7 +152,10 @@ export function construirFamiliarParaGuardar(
     if (familiar?.Inactiva)
         return familiarInactivoParaGuardar(familiar);
     const bonos = tabla.bonos;
+    // Con `Pg_ataque_mayores`, los PG y el ataque base mayores; con solo `Pg_mayores` (el familiar elemental), los PG
+    // mayores y el ataque base de su amo (catalogos.md, «Las mascotas de los niveles de sustitución»).
     const mayores = !!tabla.plantilla?.Pg_ataque_mayores;
+    const pgMayores = mayores || !!tabla.plantilla?.Pg_mayores;
     const caracteristicas = (familiar?.Caracteristicas ?? {}) as Record<string, number | null>;
     const salvacion = (clave: 'Fortaleza' | 'Reflejos' | 'Voluntad', caracteristica: string): number => {
         const total = toNumber(familiar?.Salvaciones?.[clave]);
@@ -165,7 +169,7 @@ export function construirFamiliarParaGuardar(
         nombre: nombreMascota(familiar?.Nombre, 'Familiar'),
         idMonstruo: idDelMonstruo(familiar),
         idPlantilla: Math.max(0, toInt(familiar?.Plantilla?.Id)),
-        vida: mayores ? Math.max(mitad, vidaMediaDelMonstruo(familiar)) : mitad,
+        vida: pgMayores ? Math.max(mitad, vidaMediaDelMonstruo(familiar)) : mitad,
         ataqueBase: mayores ? Math.max(toInt(amo.ataqueBase), toInt(familiar?.Ataque?.Ataque_base)) : toInt(amo.ataqueBase),
         fortaleza: salvacion('Fortaleza', 'Constitucion'),
         reflejos: salvacion('Reflejos', 'Destreza'),

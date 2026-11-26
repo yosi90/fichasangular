@@ -3,6 +3,9 @@ import {
     BASICA, DRACONICO, DRAGON_NEGRO, GATO, MEJORADO, MONSTRUOS_FAMILIAR, PERRO_INTERMITENTE,
     PROGRESION_FAMILIAR_API,
 } from 'src/testing/familiar-api';
+import {
+    ELEMENTAL_AIRE_PEQUENO, FAMILIAR_ELEMENTAL, MONSTRUOS_SUSTITUCION_MASCOTAS, PLANTILLA_FAMILIAR_ELEMENTAL_API,
+} from 'src/testing/niveles-sustitucion-mascotas-api';
 import { construirCatalogoFamiliaresDesdeMonstruos, tablaDelFamiliar } from './familiar-reglas';
 import { construirFamiliarParaGuardar, mitadDeLosPg, vidaMediaDelMonstruo, vidaMediaPorDados } from './mascota-payload';
 import { leerFamiliarProgresion } from './monstruo-mapper';
@@ -41,6 +44,22 @@ describe('el familiar para guardar, con la tabla de su pseudoplantilla al nivel 
         // Con un amo de más PG y más ataque, los de su amo.
         const conAmoFuerte = guardar(DRAGON_NEGRO, DRACONICO, 13, 80, 6);
         expect([conAmoFuerte.armaduraNatural, conAmoFuerte.vida, conAmoFuerte.ataqueBase, conAmoFuerte.rc]).toEqual([3, 40, 6, '18']);
+    });
+
+    it('el familiar elemental (Pg_mayores, R8, tanda 1b): los PG mayores, y el ataque base de su amo aunque el suyo sea mayor', () => {
+        const conElemental = leerFamiliarProgresion({
+            ...PROGRESION_FAMILIAR_API, Plantillas: [...PROGRESION_FAMILIAR_API.Plantillas, PLANTILLA_FAMILIAR_ELEMENTAL_API],
+        });
+        const elemental = construirCatalogoFamiliaresDesdeMonstruos(MONSTRUOS_SUSTITUCION_MASCOTAS)
+            .find((f) => f.Id_familiar === ELEMENTAL_AIRE_PEQUENO && f.Plantilla.Id === FAMILIAR_ELEMENTAL)!;
+        const tabla = tablaDelFamiliar(conElemental, FAMILIAR_ELEMENTAL, 1);
+        expect([tabla.plantilla?.Pg_mayores, tabla.plantilla?.Pg_ataque_mayores]).toEqual([true, false]);
+        // 4d8 con Con 14: 26 PG, más que la mitad de los 6 de un hechicero raptorán 1; su ataque base (+3), no: el de su amo.
+        const debil = construirFamiliarParaGuardar(elemental, amo(6, 0), tabla);
+        expect([debil.vida, debil.ataqueBase]).toEqual([26, 0]);
+        // Con un amo de más PG, la mitad de los suyos.
+        const fuerte = construirFamiliarParaGuardar(elemental, amo(70, 5), tablaDelFamiliar(conElemental, FAMILIAR_ELEMENTAL, 11));
+        expect([fuerte.vida, fuerte.ataqueBase]).toEqual([35, 5]);
     });
 
     it('sus aptitudes son las que lleva, sin las de su amo', () => {

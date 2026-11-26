@@ -269,6 +269,7 @@ function normalizeMascotaEspecial(raw: any): ClaseEspecialMascota | null {
         Divisor: Math.max(1, toInt(raw?.Divisor, 1)),
         Ajuste: toInt(raw?.Ajuste),
         Lista: { Id: toInt(raw?.Lista?.Id), Nombre: toText(raw?.Lista?.Nombre) },
+        Solo_lista_propia: toBoolean(raw?.Solo_lista_propia),
         Px_perdida_por_nivel: toIntOrNull(raw?.Px_perdida_por_nivel),
         Cd_perdida: toIntOrNull(raw?.Cd_perdida),
         Po_obtener: toNumberOrNull(raw?.Po_obtener),
