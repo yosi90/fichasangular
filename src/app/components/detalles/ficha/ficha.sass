@@ -516,10 +516,11 @@ app-ficha-detalle
             border-radius: 2px
 
 // Pantallas estrechas: las columnas se apilan (según el ancho de la ficha, no de la ventana, porque el menú lateral
-// se lleva parte).
+// se lleva parte). Con el menú en un cajón (< 960 px: el plegable abierto; fase 5 de los temas), el menú no se lleva
+// nada y el texto y las listas siguen lado a lado hasta 640 px (abajo), como en el lienzo del plegable.
 @container ficha (max-width: 900px)
     .ficha
-        .ficha-cuerpo
+        .ficha-cuerpo:not(.marco--cajon *)
             grid-template-columns: minmax(0, 1fr)
 
         .ficha-datos
@@ -531,6 +532,9 @@ app-ficha-detalle
 @container ficha (max-width: 640px)
     .ficha
         padding: 12px
+
+        .ficha-cuerpo
+            grid-template-columns: minmax(0, 1fr)
 
         .ficha-cabecera
             flex-direction: column

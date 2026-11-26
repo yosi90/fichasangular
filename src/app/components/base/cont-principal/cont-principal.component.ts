@@ -20,7 +20,10 @@ export class ContPrincipalComponent implements OnDestroy {
     TipoListado: string = '';
     OperacionListado: string = '';
 
+    /** El móvil (< 700 px): la zona principal a todo lo ancho, con su margen de 8 px. */
     esMovil = false;
+    /** El menú en un cajón (< 960 px: el móvil y el plegable abierto). */
+    enCajon = false;
     menuAbierto = false;
     /** El menú lateral del tema: el de siempre (por acción) o el de B (por catálogo), que se carga bajo demanda. */
     menuLateral: MenuLateral = 'accion';
@@ -40,8 +43,9 @@ export class ContPrincipalComponent implements OnDestroy {
             abrirListado: (lista) => this.abrirListado({ tipo: lista, operacion: 'detalles' }),
         };
         this.injectorMenu = Injector.create({ providers: [{ provide: ACCIONES_DEL_MENU, useValue: acciones }], parent: injector });
-        this.suscripcion = combineLatest([marco.esMovil$, marco.menuAbierto$]).subscribe(([movil, abierto]) => {
+        this.suscripcion = combineLatest([marco.esMovil$, marco.enCajon$, marco.menuAbierto$]).subscribe(([movil, cajon, abierto]) => {
             this.esMovil = movil;
+            this.enCajon = cajon;
             this.menuAbierto = abierto;
         });
         this.suscripcion.add(tema.menuLateral$.subscribe((menu) => {
@@ -92,7 +96,7 @@ export class ContPrincipalComponent implements OnDestroy {
 
     /** El cajón se cierra solo (Esc o el fondo): el estado común se entera. */
     alCerrarCajon(): void {
-        if (this.esMovil)
+        if (this.enCajon)
             this.marco.cerrarMenu();
     }
 }

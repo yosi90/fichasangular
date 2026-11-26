@@ -1,10 +1,10 @@
-<!-- El marco: el menú lateral y las pestañas. En el móvil (vista 10 del lienzo), el menú es un cajón que se abre con
-     el botón «Menú» de la cinta y se cierra al elegir, con Esc, con el fondo o con el gesto atrás. -->
-<mat-sidenav-container class="marco" [hasBackdrop]="esMovil" [class.marco--movil]="esMovil">
-    <mat-sidenav class="marco__menu" [mode]="esMovil ? 'over' : 'side'" [opened]="!esMovil || menuAbierto"
-        [disableClose]="!esMovil" [autoFocus]="esMovil ? 'first-tabbable' : false" (closedStart)="alCerrarCajon()"
-        [attr.role]="esMovil ? 'dialog' : null" [attr.aria-label]="esMovil ? 'Menú' : null" [attr.aria-modal]="esMovil ? 'true' : null">
-        <div class="marco__menu-cabecera" *ngIf="esMovil">
+<!-- El marco: el menú lateral y las pestañas. Por debajo de 960 px (el móvil y el plegable abierto), el menú es un cajón
+     que se abre con el botón «Menú» de la cinta y se cierra al elegir, con Esc, con el fondo o con el gesto atrás. -->
+<mat-sidenav-container class="marco" [hasBackdrop]="enCajon" [class.marco--cajon]="enCajon" [class.marco--movil]="esMovil">
+    <mat-sidenav id="marco-menu" class="marco__menu" [mode]="enCajon ? 'over' : 'side'" [opened]="!enCajon || menuAbierto"
+        [disableClose]="!enCajon" [autoFocus]="enCajon ? 'first-tabbable' : false" (closedStart)="alCerrarCajon()"
+        [attr.role]="enCajon ? 'dialog' : null" [attr.aria-label]="enCajon ? 'Menú' : null" [attr.aria-modal]="enCajon ? 'true' : null">
+        <div class="marco__menu-cabecera" *ngIf="enCajon">
             <span class="marco__menu-titulo">Menú</span>
             <button type="button" mat-icon-button class="marco__menu-cerrar" aria-label="Cerrar el menú" (click)="cerrarMenu()">
                 <mat-icon>close</mat-icon>

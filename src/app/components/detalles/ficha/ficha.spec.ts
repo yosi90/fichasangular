@@ -303,6 +303,23 @@ describe('Ficha de detalle: componentes', () => {
         expect(getComputedStyle(elemento().querySelector('.ficha-principal') as HTMLElement).display).toBe('none');
     });
 
+    it('con el menú en un cajón (el plegable), el texto y las listas siguen lado a lado hasta 640 px; con el menú fijo, hasta 900', () => {
+        const raiz = elemento();
+        const columnas = () => getComputedStyle(raiz.querySelector('.ficha-cuerpo') as HTMLElement).gridTemplateColumns.split(' ').length;
+        raiz.style.display = 'block';
+        raiz.style.width = '740px';
+        expect(columnas()).toBe(1);
+
+        raiz.classList.add('marco--cajon');
+        expect(columnas()).toBe(2);
+        raiz.style.width = '600px';
+        expect(columnas()).toBe(1);
+
+        raiz.classList.remove('marco--cajon');
+        raiz.style.width = '1000px';
+        expect(columnas()).toBe(2);
+    });
+
     it('las laterales van a la columna derecha y siempre a la vista', () => {
         const lateral = elemento().querySelector('.ficha-columna-lateral .ficha-lateral-tarjeta') as HTMLElement;
         expect(lateral.querySelector('.ficha-titulo')?.textContent?.trim()).toBe('Prerrequisitos');

@@ -386,8 +386,9 @@
     #menu aside mat-expansion-panel ::ng-deep .mat-expansion-panel-body button.menu-otros-trigger
         padding-left: 12px
 
-// En el cajón del móvil (vista 10): el menú ocupa el cajón, sin su margen ni su sombra, con filas táctiles de 44 px.
-:host-context(.marco--movil)
+// En el cajón (el móvil, vista 10, y el plegable): el menú ocupa el cajón, sin su margen ni su sombra, con filas
+// táctiles de 44 px.
+:host-context(.marco--cajon)
     #menu
         width: 100%
         height: calc(100% - 44px)
