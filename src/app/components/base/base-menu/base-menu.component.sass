@@ -19,7 +19,7 @@
             opacity: 1
 
             ::ng-deep .mdc-button__label
-                color: $active
+                color: var(--rol-menu-texto)
                 opacity: .38
 
     button.menu-opcion, button.menu-otros-trigger
@@ -31,6 +31,8 @@
     height: 100%
 
 #menu
+    // El pozo del menú: la tarjeta de Material con el color del tema (la sombra hundida es `sombra-interna`).
+    --mat-card-elevated-container-color: var(--rol-pozo)
     width: 250px
     height: calc(100% - 12px)
 
@@ -49,7 +51,7 @@
                 opacity: 1
 
                 ::ng-deep .mdc-button__label
-                    color: #B0BEC5
+                    color: var(--rol-menu-apagado)
 
             &:hover:not([disabled])
                 transform: scale(102%)
@@ -60,7 +62,7 @@
         mat-expansion-panel
             border-bottom-left-radius: 0
             border-bottom-right-radius: 0
-            box-shadow: 3px 3px 10px black
+            box-shadow: var(--rol-sombra)
 
             padding: 0
             margin-bottom: 1px
@@ -104,11 +106,11 @@
 
                 > button:nth-child(even):not([mat-raised-button]),
                 > span:nth-child(even) > button:not([mat-raised-button])
-                    background-color: #ccc
+                    background-color: var(--rol-menu-fila-alterna)
 
                 > button:nth-child(odd):not([mat-raised-button]),
                 > span:nth-child(odd) > button:not([mat-raised-button])
-                    background-color: lightgray
+                    background-color: var(--rol-menu-fila)
 
                 // Los grupos «Otros» van en su barra de menús (menú de la CDK, en línea): siguen la alternancia de las filas
                 // de encima (seis opciones, así que el primero es impar).
@@ -120,13 +122,13 @@
                         outline: none
 
                     > button:nth-child(odd)
-                        background-color: lightgray
+                        background-color: var(--rol-menu-fila)
 
                     > button:nth-child(even)
-                        background-color: #ccc
+                        background-color: var(--rol-menu-fila-alterna)
 
                     > button[aria-expanded='true']
-                        background-color: #bdbdbd
+                        background-color: var(--rol-menu-fila-abierta)
 
                 // Los grupos «Otros», sin icono: el texto alineado con el de las opciones (recuadro de 24 + 10 de hueco).
                 button.menu-otros-trigger
@@ -165,10 +167,10 @@
             margin-top: 12px
             padding: 0 14px
             border: 0
-            border-radius: 6px
+            border-radius: var(--rol-radio)
             background-color: $primary
-            box-shadow: 3px 3px 10px black
-            color: #ffffff
+            box-shadow: var(--rol-sombra)
+            color: var(--rol-texto-fuerte)
             font: inherit
             font-size: 14px
             font-weight: 500
@@ -299,13 +301,13 @@
                     background: linear-gradient(180deg, #634953, #503a44)
 
 ::ng-deep .menuOscuro
-    background-color: #373C41
+    background-color: $primary
 
     button
         border-bottom: 1px solid rgb(95, 95, 95)
 
         span
-            color: #B0BEC5
+            color: var(--rol-menu-apagado)
             font-weight: 500 !important
 
 ::ng-deep .menu-otros-panel
@@ -318,9 +320,9 @@
     overflow-x: hidden
     overflow-y: auto
 
-    box-shadow: 3px 3px 10px black
+    box-shadow: var(--rol-sombra)
 
-    background-color: lightgray
+    background-color: var(--rol-menu-fila)
 
     button
         justify-content: flex-start
@@ -340,13 +342,13 @@
         font-weight: 700
         letter-spacing: .14em
         text-transform: uppercase
-        color: #5f6368
+        color: var(--rol-menu-titulo)
 
     > .menu-otros-panel__opcion:nth-child(even) > button
-        background-color: lightgray
+        background-color: var(--rol-menu-fila)
 
     > .menu-otros-panel__opcion:nth-child(odd) > button
-        background-color: #ccc
+        background-color: var(--rol-menu-fila-alterna)
 
     @include menu-opcion
 

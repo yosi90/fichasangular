@@ -25,7 +25,7 @@ app-ficha-detalle
     gap: $ficha-hueco
     padding: 20px
     color: $accent
-    font-family: Roboto, "Segoe UI", system-ui, sans-serif
+    font-family: var(--rol-fuente-ui)
 
     .ficha-oculta
         display: none !important
@@ -74,6 +74,7 @@ app-ficha-detalle
 
     .ficha-cabecera__nombre
         margin: 0
+        font-family: var(--rol-fuente-nombres)
         font-size: 32px
         font-weight: 500
         line-height: 1.2
@@ -352,6 +353,7 @@ app-ficha-detalle
     .ficha-texto
         display: block
         max-width: 74ch
+        font-family: var(--rol-fuente-prosa)
         font-size: 15px
         line-height: 1.65
         color: $ficha-texto

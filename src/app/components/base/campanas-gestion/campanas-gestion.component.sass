@@ -58,7 +58,7 @@
         outline-offset: 2px
 
 .campanas-nueva--activa
-    outline: 2px solid rgba($ficha-blanco, .6)
+    outline: 2px solid con-alfa($ficha-blanco, .6)
     outline-offset: 2px
 
 .campanas-tarjeta
@@ -83,7 +83,7 @@
         outline-offset: 2px
 
 .campanas-tarjeta--elegida, .campanas-tarjeta--elegida:hover
-    background: rgba($active, .18)
+    background: con-alfa($active, .18)
     box-shadow: inset 3px 0 0 $active, $ficha-sombra
 
 .campanas-tarjeta__texto
@@ -308,8 +308,8 @@
         margin: 0
 
 .campanas-opcion--activa
-    border-color: rgba($active, .75)
-    background: rgba($active, .22)
+    border-color: con-alfa($active, .75)
+    background: con-alfa($active, .22)
     color: $ficha-blanco
 
 .campanas-pie, .campanas-acciones

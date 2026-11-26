@@ -85,8 +85,8 @@
             outline-offset: 2px
 
         &.activo
-            border-color: rgba($active, 0.75)
-            background: rgba($active, 0.22)
+            border-color: con-alfa($active, 0.75)
+            background: con-alfa($active, 0.22)
             color: $ficha-blanco
 
     .boolean-chips
@@ -100,8 +100,8 @@
             color: $ficha-texto
 
         ::ng-deep .mat-mdc-chip-selected
-            border-color: rgba($active, 0.75)
-            background: rgba($active, 0.22)
+            border-color: con-alfa($active, 0.75)
+            background: con-alfa($active, 0.22)
             color: $ficha-blanco
 
     // Un grupo dentro de una tarjeta (filas repetibles, valores relacionados).

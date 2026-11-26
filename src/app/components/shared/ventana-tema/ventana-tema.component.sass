@@ -1,0 +1,322 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
+
+// La ventana de los temas, con los valores del tema de la página; cada vista previa, con los del suyo
+// (`data-tema-previa`, `assets/css/_temas.sass`).
+.ventana-tema
+    box-sizing: border-box
+    width: min(760px, calc(100vw - 24px))
+    max-height: calc(100dvh - 24px)
+    overflow: auto
+    overscroll-behavior: contain
+    padding: 20px 24px
+    border: 1px solid var(--rol-panel-linea)
+    border-radius: var(--rol-radio-grande)
+    background: var(--rol-panel)
+    color: var(--rol-panel-texto)
+    box-shadow: var(--rol-sombra-panel)
+    font-family: var(--rol-fuente-ui)
+
+    &::backdrop
+        background: rgba(0, 0, 0, .6)
+
+.ventana-tema__cabecera
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+.ventana-tema__titulo
+    margin: 0
+    font-family: var(--rol-fuente-nombres)
+    font-size: 22px
+    font-weight: 500
+    color: var(--rol-panel-texto-fuerte)
+
+.ventana-tema__cerrar
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 40px
+    height: 40px
+    border: 0
+    border-radius: 50%
+    background: transparent
+    color: inherit
+    cursor: pointer
+
+    &:hover
+        background: var(--rol-panel-hover)
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 0
+
+.ventana-tema__entradilla
+    margin: 8px 0 0
+    font-size: 15px
+    line-height: 1.5
+
+.ventana-tema__temas, .ventana-tema__modos
+    margin: 16px 0 0
+    padding: 0
+    border: 0
+    min-width: 0
+
+.ventana-tema__leyenda
+    margin-bottom: 8px
+    padding: 0
+    font-size: 12px
+    font-weight: 700
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: var(--rol-panel-texto-suave)
+
+.ventana-tema__temas
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))
+    gap: 12px
+
+    .ventana-tema__leyenda
+        grid-column: 1 / -1
+
+.ventana-tema__opcion
+    position: relative
+    display: flex
+    flex-direction: column
+    gap: 6px
+    padding: 10px
+    border: 2px solid var(--rol-panel-linea)
+    border-radius: var(--rol-radio-grande)
+    cursor: pointer
+
+    &:hover
+        background: var(--rol-panel-hover)
+
+    &:has(.ventana-tema__radio:focus-visible)
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.ventana-tema__opcion--elegida
+    border-color: $active
+
+.ventana-tema__radio
+    @include solo-lectores
+
+.ventana-tema__nombre
+    font-size: 15px
+    font-weight: 600
+    color: var(--rol-panel-texto-fuerte)
+
+.ventana-tema__descripcion
+    font-size: 13px
+    line-height: 1.4
+
+.ventana-tema__modos
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px 20px
+
+    .ventana-tema__leyenda
+        flex: 1 0 100%
+
+.ventana-tema__modo
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    min-height: 32px
+    font-size: 14px
+    accent-color: $active
+
+    &:has(input:disabled)
+        opacity: .52
+
+.ventana-tema__nota
+    flex: 1 0 100%
+    margin: 0
+    font-size: 13px
+    color: var(--rol-panel-texto-suave)
+
+.ventana-tema__aviso
+    margin: 14px 0 0
+    padding: 8px 12px
+    border-left: 3px solid $active
+    background: var(--rol-panel-hover)
+    font-size: 14px
+
+.ventana-tema__pie
+    display: flex
+    justify-content: flex-end
+    margin-top: 18px
+
+.ventana-tema__boton
+    min-height: 40px
+    padding: 0 20px
+    border: 0
+    border-radius: var(--rol-radio-boton)
+    background: $active
+    color: var(--rol-activo-texto)
+    font: inherit
+    font-size: 14px
+    font-weight: 500
+    letter-spacing: .03em
+    cursor: pointer
+
+    &:focus-visible
+        outline: 2px solid var(--rol-panel-texto-fuerte)
+        outline-offset: 2px
+
+    &:disabled
+        opacity: .6
+        cursor: progress
+
+// La vista previa pequeña: el marco del tema (cinta, menú, pestañas y una cabecera de ficha) con sus valores.
+.previa
+    display: flex
+    flex-direction: column
+    height: 128px
+    overflow: hidden
+    border-radius: 4px
+    background: var(--rol-pagina)
+    color: var(--rol-texto)
+    font-family: var(--rol-fuente-ui)
+    pointer-events: none
+
+    i
+        display: block
+
+.previa__cinta
+    display: flex
+    align-items: center
+    gap: 4px
+    height: 12px
+    padding: 0 6px
+    background: var(--rol-cinta-fondo)
+
+    i
+        width: 8px
+        height: 4px
+        border-radius: 1px
+        background: var(--rol-cinta-texto)
+        opacity: .8
+
+.previa__cinta .previa__buscar
+    width: 22px
+    border: 1px solid $active
+    background: transparent
+
+.previa__cuerpo
+    display: flex
+    flex: 1
+    gap: 4px
+    min-height: 0
+    padding: 2px 4px 4px
+
+.previa__menu, .previa__pozo
+    display: flex
+    flex-direction: column
+    border-radius: 2px
+    background: var(--rol-pozo)
+    box-shadow: var(--rol-sombra-pozo-sm)
+
+.previa__menu
+    flex: 0 0 26%
+    gap: 2px
+    padding: 4px
+
+.previa__nuevo
+    height: 8px
+    margin-bottom: 3px
+    border-radius: 2px
+    background: $active
+
+.previa__cabecera-menu
+    height: 8px
+    background: $primary
+
+.previa__fila
+    height: 6px
+    background: var(--rol-menu-fila)
+
+.previa__fila--alterna
+    background: var(--rol-menu-fila-alterna)
+
+.previa__pozo
+    flex: 1
+    min-width: 0
+    padding: 4px
+
+.previa__pestanas
+    display: flex
+    gap: 4px
+    height: 10px
+    padding: 0 4px
+    background: var(--rol-zona-oscura)
+
+.previa__pestana
+    width: 22px
+    height: 100%
+    border-bottom: 2px solid transparent
+
+    &::before
+        content: ''
+        display: block
+        width: 16px
+        height: 3px
+        margin-top: 3px
+        background: var(--rol-texto-suave)
+
+.previa__pestana--activa
+    border-bottom-color: $active
+
+    &::before
+        background: $active
+
+.previa__zona
+    display: flex
+    flex: 1
+    flex-direction: column
+    gap: 4px
+    min-height: 0
+    padding: 5px
+    background: var(--rol-zona)
+
+.previa__cabecera
+    display: flex
+    flex-direction: column
+    gap: 1px
+    padding: 4px 6px
+    border-bottom: 2px solid $active
+    border-radius: var(--rol-radio)
+    background: $primary
+    box-shadow: var(--rol-sombra-sm)
+
+.previa__tipo
+    font-size: 6px
+    font-weight: 700
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+.previa__nombre
+    font-family: var(--rol-fuente-nombres)
+    font-size: 12px
+    font-weight: 600
+    line-height: 1.1
+    color: var(--rol-texto-fuerte)
+    white-space: nowrap
+
+.previa__tarjeta
+    flex: 1
+    padding: 4px 6px
+    border-radius: var(--rol-radio)
+    background: var(--rol-tarjeta)
+
+.previa__prosa
+    display: block
+    font-family: var(--rol-fuente-prosa)
+    font-size: 8px
+    line-height: 1.3
+    color: var(--rol-texto)
+    white-space: nowrap

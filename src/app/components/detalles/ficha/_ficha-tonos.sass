@@ -1,22 +1,23 @@
 @use '../../../../assets/css/variables' as *
 
-// Tonos y medidas del lienzo de la ficha común que no están en `_variables.sass` (que no se toca): superficies y textos
-// sobre el fondo $contrast. Los usan `ficha.sass` y las piezas que una pantalla aún tenga en su propia hoja (el monstruo).
-$ficha-tarjeta: #424242
-$ficha-fila-alterna: #4a4a4a
-$ficha-texto: #e6e9eb
-$ficha-texto-suave: #cfd8dc
-$ficha-separador: #555555
-$ficha-aviso: #f0b45a
-$ficha-blanco: #ffffff
+// Tonos y medidas del lienzo de la ficha común: superficies y textos sobre el fondo $contrast. Apuntan a las propiedades
+// CSS de cada tema (`assets/css/_temas.sass`). Los usan `ficha.sass` y las piezas que una pantalla aún tenga en su propia
+// hoja (el monstruo).
+$ficha-tarjeta: var(--rol-tarjeta)
+$ficha-fila-alterna: var(--rol-fila-alterna)
+$ficha-texto: var(--rol-texto)
+$ficha-texto-suave: var(--rol-texto-suave)
+$ficha-separador: var(--rol-separador)
+$ficha-aviso: var(--rol-aviso)
+$ficha-blanco: var(--rol-texto-fuerte)
 // El fondo rosado de lo elegido (una opción, una fila, una tarjeta), con el rosa $active en el borde o la raya.
-$ficha-elegida: #4a3a42
+$ficha-elegida: var(--rol-elegida)
 // El rosa oscuro de la etiqueta «PNJ» (la creación y el listado de personajes).
-$ficha-pnj: #7b2d4f
-$ficha-radio: 6px
+$ficha-pnj: var(--rol-pnj)
+$ficha-radio: var(--rol-radio)
 $ficha-hueco: 18px
 // La misma sombra que `.sombra`, la de lo que flota sobre el fondo.
-$ficha-sombra: 3px 3px 10px black
+$ficha-sombra: var(--rol-sombra)
 
 // Las versalitas de los títulos de la ficha, la creación, las inserciones, el marco y las cabeceras de los listados.
 // Con `null` en `$margen` o `$interlineado`, la regla no lo pone (las cabeceras de tabla y las etiquetas que ya

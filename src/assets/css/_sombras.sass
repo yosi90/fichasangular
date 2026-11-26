@@ -1,14 +1,16 @@
+// Las sombras del borde 3D: lo que flota (`sombra`) y lo hundido (`sombra-interna`), con los valores del tema
+// (`_temas.sass`). Las de `sombra-caja` y `sombra3d` son de piezas sueltas y siguen como estaban.
 .sombra
-    box-shadow: 3px 3px 10px black
+    box-shadow: var(--rol-sombra)
 
 .sombra-sm
-    box-shadow: 1px 1px 3.5px black
+    box-shadow: var(--rol-sombra-sm)
 
 .sombra-interna
-    box-shadow: 3px 3px 10px inset black
+    box-shadow: var(--rol-sombra-pozo)
 
 .sombra-interna-sm
-    box-shadow: 1px 1px 3.5px inset black
+    box-shadow: var(--rol-sombra-pozo-sm)
 
 .sombra-caja
     box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5), 3px 3px 10px inset rgba(0, 0, 0, 0.25)

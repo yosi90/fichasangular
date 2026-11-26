@@ -1,0 +1,61 @@
+<!-- Los temas de la web (lienzo «Rol: temas e iconos»). En la bienvenida no se cierra sin elegir uno: sin × y sin Esc. -->
+<dialog #dialogo class="ventana-tema" [attr.closedby]="bienvenida ? 'none' : 'any'" aria-labelledby="ventana-tema-titulo"
+    [attr.aria-describedby]="bienvenida ? 'ventana-tema-entradilla' : null" (cancel)="alCancelar($event)" (close)="alCerrar()">
+    <header class="ventana-tema__cabecera">
+        <h2 id="ventana-tema-titulo" class="ventana-tema__titulo">{{bienvenida ? 'Elige cómo quieres ver Rol' : 'Tema y modo'}}</h2>
+        <button *ngIf="!bienvenida" type="button" class="ventana-tema__cerrar" aria-label="Cerrar" (click)="cerrar()">
+            <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+    </header>
+
+    <p *ngIf="bienvenida" id="ventana-tema-entradilla" class="ventana-tema__entradilla">
+        Rol tiene tres temas. Puedes cambiarlo cuando quieras en Opciones → Tema y modo.
+    </p>
+
+    <fieldset class="ventana-tema__temas">
+        <legend class="ventana-tema__leyenda">Tema</legend>
+        <label *ngFor="let t of temas" class="ventana-tema__opcion" [class.ventana-tema__opcion--elegida]="t.id === seleccion">
+            <input type="radio" name="ventana-tema-tema" class="ventana-tema__radio" [value]="t.id" [checked]="t.id === seleccion"
+                [attr.autofocus]="t.id === seleccion ? '' : null" (change)="seleccionar(t.id)">
+            <span class="previa" [attr.data-tema-previa]="t.id" data-modo-previa="oscuro" aria-hidden="true">
+                <span class="previa__cinta"><i></i><i></i><i></i><i class="previa__buscar"></i></span>
+                <span class="previa__cuerpo">
+                    <span class="previa__menu">
+                        <i class="previa__nuevo"></i>
+                        <i class="previa__cabecera-menu"></i>
+                        <i class="previa__fila"></i>
+                        <i class="previa__fila previa__fila--alterna"></i>
+                        <i class="previa__fila"></i>
+                    </span>
+                    <span class="previa__pozo">
+                        <span class="previa__pestanas"><i class="previa__pestana previa__pestana--activa"></i><i class="previa__pestana"></i></span>
+                        <span class="previa__zona">
+                            <span class="previa__cabecera"><span class="previa__tipo">Dote</span><span class="previa__nombre">Ataque poderoso</span></span>
+                            <span class="previa__tarjeta"><span class="previa__prosa">Cambia ataque por daño.</span></span>
+                        </span>
+                    </span>
+                </span>
+            </span>
+            <span class="ventana-tema__nombre">{{t.etiqueta}}</span>
+            <span class="ventana-tema__descripcion">{{t.descripcion}}</span>
+        </label>
+    </fieldset>
+
+    <fieldset *ngIf="!bienvenida" class="ventana-tema__modos">
+        <legend class="ventana-tema__leyenda">Modo</legend>
+        <label *ngFor="let m of modos" class="ventana-tema__modo">
+            <input type="radio" name="ventana-tema-modo" [value]="m.id" [checked]="m.id === modo" [disabled]="!claroListo"
+                (change)="elegirModo(m.id)">
+            <span>{{m.etiqueta}}</span>
+        </label>
+        <p *ngIf="!claroListo" class="ventana-tema__nota">Por ahora este tema solo se ve en oscuro: el claro llega pronto.</p>
+    </fieldset>
+
+    <p *ngIf="aviso" class="ventana-tema__aviso" role="status">{{aviso}}</p>
+
+    <footer class="ventana-tema__pie">
+        <button type="button" class="ventana-tema__boton" (click)="confirmar()" [disabled]="guardando">
+            {{bienvenida ? 'Usar este tema' : 'Hecho'}}
+        </button>
+    </footer>
+</dialog>

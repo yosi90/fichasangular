@@ -1,19 +1,20 @@
-$bg-form-clear: rgb(241, 238, 233)
-$amarillo: rgb(255, 238, 0)
-$rosa-flojo: rgb(180, 151, 156)
-$rosa: rgb(206, 143, 153)
-$rosa-fuerte: rgb(246, 173, 193)
-$gris-flojo: rgb(96, 99, 103)
-$turquesa: rgb(120, 218, 193)
-$verde-flojo: rgb(62, 228, 98)
+@use 'sass:math'
 
+// La paleta de la web, apuntando a sus propiedades CSS (`_temas.sass`, donde están los valores de cada tema y modo). Son
+// valores de CSS, no colores de Sass: para una transparencia se usa `con-alfa($active, .18)`, no `rgba($active, .18)`.
+$verde-flojo: var(--rol-exito)
 
-$font-base: #90A4AE
-$contrast: #505050
-$contrast-dark: #2D2D30
+$font-base: var(--rol-texto-base)
+$contrast: var(--rol-zona)
+$contrast-dark: var(--rol-zona-oscura)
 
-$primary: rgb(55, 60, 65)
-$primary-hover: rgb(68, 73, 78)
+$primary: var(--rol-primario)
+$primary-hover: var(--rol-primario-hover)
 
-$active: #c2185b
-$accent: #adbdc4
+$active: var(--rol-activo)
+$accent: var(--rol-acento)
+
+// Un color de la paleta con transparencia: lo mismo que `rgba(color, alfa)` (`color-mix` con `transparent` mezcla con
+// el alfa premultiplicado), pero vale con las propiedades CSS.
+@function con-alfa($color, $alfa)
+    @return color-mix(in srgb, #{$color} math.percentage($alfa), transparent)

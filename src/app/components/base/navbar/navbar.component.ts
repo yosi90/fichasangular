@@ -13,6 +13,7 @@ import { UserService } from 'src/app/services/user.service';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { BuscadorGlobalVentanaService } from '../../shared/buscador-global/buscador-global.component';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
+import { VentanaTemaService } from 'src/app/services/tema-web/ventana-tema.service';
 
 @Component({
     selector: 'app-navbar',
@@ -44,6 +45,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         private userProfileNavSvc: UserProfileNavigationService,
         private buscadorGlobal?: BuscadorGlobalVentanaService,
         private marco?: MarcoMovilService,
+        private ventanaTema?: VentanaTemaService,
     ) { }
 
     /** En el móvil, la cinta lleva el botón «Menú», que abre el menú lateral como cajón (vista 10 del lienzo). */
@@ -151,6 +153,11 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
     abrirPrivacidad(): void {
         void this.platformSessionSvc.privacidad().catch(() => undefined);
+    }
+
+    /** El tema y el modo, también sin sesión (entonces se quedan en este navegador). */
+    abrirTema(): void {
+        void this.ventanaTema?.abrir().catch(() => undefined);
     }
 
     /** Las notificaciones que enlazan a una vista de Rol se abren aquí mismo, sin otra pestaña. */

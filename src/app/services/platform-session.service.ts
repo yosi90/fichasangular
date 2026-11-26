@@ -1,9 +1,10 @@
 import { HttpHeaders } from '@angular/common/http';
-import { Injectable, NgZone } from '@angular/core';
+import { Injectable, NgZone, Optional } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { NormasDeRol } from 'src/app/interfaces/normas-rol';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { environment } from 'src/environments/environment';
+import { TurnoDeVentanasService } from './turno-de-ventanas.service';
 
 // La cuenta de Yosiftware en el navegador, por el SDK de la plataforma (ecosistema-kit/ACCESO.md). Rol no tiene
 // formularios ni sesión propios: el SDK abre el acceso de Yosiftware sobre la web y da tokens de corta duración,
@@ -186,7 +187,7 @@ export class PlatformSessionService {
     /** Se ha aceptado una invitación a una campaña en la ventana del SDK (ecosistema-kit/ESPACIOS.md). */
     readonly espacioAceptado$ = this.espacioAceptadoSubject.asObservable();
 
-    constructor(private zone: NgZone) {
+    constructor(private zone: NgZone, @Optional() private turnoVentanas?: TurnoDeVentanasService) {
         instancia = this;
     }
 
@@ -317,7 +318,8 @@ export class PlatformSessionService {
      * Lo social de la plataforma ha respondido `403 correo_sin_confirmar` (kit 1.80, ACCESO.md «El correo sin
      * confirmar»): se ofrece confirmarlo con `yosiftware.confirmarCorreo()`, que abre la página del código. Varias
      * peticiones que fallan a la vez comparten la misma ventana. Si la persona la cierra («Ahora no»), las cargas no la
-     * vuelven a abrir solas (ya se lo recuerda el SDK al entrar y cada día); una acción que pulse, sí (`porAccion`).
+     * vuelven a abrir solas (ya se lo recuerda el SDK al entrar y cada día); una acción que pulse, sí (`porAccion`). La
+     * que abre una carga espera su turno (`TurnoDeVentanasService`: la bienvenida de los temas va antes).
      * Resuelve `true` si se confirma, con los tokens ya renovados. Al cambiar de cuenta la página se recarga, y con ella
      * este estado.
      */
@@ -326,7 +328,8 @@ export class PlatformSessionService {
             return this.confirmacionCorreo;
         if (!porAccion && this.correoAplazado)
             return Promise.resolve(false);
-        this.confirmacionCorreo = this.confirmarCorreo()
+        const turno = porAccion || !this.turnoVentanas ? Promise.resolve() : this.turnoVentanas.esperarTurno();
+        this.confirmacionCorreo = turno.then(() => this.confirmarCorreo())
             .then((confirmado) => {
                 this.correoAplazado = !confirmado;
                 return confirmado;
