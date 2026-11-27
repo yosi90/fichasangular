@@ -1,5 +1,7 @@
 export const environment = {
     production: false,
+    // El sufijo de la versión de la web (kit 2026.11.1, `src/app/config/version.ts`): QA lleva `-qa`.
+    sufijoVersion: '-qa',
     // Los temas de la web (roadmap ACTIVO_temas-web), encendidos en QA para revisarlos.
     temasWeb: true,
     firestoreDatabaseId: 'fichas-rol',

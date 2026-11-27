@@ -7,6 +7,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { HelpLegalComponent } from '../help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from '../help-usage-about/help-usage-about.component';
 import { AyudaComponent } from './ayuda.component';
+import { VERSION_WEB_PUBLICADA } from 'src/app/config/version';
 
 describe('AyudaComponent', () => {
     let fixture: ComponentFixture<AyudaComponent>;
@@ -37,6 +38,11 @@ describe('AyudaComponent', () => {
         expect(botones[0].getAttribute('aria-current')).toBe('page');
         expect(titulo()).toBe('Primeros pasos');
         expect(elemento().textContent).toContain('Ctrl+K');
+    });
+
+    it('«Acerca del proyecto» enseña la versión de la web (kit 2026.11.1)', () => {
+        expect(elemento().querySelector('.ayuda-version')?.textContent?.trim()).toBe(`Versión ${VERSION_WEB_PUBLICADA}`);
+        expect(VERSION_WEB_PUBLICADA).toMatch(/^\d+\.\d+\.\d+(-qa)?$/);
     });
 
     it('se abre en la sección que se pide y se cambia desde la navegación', () => {

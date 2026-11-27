@@ -1,5 +1,7 @@
 export const environment = {
     production: false,
+    // El sufijo de la versión de la web (kit 2026.11.1, `src/app/config/version.ts`): ninguno en producción.
+    sufijoVersion: '',
     // Los temas de la web (roadmap ACTIVO_temas-web): encendidos en producción desde el 2026-11-26 (propietario: «publícalos»).
     // Apagados, A en oscuro (la web de siempre), sin bienvenida ni selector.
     temasWeb: true,
