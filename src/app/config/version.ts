@@ -7,4 +7,5 @@ import { environment } from 'src/environments/environment';
  */
 export const VERSION_WEB = '1.0.0';
 
-export const VERSION_WEB_PUBLICADA = `${VERSION_WEB}${environment.sufijoVersion}`;
+// El sufijo sale del entorno de la plataforma (`environment.plataforma.entorno`), como en la API (`utils/version.py`).
+export const VERSION_WEB_PUBLICADA = `${VERSION_WEB}${environment.plataforma.entorno === 'qa' ? '-qa' : ''}`;
