@@ -62,7 +62,7 @@ import { caDeSiempreDeRaciales, camposCaDeLaRaza } from 'src/app/services/utils/
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { dgsRacialesQueCuentan } from 'src/app/services/utils/nivel-personaje';
+import { ajusteDePlantillas, dgsRacialesQueCuentan } from 'src/app/services/utils/nivel-personaje';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import {
     origenesDePartes,
@@ -809,7 +809,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         // Con 1 DG racial y algún nivel de clase, ese DG no cuenta (Guía del DM, pág. 172), como en el NEP de la API.
         const dg = dgsRacialesQueCuentan(toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad), clase)
             + plantillas.reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0);
-        const ajusteRazaYPlantillas = toNumber(this.pj?.Raza?.Ajuste_nivel) + plantillas.reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0);
+        const ajusteRazaYPlantillas = toNumber(this.pj?.Raza?.Ajuste_nivel) + ajusteDePlantillas(plantillas);
         // El de los subtipos (el NEP de la API lo cuenta y la ficha no trae el de cada uno): lo que le falta para cuadrar.
         const ajusteSubtipos = this.positivo(this.pj?.NEP)
             ? Math.max(0, toNumber(this.pj?.NEP) - dg - clase - ajusteRazaYPlantillas) : 0;
