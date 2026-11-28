@@ -232,7 +232,7 @@
             <tbody>
                 <tr *ngFor="let s of raza.Sortilegas">
                     <td>{{s.Conjuro.Nombre}}</td>
-                    <td class="ficha-num">{{s.Nivel_lanzador > 0 ? s.Nivel_lanzador : '—'}}</td>
+                    <td class="ficha-num">{{nivelLanzador(s.Nivel_lanzador)}}</td>
                     <td>{{s.Usos_diarios}}</td>
                     <td class="ficha-num" *ngIf="sortilegasConDgs">{{s.Dgs_necesarios > 0 ? s.Dgs_necesarios : ''}}</td>
                     <td *ngIf="sortilegasConDescripcion">{{tieneTextoVisible(s.Descripcion) ? s.Descripcion : ''}}</td>
