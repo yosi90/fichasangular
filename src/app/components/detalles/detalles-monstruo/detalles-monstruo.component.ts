@@ -333,7 +333,7 @@ export class DetallesMonstruoComponent {
         return this.pintar([
             {
                 etiqueta: 'Ataque base / presa',
-                valor: ataque ? `${textoConSigno(toNumber(ataque.Ataque_base))} / ${textoConSigno(toNumber(ataque.Presa))}` : null,
+                valor: ataque ? `${textoConSigno(toNumber(ataque.Ataque_base))} / ${ataque.Presa === null ? '—' : textoConSigno(toNumber(ataque.Presa))}` : null,
             },
             { etiqueta: 'Ataque', valor: ataque?.Ataques },
             { etiqueta: 'Ataque completo', valor: ataque?.Ataque_completo },

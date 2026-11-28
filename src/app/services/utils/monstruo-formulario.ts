@@ -265,7 +265,7 @@ export function valorDesdeMonstruo(monstruo: MonstruoDetalle): MonstruoFormulari
         desprevenido: toInt(monstruo.Defensa?.Desprevenido),
         armadura_natural: toInt(monstruo.Defensa?.Armadura_natural),
         ataque_base: toInt(monstruo.Ataque?.Ataque_base),
-        presa: toInt(monstruo.Ataque?.Presa),
+        presa: toNumberOrNull(monstruo.Ataque?.Presa),
         ataques: toText(monstruo.Ataque?.Ataques),
         ataque_completo: toText(monstruo.Ataque?.Ataque_completo),
         reduccion_dano: toText(monstruo.Defensa?.Reduccion_dano),
@@ -370,7 +370,7 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
             monstruo[campo] = `${dato ?? ''}`.trim();
         else if (BOOLEANOS.includes(campo))
             monstruo[campo] = dato === true;
-        else if ((CARACTERISTICAS_CAMPOS as string[]).includes(campo))
+        else if ((CARACTERISTICAS_CAMPOS as string[]).includes(campo) || campo === 'presa')
             monstruo[campo] = toNumberOrNull(dato) === null ? null : toInt(dato);
         else if (campo === 'id_maniobrabilidad')
             monstruo[campo] = toPositiveInt(dato);

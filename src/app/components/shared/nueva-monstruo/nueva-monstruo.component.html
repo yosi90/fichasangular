@@ -105,7 +105,7 @@
                         <h3 class="insercion-tarjeta__titulo">Ataques</h3>
                         <div class="insercion-campos monstruo-campos-2">
                             <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'ataque_base' }"></ng-container>
-                            <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'presa' }"></ng-container>
+                            <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'presa', vacio: 'Sin presa (—)' }"></ng-container>
                             <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'ataques', clase: 'insercion-campos__entero', maximo: 500 }"></ng-container>
                             <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'ataque_completo', clase: 'insercion-campos__entero', maximo: 500 }"></ng-container>
                             <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado('espacio')">
@@ -290,10 +290,10 @@
         </app-insercion-marco>
 
         <!-- Piezas repetidas -->
-        <ng-template #numero let-campo>
+        <ng-template #numero let-campo let-vacio="vacio">
             <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado(campo)">
                 <mat-label>{{etiqueta(campo)}}</mat-label>
-                <input matInput type="number" step="1" [formControl]="control(campo)">
+                <input matInput type="number" step="1" [formControl]="control(campo)" [placeholder]="vacio || ''">
                 <mat-error *ngIf="errorDe(campo) as error">{{error}}</mat-error>
             </mat-form-field>
         </ng-template>

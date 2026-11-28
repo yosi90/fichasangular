@@ -54,7 +54,8 @@ export interface MonstruoDefensa {
 
 export interface MonstruoAtaque {
     Ataque_base: number;
-    Presa: number;
+    /** `null`: sin presa («Presa —» del bloque: incorpóreos, plagas y criaturas sin Fuerza; API 1.1.0). */
+    Presa: number | null;
     Ataques: string;
     Ataque_completo: string;
 }
@@ -461,7 +462,8 @@ export interface MonstruoEscalaresRequest {
     desprevenido: number;
     armadura_natural: number;
     ataque_base: number;
-    presa: number;
+    /** `null`: sin presa («—»). */
+    presa: number | null;
     ataques: string;
     ataque_completo: string;
     reduccion_dano: string;

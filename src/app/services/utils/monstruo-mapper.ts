@@ -148,7 +148,8 @@ function normalizeDefensa(raw: any): MonstruoDefensa {
 function normalizeAtaque(raw: any): MonstruoAtaque {
     return {
         Ataque_base: toNumber(raw?.Ataque_base),
-        Presa: toNumber(raw?.Presa),
+        // `null`: sin presa («Presa —»; API 1.1.0).
+        Presa: toNumberOrNull(raw?.Presa),
         Ataques: toText(raw?.Ataques),
         Ataque_completo: toText(raw?.Ataque_completo),
     };

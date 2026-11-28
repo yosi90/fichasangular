@@ -413,7 +413,8 @@ export class FichaPersonajeService {
         this.trySetText(form, 'raza', this.resolverEtiquetaRazaCompania(monstruo, esFamiliar));
         this.trySetText(form, 'alineamiento', 'Neutral');
         this.trySetText(form, 'tamaño', `${monstruo?.Tamano?.Nombre ?? ''}`);
-        this.trySetText(form, 'presa', `${toNumber((monstruo as any)?.Ataque?.Presa ?? (monstruo as any)?.Presa)}`);
+        const presa = (monstruo as any)?.Ataque ? (monstruo as any).Ataque.Presa : (monstruo as any)?.Presa;
+        this.trySetText(form, 'presa', presa === null ? '—' : `${toNumber(presa)}`);
         this.trySetText(form, 'iniciativa', `${toNumber(monstruo?.Iniciativa)}`);
 
         // Los valores y sus modificadores los da la API; sin valor (el «—» del manual), «—» en los dos.

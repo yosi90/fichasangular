@@ -37,6 +37,14 @@ describe('monstruo-formulario', () => {
         expect(horror.monstruo.reduccion_dano).toBe('');
     });
 
+    it('la presa sin valor (el «—») va como null y el bonificador de los DG con su signo', () => {
+        const valor = { ...valorMonstruoNuevo(), presa: null, suma_dg: -1 };
+        const cuerpo = construirMonstruoRequest(valor, listasMonstruoVacias());
+        expect(cuerpo.monstruo.presa).toBeNull();
+        expect(cuerpo.monstruo.suma_dg).toBe(-1);
+        expect(construirMonstruoRequest({ ...valor, presa: -4 }, listasMonstruoVacias()).monstruo.presa).toBe(-4);
+    });
+
     it('los textos vacíos o de relleno van vacíos y el espacio con medios', () => {
         const valor = { ...valorMonstruoNuevo(), ataques: '  Mordisco +4 ', tesoro: null, espacio: '2.5' as unknown as number };
         const cuerpo = construirMonstruoRequest(valor, listasMonstruoVacias());

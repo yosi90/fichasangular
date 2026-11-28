@@ -286,6 +286,17 @@ describe('DetallesMonstruoComponent', () => {
         expect(texto()).not.toContain('undefined');
     });
 
+    it('sin presa enseña «—» y el bonificador de los DG negativo con su signo', () => {
+        component.monstruo = crearMonstruoMock({
+            Dados_golpe: { Cantidad: '1', Tipo_dado: { Id: 1, Nombre: 'd8' }, Suma: -1 },
+            Ataque: { Ataque_base: 3, Presa: null, Ataques: 'Toque incorpóreo', Ataque_completo: '' },
+        });
+        fixture.detectChanges();
+
+        expect(franja()).toContain(['Dados de golpe', '1d8-1']);
+        expect(combate()).toContain(['Ataque base / presa', '+3 / —']);
+    });
+
     it('enlaza el tipo, las dotes, las aptitudes, las sortílegas y los subtipos con su detalle', () => {
         const tipoSpy = spyOn(component.tipoCriaturaDetallesId, 'emit');
         const doteSpy = spyOn(component.doteDetalles, 'emit');
