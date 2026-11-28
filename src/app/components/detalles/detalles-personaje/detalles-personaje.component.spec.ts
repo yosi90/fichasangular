@@ -307,6 +307,7 @@ describe('DetallesPersonajeComponent', () => {
         it('el desglose del NEP no cuenta 1 DG racial con niveles de clase (GDM, pág. 172), como la API', () => {
             const pj = fichaDeLaApi();
             pj.Raza = { ...pj.Raza, Dgs_adicionales: { ...pj.Raza.Dgs_adicionales, Cantidad: 1 } } as any;
+            pj.NEP = 10;  // el de la API para esta ficha: 8 de clase + 2 de ajuste
             component.pj = pj;
             verPagina();
             expect(valor('Nivel efectivo (NEP)')).toContain('8 de clase + 2 de ajuste');
@@ -342,6 +343,12 @@ describe('DetallesPersonajeComponent', () => {
             component.pj = fichaDeLaApi();
             verPagina();
             expect(elemento().querySelector('.personaje-homebrew')).toBeNull();
+        });
+
+        it('el desglose del NEP cuenta el ajuste de los subtipos, que la API suma al NEP', () => {
+            component.pj = { ...fichaDeLaApi(), NEP: 15 } as any;  // un subtipo con ajuste +1 (la ficha no trae el de cada uno)
+            verPagina();
+            expect(valor('Nivel efectivo (NEP)')).toBe('15 · 4 DG raciales + 8 de clase + 3 de ajuste');
         });
 
         it('enseña la cabecera, los datos, la franja grande y las casillas con las salvaciones', () => {

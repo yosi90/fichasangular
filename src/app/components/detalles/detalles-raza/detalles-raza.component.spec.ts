@@ -302,7 +302,10 @@ describe('DetallesRazaComponent', () => {
                 Cantidad: 2, Dado: 'd8', Tipo_criatura: 'Humanoide monstruoso', Ataque_base: 2, Dotes_extra: 1,
                 Puntos_habilidad: 5, Multiplicador_puntos_habilidad: 4, Fortaleza: 0, Reflejos: 3, Voluntad: 3,
             },
-            Sortilegas: [{ Conjuro: { Id: 1, Nombre: 'Luces danzantes' } as any, Nivel_lanzador: 3, Usos_diarios: '1/día', Descripcion: '', Dgs_necesarios: 0, Origen: '' }],
+            Sortilegas: [
+                { Conjuro: { Id: 1, Nombre: 'Luces danzantes' } as any, Nivel_lanzador: 3, Usos_diarios: '1/día', Descripcion: '', Dgs_necesarios: 0, Origen: '' },
+                { Conjuro: { Id: 2, Nombre: 'Oscuridad' } as any, Nivel_lanzador: 0, Usos_diarios: '1/día', Descripcion: '', Dgs_necesarios: 0, Origen: '' },
+            ],
         });
 
         expect(valor('Dados de golpe')).toBe('+2d8 de Humanoide monstruoso');
@@ -312,6 +315,8 @@ describe('DetallesRazaComponent', () => {
         const cabecera = Array.from(elemento().querySelectorAll('.ficha-tabla th')).map((th) => `${th.textContent ?? ''}`.trim());
         expect(cabecera).toEqual(['Conjuro', 'Nivel de lanzador', 'Usos']);
         expect(texto()).toContain('Luces danzantes');
+        const niveles = Array.from(elemento().querySelectorAll('.ficha-tabla tbody tr td:nth-child(2)')).map((td) => `${td.textContent ?? ''}`.trim());
+        expect(niveles).toEqual(['3', '—']);  // sin cifra en el libro, «—» y no «0»
     });
 
     it('enseña el alineamiento parcial cuando falta el básico', () => {

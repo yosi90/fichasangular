@@ -806,13 +806,14 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
     private partesNep(): { dg: number; clase: number; ajuste: number; } {
         const plantillas = this.pj?.Plantillas ?? [];
         const clase = (this.pj?.desgloseClases ?? []).reduce((c, d) => c + toNumber(d?.Nivel), 0);
-        return {
-            // Con 1 DG racial y algún nivel de clase, ese DG no cuenta (Guía del DM, pág. 172), como en el NEP de la API.
-            dg: dgsRacialesQueCuentan(toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad), clase)
-                + plantillas.reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0),
-            clase,
-            ajuste: toNumber(this.pj?.Raza?.Ajuste_nivel) + plantillas.reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0),
-        };
+        // Con 1 DG racial y algún nivel de clase, ese DG no cuenta (Guía del DM, pág. 172), como en el NEP de la API.
+        const dg = dgsRacialesQueCuentan(toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad), clase)
+            + plantillas.reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0);
+        const ajusteRazaYPlantillas = toNumber(this.pj?.Raza?.Ajuste_nivel) + plantillas.reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0);
+        // El de los subtipos (el NEP de la API lo cuenta y la ficha no trae el de cada uno): lo que le falta para cuadrar.
+        const ajusteSubtipos = this.positivo(this.pj?.NEP)
+            ? Math.max(0, toNumber(this.pj?.NEP) - dg - clase - ajusteRazaYPlantillas) : 0;
+        return { dg, clase, ajuste: ajusteRazaYPlantillas + ajusteSubtipos };
     }
 
     /** Sus DG: los raciales que cuentan y los de plantilla (`partesNep`) más los de sus clases, con su tabla (`Dgs`). */
