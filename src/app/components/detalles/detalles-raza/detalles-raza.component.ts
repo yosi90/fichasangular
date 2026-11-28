@@ -9,6 +9,7 @@ import {
     dotesVisibles,
     etiquetaTraducido,
     habilidadesVisibles,
+    nivelLanzadorEnCelda,
     nombreOriginalVisible,
     textoDato,
     textoEsenciaRasgo,
@@ -400,14 +401,8 @@ export class DetallesRazaComponent {
         return Number.isFinite(parsed) && Math.abs(parsed) > 0.0001;
     }
 
-    /** El nivel de lanzador de una aptitud sortílega; «—» si no tiene uno fijo (0 o vacío). */
-    nivelLanzador(nivel: number | string | null | undefined): string {
-        const texto = String(nivel ?? '').trim();
-        const n = Number(texto);
-        if (!Number.isFinite(n))
-            return texto;
-        return n > 0 ? texto : '—';
-    }
+    /** El nivel de lanzador de una aptitud sortílega en la tabla; «—» si no tiene uno fijo. */
+    readonly nivelLanzador = nivelLanzadorEnCelda;
 
     /** Magic of Incarnum: «+1 de esencia, receptáculo de esencia» del racial; vacío si no tiene. */
     textoEsencia(racial: RacialDetalle): string {

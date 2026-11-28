@@ -62,6 +62,17 @@ export function nivelLanzadorEnFrase(valor: unknown): string {
     return minusculaInicial(texto);
 }
 
+/**
+ * El nivel de lanzador de una aptitud sortílega en su celda de una tabla (la de una raza): la cifra, el texto tal cual o
+ * «—» si no tiene uno fijo (0 o vacío; `tieneNumeroVisible`).
+ */
+export function nivelLanzadorEnCelda(valor: unknown): string {
+    const texto = `${valor ?? ''}`.trim();
+    if (tieneNumeroVisible(texto) || !Number.isFinite(Number(texto)))
+        return texto;
+    return '—';
+}
+
 /** El nivel de lanzador de una aptitud sortílega en su línea: «NL 5» o «Nivel de lanzador igual a sus niveles de clase». */
 export function textoNivelLanzadorSortilega(valor: unknown): string {
     const frase = nivelLanzadorEnFrase(valor);
