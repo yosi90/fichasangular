@@ -280,7 +280,10 @@ describe('DetallesPlantillaComponent', () => {
         expect(filasPares(lateral('Habilidades'))).toEqual([['Avistar De clase', ''], ['Esconderse', '+8'], ['Saber (Elegir)', '+2']]);
         expect(limpio(lateral('Aptitudes raciales')?.querySelector('ul'))).toBe('Resistencia al frío · desde 4 DG');
         expect(limpio(lateral('Ataques especiales')?.querySelector('ul'))).toBe('Aura de miedo');
-        expect(texto()).toContain('NL 0 · 3/día · desde 13 DG');
+        // Sin nivel de lanzador fijo (0), la línea no dice «NL 0».
+        expect(texto()).toContain('Aura sagrada');
+        expect(texto()).toContain('3/día · desde 13 DG');
+        expect(texto()).not.toContain('NL 0');
         enlace('Resistencia al frío').click();
         enlace('Aura de miedo').click();
         expect(racialSpy).toHaveBeenCalledWith(resistencia);

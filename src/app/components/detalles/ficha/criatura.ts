@@ -67,14 +67,25 @@ export function nivelLanzadorEnFrase(valor: unknown): string {
  * «—» si no tiene uno fijo (0 o vacío; `tieneNumeroVisible`).
  */
 export function nivelLanzadorEnCelda(valor: unknown): string {
-    const texto = `${valor ?? ''}`.trim();
-    if (tieneNumeroVisible(texto) || !Number.isFinite(Number(texto)))
-        return texto;
-    return '—';
+    return tieneNivelLanzadorFijo(valor) ? `${valor}`.trim() : '—';
 }
 
-/** El nivel de lanzador de una aptitud sortílega en su línea: «NL 5» o «Nivel de lanzador igual a sus niveles de clase». */
+/**
+ * Si una aptitud sortílega tiene un nivel de lanzador que decir: una cifra mayor que 0 o un texto («igual a sus DG»). El
+ * 0 o vacío es que no tiene uno fijo, y ningún detalle lo enseña como «0» (la tabla de la raza pone «—»; las líneas, nada).
+ */
+export function tieneNivelLanzadorFijo(valor: unknown): boolean {
+    const texto = `${valor ?? ''}`.trim();
+    return tieneNumeroVisible(texto) || (texto.length > 0 && !Number.isFinite(Number(texto)));
+}
+
+/**
+ * El nivel de lanzador de una aptitud sortílega en su línea: «NL 5» o «Nivel de lanzador igual a sus niveles de clase»;
+ * vacío si no tiene uno fijo ([tieneNivelLanzadorFijo]).
+ */
 export function textoNivelLanzadorSortilega(valor: unknown): string {
+    if (!tieneNivelLanzadorFijo(valor))
+        return '';
     const frase = nivelLanzadorEnFrase(valor);
     return Number.isFinite(Number(frase)) ? `NL ${frase}` : `Nivel de lanzador ${frase}`;
 }
